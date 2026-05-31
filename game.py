@@ -9,6 +9,7 @@ from hiscore import load_scores, save_score, qualifies
 
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
+QUIT_GAME   = 'quit'
 STORY       = 'story'
 LEVEL_INTRO = 'level_intro'
 PLAYING     = 'playing'
@@ -124,6 +125,8 @@ class Game:
                 elif event.key == pygame.K_h:
                     self.state = SHOW_SCORES
                     self._scores_from = TITLE
+                elif event.key == pygame.K_q:
+                    self.state = QUIT_GAME
 
         elif self.state == STORY:
             if event.type == pygame.KEYDOWN:
@@ -474,7 +477,6 @@ class Game:
             ("N",          "remove placed walls"),
             ("SPACE",      "shop (shield / extra life)"),
             ("P",          "pause"),
-            ("Home / End", "speed up / slow down"),
         ]
         lx = LOGICAL_W // 2 - 180
         for i, (key, desc) in enumerate(lines):
@@ -489,8 +491,8 @@ class Game:
             prompt = self.font_med.render("PRESS ENTER TO PLAY", True, YELLOW)
             self.surf.blit(prompt, (LOGICAL_W // 2 - prompt.get_width() // 2, 460))
 
-        hscores = self.font_small.render("[H] High scores", True, GRAY)
-        self.surf.blit(hscores, (LOGICAL_W // 2 - hscores.get_width() // 2, 510))
+        footer = self.font_small.render("[H] High scores          [Q] Quit", True, GRAY)
+        self.surf.blit(footer, (LOGICAL_W // 2 - footer.get_width() // 2, 510))
 
     # ── Story screen ─────────────────────────────────────────────────────────
 

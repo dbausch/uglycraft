@@ -11,7 +11,7 @@ Scaling:
 import sys
 import pygame
 from constants import LOGICAL_W, LOGICAL_H, FPS, TITLE
-from game import Game, WIN, GAME_OVER, PLAY_AGAIN
+from game import Game, WIN, GAME_OVER, PLAY_AGAIN, QUIT_GAME
 
 
 def best_scale(display_w, display_h):
@@ -65,6 +65,9 @@ def main():
                     pygame.display.toggle_fullscreen()
             # Route events to game (after handling global ones)
             game.handle_event(event)
+            if game.state == QUIT_GAME:
+                pygame.quit()
+                sys.exit()
 
             # Transition from WIN/GAME_OVER → score entry
             from game import WIN, GAME_OVER, PLAY_AGAIN, SHOW_SCORES, ENTER_SCORE
