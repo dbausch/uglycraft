@@ -32,6 +32,7 @@ class Game:
         self.sprites = create_sprites()
         self._init_fonts()
         self.difficulty = EASY   # persists across games; player changes it on difficulty screen
+        self._debug    = False   # set by main.py when launched with --level; skips menus/hiscore
         self.state = TITLE
         self._title_init()
 
@@ -720,6 +721,9 @@ class Game:
 
     def try_enter_score(self):
         """Call after WIN or GAME_OVER state is acknowledged."""
+        if self._debug:
+            self.state = PLAY_AGAIN
+            return
         fs = getattr(self, '_final_score', 0)
         if qualifies(fs):
             self._name_buf = ""
