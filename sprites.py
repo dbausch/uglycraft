@@ -116,33 +116,101 @@ def draw_player(size=TILE):
     return s
 
 
+def _ghost_pts(cx, dome_cy, r, n_bumps=3):
+    """Polygon outline of a ghost: dome top + straight sides + scalloped bottom."""
+    pts = []
+    # Dome: left equator → apex → right equator (angles 180°→360°)
+    for a in range(180, 361, 12):
+        pts.append((cx + int(r * math.cos(math.radians(a))),
+                    dome_cy + int(r * math.sin(math.radians(a)))))
+    body_bot = dome_cy + r
+    pts.append((cx + r, body_bot))
+    # Scalloped bottom: n_bumps downward semicircles, traced right→left
+    bw  = (2 * r) // n_bumps
+    br  = bw // 2
+    for i in range(n_bumps - 1, -1, -1):
+        bx = cx - r + int((i + 0.5) * bw)
+        for a in range(0, 181, 30):
+            pts.append((bx + int(br * math.cos(math.radians(a))),
+                        body_bot + int(br * math.sin(math.radians(a)))))
+    pts.append((cx - r, dome_cy))
+    return pts, body_bot, br
+
+
 def draw_enemy(size=TILE):
-    s = _surf(size)
-    cx, cy = size // 2, size // 2
-    r = size // 2 - 3
-    # Body
-    pygame.draw.circle(s, (220, 70, 15), (cx, cy), r)
-    pygame.draw.circle(s, (150, 40, 5), (cx, cy), r, 2)
-    # Angry eyes
-    ey = cy - r // 4
-    er = max(2, r // 5)
-    for side, ex in ((-1, cx - r // 3), (1, cx + r // 3)):
-        pygame.draw.circle(s, (20, 20, 20), (ex, ey), er)
-        # Angled brow
-        bx1, bx2 = ex - er - 2, ex + er + 2
-        by1 = ey - er - 2 + side * 2
-        by2 = ey - er - 2 - side * 2
-        pygame.draw.line(s, (20, 20, 20), (bx1, by1), (bx2, by2), 2)
-    # Frown — same technique as player smile, but flipped vertically
-    frown_rx = r * 5 // 12
-    frown_ry = r // 4
-    frown_cy = cy + r * 2 // 5
-    pts = [
-        (cx + int(frown_rx * math.cos(math.radians(a))),
-         frown_cy - int(frown_ry * math.sin(math.radians(a))))
-        for a in range(0, 181, 6)
+    """Ghost sprite — pale blue-white with dark oval eyes."""
+    s   = _surf(size)
+    cx  = size // 2
+    r   = size // 2 - 4
+    dome_cy = r + 1
+
+    pts, body_bot, _ = _ghost_pts(cx, dome_cy, r)
+
+    pygame.draw.polygon(s, (195, 210, 240), pts)
+    pygame.draw.polygon(s, (120, 140, 195), pts, 1)
+
+    # Eyes
+    ey = dome_cy - r // 5
+    er = max(2, r // 4)
+    for ex in (cx - r // 3, cx + r // 3):
+        pygame.draw.ellipse(s, (30, 40, 80),
+                            (ex - er, ey - er, er * 2, int(er * 1.3)))
+        pygame.draw.circle(s, WHITE, (ex - 1, ey - 1), max(1, er // 3))
+
+    return s
+
+
+def draw_boss(phase=0, size=TILE):
+    """Electric ghost boss — dark purple with crackling sparks (4-frame animation)."""
+    s   = _surf(size)
+    cx  = size // 2
+    r   = size // 2 - 4
+    dome_cy = r + 1
+
+    pts, body_bot, br = _ghost_pts(cx, dome_cy, r)
+
+    # ── Electric glow (semi-transparent halo) ──────────────────────────────
+    glow_alpha = (80, 100, 70, 90)[phase]
+    glow_col   = (160, 80, 255, glow_alpha)
+    glow = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.circle(glow, glow_col, (cx, dome_cy), r + 5)
+    pygame.draw.rect(glow,  glow_col, (cx - r - 3, dome_cy, (r + 3) * 2, r + 3))
+    s.blit(glow, (0, 0))
+
+    # ── Ghost body ─────────────────────────────────────────────────────────
+    pygame.draw.polygon(s, (55, 15, 100), pts)
+    ec = ((150, 70, 255), (200, 130, 255), (120, 50, 230), (180, 100, 255))[phase]
+    pygame.draw.polygon(s, ec, pts, 2)
+
+    # ── Electric sparks (three per frame, positions cycle with phase) ──────
+    # Each entry: (origin_x, origin_y, end_dx, end_dy, zigzag_dx, zigzag_dy)
+    spark_sets = [
+        [(cx,     dome_cy - r - 1,  0,  -6,  3,  -3),
+         (cx + r, dome_cy - r // 2,  5,  -3, -2,   2),
+         (cx - r, dome_cy + r // 2, -5,   2,  2,  -3)],
+        [(cx,     dome_cy - r - 1,  0,  -6, -3,  -3),
+         (cx + r, dome_cy,           6,   0,  2,   3),
+         (cx - r, dome_cy - r // 2, -5,  -3, -2,   2)],
+        [(cx + r // 2, dome_cy - r,  3,  -5, -3,  -2),
+         (cx - r // 2, dome_cy - r, -3,  -5,  3,  -2),
+         (cx + r,      dome_cy,      6,   1, -2,   3)],
+        [(cx,     dome_cy - r - 1,  0,  -5,  2,  -4),
+         (cx + r, dome_cy - r // 3,  5,  -2,  2,   3),
+         (cx - r, dome_cy - r // 3, -5,  -2, -2,   3)],
     ]
-    pygame.draw.lines(s, (20, 20, 20), False, pts, 2)
+    sc = ((255, 240, 60), (220, 200, 255), (255, 250, 80), (200, 180, 255))[phase]
+    for ox, oy, ex, ey, zx, zy in spark_sets[phase]:
+        mid = (ox + ex // 2 + zx, oy + ey // 2 + zy)
+        pygame.draw.lines(s, sc, False, [(ox, oy), mid, (ox + ex, oy + ey)], 2)
+
+    # ── Glowing eyes ───────────────────────────────────────────────────────
+    ey_y = dome_cy - r // 5
+    er   = max(2, r // 4)
+    eye_col = ((255, 230, 50), (255, 255, 160), (255, 220, 40), (255, 240, 130))[phase]
+    for ex_pos in (cx - r // 3, cx + r // 3):
+        pygame.draw.circle(s, eye_col, (ex_pos, ey_y), er)
+        pygame.draw.circle(s, WHITE,   (ex_pos - 1, ey_y - 1), max(1, er // 3))
+
     return s
 
 
@@ -342,6 +410,10 @@ def create_sprites():
         'floor':         draw_floor(),
         'player':        draw_player(),
         'enemy':         draw_enemy(),
+        'boss_0':        draw_boss(0),
+        'boss_1':        draw_boss(1),
+        'boss_2':        draw_boss(2),
+        'boss_3':        draw_boss(3),
         'shield':        draw_shield_overlay(),
         1:               draw_rope(),
         2:               draw_big_diamond(),

@@ -132,7 +132,7 @@ LEVELS = [
         ),
     },
 
-    # 9 ── Divided chambers ── 3 enemies ───────────────────────────────────────
+    # 9 ── Divided chambers ── 3 enemies (HARD) ───────────────────────────────
     {
         'player_start':  (15, 8),
         'enemy_starts': [(2, 8),    # left chamber, middle
@@ -147,6 +147,38 @@ LEVELS = [
             _h(2, 12, 10),
             _h(17, 27,  5),
             _h(17, 27, 10),
+        ),
+    },
+
+    # 10 ── Boss level: triple-layered vault, corner cavities, electric boss ─────
+    #
+    # Crown is at a FIXED position (14, 8) inside the innermost vault ring.
+    # To reach it the player must break through three separate wall layers
+    # (9 total hits = 4 placement credits earned along the way).
+    #
+    # Corner cavities: col 4 / col 25 form the inner walls of 4 pockets,
+    # each open toward the centre — tactical hiding spots vs the boss.
+    {
+        'player_start':  (2, 7),
+        'enemy_starts': [(27, 7)],        # the boss — 1 enemy on all difficulties
+        'crown_pos':     (14, 8),         # fixed position, not randomly spawned
+        'walls': _make_walls(
+            # Triple-layered central vault
+            _h(9,  20,  3), _h(9,  20, 12),
+            _v(9,   3, 12), _v(20,  3, 12),
+            _h(11, 18,  5), _h(11, 18, 10),
+            _v(11,  5, 10), _v(18,  5, 10),
+            _h(13, 16,  7), _h(13, 16,  9),
+            _v(13,  7,  9), _v(16,  7,  9),
+            # Corner cavities (open toward centre)
+            _v(4,  1,  4), _v(25,  1,  4),
+            _v(4, 10, 14), _v(25, 10, 14),
+            # Scattered single blocks
+            [(7, 2)],  [(22, 2)],
+            [(7, 13)], [(22, 13)],
+            [(5, 5)],  [(24, 5)],
+            [(5, 10)], [(24, 10)],
+            [(7, 7)],  [(22, 7)],
         ),
     },
 ]

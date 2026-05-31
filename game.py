@@ -116,7 +116,7 @@ class Game:
         self.zahl         = 0
         self.shield       = False
         self.move_ms      = BASE_MOVE_MS
-        self.enemy_ms     = BASE_ENEMY_MS
+        self.enemy_ms     = BASE_ENEMY_MS  # overridden to BOSS_MOVE_MS on level 10
         self._placed_walls  = set()
         self._wall_hits     = {}   # (col, row) → hit count (inner walls only)
         self._break_pool    = 0    # leftover breaks toward next credit
@@ -138,8 +138,12 @@ class Game:
         pc, pr = data['player_start']
         self.player  = Player(pc, pr)
         starts = data['enemy_starts']
-        active = starts if self.difficulty == HARD else starts[:1]
+        # Level 10 always has exactly 1 enemy (the boss) on both difficulties.
+        # Levels 1-9: HARD uses all starts, EASY only the first.
+        active = starts if (self.difficulty == HARD and level_num < NUM_LEVELS) \
+                 else starts[:1]
         self.enemies = [Enemy(ec, er) for ec, er in active]
+        self.enemy_ms = BOSS_MOVE_MS if level_num == NUM_LEVELS else BASE_ENEMY_MS
         self.shield = False
         self._spawn_treasure()
         self._move_timer   = 0
@@ -151,11 +155,15 @@ class Game:
     def _spawn_treasure(self):
         self.zahl += 1
         if self.zahl > 9:
-            self.zahl = 1   # safety; level advance happens before this normally
-        # Crown only on level 9
+            self.zahl = 1
         self.treasure_zahl = 10 if (self.zahl == 9 and self.level == NUM_LEVELS) \
                              else self.zahl
-        # Random open tile (not player, not enemy, not a wall)
+        # Crown on the boss level spawns at a fixed position inside the vault
+        if self.treasure_zahl == 10:
+            data = LEVELS[self.level - 1]
+            if 'crown_pos' in data:
+                self.treasure_pos = data['crown_pos']
+                return
         open_tiles = [
             (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
             if not self.walls[c][r]
@@ -165,7 +173,10 @@ class Game:
         self.treasure_pos = random.choice(open_tiles) if open_tiles else (1, 1)
 
     def _relocate_treasure(self):
-        """Enemy walked over the treasure — move it to a new random open tile."""
+        """Boss walked over a treasure — move it to a new random open tile.
+        The crown (fixed in the vault) is never relocated."""
+        if self.treasure_zahl == 10:
+            return
         open_tiles = [
             (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
             if not self.walls[c][r]
@@ -353,12 +364,26 @@ class Game:
         if self.lives <= 0:
             self._end_game(won=False)
         else:
-            # Reset positions but keep level walls
             data = LEVELS[self.level - 1]
             self.player.col, self.player.row = data['player_start']
-            active = data['enemy_starts'] if self.difficulty == HARD else data['enemy_starts'][:1]
+            active = data['enemy_starts'] if (self.difficulty == HARD
+                                              and self.level < NUM_LEVELS) \
+                     else data['enemy_starts'][:1]
             for enemy, (ec, er) in zip(self.enemies, active):
                 enemy.col, enemy.row = ec, er
+
+    def _respawn_boss(self):
+        """Defeat the boss (shield hit) — teleport it to a random reachable tile."""
+        boss = self.enemies[0]
+        dist = self._bfs_from(self.player.col, self.player.row)
+        candidates = [
+            pos for pos, d in dist.items()
+            if d > 4                               # not too close to player
+            and pos != self.treasure_pos
+            and pos not in {(e.col, e.row) for e in self.enemies}
+        ]
+        if candidates:
+            boss.col, boss.row = random.choice(candidates)
 
     def _end_game(self, won):
         self._final_score = self.score * max(1, self.lives)
@@ -417,7 +442,12 @@ class Game:
         # Collision: any enemy catches player
         for enemy in self.enemies:
             if enemy.col == self.player.col and enemy.row == self.player.row:
-                self._lose_life()
+                if self.level == NUM_LEVELS and self.shield:
+                    # Shield defeats the boss — it respawns instead of killing player
+                    self.shield = False
+                    self._respawn_boss()
+                else:
+                    self._lose_life()
                 return
 
         # Treasure collection
@@ -499,9 +529,15 @@ class Game:
         if tz in sp:
             self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
-        # Enemies
-        for enemy in self.enemies:
-            self.surf.blit(sp['enemy'], (enemy.col * TILE, enemy.row * TILE))
+        # Enemies / boss
+        if self.level == NUM_LEVELS:
+            phase = (pygame.time.get_ticks() // 120) % 4
+            boss_sprite = sp[f'boss_{phase}']
+            for enemy in self.enemies:
+                self.surf.blit(boss_sprite, (enemy.col * TILE, enemy.row * TILE))
+        else:
+            for enemy in self.enemies:
+                self.surf.blit(sp['enemy'], (enemy.col * TILE, enemy.row * TILE))
 
         # Player
         self.surf.blit(sp['player'],
@@ -535,7 +571,9 @@ class Game:
         else:
             wall_color = GRAY
         htext(f"WALLS  {self._place_credits}", 700, wall_color)
-        if self.difficulty == HARD:
+        if self.level == NUM_LEVELS:
+            htext("BOSS", 840, MAGENTA)
+        elif self.difficulty == HARD:
             htext("HARD", 840, RED)
         if self.shield:
             htext("★SHIELD", 895, LTBLUE)
