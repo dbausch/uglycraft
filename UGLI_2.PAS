@@ -1,0 +1,1308 @@
+{****************************** B E G I N N *********************************}
+{******************************** U G L I ***********************************}
+Program ugli_2;
+
+uses crt, dos, danisoft;
+label     100, 300, 999, 998, 1, 997;
+
+Const
+  user = 'Benjamin Mildner';
+  vers = 2.00;
+  Nr   = '0009';
+  MaxX = 80;
+  MaxY = 20;
+  CurR = 77;
+  CurL = 75;
+  CurU = 80;
+  CurO = 72;
+  Unbr = 112;
+  lans = 79;
+  Kauf = 32;
+  sped = 71;
+  Name = 'UGLI.HSC';
+  copy = 'Copyright (C) 1996 Daniel Bausch';
+
+var
+    steine, langs, op, pausen, timeslot, ti, l, I, J, zahl, level, leben,
+    vx, vy, sx, sy, nehm, locx, locy, dx, dy, x, y, xx, yy, gx, gy : integer;
+    punkte : Longint;
+    sper : array [1..MaxX,1..MaxY] of boolean;
+    t  : char;
+    f : Text;
+    IZ,A : string;
+    Zeile: string[80];
+    Schutz : Boolean;
+
+{****************************** B E G I N N *********************************}
+{*************************** P R O C E D U R E N ****************************}
+
+procedure writexy(X,Y:integer;s:String);
+Begin
+ gotoxy(x,y);
+ write(s);
+End;
+
+procedure ReStone;
+var I,J:Integer;
+Begin
+  For I := 1 to 80 do
+    Begin
+      For J := 1 to 20 do
+        Begin
+          gotoxy(I,J);
+          textcolor(4);
+          If sper[I,J] then write('Û')
+                       else write(' ');
+
+        End;
+    End;
+  textbackground(Red);
+  textcolor(15);
+  writexy(35, 1,'LEVEL ');
+  write(level);
+  textbackground(Red);
+  textcolor(15);
+  writexy(3, 1,'PUNKTE '); Write(punkte);
+  textbackground(0);
+  textcolor(11);
+  writexy(1, 21,'Ä = links   = unten  Ä = rechts   = oben');
+  writexy(1, 22,'ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ');
+  writexy(1, 23,'<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
+  writexy(1, 24,'ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ');
+  writexy(1, 25,'<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
+End;
+
+procedure abfrage;
+begin
+  ClrScr;
+  writeln;
+  writeln('VORNAME ');
+  gotoxy (9,2); readln(IZ);
+  writeln('NAME ');
+  gotoxy (6,3); readln(A);
+  writexy(1,4,'Punkte '); write(punkte * leben);
+  Assign(f,Name);
+  {$I-}
+  Append(f);
+  {$I+}
+
+  if IOResult = 0
+  then begin
+         writeln(f,iz,' ',a,'    ',punkte * leben);
+         close(f);
+         writeln;
+        end
+  else begin
+         {$I-}
+         ReWrite(f);
+         if IOResult <> 0 then
+         Begin
+           Writeln('Datei UGLI.HSC konnte nicht erzeugt werden.');
+         End
+         else
+         Begin
+           writeln(f,iz,' ',a,'    ',punkte * leben);
+           close(f);
+           writeln;
+         End;
+         {$I+}
+       end;
+  readln;
+  clrscr;
+  Assign(f,Name);
+  {$I-}
+  Reset(f);
+  {$I+}
+  if IOResult = 0
+  then begin
+         while not Eof(f) do
+         begin
+          readln(f,Zeile);
+          writeln(Zeile);
+         end;
+         close(f);
+       end
+  else begin
+         {$I-}
+         ReWrite(f);
+         if IOResult <> 0 then
+         Begin
+           Writeln('Datei UGLI.HSC konnte nicht erzeugt werden.');
+         End
+         else
+         Begin
+           while not Eof(f) do
+           begin
+            readln(f,Zeile);
+            writeln(Zeile);
+           end;
+           close(f);
+         End;
+         {$I+}
+       end;
+  GotoXY(1,25);
+  write('Bitte [Return] -Taste drcken..');
+  readln;
+
+end;
+
+
+
+procedure cls;
+ begin
+  clrscr;
+ end;
+
+procedure verwirrung;
+begin
+ Erkennung(
+          '                  **        **    **********   **           **                 ',
+          '                  **        **   **        **  **           **                 ',
+          '                  **        **   **        **  **           **                 ',
+          '                  **        **   **            **           **                 ',
+          '                  **        **   **     *****  **           **                 ',
+          '                  **        **   **        **  **           **                 ',
+          '                  **        **   **        **  **           **                 ',
+          '                   **********     **********   **********   **                 ',
+          vers,Nr,user,copy);
+end;
+
+procedure punktezaehlen;
+Begin
+ if zahl = 2 then punkte := punkte + 100;
+ if zahl = 3 then punkte := punkte + 200;
+ if zahl = 4 then punkte := punkte + 300;
+ if zahl = 5 then punkte := punkte + 400;
+ if zahl = 6 then punkte := punkte + 500;
+ if zahl = 7 then punkte := punkte + 600;
+ if zahl = 8 then punkte := punkte + 700;
+ if zahl = 9 then punkte := punkte + 800;
+ if zahl = 10 then punkte := punkte + 900;
+ textbackground(Red);
+ textcolor(15);
+ writexy(3, 1,'PUNKTE '); Write(punkte);
+ textbackground(0);
+
+end;
+
+{****************************** B E G I N N *********************************}
+{****************************** L E V E L S *********************************}
+
+procedure initl1;
+begin
+ t := #77;
+ x := 40;
+ y := 10;
+end;
+
+procedure initl2;
+var I:Integer;
+Begin
+   textcolor(4);
+   x := 40;
+   y := 5;
+   t := #77;
+  for I := 18 to 62 do
+   begin
+    gotoxy(I, 10);
+    write(chr(219));
+    sper[I, 10] := true;
+   end; {For I}
+End;   {initl2}
+
+procedure initl3;
+var I:Integer;
+ Begin
+  textcolor(4);
+  x := 40;
+  y := 9;
+  t := #80;
+  for I := 5 to 15 do
+   begin
+    gotoxy(20, I);
+    write(chr(219));
+    gotoxy(60, I);
+    write(chr(219));
+    sper[20, I] := true;
+    sper[60, I] := true;
+   end;
+  for i := 20 to 60 do
+  Begin
+    gotoxy(I, 10);
+    write(chr(219));
+    sper[I, 10] := true;
+  End;
+  textbackground(0);
+  writexy(39,10,'   ');
+  sper[39,10] := false;
+  sper[40,10] := false;
+  sper[41,10] := false;
+end; {initl3}
+
+procedure initl4;
+var I:Integer;
+ Begin
+ textcolor(4);
+  x := 40;
+  y := 9;
+  t := #77;
+  for I := 4 to 8 do
+   begin
+    writexy(15, I,chr(219));
+    writexy(65, I,chr(219));
+    sper[15, I] := true;
+    sper[65, I] := true;
+   end;
+  for I := 5 to 75 do
+   begin
+    writexy(I, 10,chr(219));
+    sper[I, 10] := true;
+   end;
+  for I := 12 to 16 do
+   begin
+    writexy(15, I,chr(219));
+    writexy(65, I,chr(219));
+    sper[15, I] := true;
+    sper[65, I] := true;
+   end;
+  textbackground(0);
+  writexy(39,10,'   ');
+  sper[39,10] := false;
+  sper[40,10] := false;
+  sper[41,10] := false;
+end; {initl4}
+
+procedure initl5;
+var I:Integer;
+begin
+textcolor(4);
+    x := 40;
+    y := 10;
+    t := #72;
+    for I := 5 to 15 do
+    begin
+     writexy(20, I,chr(219));
+     writexy(60, I,chr(219));
+     sper[20, I] := true;
+     sper[60, I] := true;
+    end; {FOR}
+    for  I := 22 to 58 do
+    begin
+     writexy(I, 7,chr(219));
+     writexy(I, 13,chr(219));
+     sper[I, 7] := true;
+     sper[I, 13] := true;
+    end; {FOR}
+    textbackground(0);
+    for i := 20 to 60 do
+    Begin
+      writexy(i,10,' ');
+      sper[i,10] := false;
+    End;
+end; {initl5}
+
+procedure initl6;
+var I:Integer;
+begin
+textcolor(4);
+    x := 75;
+    y := 5;
+    t := #80;
+    for I := 2 to 8 do
+    begin
+     writexy(10, I,chr(219));
+     writexy(20, I,chr(219));
+     writexy(30, I,chr(219));
+     writexy(40, I,chr(219));
+     writexy(50, I,chr(219));
+     writexy(60, I,chr(219));
+     writexy(70, I,chr(219));
+     sper[10, I] := true;
+     sper[20, I] := true;
+     sper[30, I] := true;
+     sper[40, I] := true;
+     sper[50, I] := true;
+     sper[60, I] := true;
+     sper[70, I] := true;
+    end;
+    for I := 12 to 19 do
+    begin
+     writexy(10, I,chr(219));
+     writexy(20, I,chr(219));
+     writexy(30, I,chr(219));
+     writexy(40, I,chr(219));
+     writexy(50, I,chr(219));
+     writexy(60, I,chr(219));
+     writexy(70, I,chr(219));
+     sper[10, I] := true;
+     sper[20, I] := true;
+     sper[30, I] := true;
+     sper[40, I] := true;
+     sper[50, I] := true;
+     sper[60, I] := true;
+     sper[70, I] := true;
+    end; {FOR}
+    for i := 5 to 15 do
+    begin
+      writexy(15,I,chr(219));
+      writexy(25,I,chr(219));
+      writexy(35, I,chr(219));
+      writexy(45, I,chr(219));
+      writexy(55, I,chr(219));
+      writexy(65, I,chr(219));
+      sper[15,I] := true;
+      sper[25,I] := true;
+      sper[35,I] := true;
+      sper[45,I] := true;
+      sper[55,I] := true;
+      sper[65,I] := true;
+    EnD;
+    textbackground(0);
+    for I := 6 to 74 do
+    begin
+      writexy(I, 10,chr(219));
+      writexy(I, 9,' ');
+      writexy(I, 11,' ');
+      sper[I, 10] := true;
+      sper[I,  9] := false;
+      sper[I, 11] := false;
+    end;
+  textbackground(0);
+  writexy(38,10,'     ');
+  sper[38,10] := false;
+  sper[39,10] := false;
+  sper[40,10] := false;
+  sper[41,10] := false;
+  sper[42,10] := false;
+end; {initl6}
+
+procedure initl7;
+var I:Integer;
+begin
+  x := 75;
+  y := 10;
+  textcolor(4);
+  j := 0;
+  For i := 3 to 17 do
+  Begin
+    inc(j);
+    writexy(5 + j,i,'Û');
+    sper[5 + j,i] := true;
+    writexy(33 + j,i,'Û');
+    sper[33 + j,i] := true;
+    writexy(60 + j,i,'Û');
+    sper[60 + j,i] := true;
+  End;
+  j := 16;
+  For i := 3 to 17 do
+  Begin
+    dec(j);
+    writexy(5 + j,i,'Û');
+    sper[5+j,i] := true;
+    writexy(33 + j,i,'Û');
+    sper[33+j,i] := true;
+    writexy(60 + j,i,'Û');
+    sper[60+j,i] := true;
+  End;
+  for j := 9 to 11 do for i := 2 to 79 do sper[i,j] := false;
+  for i := 6 to 74 do sper[i,10] := true;
+  for i := 54 to 56 do sper[i,10] := false;
+  for i := 26 to 28 do sper[i,10] := false;
+end; {initl7}
+
+procedure initl8;
+var I:Integer;
+begin
+textcolor(4);
+     x := 75;
+     y := 5;
+     t := #80;
+     for I := 2 to 15 do
+     begin
+      writexy(10, I,chr(219));
+      writexy(30, I,chr(219));
+      writexy(50, I,chr(219));
+      writexy(70, I,chr(219));
+      sper[10, I] := true;
+      sper[30, I] := true;
+      sper[50, I] := true;
+      sper[70, I] := true;
+     end; {FOR}
+     for I := 5 to 19 do
+     begin
+      writexy(20, I,chr(219));
+      writexy(40, I,chr(219));
+      writexy(60, I,chr(219));
+      sper[20, I] := true;
+      sper[40, I] := true;
+      sper[60, I] := true;
+     end; {FOR}
+end; {initl8}
+
+procedure initl9;
+var I:Integer;
+begin
+textcolor(4);
+     x := 40;
+     y := 10;
+     ti := 72;
+     for I:= 5 to 15 do
+     begin
+      writexy(20, I,chr(219));
+      writexy(60, I,chr(219));
+      writexy(39, I,chr(219));
+      writexy(41, I,chr(219));
+      sper[20, I] := true;
+      sper[60, I] := true;
+      sper[39, I] := true;
+      sper[41, I] := true;
+     end; {FOR}
+     for I := 21 to 38 do
+     begin
+      writexy(I, 5,chr(219));
+      sper[I, 5] := true;
+     end;
+     for I := 42 to 59 do
+     begin
+      writexy(I, 5,chr(219));
+      sper[I, 5] := true;
+     end;
+     for I := 22 to 37 do
+     begin
+      writexy(I, 15,chr(219));
+      sper[I, 15] := true;
+     end;
+     for I := 43 to 58 do
+     begin
+      writexy(I, 15,chr(219));
+      sper[I, 15] := true;
+     end;
+end;
+
+{******************************** E N D E ***********************************}
+{****************************** L E V E L S *********************************}
+
+procedure Wertsachen;
+Begin
+  cls;
+  writeln;
+  writeln(' L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H  T Z E ');
+  writeln;
+  writeln('    | Seil ');
+  writeln('     grosser gl„nzender Diamant ');
+  writeln('    : kleine Edelsteiene ');
+  writeln('    * kleiner gl„nzender Diamant ');
+  writeln('    = Goldbarren ');
+  writeln('    ğ Silberbarren ');
+  writeln('    â Brunnen ');
+  writeln('    è Lampe ');
+  writeln('     grosser Edelstein ');
+  writeln('     Krone ');
+  writeln;
+  gotoxy(1,15);
+  writeln('   S P I E L A N L E I T U N G   ');
+  writeln;
+  writeln('Du drckst jetzt die Return-Taste(Enter), dann drckst du eine der ');
+  writeln('Richtungstasten danach musst du mit den Richtungstasten die oben gezeigten ');
+  writeln('Dinge einsammeln.       (Die Krone kommt ganz zum Schluss.)');
+  writeln('W„hrend des Spiels kann man mit <F1> die anderen Tasten die zum bedienen ');
+  writeln('des Spiels nachlesen.');
+  readln;
+End;
+
+procedure Hilfe;
+begin
+  vx := x;
+  vy := y;
+  textcolor(13);
+  cls;
+  writexy(2, 1,'                  HILFE VON UGLI');
+  writexy(2, 2,'[p] = Pause (1 Pause Weniger)');
+  writexy(2, 3,'Bewegungs-Tasten: Ä = links   = unten  Ä = rechts   = oben');
+  writexy(2, 4,'[Esc] = Abbruch');
+  writexy(2, 5,'[Ende] = Langsamer');
+  writexy(2, 6,'[Pos1] = Schneller');
+  writexy(2, 7,'[F4] = Neustart');
+  writexy(2, 8,'[F3] = Anzeige der noch vorhandenen Pausen (oben-links)');
+  writexy(2, 9,'[F2] = Die Geschichte von Ugli');
+  writexy(2,10,'[s] = Setzt an der Posision von dir einen Block (danach Richtungstaste drcken)');
+  writexy(2,11,'[n] = alle gesetzeten Bl”cke wieder entfernen');
+  writexy(2,12,'');
+  writexy(2,13,'Achtung:  wenn irgend eine andere Taste gedrckt wird rast Ugli auf dich und du');
+  writexy(2,14,'bist verloren');
+  writexy(2,17,'                  T A S T E   D R š C K E N');
+  t := readkey;
+  x := vx;
+  y := vy;
+end;
+
+procedure levelneu;
+begin
+  begin
+   repeat
+       writexy(30, 8,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+gotoxy(30, 9); write('Û L E V E L   ',level,'           Û');
+      writexy(30, 10,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+      writexy(30, 11,' T A S T E   D R š C K E N ');
+    delay(1000);
+   until keypressed;
+   t := readkey;
+       writexy(30, 8,'                           ');
+       writexy(30, 9,'                           ');
+      writexy(30, 10,'                           ');
+      writexy(30, 11,'                           ');
+    delay(1000);
+  end;
+ Case level of
+  1: initl1;
+  2: initl2;
+  3: initl3;
+  4: initl4;
+  5: initl5;
+  6: initl6;
+  7: initl7;
+  8: initl8;
+  9: initl9;
+ End; {case}
+end;
+
+Procedure Brumm;
+Begin
+ sound(40);
+ delay(5);
+ nosound;
+End; {brumm}
+
+procedure unten (Var x:integer; Var y:integer);
+begin
+ delay(55);
+ writexy(x, y,' ');
+ if sper[x, y + 1] then Brumm
+                   else y := y + 1;
+  textcolor(14);
+  writexy(x,y,'');
+  gotoxy(1,1);
+  textcolor(4);
+  writexy(sx,sy,'Û');
+end; {unten}
+
+procedure links (Var x:Integer; Var y:integer);
+ begin
+  delay(10);
+  writexy(x, y,' ');
+  if sper[x-1, y] then Brumm
+                  else x := x - 1;
+  textcolor(14);
+  writexy(x,y,'');
+  gotoxy(1,1);
+  textcolor(4);
+  writexy(sx,sy,'Û');
+end;  {links}
+
+procedure rechts (Var x:Integer; Var y:integer);
+begin
+    delay(10);
+    writexy(x, y,' ');
+    if sper[x+1, y] then Brumm
+                    else x := x + 1;
+  textcolor(14);
+  writexy(x,y,'');
+  gotoxy(1,1);
+  textcolor(4);
+  writexy(sx,sy,'Û');
+end;  {rechts}
+
+procedure oben (Var x:Integer; Var y:integer);
+begin
+    delay(55);
+    writexy(x, y,' ');
+    if sper[x, y - 1] then Brumm
+                      else y := y - 1;
+  textcolor(14);
+  writexy(x,y,'');
+  gotoxy(1,1);
+  textcolor(4);
+  writexy(sx,sy,'Û');
+end; {oben}
+
+procedure rahmen;
+var I,J:Integer;
+begin
+ textcolor(4);
+ for I := 1 to MaxX do
+   begin
+    for J := 1 to MaxY do
+      begin
+       sper[I, J] := false;
+      end; {FOR J}
+   end; {FOR I}
+
+ ClrScr;
+ for I := 1 to 80 do
+     begin
+     textcolor(4);
+      writexy(I, 1,chr(219));
+      textcolor(4);
+      writexy(I, 20,chr(219));
+      sper[I, 1] := true;
+      sper[I, 20] := true;
+     end; {FOR}
+ for I := 2 to 19 do
+     begin
+     textcolor(4);
+      writexy(1, I,chr(219));
+      textcolor(4);
+      writexy(80, I,chr(219));
+      sper[1, I] := true;
+      sper[80, I] := true;
+     end; {FOR}
+ textbackground(Red);
+ textcolor(15);
+ writexy(35, 1,'LEVEL ');
+ write(level);
+ textbackground(0);
+       Case level of
+        1: initl1;
+        2: initl2;
+        3: initl3;
+        4: initl4;
+        5: initl5;
+        6: initl6;
+        7: initl7;
+        8: initl8;
+        9: initl9;
+       End; {case}
+ 
+     textcolor(11);
+     writexy(1, 21,'Ä = links   = unten  Ä = rechts   = oben');
+     writexy(1, 22,'ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ');
+     writexy(1, 23,'<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
+     writexy(1, 24,'ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ');
+     writexy(1, 25,'<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
+end; {rahmen}
+
+procedure ugli2;
+begin
+     textcolor(6);
+     dx := x - xx;
+     dy := y - yy;
+     writexy(xx, yy,' ');
+     if timeslot = 0 then
+      if (ABS(dx) > ABS(dy)) then
+        begin
+         if (dx > 0) AND (sper[xx + 1,yy] = false) then
+            xx := xx + 1
+          else
+           begin
+            if (dx > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
+            if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
+           end;
+         if (dx < 0) AND (sper[xx - 1,yy] = false) then
+            xx := xx - 1
+          else
+           begin
+            if (dy > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
+            if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
+           end;
+        end
+       else
+        begin
+         IF (dy > 0) AND (sper[xx,yy + 1] = false) THEN
+            yy := yy + 1
+           ELSE
+            begin
+             IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
+             IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
+            end;
+         IF (dy < 0) AND (sper[xx,yy - 1] = false) THEN
+            yy := yy - 1
+           ELSE
+            begin
+             IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
+             IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
+            end;
+           
+       end;
+    writexy(xx, yy,chr(2));
+
+end;
+
+procedure untbr;
+label 200;
+begin
+ if pausen = 0 then goto 200;
+ pausen := pausen - 1;
+ delay(5000);
+ 200:
+end;
+
+procedure Geschichte;
+begin
+textcolor(13);
+cls;
+writexy(3, 1,'                Geschichte von UGLI');
+writexy(3, 3,'Du  bist  von  einem  K”nig  in  eine  Burg eingeschlossen worden.');
+writexy(3, 4,'Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle');
+writexy(3, 5,'meine  Sch„tze  wieder  gefunden  hast", knallte  er  die  Tr zu.');
+writexy(3, 6,'Da  bleibt Dir wohl  nichts anderes  mehr brig, als seine Sch„tze');
+writexy(3, 7,'zu holen. Du rennst also sofort los, um alle Sch„tze einzusammeln.');
+writexy(3, 9,'                 T A S T E   D R š C K E N');
+t := readkey;
+end;
+
+procedure langsam;
+begin
+  delay(50);
+  langs := langs + 1;
+  writexy(3, 5,'        T A S T E   D R š C K E N');
+  t := readkey;
+  writexy(3, 5,'                                   ');
+  vx := x;
+  vy := y;
+  textcolor(Red);
+  for J := 1 to 80 do
+  Begin
+    if sper[J,5] = true then writexy(J,5,chr(219)) else writexy(J,5,' ');
+  End;
+  x := vx;
+  y := vy;
+end;
+
+procedure schnell;
+begin
+ delay(50);
+ if langs > 0 then
+ begin
+  langs := langs - 1;
+  writexy(3, 5,'        T A S T E   D R š C K E N');
+  t := readkey;
+  textcolor(Red);
+  for J := 1 to 80 do
+  Begin
+    if sper[J,5] = true then writexy(J,5,chr(219)) else writexy(J,5,' ');
+  End;
+ end;
+ if langs = 0 then
+ begin
+  writexy(3, 3,'                Schneller geht''s nicht');
+  writexy(3, 5,'        T A S T E   D R š C K E N');
+  t := readkey;
+  textcolor(Red);
+  for I := 3 to 5 do
+  Begin
+    for J := 1 to 80 do
+    Begin
+      if sper[J,I] = true then writexy(J,I,chr(219)) else writexy(J,I,' ');
+    End;
+  End;
+ end;
+end;
+
+procedure GameOver;
+ begin
+    writexy(xx, yy,' ');
+    writexy(x, y,' ');
+    writexy(locx, locy,' ');
+    writexy(28, 2,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+    writexy(28, 3,'ÛÛ G A M E  O V E R ÛÛ');
+    writexy(28, 4,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+    sound(200);
+    delay(100);
+    sound(150);
+    delay(100);
+    sound(200);
+    delay(100);
+    sound(150);
+    delay(100);
+    sound(100);
+    delay(100);
+    nosound;
+    delay(200);
+    l := 600;
+    i := 600;
+    repeat
+      l := l - 1;
+      i := i - 1;
+      sound(i);
+      delay(3);
+    until l = 0;
+    nosound;
+    delay(1000);
+end;
+
+procedure PausenZeigen;
+begin
+ gotoxy(65, 1); write('PAUSEN ',Pausen);
+ writexy(21, 9,'T A S T E   D R š C K E N');
+ t := readkey;
+ textcolor(4);
+ writexy(21, 9,'                           ');
+ writexy(65, 1,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+ ReStone;
+ textbackground(4);
+ textcolor(15);
+ writexy(35, 1,'LEVEL ');
+ write(level);
+end;
+
+procedure Gewonnen;
+begin
+ textcolor(12+Blink);
+ writexy(30, 8,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+ writexy(30, 9,'ÛÛ    G E W O N N E N    ÛÛ');
+ writexy(30,10,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+ textcolor(4);
+ writexy(30,11,' T A S T E   D R š C K E N ');
+ delay(1000);
+ sound(100);
+ delay(500);
+ sound(200);
+ delay(500);
+ sound(300);
+ delay(500);
+ sound(400);
+ delay(500);
+ nosound;
+ TEXTBACKGROUND(black);
+ TextColor(random(255));
+ textattr := random(255);
+ textbackground(1);
+ cls;
+ While KeyPressed do t := readkey;
+ t := #0;
+ repeat
+  begin
+   textattr := random(255);
+   if keypressed then
+   Begin
+     t := readkey;
+     op := ord(t);
+   End;
+   write('*');
+   delay(10);
+  end;
+ until op > 0;
+ TEXTBACKGROUND(black);
+ TextColor(9);
+ Abfrage;
+ cls;
+end;
+
+Procedure Def;
+begin
+ randomize;
+ verwirrung;
+ Wertsachen;
+ textbackground(0);
+ textcolor(4);
+ cls;
+ langs := 45;
+ pausen := 20;
+ sx := 1;
+ sy := 1;
+ gx := 78;
+ gy := 2;
+ xx := 5;
+ yy := 10;
+ x := 40;
+ y := 10;
+ steine := 2000;
+ punkte := 0;
+ leben := 9;
+ level := 0;
+ zahl := 9;
+end;
+
+procedure fressen;
+begin
+   If Schutz = false then
+   Begin
+     rahmen;
+     sound(80); delay(200); nosound;
+     punkte := punkte - Zahl * 1000;
+     If Punkte < 0 then punkte := 0;
+     zahl := 1;
+     leben := leben - 1;
+     sx := 1;
+     sy := 1;
+   End
+   else
+   Schutz := false;
+end;
+
+procedure ZahlenSetzung;
+begin
+ TextColor(2);
+ if zahl = 1 then
+   begin
+     textbackground(Black);
+     textcolor(Brown);
+     gotoxy(locx, locy);
+     write('|');
+   end;
+ if zahl = 2 then
+   begin
+     textbackground(Black);
+     textcolor(LightBlue);
+     gotoxy(locx, locy);
+     write('');
+   end;
+ if zahl = 3 then
+   begin
+     textcolor(LightRed);
+     textbackground(Black);
+     gotoxy(locx,locy);
+     write(':');
+   end;
+ if zahl = 4 then
+   begin
+     textbackground(Black);
+     textcolor(LightBlue);
+     gotoxy(locx,locy);
+     write('*');
+   end;
+ if zahl = 5 then
+   begin
+     textcolor(yellow);
+     gotoxy(locx,locy);
+     write('=');
+   end;
+ if zahl = 6 then
+   begin
+     textcolor(LightGray);
+     gotoxy(locx,locy);
+     write('ğ');
+   end;
+ if zahl = 7 then
+   begin
+     textcolor(Cyan);
+     gotoxy(locx,locy);
+     write('â');
+   end;
+ if zahl = 8 then
+   begin
+     textcolor(yellow);
+     gotoxy(locx,locy);
+     write('è');
+   end;
+if zahl = 9 then
+  begin
+    textcolor(LightGreen);
+    gotoxy(locx, locy);
+    write('');
+  end;
+ if (zahl = 9) and (level = 9) then
+   begin
+     textcolor(yellow);
+     gotoxy(locx, locy);
+     write('');
+   end;
+ textbackground(Black);
+end;
+
+procedure ZufalsPos;
+begin
+     Repeat
+      locx := round((random * 77) + 2);  {Zufalls-Zahlen-X-Pos}
+      locy := round((random * 17) + 2);  {Zufalls-Zahlen-Y-Pos}
+     Until Not sper[locx,locy];
+end;
+
+procedure GeheimTricks;
+begin
+  cls;
+  writeln('************* G E H E I M ************');
+  writeln;
+  writeln('Drckst du aber <F10> kommst du ein level weiter !!!');
+  writeln('Mit <s> kann man Steine Setzen !!!');
+  writeln('Mit <n> kann man alle gesetzten Steine entfernen !!!');
+  writeln;
+  writeln('  ,,',#26,' oder ',#27,'   DRšCKEN');
+  t := readkey;
+  ReStone;
+  textcolor(11);
+  writexy(1, 21,'Ä = links   = unten  Ä = rechts   = oben');
+  writexy(1, 22,'ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ');
+  writexy(1, 23,'<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
+  writexy(1, 24,'ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ');
+  writexy(1, 25,'<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
+End;
+
+procedure Kaufen;
+Begin
+  window(2,2,79,19);
+  textbackground(0);
+  clrscr;
+  writeln('1 )    Schutzschild (W„hrt einen angrif ab, dann ist es kaputt)  Kostet  1000');
+  writeln('2     Leben        (Macht ein leben mehr)                       Kostet  5000');
+  t := readkey;
+  window(1,1,80,25);
+  ReStone;
+End;
+
+procedure Taste;
+  Begin
+    If KeyPressed Then t := ReadKey;
+    timeslot := (timeslot + 1) MOD 2;
+    writexy(x,y,' ');
+    textcolor(14);
+    writexy(x,y,'');
+    gotoxy(1, 1);
+    ti := ord(t);
+    Case ti of
+     CurR: rechts(x, y);
+     CurL: links(x, y);
+     CurO: oben(x, y);
+     CurU: unten(x, y);
+     unbr: untbr;
+     lans: langsam;
+     sped: schnell;
+     Kauf: Kaufen;
+     49  : Begin
+             if punkte >= 1000 then
+             Begin
+               If Schutz = true then
+                 writexy(2,2,'Du hast schon ein Schutzschild.')
+               else
+               Begin
+                 Schutz := true;
+                 punkte := punkte - 1000;
+               End;
+             End;
+             gotoxy(35,2);
+             write(',,',#27,' oder  Drcken');
+             t := readkey;
+             ReStone;
+           End;
+     50  : Begin
+             if punkte >= 5000 then
+             Begin
+               Leben := Leben + 1;
+               punkte := punkte - 5000;
+             End;
+             gotoxy(2,2);
+             write(',,',#27,' oder  Drcken');
+             t := readkey;
+             ReStone;
+           End;
+    End; {case}
+    if ti = 59 then
+      begin
+        textcolor(6);
+        Hilfe;
+        ReStone;
+      end;
+    if ti = 60 then
+      begin
+        Geschichte;
+        ReStone;
+      end;
+    if ti = 61 then
+      begin
+        PausenZeigen;
+      end;
+
+  End;
+
+procedure SteineSetzen;
+Begin
+  steine := steine - 1;
+  if (steine > 0) and (punkte >= 20) then
+    Begin
+      textcolor(4);
+      writexy(x,y,'Û');
+      if punkte > 0 then punkte := punkte - 20;
+      sper[x,y] := true;
+      sx := x;
+      sy := y;
+      writexy(21, 9,'T A S T E    D R š C K E N');
+      gotoxy(21,10); write('Noch vorhandene Steine: ',steine:4);
+      t := readkey;
+      gotoxy(21,10); write('                            ');
+      writexy(21, 9,'                            ');
+      ReStone;
+      x := sx;
+      y := sy;
+    End
+  Else
+    Begin
+      if Steine = 0 then writexy(21, 9,'Keine Steine mehr da!');
+      if Punkte < 20 then writexy(21,10,'Nicht genug Punkte!');
+      t := readkey;
+      ReStone;
+    End;
+End;
+
+procedure SteineNehmen;
+Begin
+ writexy(3,3,'ÉÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ»');
+ writexy(3,4,'º   S T E I N E  ÍÍÍ  N E H M E N   º');
+ writexy(3,5,'ÇÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¶');
+ writexy(3,6,'ºWirklich Alle Steine entfernen(J/N)º');
+ writexy(3,7,'º                                   º');
+ writexy(3,8,'ÈÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ¼');
+ gotoxy(7,7); t := UpCase(readkey);
+ ReStone;
+ vx := x;
+ vy := y;
+ if punkte >= 20 then
+ Begin
+   case t of
+    'J': Begin
+           For I := 1 to 80 do
+            For J := 1 to 25 do
+             Begin
+              sper[I,J] := false;
+             End;
+           textcolor(4);
+           textbackground(0);
+           case level of
+            1 : Initl1;
+            2 : Initl2;
+            3 : Initl3;
+            4 : Initl4;
+            5 : Initl5;
+            6 : Initl6;
+            7 : Initl7;
+            8 : Initl8;
+            9 : Initl9;
+           End;
+           sx := 1;
+           sy := 1;
+         End;
+   End;
+ End;
+ if punkte > 0 then punkte := punkte - 20;
+ writexy(3,9,'TASTE DRšCKEN');
+ t := readkey;
+ for I := 1 to 80 do
+     begin
+     textcolor(4);
+      writexy(I, 1,chr(219));
+      textcolor(4);
+      writexy(I, 20,chr(219));
+      sper[I, 1] := true;
+      sper[I, 20] := true;
+     end; {FOR}
+ for I := 2 to 19 do
+     begin
+     textcolor(4);
+      writexy(1, I,chr(219));
+      textcolor(4);
+      writexy(80, I,chr(219));
+      sper[1, I] := true;
+      sper[80, I] := true;
+     end; {FOR}
+ textbackground(LightRed);
+ textcolor(15);
+ writexy(35, 1,'LEVEL ');
+ write(level);
+ textbackground(0);
+ ReStone;
+ x := vx;
+ y := vy;
+ a := '';
+end;
+
+
+
+{******************************** E N D E ***********************************}
+{*************************** P R O C E D U R E N ****************************}
+{ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ}
+{****************************** B E G I N N *********************************}
+{************************ H A U P T P R O G R A M M *************************}
+
+begin
+  repeat
+   1:
+   Def;
+   300:
+   level := 0;
+   zahl := 9;
+   leben := 9;
+   Schutz := false;
+   100:
+     timeslot := 0;
+     zahl := zahl + 1;
+     punktezaehlen;
+     if zahl = 10 then
+      Begin
+       zahl := 1;                     {Zahl Zurckstellen}
+       level := level + 1;            {Levelzahl + 1}
+       sx := 1;
+       sy := 1;
+       if level = 1 then              {Anfangs-Punkte}
+       begin
+        punkte := 0;
+       end;
+       xx := 5;                       {X-Pos Gegner}
+       yy := 10;                      {Y-Pos Gegner}
+       if level = 10 then             {Abfrage: Wenn Level = 10 dann Gewonnen}
+       begin
+        Gewonnen;
+        goto 997;                     {Goto Ende}
+       end;
+       rahmen;
+       leben := leben + 1;            {Leben + 1}
+       levelneu;                      {LevelNeu}
+       ReStone;
+      end;                            {if zahl = 10}
+
+    ZufalsPos;
+
+    Repeat
+     delay(langs);
+     ZahlenSetzung;
+     textcolor(4);
+     Taste;
+     if ti = 27 then goto 999;
+     if ti = 62 then goto 300;
+     if ti = 115 then SteineSetzen;
+     if ti = 110 then SteineNehmen;
+     ugli2;
+     if (x = xx) and (y = yy) then Begin fressen; ReStone; End;
+     textbackground(LightRed);
+     textcolor(15);
+     gotoxy(6, 20); write('LEBEN ',leben);
+     textbackground(0);
+     if leben = 0 then
+      begin
+       {GameOver}
+       goto 998;
+      end;
+
+     if (locx = x) AND (locy = y) then
+       Begin
+         sound(250); delay(50); nosound;
+         goto 100;
+       End;
+    Until ti = 27;
+998:
+
+GameOver;
+997:
+writexy(25, 8,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+writexy(25, 9,'ÛÛ NOCHMAL SPIELEN (J/N) ÛÛ');
+writexy(25,10,'ÛÛ                       ÛÛ');
+writexy(25,11,'ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ');
+repeat
+gotoxy(30,10);
+t := UpCase(readkey);
+case t of
+ 'J' : GOTO 300;
+ 'N' : GOTO 999;
+End;
+until i = 3000;
+
+until ti = 27;
+
+999:
+ textbackground(0);
+ textcolor(15);
+cls;
+end.
+{******************************** E N D E ***********************************}
+{************************ H A U P T P R O G R A M M *************************}
+
+{******************************** E N D E ***********************************}
+{******************************** U G L I ***********************************}
