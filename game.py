@@ -585,8 +585,8 @@ class Game:
 
         cx = LOGICAL_W // 2
         for key, label, desc, color, y in (
-            ("E", "EASY", "Greedy enemy — moves straight toward you",         LTGREEN, 250),
-            ("H", "HARD", "Smart enemy — finds its way around any obstacle",  RED,     340),
+            ("E", "EASY", "For a relaxed game",   LTGREEN, 250),
+            ("H", "HARD", "For a real challenge",  RED,     340),
         ):
             # Box
             bw, bh = 520, 70
