@@ -162,6 +162,17 @@ class Game:
         ]
         self.treasure_pos = random.choice(open_tiles) if open_tiles else (1, 1)
 
+    def _relocate_treasure(self):
+        """Enemy walked over the treasure — move it to a new random open tile."""
+        open_tiles = [
+            (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
+            if not self.walls[c][r]
+            and (c, r) != (self.player.col, self.player.row)
+            and (c, r) != (self.enemy.col, self.enemy.row)
+        ]
+        if open_tiles:
+            self.treasure_pos = random.choice(open_tiles)
+
     # ── Title screen ─────────────────────────────────────────────────────────
 
     def _title_init(self):
@@ -377,6 +388,8 @@ class Game:
                 self.enemy.move_bfs(dist)
             else:
                 self.enemy.move_toward(self.player.col, self.player.row, self.walls)
+            if (self.enemy.col, self.enemy.row) == self.treasure_pos:
+                self._relocate_treasure()
 
         # Collision: enemy catches player
         if self.enemy.col == self.player.col and self.enemy.row == self.player.row:
