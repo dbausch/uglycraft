@@ -12,9 +12,6 @@ SAVE_FILE = "uglycraft.hsc"
 # Movement timing (milliseconds per tile move)
 BASE_MOVE_MS  = 80
 BASE_ENEMY_MS = 160
-SPEED_STEP_MS = 10
-MIN_MOVE_MS   = 20
-MAX_MOVE_MS   = 400
 
 # Key-repeat timings
 FIRST_REPEAT_MS = 180

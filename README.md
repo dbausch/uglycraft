@@ -59,8 +59,6 @@ python3 -m venv .venv
 | `N` | Remove all your placed walls |
 | `Space` | Open shop |
 | `P` | Pause / unpause |
-| `Home` | Speed up |
-| `End` | Slow down |
 | `F11` | Toggle fullscreen |
 | `Escape` | Quit to menu |
 

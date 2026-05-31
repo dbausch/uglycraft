@@ -67,7 +67,7 @@ class Game:
         self.stones   = MAX_STONES
         self.shield   = False
         self.move_ms  = BASE_MOVE_MS
-        self.enemy_ms = BASE_ENEMY_MS
+        self.enemy_ms = BASE_ENEMY_MS  # fixed; not adjustable in-game
         self._placed_walls = set()
         self._start_level(1)
 
@@ -178,12 +178,6 @@ class Game:
                 self._place_wall()
             elif k == pygame.K_n:
                 self._remove_placed_walls()
-            elif k == pygame.K_END:
-                self.move_ms  = min(MAX_MOVE_MS, self.move_ms + SPEED_STEP_MS)
-                self.enemy_ms = self.move_ms * 2
-            elif k == pygame.K_HOME:
-                self.move_ms  = max(MIN_MOVE_MS, self.move_ms - SPEED_STEP_MS)
-                self.enemy_ms = self.move_ms * 2
             elif k == pygame.K_F10:
                 self._advance_level()  # cheat: skip to next level
             # Register key-down for movement
@@ -421,8 +415,6 @@ class Game:
         htext(f"LIVES {self.lives}", 310, HUD_LIFE)
         item = TREASURE_NAMES.get(self.treasure_zahl, "")
         htext(f"SEEK: {item}", 430)
-        speed_label = "SPD " + "▶" * max(1, (BASE_MOVE_MS - self.move_ms) // SPEED_STEP_MS + 5)
-        htext(speed_label[:16], 720)
         if self.shield:
             htext("★SHIELD", 870, LTBLUE)
 
