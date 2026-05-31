@@ -136,9 +136,10 @@ class Game:
         self._bump_consumed.clear()
         self._build_walls()
         pc, pr = data['player_start']
-        ec, er = data['enemy_start']
-        self.player = Player(pc, pr)
-        self.enemy  = Enemy(ec, er)
+        self.player  = Player(pc, pr)
+        starts = data['enemy_starts']
+        active = starts if self.difficulty == HARD else starts[:1]
+        self.enemies = [Enemy(ec, er) for ec, er in active]
         self.shield = False
         self._spawn_treasure()
         self._move_timer   = 0
@@ -159,7 +160,7 @@ class Game:
             (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
             if not self.walls[c][r]
             and (c, r) != (self.player.col, self.player.row)
-            and (c, r) != (self.enemy.col, self.enemy.row)
+            and (c, r) not in {(e.col, e.row) for e in self.enemies}
         ]
         self.treasure_pos = random.choice(open_tiles) if open_tiles else (1, 1)
 
@@ -169,7 +170,7 @@ class Game:
             (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
             if not self.walls[c][r]
             and (c, r) != (self.player.col, self.player.row)
-            and (c, r) != (self.enemy.col, self.enemy.row)
+            and (c, r) not in {(e.col, e.row) for e in self.enemies}
         ]
         if open_tiles:
             self.treasure_pos = random.choice(open_tiles)
@@ -354,10 +355,10 @@ class Game:
         else:
             # Reset positions but keep level walls
             data = LEVELS[self.level - 1]
-            pc, pr = data['player_start']
-            ec, er = data['enemy_start']
-            self.player.col, self.player.row = pc, pr
-            self.enemy.col,  self.enemy.row  = ec, er
+            self.player.col, self.player.row = data['player_start']
+            active = data['enemy_starts'] if self.difficulty == HARD else data['enemy_starts'][:1]
+            for enemy, (ec, er) in zip(self.enemies, active):
+                enemy.col, enemy.row = ec, er
 
     def _end_game(self, won):
         self._final_score = self.score * max(1, self.lives)
@@ -395,16 +396,21 @@ class Game:
             self._enemy_timer -= self.enemy_ms
             if self.difficulty == HARD:
                 dist = self._bfs_from(self.player.col, self.player.row)
-                self.enemy.move_bfs(dist)
+                for enemy in self.enemies:
+                    enemy.move_bfs(dist)
             else:
-                self.enemy.move_toward(self.player.col, self.player.row, self.walls)
-            if (self.enemy.col, self.enemy.row) == self.treasure_pos:
-                self._relocate_treasure()
+                for enemy in self.enemies:
+                    enemy.move_toward(self.player.col, self.player.row, self.walls)
+            for enemy in self.enemies:
+                if (enemy.col, enemy.row) == self.treasure_pos:
+                    self._relocate_treasure()
+                    break
 
-        # Collision: enemy catches player
-        if self.enemy.col == self.player.col and self.enemy.row == self.player.row:
-            self._lose_life()
-            return
+        # Collision: any enemy catches player
+        for enemy in self.enemies:
+            if enemy.col == self.player.col and enemy.row == self.player.row:
+                self._lose_life()
+                return
 
         # Treasure collection
         if (self.player.col, self.player.row) == self.treasure_pos:
@@ -485,9 +491,9 @@ class Game:
         if tz in sp:
             self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
-        # Enemy
-        self.surf.blit(sp['enemy'],
-                       (self.enemy.col * TILE, self.enemy.row * TILE))
+        # Enemies
+        for enemy in self.enemies:
+            self.surf.blit(sp['enemy'], (enemy.col * TILE, enemy.row * TILE))
 
         # Player
         self.surf.blit(sp['player'],
