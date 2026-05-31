@@ -1,5 +1,6 @@
 """Core game logic and rendering."""
 import random
+from collections import deque
 import pygame
 from constants import *
 from sprites import create_sprites
@@ -10,6 +11,7 @@ from hiscore import load_scores, save_score, qualifies
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
 QUIT_GAME   = 'quit'
+DIFFICULTY  = 'difficulty'
 STORY       = 'story'
 LEVEL_INTRO = 'level_intro'
 PLAYING     = 'playing'
@@ -29,6 +31,7 @@ class Game:
         self.surf = surface
         self.sprites = create_sprites()
         self._init_fonts()
+        self.difficulty = EASY   # persists across games; player changes it on difficulty screen
         self.state = TITLE
         self._title_init()
 
@@ -39,6 +42,23 @@ class Game:
         self.font_med   = pygame.font.SysFont('monospace', 22, bold=True)
         self.font_small = pygame.font.SysFont('monospace', 16)
         self.font_hud   = pygame.font.SysFont('monospace', 16, bold=True)
+
+    # ── Pathfinding ───────────────────────────────────────────────────────────
+
+    def _bfs_from(self, col, row):
+        """BFS distance map from (col, row) to every reachable open tile."""
+        dist = {(col, row): 0}
+        q = deque([(col, row)])
+        while q:
+            c, r = q.popleft()
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nc, nr = c + dc, r + dr
+                if ((nc, nr) not in dist
+                        and 0 <= nc < COLS and 0 <= nr < ROWS
+                        and not self.walls[nc][nr]):
+                    dist[(nc, nr)] = dist[(c, r)] + 1
+                    q.append((nc, nr))
+        return dist
 
     # ── Wall helpers ──────────────────────────────────────────────────────────
 
@@ -154,14 +174,27 @@ class Game:
         if self.state == TITLE:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
-                    self._full_reset()
-                    self._intro_timer = 2000
-                    self.state = LEVEL_INTRO
+                    self.state = DIFFICULTY
                 elif event.key == pygame.K_h:
                     self.state = SHOW_SCORES
                     self._scores_from = TITLE
                 elif event.key == pygame.K_q:
                     self.state = QUIT_GAME
+
+        elif self.state == DIFFICULTY:
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_e, pygame.K_1):
+                    self.difficulty = EASY
+                    self._full_reset()
+                    self._intro_timer = 2000
+                    self.state = LEVEL_INTRO
+                elif event.key in (pygame.K_h, pygame.K_2):
+                    self.difficulty = HARD
+                    self._full_reset()
+                    self._intro_timer = 2000
+                    self.state = LEVEL_INTRO
+                elif event.key == pygame.K_ESCAPE:
+                    self._title_init()
 
         elif self.state == STORY:
             if event.type == pygame.KEYDOWN:
@@ -190,9 +223,7 @@ class Game:
         elif self.state == PLAY_AGAIN:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_j or event.key == pygame.K_y:
-                    self._full_reset()
-                    self._intro_timer = 2000
-                    self.state = LEVEL_INTRO
+                    self.state = DIFFICULTY
                 elif event.key in (pygame.K_n, pygame.K_ESCAPE):
                     self._title_init()
 
@@ -341,7 +372,11 @@ class Game:
         self._enemy_timer += dt
         if self._enemy_timer >= self.enemy_ms:
             self._enemy_timer -= self.enemy_ms
-            self.enemy.move_toward(self.player.col, self.player.row, self.walls)
+            if self.difficulty == HARD:
+                dist = self._bfs_from(self.player.col, self.player.row)
+                self.enemy.move_bfs(dist)
+            else:
+                self.enemy.move_toward(self.player.col, self.player.row, self.walls)
 
         # Collision: enemy catches player
         if self.enemy.col == self.player.col and self.enemy.row == self.player.row:
@@ -363,6 +398,8 @@ class Game:
 
         if self.state == TITLE:
             self._render_title()
+        elif self.state == DIFFICULTY:
+            self._render_difficulty()
         elif self.state == STORY:
             self._render_story()
         elif self.state == LEVEL_INTRO:
@@ -461,8 +498,10 @@ class Game:
         else:
             wall_color = GRAY
         htext(f"WALLS  {self._place_credits}", 700, wall_color)
+        if self.difficulty == HARD:
+            htext("HARD", 840, RED)
         if self.shield:
-            htext("★SHIELD", 870, LTBLUE)
+            htext("★SHIELD", 895, LTBLUE)
 
     # ── Overlays ─────────────────────────────────────────────────────────────
 
@@ -535,6 +574,36 @@ class Game:
 
         footer = self.font_small.render("[H] High scores          [Q] Quit", True, GRAY)
         self.surf.blit(footer, (LOGICAL_W // 2 - footer.get_width() // 2, 510))
+
+    # ── Difficulty selection screen ───────────────────────────────────────────
+
+    def _render_difficulty(self):
+        self.surf.fill(BLACK)
+
+        title = self.font_big.render("SELECT  DIFFICULTY", True, WHITE)
+        self.surf.blit(title, (LOGICAL_W // 2 - title.get_width() // 2, 140))
+
+        cx = LOGICAL_W // 2
+        for key, label, desc, color, y in (
+            ("E", "EASY", "Greedy enemy — moves straight toward you",         LTGREEN, 250),
+            ("H", "HARD", "Smart enemy — finds its way around any obstacle",  RED,     340),
+        ):
+            # Box
+            bw, bh = 520, 70
+            bx = cx - bw // 2
+            pygame.draw.rect(self.surf, (20, 20, 30), (bx, y, bw, bh), border_radius=6)
+            pygame.draw.rect(self.surf, color,         (bx, y, bw, bh), 2,  border_radius=6)
+
+            key_img  = self.font_big.render(f"[{key}]", True, color)
+            name_img = self.font_big.render(label, True, WHITE)
+            desc_img = self.font_small.render(desc, True, GRAY)
+
+            self.surf.blit(key_img,  (bx + 16, y + 10))
+            self.surf.blit(name_img, (bx + 80, y + 10))
+            self.surf.blit(desc_img, (bx + 80, y + 46))
+
+        hint = self.font_small.render("[Esc] back", True, DKGRAY)
+        self.surf.blit(hint, (cx - hint.get_width() // 2, 450))
 
     # ── Story screen ─────────────────────────────────────────────────────────
 

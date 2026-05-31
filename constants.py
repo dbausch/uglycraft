@@ -9,6 +9,9 @@ FPS = 60
 TITLE = "UGLYCRAFT"
 SAVE_FILE = "uglycraft.hsc"
 
+EASY = 'easy'
+HARD = 'hard'
+
 # Movement timing (milliseconds per tile move)
 BASE_MOVE_MS  = 80
 BASE_ENEMY_MS = 160

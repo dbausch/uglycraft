@@ -1,4 +1,5 @@
 """Player and Enemy entities (tile-grid based)."""
+import random
 import pygame
 from constants import TILE, ROWS, COLS
 
@@ -36,7 +37,7 @@ class Player(Entity):
 
 
 class Enemy(Entity):
-    """Greedy chase AI: prefers the axis with the larger delta."""
+    """Enemy with two movement modes: greedy (EASY) and BFS (HARD)."""
 
     def move_toward(self, px, py, walls):
         dx = px - self.col
@@ -72,3 +73,23 @@ class Enemy(Entity):
                 step(1, 0)
             elif dx < 0 and can(-1, 0):
                 step(-1, 0)
+
+    def move_bfs(self, dist):
+        """Step toward the player using a pre-computed BFS distance map.
+
+        Among all passable neighbours that share the minimum distance to the
+        player, one is chosen uniformly at random so equal-cost moves don't
+        produce a deterministic (and thus exploitable) pattern.
+        """
+        best = float('inf')
+        candidates = []
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nc, nr = self.col + dc, self.row + dr
+            d = dist.get((nc, nr), float('inf'))
+            if d < best:
+                best = d
+                candidates = [(nc, nr)]
+            elif d == best:
+                candidates.append((nc, nr))
+        if candidates and best < float('inf'):
+            self.col, self.row = random.choice(candidates)
