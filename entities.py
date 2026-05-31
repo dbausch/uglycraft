@@ -39,7 +39,7 @@ class Player(Entity):
 class Enemy(Entity):
     """Enemy with two movement modes: greedy (EASY) and BFS (HARD)."""
 
-    def move_toward(self, px, py, walls):
+    def move_toward(self, px, py, walls, occupied=frozenset()):
         dx = px - self.col
         dy = py - self.row
         if dx == 0 and dy == 0:
@@ -47,14 +47,15 @@ class Enemy(Entity):
 
         def can(dc, dr):
             nc, nr = self.col + dc, self.row + dr
-            return 0 <= nc < COLS and 0 <= nr < ROWS and not walls[nc][nr]
+            return (0 <= nc < COLS and 0 <= nr < ROWS
+                    and not walls[nc][nr]
+                    and (nc, nr) not in occupied)
 
         def step(dc, dr):
             self.col += dc
             self.row += dr
 
         if abs(dx) >= abs(dy):
-            # Try horizontal first
             if dx > 0 and can(1, 0):
                 step(1, 0)
             elif dx < 0 and can(-1, 0):
@@ -64,7 +65,6 @@ class Enemy(Entity):
             elif dy < 0 and can(0, -1):
                 step(0, -1)
         else:
-            # Try vertical first
             if dy > 0 and can(0, 1):
                 step(0, 1)
             elif dy < 0 and can(0, -1):
@@ -74,17 +74,18 @@ class Enemy(Entity):
             elif dx < 0 and can(-1, 0):
                 step(-1, 0)
 
-    def move_bfs(self, dist):
+    def move_bfs(self, dist, occupied=frozenset()):
         """Step toward the player using a pre-computed BFS distance map.
 
-        Among all passable neighbours that share the minimum distance to the
-        player, one is chosen uniformly at random so equal-cost moves don't
-        produce a deterministic (and thus exploitable) pattern.
+        Among all passable, unoccupied neighbours that share the minimum
+        distance to the player, one is chosen uniformly at random.
         """
         best = float('inf')
         candidates = []
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nc, nr = self.col + dc, self.row + dr
+            if (nc, nr) in occupied:
+                continue
             d = dist.get((nc, nr), float('inf'))
             if d < best:
                 best = d

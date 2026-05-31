@@ -394,13 +394,21 @@ class Game:
         self._enemy_timer += dt
         if self._enemy_timer >= self.enemy_ms:
             self._enemy_timer -= self.enemy_ms
+            # reserved tracks tiles claimed by enemies that have already moved
+            # this tick; each enemy vacates its old tile before moving.
+            reserved = {(e.col, e.row) for e in self.enemies}
             if self.difficulty == HARD:
                 dist = self._bfs_from(self.player.col, self.player.row)
                 for enemy in self.enemies:
-                    enemy.move_bfs(dist)
+                    reserved.discard((enemy.col, enemy.row))
+                    enemy.move_bfs(dist, occupied=reserved)
+                    reserved.add((enemy.col, enemy.row))
             else:
                 for enemy in self.enemies:
-                    enemy.move_toward(self.player.col, self.player.row, self.walls)
+                    reserved.discard((enemy.col, enemy.row))
+                    enemy.move_toward(self.player.col, self.player.row,
+                                      self.walls, occupied=reserved)
+                    reserved.add((enemy.col, enemy.row))
             for enemy in self.enemies:
                 if (enemy.col, enemy.row) == self.treasure_pos:
                     self._relocate_treasure()
