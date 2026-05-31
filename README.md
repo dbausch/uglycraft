@@ -55,8 +55,8 @@ python3 -m venv .venv
 | Key | Action |
 |---|---|
 | Arrow keys | Move |
-| `S` | Place a wall on your current tile (costs 1 placement credit) |
-| `Space` | Open shop |
+| `Space` | Place a wall on your current tile (costs 1 placement credit) |
+| `Enter` | Open shop |
 | `P` | Pause / unpause |
 | `F11` | Toggle fullscreen |
 | `Escape` | Quit to menu |

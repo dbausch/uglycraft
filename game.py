@@ -262,9 +262,9 @@ class Game:
                 self.state = PLAY_AGAIN
             elif k == pygame.K_p:
                 self.state = PAUSED
-            elif k == pygame.K_SPACE:
+            elif k == pygame.K_RETURN:
                 self.state = SHOP
-            elif k == pygame.K_s:
+            elif k == pygame.K_SPACE:
                 self._place_wall()
             elif k == pygame.K_F10:
                 self._advance_level()  # cheat: skip to next level
@@ -578,8 +578,8 @@ class Game:
         # Instructions
         lines = [
             ("Arrow keys", "move"),
-            ("S",          "place wall  (costs 1 credit)"),
-            ("SPACE",      "shop (shield / extra life)"),
+            ("Space",      "place wall  (costs 1 credit)"),
+            ("Enter",      "shop (shield / extra life)"),
             ("P",          "pause"),
         ]
         lx = LOGICAL_W // 2 - 180
