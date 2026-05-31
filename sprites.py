@@ -40,17 +40,29 @@ def draw_player(size=TILE):
     s = _surf(size)
     cx, cy = size // 2, size // 2
     r = size // 2 - 3
+
+    # Face
     pygame.draw.circle(s, (255, 215, 0), (cx, cy), r)
     pygame.draw.circle(s, (180, 150, 0), (cx, cy), r, 2)
-    # Eyes
-    ey = cy - r // 4
-    er = max(2, r // 6)
+
+    # Eyes — positioned in the upper third of the face
+    ey = cy - r // 3
+    er = max(2, r // 5)
     for ex in (cx - r // 3, cx + r // 3):
         pygame.draw.circle(s, (20, 20, 20), (ex, ey), er)
         pygame.draw.circle(s, WHITE, (ex - 1, ey - 1), max(1, er // 2))
-    # Smile
-    sm = pygame.Rect(cx - r // 3, cy - r // 8, r * 2 // 3, r // 2)
-    pygame.draw.arc(s, (20, 20, 20), sm, math.pi, 0, 2)
+
+    # Smile — smooth curve computed point-by-point, avoiding pygame.draw.arc artifacts
+    smile_rx = r * 5 // 12   # horizontal half-width
+    smile_ry = r // 4        # vertical depth
+    smile_cy = cy + r // 5   # baseline sits just below centre
+    pts = [
+        (cx + int(smile_rx * math.cos(math.radians(a))),
+         smile_cy + int(smile_ry * math.sin(math.radians(a))))
+        for a in range(0, 181, 6)
+    ]
+    pygame.draw.lines(s, (20, 20, 20), False, pts, 2)
+
     return s
 
 
@@ -71,9 +83,16 @@ def draw_enemy(size=TILE):
         by1 = ey - er - 2 + side * 2
         by2 = ey - er - 2 - side * 2
         pygame.draw.line(s, (20, 20, 20), (bx1, by1), (bx2, by2), 2)
-    # Frown
-    fm = pygame.Rect(cx - r // 3, cy + r // 4, r * 2 // 3, r // 3)
-    pygame.draw.arc(s, (20, 20, 20), fm, 0, math.pi, 2)
+    # Frown — same technique as player smile, but flipped vertically
+    frown_rx = r * 5 // 12
+    frown_ry = r // 4
+    frown_cy = cy + r * 2 // 5
+    pts = [
+        (cx + int(frown_rx * math.cos(math.radians(a))),
+         frown_cy - int(frown_ry * math.sin(math.radians(a))))
+        for a in range(0, 181, 6)
+    ]
+    pygame.draw.lines(s, (20, 20, 20), False, pts, 2)
     return s
 
 
