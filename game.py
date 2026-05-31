@@ -235,9 +235,18 @@ class Game:
         elif self.state == PLAY_AGAIN:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_j or event.key == pygame.K_y:
-                    self.state = DIFFICULTY
+                    if self._debug:
+                        level = self.level
+                        self._full_reset()
+                        self._start_level(level)
+                        self.state = PLAYING
+                    else:
+                        self.state = DIFFICULTY
                 elif event.key in (pygame.K_n, pygame.K_ESCAPE):
-                    self._title_init()
+                    if self._debug:
+                        self.state = QUIT_GAME
+                    else:
+                        self._title_init()
 
         elif self.state == ENTER_SCORE:
             self._enter_score_event(event)
