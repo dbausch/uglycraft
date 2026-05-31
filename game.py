@@ -58,18 +58,49 @@ class Game:
             w[c][r] = True
         self.walls = w
 
+    # ── Wall helpers ──────────────────────────────────────────────────────────
+
+    def _is_border(self, col, row):
+        return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
+
+    def _register_bump(self, key, col, row):
+        """Called when the player walks into wall (col, row) via direction key."""
+        if key in self._bump_consumed:
+            return  # key not released since last hit — ignore
+        if self._is_border(col, row):
+            return  # indestructible
+        self._bump_consumed.add(key)
+        hits = self._wall_hits.get((col, row), 0) + 1
+        if hits >= WALL_HITS_TO_BREAK:
+            self._break_wall(col, row)
+        else:
+            self._wall_hits[(col, row)] = hits
+
+    def _break_wall(self, col, row):
+        self._wall_hits.pop((col, row), None)
+        self._level_walls.discard((col, row))
+        self._placed_walls.discard((col, row))
+        self._build_walls()
+        self._break_pool += 1
+        if self._break_pool >= BREAKS_PER_CREDIT:
+            self._break_pool -= BREAKS_PER_CREDIT
+            self._place_credits += 1
+
     # ── Game initialisation ───────────────────────────────────────────────────
 
     def _full_reset(self):
-        self.score    = 0
-        self.lives    = STARTING_LIVES
-        self.level    = 0           # 1-indexed after first call to next_level
-        self.zahl     = 0           # treasure sequence (1..9 per level)
-        self.stones   = MAX_STONES
-        self.shield   = False
-        self.move_ms  = BASE_MOVE_MS
-        self.enemy_ms = BASE_ENEMY_MS  # fixed; not adjustable in-game
-        self._placed_walls = set()
+        self.score        = 0
+        self.lives        = STARTING_LIVES
+        self.level        = 0
+        self.zahl         = 0
+        self.shield       = False
+        self.move_ms      = BASE_MOVE_MS
+        self.enemy_ms     = BASE_ENEMY_MS
+        self._placed_walls  = set()
+        self._wall_hits     = {}   # (col, row) → hit count (inner walls only)
+        self._break_pool    = 0    # leftover breaks toward next credit
+        self._place_credits = 0   # available wall placements
+        self._bump_consumed = set()  # direction keys that must be released before next bump
         self._start_level(1)
 
     def _start_level(self, level_num):
@@ -77,7 +108,11 @@ class Game:
         self.zahl  = 0
         data = LEVELS[level_num - 1]
         self._level_walls = set(data['walls'])
+        # Refund one credit per placed wall being cleared (they were earned legitimately)
+        self._place_credits += len(self._placed_walls)
         self._placed_walls.clear()
+        self._wall_hits.clear()
+        self._bump_consumed.clear()
         self._build_walls()
         pc, pr = data['player_start']
         ec, er = data['enemy_start']
@@ -87,8 +122,8 @@ class Game:
         self._spawn_treasure()
         self._move_timer   = 0
         self._enemy_timer  = 0
-        self._key_repeat   = {}   # key → (first_fired, last_fired)
-        self._flash_timer  = 0    # "caught!" red flash
+        self._key_repeat   = {}
+        self._flash_timer  = 0
         self._intro_timer  = 0
 
     def _spawn_treasure(self):
@@ -179,8 +214,6 @@ class Game:
                 self.state = SHOP
             elif k == pygame.K_s:
                 self._place_wall()
-            elif k == pygame.K_n:
-                self._remove_placed_walls()
             elif k == pygame.K_F10:
                 self._advance_level()  # cheat: skip to next level
             # Register key-down for movement
@@ -191,6 +224,7 @@ class Game:
 
         elif event.type == pygame.KEYUP:
             self._key_repeat.pop(event.key, None)
+            self._bump_consumed.discard(event.key)  # key released → next press can bump
 
     def _shop_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -227,26 +261,23 @@ class Game:
 
     def _try_move_key(self, key):
         dcol, drow = self._DIR_MAP[key]
-        self.player.try_move(dcol, drow, self.walls)
+        moved = self.player.try_move(dcol, drow, self.walls)
+        if moved:
+            # Successful step clears the bump-consumed flag so the player can
+            # bump the next wall they reach without having to re-press the key.
+            self._bump_consumed.discard(key)
+        else:
+            tc = self.player.col + dcol
+            tr = self.player.row + drow
+            if 0 <= tc < COLS and 0 <= tr < ROWS and self.walls[tc][tr]:
+                self._register_bump(key, tc, tr)
 
     def _place_wall(self):
         c, r = self.player.col, self.player.row
-        if (self.stones > 0 and self.score >= STONE_COST_PTS
-                and not self.walls[c][r]):
-            self.stones -= 1
-            self.score  -= STONE_COST_PTS
+        if self._place_credits > 0 and not self.walls[c][r]:
+            self._place_credits -= 1
             self._placed_walls.add((c, r))
             self._build_walls()
-
-    def _remove_placed_walls(self):
-        if not self._placed_walls:
-            return
-        self._placed_walls.clear()
-        pc, pr = self.player.col, self.player.row
-        self._build_walls()
-        # Make sure player isn't trapped by the wall they were standing on
-        # (placed walls can be under the player, which is fine — they just can't
-        # move back onto them, but they can stand there).
 
     # ── Level transitions ─────────────────────────────────────────────────────
 
@@ -372,20 +403,21 @@ class Game:
 
     def _render_field(self):
         sp = self.sprites
-        floor = sp['floor']
-        wall  = sp['wall']
-        pw    = sp['placed_wall']
 
         for c in range(COLS):
             for r in range(ROWS):
                 x, y = c * TILE, r * TILE
                 if self.walls[c][r]:
-                    if (c, r) in self._placed_walls:
-                        self.surf.blit(pw, (x, y))
+                    if self._is_border(c, r):
+                        self.surf.blit(sp['border_wall'], (x, y))
                     else:
-                        self.surf.blit(wall, (x, y))
+                        base = 'placed_wall' if (c, r) in self._placed_walls else 'wall'
+                        self.surf.blit(sp[base], (x, y))
+                        hits = self._wall_hits.get((c, r), 0)
+                        if hits:
+                            self.surf.blit(sp[f'crack{hits}'], (x, y))
                 else:
-                    self.surf.blit(floor, (x, y))
+                    self.surf.blit(sp['floor'], (x, y))
 
         # Treasure
         tc, tr = self.treasure_pos
@@ -418,6 +450,9 @@ class Game:
         htext(f"LIVES {self.lives}", 310, HUD_LIFE)
         item = TREASURE_NAMES.get(self.treasure_zahl, "")
         htext(f"SEEK: {item}", 430)
+        # Wall credits: show progress toward next credit + banked credits
+        pool_str = "■" * self._break_pool + "□" * (BREAKS_PER_CREDIT - self._break_pool - 1)
+        htext(f"WALLS [{pool_str}] +{self._place_credits}", 680, LTGREEN if self._place_credits else GRAY)
         if self.shield:
             htext("★SHIELD", 870, LTBLUE)
 
@@ -473,8 +508,7 @@ class Game:
         # Instructions
         lines = [
             ("Arrow keys", "move"),
-            ("S",          "place wall"),
-            ("N",          "remove placed walls"),
+            ("S",          "place wall  (costs 1 credit)"),
             ("SPACE",      "shop (shield / extra life)"),
             ("P",          "pause"),
         ]

@@ -55,12 +55,15 @@ python3 -m venv .venv
 | Key | Action |
 |---|---|
 | Arrow keys | Move |
-| `S` | Place a wall on your current tile (costs 20 pts + 1 stone) |
-| `N` | Remove all your placed walls |
+| `S` | Place a wall on your current tile (costs 1 placement credit) |
 | `Space` | Open shop |
 | `P` | Pause / unpause |
 | `F11` | Toggle fullscreen |
 | `Escape` | Quit to menu |
+
+### Wall mechanics
+
+Walk into any inner wall three times (releasing the arrow key between each hit) to destroy it. Every two walls destroyed earns one placement credit. Spend a credit with `S` to place a wall on your current tile. The outer border is indestructible.
 
 ### Shop
 

@@ -18,9 +18,9 @@ FIRST_REPEAT_MS = 180
 REPEAT_MS       = 80
 
 STARTING_LIVES  = 9
-MAX_STONES      = 2000
-STONE_COST_PTS  = 20
-SHIELD_COST_PTS = 1000
+SHIELD_COST_PTS   = 1000
+WALL_HITS_TO_BREAK = 3   # bumps required to destroy one inner wall
+BREAKS_PER_CREDIT  = 2   # walls to destroy to earn one placement credit
 LIFE_COST_PTS   = 5000
 
 # Points awarded when treasure `zahl` is collected (zahl 1 yields 0, 2→100, …)

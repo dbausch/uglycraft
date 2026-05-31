@@ -11,6 +11,56 @@ def _surf(size=TILE, alpha=True):
 
 # ── Tiles ─────────────────────────────────────────────────────────────────────
 
+def draw_border_wall(size=TILE):
+    """Indestructible outer frame — dark granite, visually heavier than brick."""
+    s = _surf(size, alpha=False)
+    s.fill((28, 28, 38))
+    # Large stone blocks with tight mortar
+    mid = size // 2
+    for row_y, offset in ((1, 0), (mid + 1, mid // 3)):
+        bh = mid - 2
+        for bx, bw in ((1 + offset, mid - 2), (mid + offset, size - mid - 2)):
+            bx = bx % (size - 2) + 1
+            pygame.draw.rect(s, (52, 54, 72), (bx, row_y, min(bw, size - bx - 1), bh))
+            # Bevelled top-left edge (highlight)
+            pygame.draw.line(s, (72, 74, 96), (bx, row_y), (bx + min(bw, 8), row_y))
+            pygame.draw.line(s, (72, 74, 96), (bx, row_y), (bx, row_y + 2))
+            # Bevelled bottom-right edge (shadow)
+            pygame.draw.line(s, (22, 22, 32),
+                             (bx, row_y + bh - 1), (bx + min(bw, size - bx - 1), row_y + bh - 1))
+    return s
+
+
+def draw_damage_cracks(level, size=TILE):
+    """Transparent overlay drawn on top of any wall sprite to show hit damage."""
+    s = _surf(size)   # fully transparent base
+    dark = (10, 10, 10, 220)
+    light = (180, 180, 180, 120)
+    if level >= 1:
+        # Single diagonal crack, upper-left quadrant
+        pts = [(size // 4, size // 5),
+               (size // 3, size * 2 // 5),
+               (size * 2 // 5, size // 2)]
+        pygame.draw.lines(s, dark, False, pts, 2)
+        pygame.draw.lines(s, light, False, [(p[0]+1, p[1]+1) for p in pts], 1)
+        # Small branch
+        pygame.draw.line(s, dark,
+                         (size // 3, size * 2 // 5),
+                         (size // 2, size * 2 // 5 + 3), 1)
+    if level >= 2:
+        # Second crack, lower-right area, crossing the first
+        pts2 = [(size * 3 // 5, size // 3),
+                (size // 2, size * 3 // 5),
+                (size * 2 // 5, size * 4 // 5)]
+        pygame.draw.lines(s, dark, False, pts2, 2)
+        pygame.draw.lines(s, light, False, [(p[0]+1, p[1]+1) for p in pts2], 1)
+        # Debris dots
+        for dx, dy in ((size*2//5, size//3+2), (size*3//5-2, size*3//5+1),
+                       (size//3+1, size*3//5-1)):
+            pygame.draw.circle(s, dark, (dx, dy), 1)
+    return s
+
+
 def draw_wall(size=TILE):
     s = _surf(size, alpha=False)
     s.fill((90, 22, 22))
@@ -284,8 +334,11 @@ def draw_shield_overlay(size=TILE):
 
 def create_sprites():
     return {
+        'border_wall':   draw_border_wall(),
         'wall':          draw_wall(),
         'placed_wall':   draw_placed_wall(),
+        'crack1':        draw_damage_cracks(1),
+        'crack2':        draw_damage_cracks(2),
         'floor':         draw_floor(),
         'player':        draw_player(),
         'enemy':         draw_enemy(),
