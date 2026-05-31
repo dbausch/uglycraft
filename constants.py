@@ -57,7 +57,7 @@ MAGENTA  = (200,  50, 200)
 LTYELLOW = (255, 240, 120)
 CREAM    = (255, 245, 200)
 
-HUD_BG   = ( 25,   8,   8)
+HUD_BG   = ( 16,  16,  24)   # same blue-gray family as border_wall, but darker
 HUD_TEXT = (255, 200, 100)
 HUD_LIFE = (255,  80,  80)
 HUD_KEY  = (160, 220, 255)
