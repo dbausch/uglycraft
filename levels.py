@@ -99,21 +99,22 @@ LEVELS = [
         ),
     },
 
-    # 7 ── Three overlapping X-shapes ── 3 enemies ─────────────────────────────
+    # 7 ── Three sealed vaults — must break walls to reach treasures inside ── 3 enemies
     {
-        'player_start':  (28, 8),
-        'enemy_starts': [(2, 7),    # left, above corridor
-                         (2, 14),   # bottom-left
-                         (14, 2)],  # top-centre
+        'player_start':  (14, 1),   # top corridor, between the two upper vaults
+        'enemy_starts': [(2,  8),   # left side of middle corridor
+                         (27, 8),   # right side of middle corridor
+                         (14, 14)], # bottom corridor
         'walls': _make_walls(
-            *[[(7 + d, 8 + d), (7 + d, 8 - d),
-               (7 - d, 8 + d), (7 - d, 8 - d)] for d in range(1, 5)],
-            *[[(15 + d, 8 + d), (15 + d, 8 - d),
-               (15 - d, 8 + d), (15 - d, 8 - d)] for d in range(1, 5)],
-            *[[(23 + d, 8 + d), (23 + d, 8 - d),
-               (23 - d, 8 + d), (23 - d, 8 - d)] for d in range(1, 5)],
-            _h(2, 11, 8),
-            _h(19, 27, 8),
+            # Vault A — upper-left (cols 2-10, rows 2-7)
+            _h(2, 10, 2), _h(2, 10, 7),
+            _v(2, 2, 7),  _v(10, 2, 7),
+            # Vault B — upper-right, mirror of A (cols 19-27, rows 2-7)
+            _h(19, 27, 2), _h(19, 27, 7),
+            _v(19, 2, 7),  _v(27, 2, 7),
+            # Vault C — lower-centre (cols 9-20, rows 9-13)
+            _h(9, 20, 9),  _h(9, 20, 13),
+            _v(9, 9, 13),  _v(20, 9, 13),
         ),
     },
 
