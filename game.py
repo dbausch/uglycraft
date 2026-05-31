@@ -450,9 +450,17 @@ class Game:
         htext(f"LIVES {self.lives}", 310, HUD_LIFE)
         item = TREASURE_NAMES.get(self.treasure_zahl, "")
         htext(f"SEEK: {item}", 430)
-        # Wall credits: show progress toward next credit + banked credits
-        pool_str = "■" * self._break_pool + "□" * (BREAKS_PER_CREDIT - self._break_pool - 1)
-        htext(f"WALLS [{pool_str}] +{self._place_credits}", 680, LTGREEN if self._place_credits else GRAY)
+        # Wall placement credits — colour signals state, no extra symbols needed:
+        #   green  = credits ready to spend
+        #   yellow = no credits yet but progress made toward next one
+        #   gray   = no credits, no progress
+        if self._place_credits > 0:
+            wall_color = LTGREEN
+        elif self._break_pool > 0:
+            wall_color = YELLOW
+        else:
+            wall_color = GRAY
+        htext(f"WALLS  {self._place_credits}", 700, wall_color)
         if self.shield:
             htext("★SHIELD", 870, LTBLUE)
 
