@@ -620,30 +620,36 @@ class Game:
         # Animated coloured title letters
         title = "UGLYCRAFT"
         colors = [RED, ORANGE, YELLOW, LTGREEN, CYAN, LTBLUE, MAGENTA, WHITE, GOLD]
-        char_w = 54
-        total_w = char_w * len(title)
-        start_x = (LOGICAL_W - total_w) // 2
-        base_y  = 120
+        base_y = 120
         sp = self.sprites
 
-        wave_ys = [int(12 * abs(((t * 2 + i * 0.4) % 2) - 1)) for i in range(len(title))]
-
+        # Measure actual glyph dimensions from the font
+        gw     = self.font_title.size(title[0])[0]   # rendered width of one char
         font_h = self.font_title.get_height()
+
+        # Distribute glyph centres evenly: step between consecutive centres,
+        # whole arrangement centred on screen.
+        n    = len(title)
+        step = 54   # centre-to-centre spacing (px)
+        first_cx = LOGICAL_W // 2 - (n - 1) * step // 2
+
+        wave_ys = [int(12 * abs(((t * 2 + i * 0.4) % 2) - 1)) for i in range(n)]
+
         for i, ch in enumerate(title):
             color = colors[i % len(colors)]
-            img = self.font_title.render(ch, True, color)
-            self.surf.blit(img, (start_x + i * char_w, base_y - wave_ys[i]))
+            img   = self.font_title.render(ch, True, color)
+            self.surf.blit(img, (first_cx + i * step - gw // 2, base_y - wave_ys[i]))
 
-        # Items 1–9 below each letter, waving with it
+        # Items 1–9 centred on their letter's glyph centre, waving with it
         for i in range(9):
-            ix = start_x + i * char_w + (char_w - TILE) // 2
-            iy = base_y - wave_ys[i] + font_h + 4
-            self.surf.blit(sp[i + 1], (ix, iy))
+            self.surf.blit(sp[i + 1],
+                           (first_cx + i * step - TILE // 2,
+                            base_y - wave_ys[i] + font_h + 4))
 
-        # Crown above the "C" (index 4 in "UGLYCRAFT"), riding its wave
+        # Crown centred on the "C" glyph, above it, riding its wave
         c_idx = title.index('C')
         self.surf.blit(sp[10],
-                       (start_x + c_idx * char_w + (char_w - TILE) // 2,
+                       (first_cx + c_idx * step - TILE // 2,
                         base_y - wave_ys[c_idx] - TILE - 4))
 
         # Subtitle and instructions sit below the item row (wave_y=0 is the lowest point)
