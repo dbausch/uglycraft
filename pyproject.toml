@@ -34,8 +34,9 @@ help  = "Build standalone Windows distributable (dist/windows-64/) via Wine"
 shell = """
   WINEDEBUG=-all wine \
     ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
-    -m PyInstaller --onefile --noconsole --name uglycraft \
-    --distpath Z:\\home\\$USER\\prog\\uglycraft\\dist\\windows-64 main.py
+    -m PyInstaller --onefile --noconsole --name uglycraft main.py
+  mkdir -p dist/windows-64
+  mv dist/uglycraft.exe dist/windows-64/
   cp -r LICENSES dist/windows-64/
 """
 
