@@ -217,40 +217,47 @@ def draw_boss(phase=0, size=TILE):
 # ── Treasure sprites ──────────────────────────────────────────────────────────
 
 def draw_coin(size=TILE):
-    """item_no=1: flat gold coin with engraved right-facing profile head"""
+    """item_no=1: flat gold coin with small engraved profile and rim legend marks"""
     s = _surf(size)
     cx, cy = size // 2, size // 2
-    r = size // 2 - 3   # 13 at TILE=32
+    r = 10   # smaller overall coin (was 13)
 
-    # Flat disc: solid gold face + single-pixel rim — no spherical shading
-    pygame.draw.circle(s, (148, 108, 14), (cx, cy), r)         # edge ring (darker)
+    # Flat disc
+    pygame.draw.circle(s, (148, 108, 14), (cx, cy), r)         # edge ring
     pygame.draw.circle(s, GOLD, (cx, cy), r - 1)               # face
     pygame.draw.circle(s, (250, 215, 75), (cx, cy), r - 1, 1)  # bright rim line
 
-    # Engraved right-facing profile silhouette — darker than the face
     engrave = (128, 92, 12)
+
+    # Right-facing profile — significantly smaller than before (≈8×12 px)
     profile = [
-        ( 9,  7),   # back-top of head
-        (13,  5),   # crown
-        (17,  6),   # forehead top
-        (20,  9),   # upper forehead
-        (21, 13),   # brow
-        (23, 16),   # nose tip (rightmost — key recognisable feature)
-        (21, 18),   # under nose
-        (20, 21),   # upper lip
-        (18, 24),   # chin
-        (14, 26),   # chin bottom
-        (12, 27),   # neck (front)
-        (10, 26),   # neck (back)
-        (10, 23),   # back of jaw
-        ( 8, 20),   # lower back of head
-        ( 7, 15),   # back of head (widest)
-        ( 7, 11),   # upper back of head
-        ( 8,  8),   # back-top
+        (12, 11),  (14, 10),  (16, 11),
+        (17, 13),  (18, 15),  (19, 16),   # nose tip at x=19
+        (18, 17),  (17, 19),  (16, 21),
+        (14, 22),  (12, 21),  (11, 19),
+        (11, 14),  (11, 12),
     ]
     pygame.draw.polygon(s, engrave, profile)
-    # 1-px lighter outline to suggest the slight relief of embossing
     pygame.draw.polygon(s, (170, 128, 20), profile, 1)
+
+    # Unreadable legend text: clusters of 1-px marks at radius r-2 (just inside rim)
+    rim_r = r - 2
+    for a in (
+         5, 11, 17, 23,           # word 1
+        42, 47, 52, 57, 63,       # word 2
+        82, 87, 93,               # word 3
+       115, 121, 126, 132, 138,   # word 4
+       158, 163, 169,             # word 5
+       195, 201, 207, 213,        # word 6
+       232, 238, 243, 249,        # word 7
+       270, 275, 281,             # word 8
+       300, 305, 311, 317, 323,   # word 9
+       342, 348, 353,             # word 10
+    ):
+        rad = math.radians(a)
+        pygame.draw.circle(s, engrave,
+                           (cx + round(rim_r * math.cos(rad)),
+                            cy + round(rim_r * math.sin(rad))), 1)
 
     return s
 
