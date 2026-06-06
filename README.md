@@ -188,7 +188,7 @@ hiscore.py     Top-10 score persistence (uglycraft.hsc)
 
 ## Origins
 
-UGLI was written in 1996 by Daniel Bausch using Turbo Pascal 7 for MS-DOS. The original source code is preserved in this repository (`UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`) as a historical reference. UGLYCRAFT shares its genre and rough level structure but is otherwise a fresh implementation.
+UGLI was first written in 1993 by Daniel Bausch using Turbo Pascal on MS-DOS, then developed further through 1996 into a second version with improved mechanics including wall placement. The 1996 source code (`UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`) is preserved in this repository as a historical reference. UGLYCRAFT shares the genre and core mechanics but is otherwise a fresh implementation.
 
 ---
 
