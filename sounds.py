@@ -129,7 +129,7 @@ def _build_sfx(np) -> dict:
 
     def sfx_collect():
         notes = [72, 76, 79, 84]
-        nd  = round(_RATE * 0.065)
+        nd  = round(_RATE * 0.038)
         buf = np.zeros(nd * len(notes), dtype=np.float32)
         for i, m in enumerate(notes):
             t  = np.arange(nd, dtype=np.float32) / _RATE
@@ -138,7 +138,7 @@ def _build_sfx(np) -> dict:
         return _to_sound(np, buf)
 
     def sfx_credit():
-        nd  = round(_RATE * 0.100)
+        nd  = round(_RATE * 0.055)
         buf = np.zeros(nd * 2, dtype=np.float32)
         for i, m in enumerate([76, 81]):
             t  = np.arange(nd, dtype=np.float32) / _RATE
@@ -183,7 +183,7 @@ def _build_sfx(np) -> dict:
 
     def sfx_caught():
         midi_seq = [72, 69, 66, 63, 60, 57]
-        nd  = round(_RATE * 0.095)
+        nd  = round(_RATE * 0.050)
         buf = np.zeros(nd * len(midi_seq), dtype=np.float32)
         for i, m in enumerate(midi_seq):
             t  = np.arange(nd, dtype=np.float32) / _RATE
@@ -196,7 +196,7 @@ def _build_sfx(np) -> dict:
 
     def sfx_level_up():
         midi_seq = [60, 64, 67, 72, 76, 79, 84]
-        nd  = round(_RATE * 0.085)
+        nd  = round(_RATE * 0.048)
         buf = np.zeros(nd * len(midi_seq), dtype=np.float32)
         for i, m in enumerate(midi_seq):
             t   = np.arange(nd, dtype=np.float32) / _RATE
@@ -207,7 +207,7 @@ def _build_sfx(np) -> dict:
 
     def sfx_game_over():
         midi_seq = [60, 59, 57, 55, 53, 52, 48]
-        nd  = round(_RATE * 0.130)
+        nd  = round(_RATE * 0.070)
         buf = np.zeros(nd * len(midi_seq), dtype=np.float32)
         for i, m in enumerate(midi_seq):
             t   = np.arange(nd, dtype=np.float32) / _RATE
