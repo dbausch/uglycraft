@@ -229,16 +229,10 @@ def draw_coin(size=TILE):
 
     engrave = (128, 92, 12)
 
-    # Right-facing profile — significantly smaller than before (≈8×12 px)
-    profile = [
-        (12, 11),  (14, 10),  (16, 11),
-        (17, 13),  (18, 15),  (19, 16),   # nose tip at x=19
-        (18, 17),  (17, 19),  (16, 21),
-        (14, 22),  (12, 21),  (11, 19),
-        (11, 14),  (11, 12),
-    ]
-    pygame.draw.polygon(s, engrave, profile)
-    pygame.draw.polygon(s, (170, 128, 20), profile, 1)
+    # Engraved "1" centred on the coin face
+    pygame.draw.line(s, engrave, (16, 10), (16, 22), 2)  # vertical stroke
+    pygame.draw.line(s, engrave, (13, 13), (16, 10), 2)  # top-left serif diagonal
+    pygame.draw.line(s, engrave, (13, 22), (19, 22), 2)  # base serif
 
     # Unreadable legend text: clusters of 1-px marks at radius r-2 (just inside rim)
     rim_r = r - 2
