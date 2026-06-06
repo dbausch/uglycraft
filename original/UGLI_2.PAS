@@ -141,7 +141,7 @@ begin
          {$I+}
        end;
   GotoXY(1,25);
-  write('Bitte [Return] -Taste dr∩┐╜cken..');
+  write('Bitte [Return] -Taste drücken..');
   readln;
 
 end;
@@ -486,12 +486,12 @@ procedure Wertsachen;
 Begin
   cls;
   writeln;
-  writeln(' L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H ∩┐╜ T Z E ');
+  writeln(' L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E ');
   writeln;
   writeln('    | Seil ');
-  writeln('     grosser gl∩┐╜nzender Diamant ');
+  writeln('     grosser glänzender Diamant ');
   writeln('    : kleine Edelsteiene ');
-  writeln('    * kleiner gl∩┐╜nzender Diamant ');
+  writeln('    * kleiner glänzender Diamant ');
   writeln('    = Goldbarren ');
   writeln('    ∩┐╜ Silberbarren ');
   writeln('    ∩┐╜ Brunnen ');
@@ -502,10 +502,10 @@ Begin
   gotoxy(1,15);
   writeln('   S P I E L A N L E I T U N G   ');
   writeln;
-  writeln('Du dr∩┐╜ckst jetzt die Return-Taste(Enter), dann dr∩┐╜ckst du eine der ');
+  writeln('Du drückst jetzt die Return-Taste(Enter), dann drückst du eine der ');
   writeln('Richtungstasten danach musst du mit den Richtungstasten die oben gezeigten ');
   writeln('Dinge einsammeln.       (Die Krone kommt ganz zum Schluss.)');
-  writeln('W∩┐╜hrend des Spiels kann man mit <F1> die anderen Tasten die zum bedienen ');
+  writeln('Während des Spiels kann man mit <F1> die anderen Tasten die zum bedienen ');
   writeln('des Spiels nachlesen.');
   readln;
 End;
@@ -525,12 +525,12 @@ begin
   writexy(2, 7,'[F4] = Neustart');
   writexy(2, 8,'[F3] = Anzeige der noch vorhandenen Pausen (oben-links)');
   writexy(2, 9,'[F2] = Die Geschichte von Ugli');
-  writexy(2,10,'[s] = Setzt an der Posision von dir einen Block (danach Richtungstaste dr∩┐╜cken)');
-  writexy(2,11,'[n] = alle gesetzeten Bl∩┐╜cke wieder entfernen');
+  writexy(2,10,'[s] = Setzt an der Posision von dir einen Block (danach Richtungstaste drücken)');
+  writexy(2,11,'[n] = alle gesetzeten Blöcke wieder entfernen');
   writexy(2,12,'');
-  writexy(2,13,'Achtung:  wenn irgend eine andere Taste gedr∩┐╜ckt wird rast Ugli auf dich und du');
+  writexy(2,13,'Achtung:  wenn irgend eine andere Taste gedrückt wird rast Ugli auf dich und du');
   writexy(2,14,'bist verloren');
-  writexy(2,17,'                  T A S T E   D R ∩┐╜ C K E N');
+  writexy(2,17,'                  T A S T E   D R Ü C K E N');
   t := readkey;
   x := vx;
   y := vy;
@@ -543,7 +543,7 @@ begin
        writexy(30, 8,'∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜');
 gotoxy(30, 9); write('∩┐╜ L E V E L   ',level,'           ∩┐╜');
       writexy(30, 10,'∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜');
-      writexy(30, 11,' T A S T E   D R ∩┐╜ C K E N ');
+      writexy(30, 11,' T A S T E   D R Ü C K E N ');
     delay(1000);
    until keypressed;
    t := readkey;
@@ -741,12 +741,12 @@ begin
 textcolor(13);
 cls;
 writexy(3, 1,'                Geschichte von UGLI');
-writexy(3, 3,'Du  bist  von  einem  K∩┐╜nig  in  eine  Burg eingeschlossen worden.');
+writexy(3, 3,'Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.');
 writexy(3, 4,'Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle');
-writexy(3, 5,'meine  Sch∩┐╜tze  wieder  gefunden  hast", knallte  er  die  T∩┐╜r zu.');
-writexy(3, 6,'Da  bleibt Dir wohl  nichts anderes  mehr ∩┐╜brig, als seine Sch∩┐╜tze');
-writexy(3, 7,'zu holen. Du rennst also sofort los, um alle Sch∩┐╜tze einzusammeln.');
-writexy(3, 9,'                 T A S T E   D R ∩┐╜ C K E N');
+writexy(3, 5,'meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.');
+writexy(3, 6,'Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze');
+writexy(3, 7,'zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.');
+writexy(3, 9,'                 T A S T E   D R Ü C K E N');
 t := readkey;
 end;
 
@@ -754,7 +754,7 @@ procedure langsam;
 begin
   delay(50);
   langs := langs + 1;
-  writexy(3, 5,'        T A S T E   D R ∩┐╜ C K E N');
+  writexy(3, 5,'        T A S T E   D R Ü C K E N');
   t := readkey;
   writexy(3, 5,'                                   ');
   vx := x;
@@ -774,7 +774,7 @@ begin
  if langs > 0 then
  begin
   langs := langs - 1;
-  writexy(3, 5,'        T A S T E   D R ∩┐╜ C K E N');
+  writexy(3, 5,'        T A S T E   D R Ü C K E N');
   t := readkey;
   textcolor(Red);
   for J := 1 to 80 do
@@ -785,7 +785,7 @@ begin
  if langs = 0 then
  begin
   writexy(3, 3,'                Schneller geht''s nicht');
-  writexy(3, 5,'        T A S T E   D R ∩┐╜ C K E N');
+  writexy(3, 5,'        T A S T E   D R Ü C K E N');
   t := readkey;
   textcolor(Red);
   for I := 3 to 5 do
@@ -833,7 +833,7 @@ end;
 procedure PausenZeigen;
 begin
  gotoxy(65, 1); write('PAUSEN ',Pausen);
- writexy(21, 9,'T A S T E   D R ∩┐╜ C K E N');
+ writexy(21, 9,'T A S T E   D R Ü C K E N');
  t := readkey;
  textcolor(4);
  writexy(21, 9,'                           ');
@@ -852,7 +852,7 @@ begin
  writexy(30, 9,'∩┐╜∩┐╜    G E W O N N E N    ∩┐╜∩┐╜');
  writexy(30,10,'∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜∩┐╜');
  textcolor(4);
- writexy(30,11,' T A S T E   D R ∩┐╜ C K E N ');
+ writexy(30,11,' T A S T E   D R Ü C K E N ');
  delay(1000);
  sound(100);
  delay(500);
@@ -1013,11 +1013,11 @@ begin
   cls;
   writeln('************* G E H E I M ************');
   writeln;
-  writeln('Dr∩┐╜ckst du aber <F10> kommst du ein level weiter !!!');
+  writeln('Drückst du aber <F10> kommst du ein level weiter !!!');
   writeln('Mit <s> kann man Steine Setzen !!!');
   writeln('Mit <n> kann man alle gesetzten Steine entfernen !!!');
   writeln;
-  writeln('  ,,',#26,' oder ',#27,'   DR∩┐╜CKEN');
+  writeln('  ,,',#26,' oder ',#27,'   DRÜCKEN');
   t := readkey;
   ReStone;
   textcolor(11);
@@ -1033,7 +1033,7 @@ Begin
   window(2,2,79,19);
   textbackground(0);
   clrscr;
-  writeln('1 )    Schutzschild (W∩┐╜hrt einen angrif ab, dann ist es kaputt)  Kostet  1000');
+  writeln('1 )    Schutzschild (Währt einen angrif ab, dann ist es kaputt)  Kostet  1000');
   writeln('2     Leben        (Macht ein leben mehr)                       Kostet  5000');
   t := readkey;
   window(1,1,80,25);
@@ -1070,7 +1070,7 @@ procedure Taste;
                End;
              End;
              gotoxy(35,2);
-             write(',,',#27,' oder  Dr∩┐╜cken');
+             write(',,',#27,' oder  Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1081,7 +1081,7 @@ procedure Taste;
                punkte := punkte - 5000;
              End;
              gotoxy(2,2);
-             write(',,',#27,' oder  Dr∩┐╜cken');
+             write(',,',#27,' oder  Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1115,7 +1115,7 @@ Begin
       sper[x,y] := true;
       sx := x;
       sy := y;
-      writexy(21, 9,'T A S T E    D R ∩┐╜ C K E N');
+      writexy(21, 9,'T A S T E    D R Ü C K E N');
       gotoxy(21,10); write('Noch vorhandene Steine: ',steine:4);
       t := readkey;
       gotoxy(21,10); write('                            ');
@@ -1173,7 +1173,7 @@ Begin
    End;
  End;
  if punkte > 0 then punkte := punkte - 20;
- writexy(3,9,'TASTE DR∩┐╜CKEN');
+ writexy(3,9,'TASTE DRÜCKEN');
  t := readkey;
  for I := 1 to 80 do
      begin
@@ -1227,7 +1227,7 @@ begin
      punktezaehlen;
      if zahl = 10 then
       Begin
-       zahl := 1;                     {Zahl Zur∩┐╜ckstellen}
+       zahl := 1;                     {Zahl Zurückstellen}
        level := level + 1;            {Levelzahl + 1}
        sx := 1;
        sy := 1;
