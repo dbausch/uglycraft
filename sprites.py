@@ -331,27 +331,36 @@ def draw_necklace(size=TILE):
     """item_no=7: gold chain necklace with gem pendant"""
     s = _surf(size)
     cx = size // 2
-    # Chain: 9 beads along a downward-dipping quadratic bezier arc
+    # Chain: 9 beads along a downward-dipping quadratic bezier arc.
+    # Note: the bezier midpoint is at half the control-point offset, so with
+    # ym=17 the centre bead actually lands at ~y=11. Bead positions are
+    # collected first so we can attach the pendant to the real centre bead.
     n  = 9
     x0, y0 = 4,        6   # left end
-    xm, ym = cx,      17   # midpoint (lowest)
+    xm, ym = cx,      17   # bezier control point
     x1, y1 = size - 4, 6   # right end
+    beads = []
     for i in range(n):
         t  = i / (n - 1)
         bx = int((1 - t) ** 2 * x0 + 2 * (1 - t) * t * xm + t ** 2 * x1)
         by = int((1 - t) ** 2 * y0 + 2 * (1 - t) * t * ym + t ** 2 * y1)
+        beads.append((bx, by))
+    # Drop string: draw BEFORE beads so the centre bead covers the line's top
+    cx_bead, cy_bead = beads[n // 2]
+    pendant_top = cy_bead + 7
+    pygame.draw.line(s, GOLD, (cx_bead, cy_bead), (cx_bead, pendant_top), 1)
+    # Beads on top — centre bead overlaps and hides the string's upper end
+    for bx, by in beads:
         pygame.draw.circle(s, GOLD, (bx, by), 2)
         pygame.draw.circle(s, LTYELLOW, (bx - 1, by - 1), 1)
-    # Short drop from lowest bead to pendant
-    drop_top = ym + 2
-    pygame.draw.line(s, GOLD, (cx, ym), (cx, drop_top), 1)
-    # Pendant: teardrop diamond gem
+    # Pendant gem: top vertex sits exactly at pendant_top (line's lower end)
     pr = 5
-    py = drop_top + pr
-    pts = [(cx, drop_top), (cx + pr, py), (cx, py + pr + 1), (cx - pr, py)]
-    pygame.draw.polygon(s, (200, 60, 220), pts)    # purple
+    py = pendant_top + pr
+    pts = [(cx_bead, pendant_top), (cx_bead + pr, py),
+           (cx_bead, py + pr + 1),  (cx_bead - pr, py)]
+    pygame.draw.polygon(s, (200, 60, 220), pts)
     pygame.draw.polygon(s, (240, 150, 255), pts, 1)
-    pygame.draw.circle(s, WHITE, (cx - 1, py - 2), 1)
+    pygame.draw.circle(s, WHITE, (cx_bead - 1, py - 2), 1)
     return s
 
 
