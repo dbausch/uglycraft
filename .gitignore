@@ -4,6 +4,11 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
+# Build artifacts
+dist/
+build/
+*.spec
+
 # Runtime data
 uglycraft.hsc
 
