@@ -380,7 +380,7 @@ def draw_lamp(size=TILE):
 
 
 def draw_big_gem(size=TILE):
-    """item_no=9: large green octagonal gem"""
+    """item_no=9: emerald (large green octagonal gem)"""
     s = _surf(size)
     cx, cy = size // 2, size // 2
     r = size // 2 - 3
