@@ -217,22 +217,26 @@ Bar 8 G#m: 80 -1 80 78  76 75 73 68   (G#5 _ G# F#| E D# C# G#3)
 
 ## L10 — Chromatic Diminished, 140 BPM: "Boss"
 
-**Character:** Inescapable.  Bars 1–4 descend through the B dim7 arpeggio
-(B Ab F Eb) across two octaves with chromatic fill.  Bars 5–6 drop to the
-lowest register (B3 down to Ab3, MIDI 56) — the lowest note in the whole
-game.  Bar 7 climbs the full B dim7 from B3 to Ab5 in one unbroken
-ascent.  Bar 8 falls back from B5 and ends on B4 — back where it started.
+**Character:** Relentless and mechanical.  A two-note tritone arpeggio
+repeats every half bar: the upper note (mel_root + 6) hits on beat 1
+(locking with the kick drum), the lower note (mel_root) hits on beat 3
+(locking with the snare), beats 2 and 4 are silence.  The roots follow
+the descending dim7 sequence B→Ab→F→D→B→Ab then rise back, so the
+interval content shifts while the rhythmic pattern stays constant.
 
 **Harmony:** B dim – Ab dim – F dim – D dim | B dim – Ab dim – B dim – D dim
 
+**Pattern per bar:** `HIGH  –  LOW  –  |  HIGH  –  LOW  –`
+(steps 0, 2, 4, 6 only; steps 1, 3, 5, 7 are rests)
+
 **Melody (MIDI):**
 ```
-Bar 1:  83 80 77 75  74 71 68 -1   (B5 Ab5 F5 Eb5| D5 B4 Ab4 _)
-Bar 2:  80 79 77 75  74 73 71 68   (Ab5 G F Eb | D Db B4 Ab4)
-Bar 3:  77 75 74 73  71 70 68 67   (F5 Eb D Db | B4 Bb Ab4 G4)
-Bar 4:  74 -1 80 77  75 74 71 -1   (D5 _ Ab5 F5| Eb D B4 _)
-Bar 5:  71 68 65 63  62 59 56 -1   (B4 Ab4 F4 Eb4| D4 B3 Ab3 _)
-Bar 6:  68 67 65 63  62 61 59 -1   (Ab4 G4 F4 Eb4| D4 Db4 B3 _)
-Bar 7:  59 62 65 68  71 74 77 80   (B3 D4 F4 Ab4 | B4 D5 F5 Ab5)
-Bar 8:  83 -1 80 77  74 71 68 71   (B5 _ Ab5 F5 | D5 B4 Ab4 B4)
+Bar 1 (root B4=71):   77 -1 71 -1  77 -1 71 -1   (F5 – B4 – | F5 – B4 –)
+Bar 2 (root Ab4=68):  74 -1 68 -1  74 -1 68 -1   (D5 – Ab4–| D5 – Ab4–)
+Bar 3 (root F4=65):   71 -1 65 -1  71 -1 65 -1   (B4 – F4 – | B4 – F4 –)
+Bar 4 (root D4=62):   68 -1 62 -1  68 -1 62 -1   (Ab4– D4 – | Ab4– D4 –)
+Bar 5 (root B3=59):   65 -1 59 -1  65 -1 59 -1   (F4 – B3 – | F4 – B3 –)
+Bar 6 (root Ab3=56):  62 -1 56 -1  62 -1 56 -1   (D4 – Ab3– | D4 – Ab3–)
+Bar 7 (root B3=59):   65 -1 59 -1  65 -1 59 -1   (F4 – B3 – | F4 – B3 –)
+Bar 8 (root D4=62):   68 -1 62 -1  68 -1 62 -1   (Ab4– D4 – | Ab4– D4 –)
 ```

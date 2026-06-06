@@ -365,9 +365,11 @@ _LEVEL_THEMES = [
     # L9  G# Phrygian — "Terror": unrelenting, descends from the top then rockets back up
     [80,81,80,78, 76,75,73,71,  81,80,78,76, 75,73,71,69,  71,73,75,76, 78,80,81,-1,  80,-1,81,80, 78,76,75,80,
      68,69,71,73, 75,76,78,80,  81,78,75,76, 78,80,81,-1,  78,76,75,73, 71,73,75,78,  80,-1,80,78, 76,75,73,68],
-    # L10  Chromatic Dim — "Boss": full B dim7 from top to bottom then back up in one sweep
-    [83,80,77,75, 74,71,68,-1,  80,79,77,75, 74,73,71,68,  77,75,74,73, 71,70,68,67,  74,-1,80,77, 75,74,71,-1,
-     71,68,65,63, 62,59,56,-1,  68,67,65,63, 62,61,59,-1,  59,62,65,68, 71,74,77,80,  83,-1,80,77, 74,71,68,71],
+    # L10  Chromatic Dim — "Boss": tritone arpeggio — high on beat 1, low on beat 3, half-bar repeat
+    # Each bar: mel_root+6 (upper) on steps 0&4, mel_root (lower) on steps 2&6, silence elsewhere.
+    # Roots descend B→Ab→F→D→B→Ab then rise back: tracks the dim7 harmonic descent.
+    [77,-1,71,-1, 77,-1,71,-1,  74,-1,68,-1, 74,-1,68,-1,  71,-1,65,-1, 71,-1,65,-1,  68,-1,62,-1, 68,-1,62,-1,
+     65,-1,59,-1, 65,-1,59,-1,  62,-1,56,-1, 62,-1,56,-1,  65,-1,59,-1, 65,-1,59,-1,  68,-1,62,-1, 68,-1,62,-1],
 ]
 
 
