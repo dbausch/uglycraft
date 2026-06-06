@@ -313,7 +313,7 @@ def draw_gold_bar(size=TILE):
 
 
 def draw_silver_bar(size=TILE):
-    """item_no=6: silver ingot"""
+    """item_no=6: platinum ingot"""
     s = _surf(size)
     m = 4
     h = size // 2 - 2
