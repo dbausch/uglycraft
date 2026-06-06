@@ -5,7 +5,7 @@ COLS = LOGICAL_W // TILE          # 30
 ROWS = 16
 STATUS_H = LOGICAL_H - ROWS * TILE  # 28
 
-FPS = 60
+FPS = 30
 TITLE = "UGLYCRAFT"
 SAVE_FILE = "uglycraft.hsc"
 
@@ -22,12 +22,13 @@ FIRST_REPEAT_MS = 180
 REPEAT_MS       = 80
 
 STARTING_LIVES  = 9
-SHIELD_COST_PTS   = 1000
+SHIELD_COST_PTS    = 1000
 WALL_HITS_TO_BREAK = 3   # bumps required to destroy one inner wall
 BREAKS_PER_CREDIT  = 2   # walls to destroy to earn one placement credit
-LIFE_COST_PTS   = 5000
+LIFE_COST_PTS      = 5000
+LIFE_PENALTY = 500         # flat points lost on death
 
-# Points awarded when treasure `zahl` is collected (zahl 1 yields 0, 2→100, …)
+# Points awarded when treasure item_no is collected (item_no 1 yields 0, 2→100, …)
 TREASURE_POINTS = {1: 0, 2: 100, 3: 200, 4: 300, 5: 400,
                    6: 500, 7: 600, 8: 700, 9: 800}
 

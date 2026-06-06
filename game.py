@@ -43,6 +43,7 @@ class Game:
         self.font_med   = pygame.font.SysFont('monospace', 22, bold=True)
         self.font_small = pygame.font.SysFont('monospace', 16)
         self.font_hud   = pygame.font.SysFont('monospace', 16, bold=True)
+        self.font_title = pygame.font.SysFont('monospace', 64, bold=True)
 
     # ── Pathfinding ───────────────────────────────────────────────────────────
 
@@ -79,8 +80,6 @@ class Game:
             w[c][r] = True
         self.walls = w
 
-    # ── Wall helpers ──────────────────────────────────────────────────────────
-
     def _is_border(self, col, row):
         return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
 
@@ -102,9 +101,9 @@ class Game:
         self._level_walls.discard((col, row))
         self._placed_walls.discard((col, row))
         self._build_walls()
-        self._break_pool += 1
-        if self._break_pool >= BREAKS_PER_CREDIT:
-            self._break_pool -= BREAKS_PER_CREDIT
+        self._breaks_toward_credit += 1
+        if self._breaks_toward_credit >= BREAKS_PER_CREDIT:
+            self._breaks_toward_credit -= BREAKS_PER_CREDIT
             self._place_credits += 1
 
     # ── Game initialisation ───────────────────────────────────────────────────
@@ -113,20 +112,20 @@ class Game:
         self.score        = 0
         self.lives        = STARTING_LIVES
         self.level        = 0
-        self.zahl         = 0
+        self.item_no         = 0
         self.shield       = False
         self.move_ms      = BASE_MOVE_MS
         self.enemy_ms     = BASE_ENEMY_MS  # overridden to BOSS_MOVE_MS on level 10
         self._placed_walls  = set()
         self._wall_hits     = {}   # (col, row) → hit count (inner walls only)
-        self._break_pool    = 0    # leftover breaks toward next credit
+        self._breaks_toward_credit    = 0    # leftover breaks toward next credit
         self._place_credits = 0   # available wall placements
         self._bump_consumed = set()  # direction keys that must be released before next bump
         self._start_level(1)
 
     def _start_level(self, level_num):
         self.level = level_num
-        self.zahl  = 0
+        self.item_no  = 0
         data = LEVELS[level_num - 1]
         self._level_walls = set(data['walls'])
         # Refund one credit per placed wall being cleared (they were earned legitimately)
@@ -153,13 +152,13 @@ class Game:
         self._intro_timer  = 0
 
     def _spawn_treasure(self):
-        self.zahl += 1
-        if self.zahl > 9:
-            self.zahl = 1
-        self.treasure_zahl = 10 if (self.zahl == 9 and self.level == NUM_LEVELS) \
-                             else self.zahl
+        self.item_no += 1
+        if self.item_no > 9:
+            self.item_no = 1
+        self.treasure_item_no = 10 if (self.item_no == 9 and self.level == NUM_LEVELS) \
+                             else self.item_no
         # Crown on the boss level spawns at a fixed position inside the vault
-        if self.treasure_zahl == 10:
+        if self.treasure_item_no == 10:
             data = LEVELS[self.level - 1]
             if 'crown_pos' in data:
                 self.treasure_pos = data['crown_pos']
@@ -175,7 +174,7 @@ class Game:
     def _relocate_treasure(self):
         """Boss walked over a treasure — move it to a new random open tile.
         The crown (fixed in the vault) is never relocated."""
-        if self.treasure_zahl == 10:
+        if self.treasure_item_no == 10:
             return
         open_tiles = [
             (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
@@ -190,7 +189,7 @@ class Game:
 
     def _title_init(self):
         self.state = TITLE
-        self._title_t = 0
+        self._title_ms = 0
 
     # ── Input handling ────────────────────────────────────────────────────────
 
@@ -201,7 +200,7 @@ class Game:
                     self.state = DIFFICULTY
                 elif event.key == pygame.K_h:
                     self.state = SHOW_SCORES
-                    self._scores_from = TITLE
+                    self._scores_return_to = TITLE
                 elif event.key == pygame.K_q:
                     self.state = QUIT_GAME
 
@@ -242,7 +241,7 @@ class Game:
 
         elif self.state in (GAME_OVER, WIN):
             if event.type == pygame.KEYDOWN:
-                self.state = PLAY_AGAIN
+                self.try_enter_score()
 
         elif self.state == PLAY_AGAIN:
             if event.type == pygame.KEYDOWN:
@@ -265,7 +264,7 @@ class Game:
 
         elif self.state == SHOW_SCORES:
             if event.type == pygame.KEYDOWN:
-                self.state = getattr(self, '_scores_from', TITLE)
+                self.state = getattr(self, '_scores_return_to', TITLE)
 
     def _playing_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -305,14 +304,14 @@ class Game:
     def _enter_score_event(self, event):
         if event.type == pygame.KEYDOWN:
             k = event.key
-            if k == pygame.K_RETURN and self._name_buf.strip():
-                save_score(self._name_buf.strip(), self._final_score)
-                self._scores_from = PLAY_AGAIN
+            if k == pygame.K_RETURN and self._name_input.strip():
+                save_score(self._name_input.strip(), self._final_score, self._final_level)
+                self._scores_return_to = PLAY_AGAIN
                 self.state = SHOW_SCORES
             elif k == pygame.K_BACKSPACE:
-                self._name_buf = self._name_buf[:-1]
-            elif len(self._name_buf) < 20 and event.unicode.isprintable():
-                self._name_buf += event.unicode
+                self._name_input = self._name_input[:-1]
+            elif len(self._name_input) < 20 and event.unicode.isprintable():
+                self._name_input += event.unicode
 
     # ── Movement helpers ──────────────────────────────────────────────────────
 
@@ -358,7 +357,7 @@ class Game:
         if self.shield:
             self.shield = False
             return
-        self.score = max(0, self.score - self.zahl * 1000)
+        self.score = max(0, self.score - LIFE_PENALTY)
         self.lives -= 1
         self._flash_timer = 600
         if self.lives <= 0:
@@ -387,12 +386,13 @@ class Game:
 
     def _end_game(self, won):
         self._final_score = self.score * max(1, self.lives)
+        self._final_level = self.level
         self.state = WIN if won else GAME_OVER
 
     # ── Update ───────────────────────────────────────────────────────────────
 
     def update(self, dt):
-        self._title_t = getattr(self, '_title_t', 0) + dt
+        self._title_ms = getattr(self, '_title_ms', 0) + dt
 
         if self.state == LEVEL_INTRO:
             self._intro_timer -= dt
@@ -452,8 +452,8 @@ class Game:
 
         # Treasure collection
         if (self.player.col, self.player.row) == self.treasure_pos:
-            self.score += TREASURE_POINTS.get(self.zahl, 0)
-            if self.zahl == 9:
+            self.score += TREASURE_POINTS.get(self.item_no, 0)
+            if self.item_no == 9:
                 self._advance_level()
             else:
                 self._spawn_treasure()
@@ -525,7 +525,7 @@ class Game:
 
         # Treasure
         tc, tr = self.treasure_pos
-        tz = self.treasure_zahl
+        tz = self.treasure_item_no
         if tz in sp:
             self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
@@ -558,7 +558,7 @@ class Game:
         htext(f"SCORE {self.score:>7}", 4)
         htext(f"LEVEL {self.level}", 200)
         htext(f"LIVES {self.lives}", 310, HUD_LIFE)
-        item = TREASURE_NAMES.get(self.treasure_zahl, "")
+        item = TREASURE_NAMES.get(self.treasure_item_no, "")
         htext(f"SEEK: {item}", 430)
         # Wall placement credits — colour signals state, no extra symbols needed:
         #   green  = credits ready to spend
@@ -566,17 +566,17 @@ class Game:
         #   gray   = no credits, no progress
         if self._place_credits > 0:
             wall_color = LTGREEN
-        elif self._break_pool > 0:
+        elif self._breaks_toward_credit > 0:
             wall_color = YELLOW
         else:
             wall_color = GRAY
-        htext(f"WALLS  {self._place_credits}", 700, wall_color)
-        if self.level == NUM_LEVELS:
-            htext("BOSS", 840, MAGENTA)
-        elif self.difficulty == HARD:
-            htext("HARD", 840, RED)
+        htext(f"WALLS  {self._place_credits}", 680, wall_color)
         if self.shield:
-            htext("★SHIELD", 895, LTBLUE)
+            htext("★SHIELD", 778, LTBLUE)
+        if self.level == NUM_LEVELS:
+            htext("BOSS", 878, MAGENTA)
+        elif self.difficulty == HARD:
+            htext("HARD", 878, RED)
 
     # ── Overlays ─────────────────────────────────────────────────────────────
 
@@ -607,7 +607,7 @@ class Game:
 
     def _render_title(self):
         self.surf.fill(BLACK)
-        t = self._title_t / 1000.0
+        t = self._title_ms / 1000.0
 
         # Animated coloured title letters
         title = "UGLYCRAFT"
@@ -620,7 +620,7 @@ class Game:
         for i, ch in enumerate(title):
             wave_y = int(12 * abs(((t * 2 + i * 0.4) % 2) - 1))
             color  = colors[i % len(colors)]
-            img = pygame.font.SysFont('monospace', 64, bold=True).render(ch, True, color)
+            img = self.font_title.render(ch, True, color)
             self.surf.blit(img, (start_x + i * char_w, base_y - wave_y))
 
         # Subtitle
@@ -629,7 +629,7 @@ class Game:
 
         # Instructions
         lines = [
-            ("Arrow keys", "move"),
+            ("Arrow keys", "move  (bump a wall 3× to mine it)"),
             ("Space",      "place wall  (costs 1 credit)"),
             ("Enter",      "shop (shield / extra life)"),
             ("P",          "pause"),
@@ -751,7 +751,7 @@ class Game:
         pygame.draw.rect(self.surf, DKGRAY, (bx, by, bw, bh), border_radius=4)
         pygame.draw.rect(self.surf, WHITE,  (bx, by, bw, bh), 2, border_radius=4)
         cursor = "|" if int(pygame.time.get_ticks() / 500) % 2 == 0 else ""
-        name_img = self.font_med.render(self._name_buf + cursor, True, WHITE)
+        name_img = self.font_med.render(self._name_input + cursor, True, WHITE)
         self.surf.blit(name_img, (bx + 10, by + 8))
 
         hint = self.font_small.render("[Enter] to confirm", True, GRAY)
@@ -769,9 +769,9 @@ class Game:
             msg = self.font_med.render("No scores yet.", True, GRAY)
             self.surf.blit(msg, (LOGICAL_W // 2 - msg.get_width() // 2, 200))
         else:
-            for i, (name, sc) in enumerate(scores):
+            for i, (name, sc, lvl) in enumerate(scores):
                 color = GOLD if i == 0 else WHITE
-                line  = f"{i+1:>2}.  {name:<20}  {sc:>9}"
+                line  = f"{i+1:>2}.  {name:<16}  {sc:>8}  Lv{lvl:>2}"
                 img   = self.font_med.render(line, True, color)
                 self.surf.blit(img, (LOGICAL_W // 2 - img.get_width() // 2, 120 + i * 34))
 
@@ -787,8 +787,8 @@ class Game:
             return
         fs = getattr(self, '_final_score', 0)
         if qualifies(fs):
-            self._name_buf = ""
+            self._name_input = ""
             self.state = ENTER_SCORE
         else:
-            self._scores_from = PLAY_AGAIN
+            self._scores_return_to = PLAY_AGAIN
             self.state = SHOW_SCORES

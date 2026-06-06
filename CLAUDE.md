@@ -4,54 +4,119 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Daniel Bausch. The player navigates an 80×20 character field collecting 10 types of treasures across 9 levels while being chased by an AI enemy. High scores are saved to `UGLI.HSC`.
+This repo contains two things:
 
-## Building
+1. **The original game** — UGLI (version 2, 1996), a DOS text-mode game written in Turbo Pascal 7 by Daniel Bausch. Three source files: `UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`. See [`original/CLAUDE.md`](original/CLAUDE.md) for a full analysis of the original code, data structures, and mechanics.
 
-This code targets **Turbo Pascal 7 for DOS**. There is no makefile or modern build system. Compilation options:
+2. **UGLYCRAFT** — a new Python/pygame spiritual remake of UGLI, written from scratch. This is the active project.
 
-- **Turbo Pascal 7** (original): Open `UGLI_2.PAS` in the TP7 IDE or run `tpc UGLI_2.PAS`
-- **Free Pascal** (modern): `fpc -Mtp UGLI_2.PAS` (TP compatibility mode). Note: `EXTRA1.PAS` uses `graph`, `Drivers`, and `Boosters` units which may need stubs or the WinCrt/graph replacements.
-- **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behavior.
+## Running UGLYCRAFT
 
-There are no tests, no lint tools, and no CI setup.
+```bash
+.venv/bin/python main.py
+```
 
-## Architecture
+Virtual environment at `.venv` (Python 3.14, pygame 2.6.1). Create with `python3 -m venv .venv && .venv/bin/pip install pygame`.
 
-Three files, compiled in dependency order:
+Debug flags (skip menus, start mid-game):
 
-**`EXTRA1.PAS`** (unit `extra1`) — reusable TUI library. Provides:
-- `Fenster`/`FensterMitObenLinks`/`FensterMitUntenMittig`: draw bordered windows with configurable corner/edge characters and colors via a DSL-style `Params` string (e.g. `FatLine`, `TwoLines` constants)
-- `HLinie`/`VLinie`: draw horizontal/vertical lines
-- `MyEingebProc`: inline text input field with cursor movement and editing
-- `Auswahl`: menu selection from a `WahlRec` list
-- `Ton`/`TonAuf`/`TonAb`/`DateiTon`: PC speaker sound routines
-- `ColorPosWrite`, `Farbe`, `BlinkText`: color/position text output helpers
-- `Zentriert`, `RechtsBund`, `Str`, `StrZahl`: string utilities
-- Depends on CRT, DOS, `graph`, `Drivers`, `Boosters` (Turbo Pascal BGI)
+```bash
+.venv/bin/python main.py --level N      # start at level N (1–10)
+.venv/bin/python main.py --easy / --hard  # set difficulty (default: easy)
+```
 
-**`DANISOFT.PAS`** (unit `DANISOFT`) — animated splash screen unit. Provides:
-- `Erkennung`: scrolling color/sound intro that displays an ASCII art logo (8 lines) with version/copyright info
-- `Erkennung2`: alternative intro with typewriter-effect text rendering
-- Depends on `Extra1`
+In debug mode the high-score entry screen is suppressed.
 
-**`UGLI_2.PAS`** (program `ugli_2`) — the game itself. Uses `crt`, `dos`, `danisoft`.
-- `sper[1..80, 1..20]: boolean` — collision map; walls and placed blocks set cells to `true`
-- `initl1`–`initl9`: populate the collision map and set player start position/direction for each level
-- `rahmen`: clears and redraws the border + current level layout
-- `ugli2`: AI enemy movement — chooses x or y axis based on which delta is larger, moves toward player each `timeslot`
-- `Taste`: main input handler; dispatches arrow keys, speed controls, help screens, and the in-game shop
-- `ZahlenSetzung` / `ZufalsPos`: place the current treasure at a random non-blocked position
-- `abfrage`: end-of-game high score entry; appends to `UGLI.HSC` then displays the full file
-- Main loop uses `goto` labels (100, 300, 997, 998, 999) rather than structured loops
+## Architecture (7 Python files)
 
-## Key constants (UGLI_2.PAS)
+| File | Role |
+|---|---|
+| `constants.py` | Logical resolution, tile size, colours, timing constants |
+| `sprites.py` | All sprites drawn procedurally via `pygame.draw` — no image files |
+| `levels.py` | 10 level definitions as dicts with `walls` and `enemy_starts` |
+| `entities.py` | `Player` and `Enemy` (+ `Entity` base) — tile-grid movement, BFS pathfinding |
+| `hiscore.py` | Top-10 score persistence to `uglycraft.hsc` |
+| `game.py` | Full state machine + rendering |
+| `main.py` | Window creation, integer scaling, top-level event loop |
+
+## Key design
+
+**Resolution:** 960×540 logical (16:9). Integer-scaled to fit display. F11 toggles fullscreen.
+
+**Grid:** 30 columns × 16 rows of 32×32 px tiles. Status bar is 28 px tall (bottom). Border tiles are always walls.
+
+**Sprites:** All procedurally drawn — no external image files.
+
+**Difficulty:** Easy uses only the first `enemy_starts` position (1 enemy); Hard uses all positions (1 enemy for levels 1–3, 2 for levels 4–6, 3 for levels 7–9, always 1 boss on level 10).
+
+**Treasure sequence (`item_no`):** Collect items 1–9 in order per level, then advance. On level 10 (boss level), item_no=9 is replaced by item_no=10 (Crown), which spawns at a fixed position inside the vault.
+
+**Scoring:** Points on collection (0/100/200/…/800 for item_no 1–9). Final score = accumulated score × lives remaining. High scores record both the score and the level reached.
+
+**Lives:** Start with 9. +1 on each level clear. On caught: if shielded → absorb (no life loss); else lose a life and deduct `LIFE_PENALTY` pts (min 0).
+
+**Wall mechanics:** Inner walls have hit points (`WALL_HITS_TO_BREAK = 3`). Bumping a wall damages it; after enough hits it breaks. Every `BREAKS_PER_CREDIT = 2` walls destroyed earns one wall-placement credit. Space places a wall at the player's tile (costs 1 credit).
+
+**Enemy AI (levels 1–9):** Greedy chase — if |dx| ≥ |dy| tries horizontal first, else vertical first; falls back to perpendicular if blocked. Moves every `BASE_ENEMY_MS = 160` ms.
+
+**Boss AI (level 10):** Single ghost-enemy. On Hard uses BFS pathfinding (always finds shortest path); on Easy uses the same greedy chase as normal enemies. Moves every `BOSS_MOVE_MS = 80` ms (same speed as player). If boss walks over a treasure it is relocated to a new random open tile.
+
+## Key constants (`constants.py`)
 
 | Constant | Value | Meaning |
-|----------|-------|---------|
-| `MaxX`/`MaxY` | 80/20 | Play field dimensions |
-| `CurR/L/U/O` | 77/75/80/72 | Scan codes for arrow keys |
-| `langs` | init 45 | Base movement delay in ms (lower = faster) |
-| `pausen` | init 20 | Number of pause tokens available |
-| `steine` | init 2000 | Block-placement budget |
-| `Name` | `'UGLI.HSC'` | High score file path |
+|---|---|---|
+| `COLS` / `ROWS` | 30 / 16 | Play field dimensions in tiles |
+| `TILE` | 32 | Tile size in pixels |
+| `BASE_MOVE_MS` | 80 | Player movement interval (ms) |
+| `BASE_ENEMY_MS` | 160 | Normal enemy movement interval (ms) |
+| `BOSS_MOVE_MS` | 80 | Boss movement interval (ms) |
+| `STARTING_LIVES` | 9 | Lives at game start |
+| `WALL_HITS_TO_BREAK` | 3 | Bumps to destroy one inner wall |
+| `BREAKS_PER_CREDIT` | 2 | Walls destroyed per placement credit earned |
+| `SHIELD_COST_PTS` | 1000 | Shop: shield cost |
+| `LIFE_COST_PTS` | 5000 | Shop: extra life cost |
+| `LIFE_PENALTY` | 500 | Flat points lost on death |
+| `FPS` | 30 | Frame rate cap |
+
+## Game states
+
+```
+TITLE → DIFFICULTY → LEVEL_INTRO → PLAYING ↔ PAUSED / SHOP
+                                       ↓
+                                GAME_OVER / WIN → ENTER_SCORE → SHOW_SCORES → PLAY_AGAIN
+                                               ↘ SHOW_SCORES ↗  (if score doesn't qualify)
+```
+
+`PLAY_AGAIN` goes back to `DIFFICULTY` (yes) or `TITLE` (no).
+
+A `STORY` state exists in code but is not reachable from the UI.
+
+## Controls
+
+**Title screen**
+
+| Key | Action |
+|---|---|
+| Enter | Start game (goes to difficulty selection) |
+| H | View high scores |
+| Q | Quit |
+
+**In-game**
+
+| Key | Action |
+|---|---|
+| Arrow keys | Move (held = auto-repeat after 180 ms, then every 80 ms); bump a wall 3× to mine it |
+| Space | Place wall at player's tile (costs 1 placement credit) |
+| Enter | Open shop |
+| P | Pause / unpause |
+| Escape | Go to "play again?" prompt |
+| F10 | Cheat: skip to next level |
+| F11 | Toggle fullscreen |
+
+**Shop**
+
+| Key | Action |
+|---|---|
+| 1 | Buy shield (1000 pts) |
+| 2 | Buy extra life (5000 pts) |
+| Any other key | Close shop without buying |

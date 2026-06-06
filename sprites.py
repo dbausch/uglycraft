@@ -217,7 +217,7 @@ def draw_boss(phase=0, size=TILE):
 # ── Treasure sprites ──────────────────────────────────────────────────────────
 
 def draw_rope(size=TILE):
-    """zahl=1: brown rope with knots"""
+    """item_no=1: brown rope with knots"""
     s = _surf(size)
     cx = size // 2
     for y in range(2, size - 2):
@@ -230,7 +230,7 @@ def draw_rope(size=TILE):
 
 
 def draw_big_diamond(size=TILE):
-    """zahl=2: large cyan diamond"""
+    """item_no=2: large cyan diamond"""
     s = _surf(size)
     cx, cy = size // 2, size // 2
     pts = [(cx, 2), (size - 3, cy), (cx, size - 3), (3, cy)]
@@ -243,7 +243,7 @@ def draw_big_diamond(size=TILE):
 
 
 def draw_small_gems(size=TILE):
-    """zahl=3: two small red gems"""
+    """item_no=3: two small red gems"""
     s = _surf(size)
     for gx in (size // 4, 3 * size // 4):
         gy = size // 2
@@ -256,7 +256,7 @@ def draw_small_gems(size=TILE):
 
 
 def draw_small_diamond(size=TILE):
-    """zahl=4: small cyan/blue diamond"""
+    """item_no=4: small cyan/blue diamond"""
     s = _surf(size)
     cx, cy = size // 2, size // 2
     r = size // 3
@@ -268,7 +268,7 @@ def draw_small_diamond(size=TILE):
 
 
 def draw_gold_bar(size=TILE):
-    """zahl=5: gold ingot"""
+    """item_no=5: gold ingot"""
     s = _surf(size)
     m = 4
     h = size // 2 - 2
@@ -283,7 +283,7 @@ def draw_gold_bar(size=TILE):
 
 
 def draw_silver_bar(size=TILE):
-    """zahl=6: silver ingot"""
+    """item_no=6: silver ingot"""
     s = _surf(size)
     m = 4
     h = size // 2 - 2
@@ -298,7 +298,7 @@ def draw_silver_bar(size=TILE):
 
 
 def draw_well(size=TILE):
-    """zahl=7: well/bucket in teal"""
+    """item_no=7: well/bucket in teal"""
     s = _surf(size)
     # Bucket body (trapezoid)
     pts = [(6, 9), (size - 6, 9), (size - 4, size - 5), (4, size - 5)]
@@ -316,7 +316,7 @@ def draw_well(size=TILE):
 
 
 def draw_lamp(size=TILE):
-    """zahl=8: lantern"""
+    """item_no=8: lantern"""
     s = _surf(size)
     cx = size // 2
     # Body hexagon
@@ -340,7 +340,7 @@ def draw_lamp(size=TILE):
 
 
 def draw_big_gem(size=TILE):
-    """zahl=9: large green octagonal gem"""
+    """item_no=9: large green octagonal gem"""
     s = _surf(size)
     cx, cy = size // 2, size // 2
     r = size // 2 - 3
@@ -357,7 +357,7 @@ def draw_big_gem(size=TILE):
 
 
 def draw_crown(size=TILE):
-    """zahl=10 (level 9 final treasure): golden crown"""
+    """item_no=10 (level 9 final treasure): golden crown"""
     s = _surf(size)
     cx = size // 2
     yb = size - 5

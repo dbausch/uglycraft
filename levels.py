@@ -9,11 +9,11 @@ HARD uses all of them (1 enemy for levels 1-3, 2 for 4-6, 3 for 7-9).
 from constants import COLS, ROWS
 
 
-def _h(x1, x2, y):
+def _hwall(x1, x2, y):
     return [(x, y) for x in range(x1, x2 + 1)]
 
 
-def _v(x, y1, y2):
+def _vwall(x, y1, y2):
     return [(x, y) for y in range(y1, y2 + 1)]
 
 
@@ -41,7 +41,7 @@ LEVELS = [
         'player_start':  (15, 3),
         'enemy_starts': [(2, 8)],
         'walls': _make_walls(
-            _h(6, 23, 7),
+            _hwall(6, 23, 7),
         ),
     },
 
@@ -50,10 +50,10 @@ LEVELS = [
         'player_start':  (15, 4),
         'enemy_starts': [(2, 8)],
         'walls': _make_walls(
-            _v(7,  3, 11),
-            _v(22, 3, 11),
-            _h(7,  13, 7),
-            _h(16, 22, 7),
+            _vwall(7,  3, 11),
+            _vwall(22, 3, 11),
+            _hwall(7,  13, 7),
+            _hwall(16, 22, 7),
         ),
     },
 
@@ -63,12 +63,12 @@ LEVELS = [
         'enemy_starts': [(2, 4),    # upper-left, above the crossbar
                          (27, 11)], # lower-right, below the crossbar
         'walls': _make_walls(
-            _v(5,  2, 6),
-            _v(24, 2, 6),
-            _v(5,  9, 13),
-            _v(24, 9, 13),
-            _h(2,  13, 8),
-            _h(16, 27, 8),
+            _vwall(5,  2, 6),
+            _vwall(24, 2, 6),
+            _vwall(5,  9, 13),
+            _vwall(24, 9, 13),
+            _hwall(2,  13, 8),
+            _hwall(16, 27, 8),
         ),
     },
 
@@ -78,11 +78,11 @@ LEVELS = [
         'enemy_starts': [(27, 8),   # right of cage
                          (2, 12)],  # lower-left
         'walls': _make_walls(
-            _v(7,  3, 12),
-            _v(22, 3, 12),
-            _h(8,  21, 3),
-            _h(8,  12, 12),
-            _h(17, 21, 12),
+            _vwall(7,  3, 12),
+            _vwall(22, 3, 12),
+            _hwall(8,  21, 3),
+            _hwall(8,  12, 12),
+            _hwall(17, 21, 12),
         ),
     },
 
@@ -92,10 +92,10 @@ LEVELS = [
         'enemy_starts': [(2, 8),    # left corridor
                          (2, 13)],  # bottom-left
         'walls': _make_walls(
-            *[_v(c, 2, 6)  for c in (5, 10, 15, 20, 25)],
-            *[_v(c, 9, 13) for c in (5, 10, 15, 20, 25)],
-            *[_v(c, 2, 6)  for c in (7, 12, 17, 22, 27)],
-            *[_v(c, 9, 13) for c in (7, 12, 17, 22, 27)],
+            *[_vwall(c, 2, 6)  for c in (5, 10, 15, 20, 25)],
+            *[_vwall(c, 9, 13) for c in (5, 10, 15, 20, 25)],
+            *[_vwall(c, 2, 6)  for c in (7, 12, 17, 22, 27)],
+            *[_vwall(c, 9, 13) for c in (7, 12, 17, 22, 27)],
         ),
     },
 
@@ -107,14 +107,14 @@ LEVELS = [
                          (14, 14)], # bottom corridor
         'walls': _make_walls(
             # Vault A — upper-left (cols 2-10, rows 2-7)
-            _h(2, 10, 2), _h(2, 10, 7),
-            _v(2, 2, 7),  _v(10, 2, 7),
+            _hwall(2, 10, 2), _hwall(2, 10, 7),
+            _vwall(2, 2, 7),  _vwall(10, 2, 7),
             # Vault B — upper-right, mirror of A (cols 19-27, rows 2-7)
-            _h(19, 27, 2), _h(19, 27, 7),
-            _v(19, 2, 7),  _v(27, 2, 7),
+            _hwall(19, 27, 2), _hwall(19, 27, 7),
+            _vwall(19, 2, 7),  _vwall(27, 2, 7),
             # Vault C — lower-centre (cols 9-20, rows 9-13)
-            _h(9, 20, 9),  _h(9, 20, 13),
-            _v(9, 9, 13),  _v(20, 9, 13),
+            _hwall(9, 20, 9),  _hwall(9, 20, 13),
+            _vwall(9, 9, 13),  _vwall(20, 9, 13),
         ),
     },
 
@@ -125,10 +125,10 @@ LEVELS = [
                          (13, 2),   # top-centre (between slalom columns)
                          (23, 12)], # bottom-right (between cols 18 and 24)
         'walls': _make_walls(
-            _v(6,  1, 11),
-            _v(12, 4, 14),
-            _v(18, 1, 11),
-            _v(24, 4, 14),
+            _vwall(6,  1, 11),
+            _vwall(12, 4, 14),
+            _vwall(18, 1, 11),
+            _vwall(24, 4, 14),
         ),
     },
 
@@ -139,14 +139,14 @@ LEVELS = [
                          (27, 8),   # right chamber, middle
                          (2, 13)],  # left chamber, bottom
         'walls': _make_walls(
-            _v(14, 1, 5),
-            _v(14, 10, 14),
-            _v(15, 1, 5),
-            _v(15, 10, 14),
-            _h(2, 12,  5),
-            _h(2, 12, 10),
-            _h(17, 27,  5),
-            _h(17, 27, 10),
+            _vwall(14, 1, 5),
+            _vwall(14, 10, 14),
+            _vwall(15, 1, 5),
+            _vwall(15, 10, 14),
+            _hwall(2, 12,  5),
+            _hwall(2, 12, 10),
+            _hwall(17, 27,  5),
+            _hwall(17, 27, 10),
         ),
     },
 
@@ -164,15 +164,15 @@ LEVELS = [
         'crown_pos':     (14, 8),         # fixed position, not randomly spawned
         'walls': _make_walls(
             # Triple-layered central vault
-            _h(9,  20,  3), _h(9,  20, 12),
-            _v(9,   3, 12), _v(20,  3, 12),
-            _h(11, 18,  5), _h(11, 18, 10),
-            _v(11,  5, 10), _v(18,  5, 10),
-            _h(13, 16,  7), _h(13, 16,  9),
-            _v(13,  7,  9), _v(16,  7,  9),
+            _hwall(9,  20,  3), _hwall(9,  20, 12),
+            _vwall(9,   3, 12), _vwall(20,  3, 12),
+            _hwall(11, 18,  5), _hwall(11, 18, 10),
+            _vwall(11,  5, 10), _vwall(18,  5, 10),
+            _hwall(13, 16,  7), _hwall(13, 16,  9),
+            _vwall(13,  7,  9), _vwall(16,  7,  9),
             # Corner cavities (open toward centre)
-            _v(4,  1,  4), _v(25,  1,  4),
-            _v(4, 10, 14), _v(25, 10, 14),
+            _vwall(4,  1,  4), _vwall(25,  1,  4),
+            _vwall(4, 10, 14), _vwall(25, 10, 14),
             # Scattered single blocks
             [(7, 2)],  [(22, 2)],
             [(7, 13)], [(22, 13)],
