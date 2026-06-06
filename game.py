@@ -146,7 +146,13 @@ class Game:
         # Each earlier level is 3% slower per step: factor = 1.03^(10 − level).
         # At level 1 both enemy and player are ~31% slower than at level 10.
         # self.move_ms replaces REPEAT_MS in the key-repeat check so player speed scales too.
-        self.enemy_ms = BOSS_MOVE_MS if level_num == NUM_LEVELS else BASE_ENEMY_MS
+        if level_num == NUM_LEVELS:
+            self.enemy_ms = BOSS_MOVE_MS
+            self.move_ms  = BASE_MOVE_MS
+        else:
+            factor = 1.03 ** (NUM_LEVELS - level_num)
+            self.enemy_ms = round(BASE_ENEMY_MS * factor)
+            self.move_ms  = round(BASE_MOVE_MS  * factor)
         self.shield = False
         self._shield_timer = 0
         self._spawn_treasure()
@@ -421,7 +427,7 @@ class Game:
         for key, (first, last) in list(self._key_repeat.items()):
             elapsed_first = now - first
             elapsed_last  = now - last
-            if elapsed_first >= FIRST_REPEAT_MS and elapsed_last >= REPEAT_MS:
+            if elapsed_first >= FIRST_REPEAT_MS and elapsed_last >= self.move_ms:
                 self._try_move_key(key)
                 self._key_repeat[key] = (first, now)
 
