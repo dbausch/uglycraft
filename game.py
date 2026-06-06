@@ -452,7 +452,7 @@ class Game:
 
         # Treasure collection
         if (self.player.col, self.player.row) == self.treasure_pos:
-            self.score += TREASURE_POINTS.get(self.item_no, 0)
+            self.score += TREASURE_POINTS.get(self.treasure_item_no, 0)
             if self.item_no == 9:
                 self._advance_level()
             else:

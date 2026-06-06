@@ -51,7 +51,7 @@ In debug mode the high-score entry screen is suppressed.
 
 **Treasure sequence (`item_no`):** Collect items 1–9 in order per level, then advance. On level 10 (boss level), item_no=9 is replaced by item_no=10 (Crown), which spawns at a fixed position inside the vault.
 
-**Scoring:** Points on collection (0/100/200/…/800 for item_no 1–9). Final score = accumulated score × lives remaining. High scores record both the score and the level reached.
+**Scoring:** Points on collection (100/200/…/900 for item_no 1–9, 1000 for the Crown on level 10). Final score = accumulated score × lives remaining. High scores record both the score and the level reached.
 
 **Lives:** Start with 9. +1 on each level clear. On caught: if shielded → absorb (no life loss); else lose a life and deduct `LIFE_PENALTY` pts (min 0).
 

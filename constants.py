@@ -29,13 +29,13 @@ LIFE_COST_PTS      = 5000
 LIFE_PENALTY = 500         # flat points lost on death
 
 # Points awarded when treasure item_no is collected (item_no 1 yields 0, 2→100, …)
-TREASURE_POINTS = {1: 0, 2: 100, 3: 200, 4: 300, 5: 400,
-                   6: 500, 7: 600, 8: 700, 9: 800}
+TREASURE_POINTS = {1: 100, 2: 200, 3: 300, 4: 400, 5: 500,
+                   6: 600, 7: 700, 8: 800, 9: 900, 10: 1000}
 
 TREASURE_NAMES = {
-    1: "Rope",       2: "Big Diamond",   3: "Small Gems",
+    1: "Coin",       2: "Big Diamond",   3: "Small Gems",
     4: "Small Diamond", 5: "Gold Bar",   6: "Silver Bar",
-    7: "Well",       8: "Lamp",          9: "Big Gem",
+    7: "Necklace",   8: "Lamp",          9: "Big Gem",
     10: "Crown",
 }
 
