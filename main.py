@@ -58,6 +58,7 @@ def main():
         screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
 
     pygame.display.set_caption(TITLE)
+    pygame.mouse.set_visible(False)
 
     logical = pygame.Surface((LOGICAL_W, LOGICAL_H))
     clock   = pygame.time.Clock()
