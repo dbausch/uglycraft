@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Building for Windows
+
+Use the `/build-windows` skill to produce `dist/uglycraft.exe` via Wine + PyInstaller.
+One-time setup (Wine, Python 3.13 under Wine, pip deps) is documented in **README.md**.
+Python 3.13 is required — pygame has no Windows wheels for 3.14 yet.
+
 ## Current version
 
 **v0.9** — bump this whenever a new git tag is created.
