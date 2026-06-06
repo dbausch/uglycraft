@@ -547,7 +547,6 @@ class Game:
         hud_y = ROWS * TILE
         pygame.draw.rect(self.surf, HUD_BG, (0, hud_y, LOGICAL_W, STATUS_H))
 
-        # Wall credit colour: green = spend now, yellow = progress, gray = none
         if self._place_credits > 0:
             wall_color = LTGREEN
         elif self._breaks_toward_credit > 0:
@@ -559,20 +558,30 @@ class Game:
         max_name = max(len(v) for v in TREASURE_NAMES.values())
         item_name = TREASURE_NAMES.get(self.treasure_item_no, "")
 
+        # SHIELD: always present; invisible (HUD_BG) when inactive so layout never shifts.
+        # Fixed width "SHIELD XX" — right-aligned 2-digit number, no unit suffix.
+        if self.shield:
+            shield_txt = f"SHIELD {max(1, (self._shield_timer + 999) // 1000):>2}"
+            shield_col = LTBLUE
+        else:
+            shield_txt = "SHIELD   "   # same 9-char width, rendered invisible
+            shield_col = HUD_BG
+
+        # WALLS: fixed width with optional "." when half a credit has been mined.
+        walls_dot = '.' if self._breaks_toward_credit > 0 else ' '
+
         elems = [
             (f"SCORE {self.score:>7}",              HUD_TEXT),
             (f"LEVEL {self.level:>2}",               HUD_TEXT),
             (f"LIVES {self.lives:>2}",               HUD_LIFE),
             (f"SEEK: {item_name:<{max_name}}",       HUD_TEXT),
-            (f"WALLS {self._place_credits:>2}",      wall_color),
         ]
-        if self.shield:
-            secs = max(1, (self._shield_timer + 999) // 1000)
-            elems.append((f"SHIELD {secs}s", LTBLUE))
         if self.level == NUM_LEVELS:
             elems.append(("BOSS", MAGENTA))
         elif self.difficulty == HARD:
             elems.append(("HARD", RED))
+        elems.append((shield_txt, shield_col))
+        elems.append((f"WALLS {self._place_credits:>2}{walls_dot}", wall_color))
 
         imgs = [self.font_hud.render(txt, True, col) for txt, col in elems]
         total_w = sum(img.get_width() for img in imgs)
