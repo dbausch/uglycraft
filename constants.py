@@ -35,7 +35,7 @@ TREASURE_POINTS = {1: 100, 2: 200, 3: 300, 4: 400, 5: 500,
 TREASURE_NAMES = {
     1: "Coin",       2: "Big Diamond",   3: "Small Gems",
     4: "Trophy",        5: "Gold Ingot", 6: "Platinum Ingot",
-    7: "Necklace",   8: "Lamp",          9: "Big Gem",
+    7: "Necklace",   8: "Lantern",        9: "Big Gem",
     10: "Crown",
 }
 
