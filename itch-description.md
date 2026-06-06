@@ -50,9 +50,6 @@ through to UGLYCRAFT today. Some features planned for that version were never re
 
 It was, by any objective measure, ugly. That was rather the point.
 
-The 1996 source code (`UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`) is preserved in this
-repository as a historical artifact. If you know Turbo Pascal, it is worth a read.
-
 ---
 
 ## Controls
