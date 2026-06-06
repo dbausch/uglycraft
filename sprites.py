@@ -116,100 +116,209 @@ def draw_player(size=TILE):
     return s
 
 
-def _ghost_pts(cx, dome_cy, r, n_bumps=3):
-    """Polygon outline of a ghost: dome top + straight sides + scalloped bottom."""
-    pts = []
-    # Dome: left equator → apex → right equator (angles 180°→360°)
-    for a in range(180, 361, 12):
-        pts.append((cx + int(r * math.cos(math.radians(a))),
-                    dome_cy + int(r * math.sin(math.radians(a)))))
-    body_bot = dome_cy + r
-    pts.append((cx + r, body_bot))
-    # Scalloped bottom: n_bumps downward semicircles, traced right→left
-    bw  = (2 * r) // n_bumps
-    br  = bw // 2
-    for i in range(n_bumps - 1, -1, -1):
-        bx = cx - r + int((i + 0.5) * bw)
-        for a in range(0, 181, 30):
-            pts.append((bx + int(br * math.cos(math.radians(a))),
-                        body_bot + int(br * math.sin(math.radians(a)))))
-    pts.append((cx - r, dome_cy))
-    return pts, body_bot, br
+def draw_ogre_1(size=TILE):
+    """Normal enemy type 1 (levels 1–3): simple green ogre, no horns."""
+    s = _surf(size)
 
+    skin = (72, 152, 48)
+    dark = (44, 96, 26)
 
-def draw_enemy(size=TILE):
-    """Ghost sprite — pale blue-white with dark oval eyes."""
-    s   = _surf(size)
-    cx  = size // 2
-    r   = size // 2 - 4
-    dome_cy = r + 1
+    # Ears (drawn before head so head overlaps cleanly)
+    for ex in (5, 27):
+        pygame.draw.circle(s, skin, (ex, 14), 4)
+        pygame.draw.circle(s, dark, (ex, 14), 2)
 
-    pts, body_bot, _ = _ghost_pts(cx, dome_cy, r)
+    # Head
+    pygame.draw.rect(s, skin, (6, 4, 20, 22), border_radius=5)
+    pygame.draw.rect(s, dark, (6, 4, 20, 22), 1, border_radius=5)
 
-    pygame.draw.polygon(s, (195, 210, 240), pts)
-    pygame.draw.polygon(s, (120, 140, 195), pts, 1)
+    # Brow ridge
+    pygame.draw.rect(s, dark, (6, 9, 20, 3))
 
-    # Eyes
-    ey = dome_cy - r // 5
-    er = max(2, r // 4)
-    for ex in (cx - r // 3, cx + r // 3):
-        pygame.draw.ellipse(s, (30, 40, 80),
-                            (ex - er, ey - er, er * 2, int(er * 1.3)))
-        pygame.draw.circle(s, WHITE, (ex - 1, ey - 1), max(1, er // 3))
+    # Eyes — white with black pupils and a shine dot
+    for ex in (12, 20):
+        pygame.draw.circle(s, WHITE, (ex, 12), 3)
+        pygame.draw.circle(s, (20, 20, 20), (ex, 12), 2)
+        pygame.draw.circle(s, WHITE, (ex - 1, 11), 1)
+
+    # Flat nose with two nostrils
+    pygame.draw.rect(s, dark, (13, 16, 6, 3), border_radius=1)
+    pygame.draw.circle(s, (30, 70, 15), (14, 17), 1)
+    pygame.draw.circle(s, (30, 70, 15), (18, 17), 1)
+
+    # Mouth with two teeth
+    pygame.draw.rect(s, (15, 10, 5), (8, 21, 16, 5), border_radius=2)
+    pygame.draw.line(s, WHITE, (11, 21), (11, 24), 2)
+    pygame.draw.line(s, WHITE, (20, 21), (20, 24), 2)
+    pygame.draw.line(s, dark,  (9,  23), (23, 23), 1)
 
     return s
 
 
-def draw_boss(phase=0, size=TILE):
-    """Electric ghost boss — dark purple with crackling sparks (4-frame animation)."""
-    s   = _surf(size)
-    cx  = size // 2
-    r   = size // 2 - 4
-    dome_cy = r + 1
+def draw_ogre_2(size=TILE):
+    """Normal enemy type 2 (levels 4–6): orange ogre with small horns and wide grin."""
+    s = _surf(size)
 
-    pts, body_bot, br = _ghost_pts(cx, dome_cy, r)
+    skin = (200, 95, 28)
+    dark = (130, 55, 10)
+    horn = (90, 55, 20)
 
-    # ── Electric glow (semi-transparent halo) ──────────────────────────────
-    glow_alpha = (80, 100, 70, 90)[phase]
-    glow_col   = (160, 80, 255, glow_alpha)
+    # Horns
+    pygame.draw.polygon(s, horn, [(10, 5), (8,  1), (14, 5)])
+    pygame.draw.polygon(s, horn, [(22, 5), (18, 1), (24, 5)])
+    pygame.draw.line(s, (130, 80, 30), (9, 4), (11, 5), 1)
+    pygame.draw.line(s, (130, 80, 30), (21, 5), (23, 4), 1)
+
+    # Pointed ears
+    pygame.draw.polygon(s, skin, [(3, 10), (2, 17), (7, 13)])
+    pygame.draw.polygon(s, skin, [(29, 10), (30, 17), (25, 13)])
+
+    # Head
+    pygame.draw.rect(s, skin, (5, 4, 22, 22), border_radius=4)
+    pygame.draw.rect(s, dark, (5, 4, 22, 22), 1, border_radius=4)
+
+    # Angled brow (angry V-shape)
+    pygame.draw.polygon(s, dark, [(5, 9), (14, 12), (27, 9), (27, 11), (14, 14), (5, 11)])
+
+    # Eyes — yellow irises, small dark pupils
+    for ex in (12, 20):
+        pygame.draw.ellipse(s, (235, 195, 20), (ex - 3, 13, 6, 4))
+        pygame.draw.circle(s, (15, 8, 3), (ex, 15), 1)
+
+    # Flat nose
+    pygame.draw.rect(s, dark, (12, 17, 8, 4), border_radius=1)
+    pygame.draw.circle(s, (100, 45, 8), (14, 19), 1)
+    pygame.draw.circle(s, (100, 45, 8), (18, 19), 1)
+
+    # Wide grin with row of teeth and side tusks
+    pygame.draw.rect(s, (15, 8, 3), (5, 22, 22, 6), border_radius=2)
+    for tx in (8, 11, 14, 17, 20, 23):
+        pygame.draw.rect(s, WHITE, (tx, 22, 2, 3))
+    pygame.draw.polygon(s, (230, 220, 195), [(5, 22), (8, 22), (6, 27)])
+    pygame.draw.polygon(s, (230, 220, 195), [(24, 22), (27, 22), (25, 27)])
+
+    return s
+
+
+def draw_ogre_3(size=TILE):
+    """Normal enemy type 3 (levels 7–9): purple ogre, war paint, large horns, red eyes."""
+    s = _surf(size)
+
+    skin = (118, 44, 158)
+    dark = (68, 18, 98)
+    horn = (65, 42, 18)
+
+    # Large horns
+    pygame.draw.polygon(s, horn, [(9, 5), (5,  1), (13, 5)])
+    pygame.draw.polygon(s, horn, [(23, 5), (19, 1), (27, 5)])
+    pygame.draw.line(s, (100, 68, 28), (6, 3), (10, 5), 1)
+    pygame.draw.line(s, (100, 68, 28), (22, 5), (26, 3), 1)
+
+    # Ears with inner colour
+    for ex in (4, 28):
+        pygame.draw.circle(s, skin, (ex, 15), 5)
+        pygame.draw.circle(s, (180, 110, 205), (ex, 15), 2)
+
+    # Head (wider)
+    pygame.draw.rect(s, skin, (4, 4, 24, 22), border_radius=4)
+    pygame.draw.rect(s, dark, (4, 4, 24, 22), 1, border_radius=4)
+
+    # Heavy brow
+    pygame.draw.rect(s, dark, (4, 8, 24, 5))
+
+    # War-paint diagonal slashes on cheeks
+    pygame.draw.line(s, (210, 35, 35), (6,  15), (9,  20), 2)
+    pygame.draw.line(s, (210, 35, 35), (22, 15), (25, 20), 2)
+
+    # Glowing red eyes
+    for ex in (12, 20):
+        pygame.draw.circle(s, (255, 55, 25), (ex, 14), 3)
+        pygame.draw.circle(s, (255, 175, 50), (ex, 14), 1)
+
+    # Flat nose
+    pygame.draw.rect(s, dark, (11, 18, 10, 4), border_radius=1)
+    pygame.draw.circle(s, (58, 15, 80), (13, 20), 1)
+    pygame.draw.circle(s, (58, 15, 80), (19, 20), 1)
+
+    # Snarling mouth with teeth and large tusks
+    pygame.draw.rect(s, (10, 4, 15), (4, 23, 24, 5), border_radius=2)
+    for tx in (7, 10, 13, 17, 20, 23):
+        pygame.draw.rect(s, WHITE, (tx, 23, 2, 2))
+    pygame.draw.polygon(s, (230, 220, 195), [(4, 23), (8, 23), (5, 29)])
+    pygame.draw.polygon(s, (230, 220, 195), [(24, 23), (28, 23), (27, 29)])
+
+    return s
+
+
+def draw_boss_ogre(phase=0, size=TILE):
+    """Boss enemy (level 10): armoured dark-red ogre, animated glowing eyes and mouth."""
+    s = _surf(size)
+    cx = size // 2
+
+    skin  = (155, 18, 18)
+    dark  = (85,   6,  6)
+    armor = (78,  78, 92)
+    crown = GOLD
+
+    # Gold triple-pronged crown
+    pygame.draw.polygon(s, crown, [(cx - 8, 4), (cx - 6, 0), (cx - 4, 4)])
+    pygame.draw.polygon(s, crown, [(cx - 2, 4), (cx,     0), (cx + 2, 4)])
+    pygame.draw.polygon(s, crown, [(cx + 4, 4), (cx + 6, 0), (cx + 8, 4)])
+    pygame.draw.rect(s, crown, (cx - 8, 3, 16, 3))
+    pygame.draw.line(s, LTYELLOW, (cx - 8, 3), (cx + 8, 3), 1)
+
+    # Shoulder armour plates (drawn before head)
+    pygame.draw.ellipse(s, armor, ( 0, 20, 10, 10))
+    pygame.draw.ellipse(s, armor, (22, 20,  9, 10))
+    pygame.draw.ellipse(s, (115, 115, 135), ( 0, 20, 10, 10), 1)
+    pygame.draw.ellipse(s, (115, 115, 135), (22, 20,  9, 10), 1)
+
+    # Ears
+    for ex in (4, 28):
+        pygame.draw.circle(s, skin, (ex, 15), 4)
+
+    # Head
+    pygame.draw.rect(s, skin, (4, 4, 24, 22), border_radius=3)
+    pygame.draw.rect(s, dark, (4, 4, 24, 22), 1, border_radius=3)
+
+    # Armoured brow plate
+    pygame.draw.rect(s, armor, (4, 8, 24, 5))
+    pygame.draw.rect(s, (115, 115, 135), (4, 8, 24, 5), 1)
+
+    # Facial scar
+    pygame.draw.line(s, (80, 5, 5), (10, 10), (18, 20), 1)
+
+    # Animated eyes — size and colour cycle across phases
+    eye_radii  = (3, 4, 3, 4)
+    eye_colors = [(255, 70, 20), (255, 160, 30), (220, 40, 10), (255, 230, 60)]
+    er = eye_radii[phase]
+    ec = eye_colors[phase]
     glow = pygame.Surface((size, size), pygame.SRCALPHA)
-    pygame.draw.circle(glow, glow_col, (cx, dome_cy), r + 5)
-    pygame.draw.rect(glow,  glow_col, (cx - r - 3, dome_cy, (r + 3) * 2, r + 3))
+    for ex in (12, 20):
+        pygame.draw.circle(glow, (*ec, 90), (ex, 14), er + 3)
     s.blit(glow, (0, 0))
+    for ex in (12, 20):
+        pygame.draw.circle(s, ec, (ex, 14), er)
+        pygame.draw.circle(s, WHITE, (ex - 1, 13), max(1, er - 2))
 
-    # ── Ghost body ─────────────────────────────────────────────────────────
-    pygame.draw.polygon(s, (55, 15, 100), pts)
-    ec = ((150, 70, 255), (200, 130, 255), (120, 50, 230), (180, 100, 255))[phase]
-    pygame.draw.polygon(s, ec, pts, 2)
+    # Nose
+    pygame.draw.rect(s, dark, (12, 18, 8, 4), border_radius=1)
+    pygame.draw.circle(s, (70, 4, 4), (14, 20), 1)
+    pygame.draw.circle(s, (70, 4, 4), (18, 20), 1)
 
-    # ── Electric sparks (three per frame, positions cycle with phase) ──────
-    # Each entry: (origin_x, origin_y, end_dx, end_dy, zigzag_dx, zigzag_dy)
-    spark_sets = [
-        [(cx,     dome_cy - r - 1,  0,  -6,  3,  -3),
-         (cx + r, dome_cy - r // 2,  5,  -3, -2,   2),
-         (cx - r, dome_cy + r // 2, -5,   2,  2,  -3)],
-        [(cx,     dome_cy - r - 1,  0,  -6, -3,  -3),
-         (cx + r, dome_cy,           6,   0,  2,   3),
-         (cx - r, dome_cy - r // 2, -5,  -3, -2,   2)],
-        [(cx + r // 2, dome_cy - r,  3,  -5, -3,  -2),
-         (cx - r // 2, dome_cy - r, -3,  -5,  3,  -2),
-         (cx + r,      dome_cy,      6,   1, -2,   3)],
-        [(cx,     dome_cy - r - 1,  0,  -5,  2,  -4),
-         (cx + r, dome_cy - r // 3,  5,  -2,  2,   3),
-         (cx - r, dome_cy - r // 3, -5,  -2, -2,   3)],
-    ]
-    sc = ((255, 240, 60), (220, 200, 255), (255, 250, 80), (200, 180, 255))[phase]
-    for ox, oy, ex, ey, zx, zy in spark_sets[phase]:
-        mid = (ox + ex // 2 + zx, oy + ey // 2 + zy)
-        pygame.draw.lines(s, sc, False, [(ox, oy), mid, (ox + ex, oy + ey)], 2)
-
-    # ── Glowing eyes ───────────────────────────────────────────────────────
-    ey_y = dome_cy - r // 5
-    er   = max(2, r // 4)
-    eye_col = ((255, 230, 50), (255, 255, 160), (255, 220, 40), (255, 240, 130))[phase]
-    for ex_pos in (cx - r // 3, cx + r // 3):
-        pygame.draw.circle(s, eye_col, (ex_pos, ey_y), er)
-        pygame.draw.circle(s, WHITE,   (ex_pos - 1, ey_y - 1), max(1, er // 3))
+    # Animated mouth: open on phases 1 and 3
+    mouth_open = phase in (1, 3)
+    pygame.draw.rect(s, (8, 2, 2), (4, 22, 24, 7 if mouth_open else 5), border_radius=2)
+    if mouth_open:
+        for tx in (7, 10, 13, 17, 20, 23):
+            pygame.draw.rect(s, WHITE, (tx, 22, 2, 3))
+        for tx in (8, 12, 16, 20):
+            pygame.draw.rect(s, (210, 200, 180), (tx, 26, 2, 3))
+    else:
+        for tx in (8, 12, 16, 20):
+            pygame.draw.rect(s, WHITE, (tx, 22, 2, 3))
+    pygame.draw.polygon(s, (235, 225, 200), [(4, 22), (8, 22), (5, 28)])
+    pygame.draw.polygon(s, (235, 225, 200), [(24, 22), (28, 22), (27, 28)])
 
     return s
 
@@ -480,11 +589,13 @@ def create_sprites():
         'crack2':        draw_damage_cracks(2),
         'floor':         draw_floor(),
         'player':        draw_player(),
-        'enemy':         draw_enemy(),
-        'boss_0':        draw_boss(0),
-        'boss_1':        draw_boss(1),
-        'boss_2':        draw_boss(2),
-        'boss_3':        draw_boss(3),
+        'enemy_1':       draw_ogre_1(),
+        'enemy_2':       draw_ogre_2(),
+        'enemy_3':       draw_ogre_3(),
+        'boss_0':        draw_boss_ogre(0),
+        'boss_1':        draw_boss_ogre(1),
+        'boss_2':        draw_boss_ogre(2),
+        'boss_3':        draw_boss_ogre(3),
         'shield':        draw_shield_overlay(),
         1:               draw_coin(),
         2:               draw_big_diamond(),
