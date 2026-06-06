@@ -90,6 +90,32 @@ Being caught without a shield costs 500 points and one life.
 
 ---
 
+## Building a Linux executable
+
+No cross-compilation needed — PyInstaller runs natively.
+
+### One-time setup
+
+```bash
+.venv/bin/pip install pyinstaller
+```
+
+### Building
+
+```bash
+.venv/bin/pyinstaller --onefile --noconsole --name uglycraft main.py
+```
+
+Output: `dist/uglycraft` (~41 MB, self-contained).
+
+### Testing
+
+```bash
+dist/uglycraft
+```
+
+---
+
 ## Building a Windows executable (from Linux)
 
 ### One-time setup

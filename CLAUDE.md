@@ -2,11 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Building for Windows
+## Building distributables
 
-Use the `/build-windows` skill to produce `dist/uglycraft.exe` via Wine + PyInstaller.
-One-time setup (Wine, Python 3.13 under Wine, pip deps) is documented in **README.md**.
-Python 3.13 is required — pygame has no Windows wheels for 3.14 yet.
+Use the skills below to produce standalone executables; full setup instructions in **README.md**.
+
+- `/build-linux` — produces `dist/uglycraft` (~41 MB) using the project `.venv` directly
+- `/build-windows` — produces `dist/uglycraft.exe` (~25 MB) via Wine + PyInstaller;
+  requires one-time setup (Wine, Python 3.13 under Wine, pip deps); Python 3.13 is used
+  because pygame has no Windows wheels for 3.14 yet
 
 ## Current version
 
