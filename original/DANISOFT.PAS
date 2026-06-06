@@ -1,10 +1,21 @@
 unit DANISOFT;
 interface
-uses Crt,Extra1;
+uses Crt;
 
 procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;Nr,User,copyjahr:String);
 
 implementation
+
+function Zentriert(s:String) : String;
+var Laenge,Blanks,i : Integer;
+    BlankZone : String;
+Begin
+  Laenge := Length(s);
+  Blanks := 39 - (Laenge DIV 2);
+  BlankZone := '';
+  For I := 1 to Blanks do BlankZone := BlankZone + ' ';
+  Zentriert := BlankZone + s;
+End;
 
 procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;
                     Nr,User,copyjahr:String);
