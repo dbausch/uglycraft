@@ -16,7 +16,6 @@ STORY       = 'story'
 LEVEL_INTRO = 'level_intro'
 PLAYING     = 'playing'
 PAUSED      = 'paused'
-SHOP        = 'shop'
 GAME_OVER   = 'game_over'
 WIN         = 'win'
 ENTER_SCORE = 'enter_score'
@@ -114,6 +113,7 @@ class Game:
         self.level        = 0
         self.item_no         = 0
         self.shield       = False
+        self._shield_timer = 0
         self.move_ms      = BASE_MOVE_MS
         self.enemy_ms     = BASE_ENEMY_MS  # overridden to BOSS_MOVE_MS on level 10
         self._placed_walls  = set()
@@ -144,6 +144,7 @@ class Game:
         self.enemies = [Enemy(ec, er) for ec, er in active]
         self.enemy_ms = BOSS_MOVE_MS if level_num == NUM_LEVELS else BASE_ENEMY_MS
         self.shield = False
+        self._shield_timer = 0
         self._spawn_treasure()
         self._move_timer   = 0
         self._enemy_timer  = 0
@@ -236,9 +237,6 @@ class Game:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.state = PLAYING
 
-        elif self.state == SHOP:
-            self._shop_event(event)
-
         elif self.state in (GAME_OVER, WIN):
             if event.type == pygame.KEYDOWN:
                 self.try_enter_score()
@@ -274,7 +272,7 @@ class Game:
             elif k == pygame.K_p:
                 self.state = PAUSED
             elif k == pygame.K_RETURN:
-                self.state = SHOP
+                self._buy_shield()
             elif k == pygame.K_SPACE:
                 self._place_wall()
             elif k == pygame.K_F10:
@@ -289,17 +287,11 @@ class Game:
             self._key_repeat.pop(event.key, None)
             self._bump_consumed.discard(event.key)  # key released → next press can bump
 
-    def _shop_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_1:
-                if self.score >= SHIELD_COST_PTS and not self.shield:
-                    self.shield = True
-                    self.score -= SHIELD_COST_PTS
-            elif event.key == pygame.K_2:
-                if self.score >= LIFE_COST_PTS:
-                    self.lives += 1
-                    self.score -= LIFE_COST_PTS
-            self.state = PLAYING
+    def _buy_shield(self):
+        if not self.shield and self.score >= SHIELD_COST_PTS:
+            self.shield = True
+            self._shield_timer = SHIELD_DURATION_MS
+            self.score -= SHIELD_COST_PTS
 
     def _enter_score_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -353,10 +345,16 @@ class Game:
         self._intro_timer = 2000
         self.state = LEVEL_INTRO
 
-    def _lose_life(self):
+    def _on_caught(self, enemy):
+        """Handle player-enemy collision: respawn the enemy far away, then apply hit."""
+        self._respawn_enemy(enemy)
         if self.shield:
             self.shield = False
-            return
+            self._shield_timer = 0
+        else:
+            self._lose_life()
+
+    def _lose_life(self):
         self.score = max(0, self.score - LIFE_PENALTY)
         self.lives -= 1
         self._flash_timer = 600
@@ -365,24 +363,26 @@ class Game:
         else:
             data = LEVELS[self.level - 1]
             self.player.col, self.player.row = data['player_start']
-            active = data['enemy_starts'] if (self.difficulty == HARD
-                                              and self.level < NUM_LEVELS) \
-                     else data['enemy_starts'][:1]
-            for enemy, (ec, er) in zip(self.enemies, active):
-                enemy.col, enemy.row = ec, er
 
-    def _respawn_boss(self):
-        """Defeat the boss (shield hit) — teleport it to a random reachable tile."""
-        boss = self.enemies[0]
+    def _respawn_enemy(self, enemy):
+        """Teleport enemy to a tile at significant BFS distance from the player."""
         dist = self._bfs_from(self.player.col, self.player.row)
+        others = {(e.col, e.row) for e in self.enemies if e is not enemy}
         candidates = [
             pos for pos, d in dist.items()
-            if d > 4                               # not too close to player
+            if d >= 8
             and pos != self.treasure_pos
-            and pos not in {(e.col, e.row) for e in self.enemies}
+            and pos not in others
         ]
+        if not candidates:
+            candidates = [
+                pos for pos, d in dist.items()
+                if d >= 4
+                and pos != self.treasure_pos
+                and pos not in others
+            ]
         if candidates:
-            boss.col, boss.row = random.choice(candidates)
+            enemy.col, enemy.row = random.choice(candidates)
 
     def _end_game(self, won):
         self._final_score = self.score * max(1, self.lives)
@@ -405,6 +405,12 @@ class Game:
     def _update_playing(self, dt):
         if self._flash_timer > 0:
             self._flash_timer -= dt
+
+        if self._shield_timer > 0:
+            self._shield_timer -= dt
+            if self._shield_timer <= 0:
+                self._shield_timer = 0
+                self.shield = False
 
         # Key repeat
         now = pygame.time.get_ticks()
@@ -442,12 +448,7 @@ class Game:
         # Collision: any enemy catches player
         for enemy in self.enemies:
             if enemy.col == self.player.col and enemy.row == self.player.row:
-                if self.level == NUM_LEVELS and self.shield:
-                    # Shield defeats the boss — it respawns instead of killing player
-                    self.shield = False
-                    self._respawn_boss()
-                else:
-                    self._lose_life()
+                self._on_caught(enemy)
                 return
 
         # Treasure collection
@@ -482,10 +483,6 @@ class Game:
             self._render_field()
             self._render_hud()
             self._render_overlay_text("PAUSED", sub="[P] to resume")
-        elif self.state == SHOP:
-            self._render_field()
-            self._render_hud()
-            self._render_shop()
         elif self.state == GAME_OVER:
             self._render_field()
             self._render_hud()
@@ -570,7 +567,8 @@ class Game:
             (f"WALLS {self._place_credits:>2}",      wall_color),
         ]
         if self.shield:
-            elems.append(("SHIELD", LTBLUE))
+            secs = max(1, (self._shield_timer + 999) // 1000)
+            elems.append((f"SHIELD {secs}s", LTBLUE))
         if self.level == NUM_LEVELS:
             elems.append(("BOSS", MAGENTA))
         elif self.difficulty == HARD:
@@ -664,7 +662,7 @@ class Game:
         lines = [
             ("Arrow keys", "move  (bump a wall 3× to mine it)"),
             ("Space",      "place wall  (costs 1 credit)"),
-            ("Enter",      "shop (shield / extra life)"),
+            ("Enter",      "buy shield  (250 pts, lasts 10 s)"),
             ("P",          "pause"),
         ]
         gap = 14
@@ -738,34 +736,6 @@ class Game:
             font  = self.font_big if i == 0 else self.font_med
             img   = font.render(line, True, color)
             self.surf.blit(img, (LOGICAL_W // 2 - img.get_width() // 2, 60 + i * 40))
-
-    # ── Shop overlay ─────────────────────────────────────────────────────────
-
-    def _render_shop(self):
-        overlay = pygame.Surface((LOGICAL_W, ROWS * TILE), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        self.surf.blit(overlay, (0, 0))
-
-        bw, bh = 480, 160
-        bx = (LOGICAL_W - bw) // 2
-        by = (ROWS * TILE - bh) // 2
-        pygame.draw.rect(self.surf, (20, 20, 50), (bx, by, bw, bh), border_radius=8)
-        pygame.draw.rect(self.surf, GOLD, (bx, by, bw, bh), 2, border_radius=8)
-
-        title = self.font_big.render("SHOP", True, GOLD)
-        self.surf.blit(title, (LOGICAL_W // 2 - title.get_width() // 2, by + 10))
-
-        shield_col = GRAY if self.shield else WHITE
-        items = [
-            (f"[1] Shield — absorbs one hit          {SHIELD_COST_PTS} pts", shield_col),
-            (f"[2] Extra life                        {LIFE_COST_PTS} pts", WHITE),
-        ]
-        for i, (txt, col) in enumerate(items):
-            img = self.font_small.render(txt, True, col)
-            self.surf.blit(img, (bx + 16, by + 60 + i * 30))
-
-        note = self.font_small.render(f"Your score: {self.score}  (any other key: close)", True, GRAY)
-        self.surf.blit(note, (bx + 16, by + 130))
 
     # ── Score entry ───────────────────────────────────────────────────────────
 
