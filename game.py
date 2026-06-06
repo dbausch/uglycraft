@@ -623,17 +623,36 @@ class Game:
         char_w = 54
         total_w = char_w * len(title)
         start_x = (LOGICAL_W - total_w) // 2
-        base_y   = 120
+        base_y  = 120
+        sp = self.sprites
 
+        wave_ys = [int(12 * abs(((t * 2 + i * 0.4) % 2) - 1)) for i in range(len(title))]
+
+        font_h = self.font_title.get_height()
         for i, ch in enumerate(title):
-            wave_y = int(12 * abs(((t * 2 + i * 0.4) % 2) - 1))
-            color  = colors[i % len(colors)]
+            color = colors[i % len(colors)]
             img = self.font_title.render(ch, True, color)
-            self.surf.blit(img, (start_x + i * char_w, base_y - wave_y))
+            self.surf.blit(img, (start_x + i * char_w, base_y - wave_ys[i]))
 
-        # Subtitle
+        # Items 1–9 below each letter, waving with it
+        for i in range(9):
+            ix = start_x + i * char_w + (char_w - TILE) // 2
+            iy = base_y - wave_ys[i] + font_h + 4
+            self.surf.blit(sp[i + 1], (ix, iy))
+
+        # Crown above the "C" (index 4 in "UGLYCRAFT"), riding its wave
+        c_idx = title.index('C')
+        self.surf.blit(sp[10],
+                       (start_x + c_idx * char_w + (char_w - TILE) // 2,
+                        base_y - wave_ys[c_idx] - TILE - 4))
+
+        # Subtitle and instructions sit below the item row (wave_y=0 is the lowest point)
+        item_row_bottom = base_y + font_h + 4 + TILE
+        sub_y   = item_row_bottom + 12
+        instr_y = sub_y + 34
+
         sub = self.font_med.render("Inspired by UGLI (1996)", True, GRAY)
-        self.surf.blit(sub, (LOGICAL_W // 2 - sub.get_width() // 2, 210))
+        self.surf.blit(sub, (LOGICAL_W // 2 - sub.get_width() // 2, sub_y))
 
         # Instructions — measure first, then centre the two-column block
         lines = [
@@ -649,7 +668,7 @@ class Game:
         max_desc_w = max(di.get_width() for _, di in rendered)
         block_x = (LOGICAL_W - max_key_w - gap - max_desc_w) // 2
         for i, (ki, di) in enumerate(rendered):
-            ky = 280 + i * 26
+            ky = instr_y + i * 26
             self.surf.blit(ki, (block_x + max_key_w - ki.get_width(), ky))
             self.surf.blit(di, (block_x + max_key_w + gap, ky))
 
