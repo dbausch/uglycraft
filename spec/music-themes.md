@@ -1,5 +1,15 @@
 # Level Music Themes
 
+## Overview
+
+| # | Deliverable | Status |
+|---|---|---|
+| 1 | 10 composed melodic themes (64 MIDI pitches each) in `_LEVEL_THEMES` | ✓ |
+| 2 | Themes replace mechanical arpeggio patterns in `_make_music_track()` | ✓ |
+| 3 | L10 boss theme uses half-bar tritone arpeggio instead of a melody | ✓ |
+| 4 | Title screen theme (D minor, 80 BPM, 4 bars) in `_make_title_music()` | ✓ |
+| 5 | Win screen theme (C major, 108 BPM, 4 bars) in `_make_win_music()` | ✓ |
+
 Ten composed melodic themes, one per level.  Each theme is 64 eighth-note
 slots (8 bars × 8 steps) stored as absolute MIDI pitches in `_LEVEL_THEMES`
 in `sounds.py`.  -1 = rest.
@@ -239,4 +249,48 @@ Bar 5 (root B3=59):   65 -1 59 -1  65 -1 59 -1   (F4 – B3 – | F4 – B3 –)
 Bar 6 (root Ab3=56):  62 -1 56 -1  62 -1 56 -1   (D4 – Ab3– | D4 – Ab3–)
 Bar 7 (root B3=59):   65 -1 59 -1  65 -1 59 -1   (F4 – B3 – | F4 – B3 –)
 Bar 8 (root D4=62):   68 -1 62 -1  68 -1 62 -1   (Ab4– D4 – | Ab4– D4 –)
+```
+
+---
+
+## Title screen — D Natural Minor, 80 BPM
+
+**Character:** Dark, stately, epic.  A stepwise descent with upward lifts —
+memorable on first listen, bearable after many loops.  Slower than any
+level track to feel deliberate and dramatic.
+
+**Orchestration:** Thick detuned strings in two octaves, low triangle bass
+(root/fifth alternation), square brass pedal on bar downbeats, timpani on
+bars 1 & 3, pulse-wave lead with an upper-harmonic doubling (freq × 2).
+
+**Harmony:** Dm – F – Gm – A
+
+**Melody (MIDI):**
+```
+Bar 1 Dm:  74 72 70 69  67 65 67 69   (D5 C5 Bb4 A4 | G4 F4 G4 A4)
+Bar 2 F:   70 69 67 65  64 62 -1 -1   (Bb4 A4 G4 F4 | E4 D4 _ _)
+Bar 3 Gm:  67 69 70 72  70 69 67 65   (G4 A4 Bb4 C5 | Bb4 A4 G4 F4)
+Bar 4 A:   69 -1 74 72  69 -1 74 -1   (A4 _ D5 C5 | A4 _ D5 _)
+```
+
+---
+
+## Win screen — C Major, 108 BPM
+
+**Character:** Joyful but not pompous.  Opens with a rising C major arpeggio
+(classic fanfare gesture), descends warmly through Am and F, then climbs
+back for a satisfying G→C resolution.  Faster than the title (108 vs 80 BPM)
+to feel celebratory and light.
+
+**Orchestration:** Same as the title screen — strings in two octaves, triangle
+bass, square brass pedal, timpani on bars 1 & 3, pulse-wave lead.
+
+**Harmony:** C – Am – F – G
+
+**Melody (MIDI):**
+```
+Bar 1 C:   67 72 76 79  79 76 74 72   (G4 C5 E5 G5 | G5 E5 D5 C5)
+Bar 2 Am:  76 69 72 76  74 72 71 69   (E5 A4 C5 E5 | D5 C5 B4 A4)
+Bar 3 F:   65 69 72 77  76 74 72 74   (F4 A4 C5 F5 | E5 D5 C5 D5)
+Bar 4 G:   67 74 79 74  79 76 72 -1   (G4 D5 G5 D5 | G5 E5 C5 _)
 ```

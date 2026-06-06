@@ -4,10 +4,10 @@
 
 | # | Deliverable | Status |
 |---|---|---|
-| 1 | Ghost sprites removed; replaced by three distinct ogre sprites | ✗ |
-| 2 | Boss ghost replaced by animated boss ogre (4 phases) | ✗ |
-| 3 | Enemy sprite selection by level group (1–3 / 4–6 / 7–9 / 10) | ✗ |
-| 4 | All four enemy types shown in title-screen corners, bouncing randomly | ✗ |
+| 1 | Ghost sprites removed; replaced by three distinct ogre sprites | ✓ |
+| 2 | Boss ghost replaced by animated boss ogre (4 phases) | ✓ |
+| 3 | Enemy sprite selection by level group (1–3 / 4–6 / 7–9 / 10) | ✓ |
+| 4 | All four enemy types shown in title-screen corners, bouncing randomly | ✓ |
 
 ## Design
 
@@ -34,7 +34,7 @@ for level 10.
 - Boss uses the same 4-phase animation as in-game.
 
 ## Done when:
-1. ✗ `draw_enemy()` and `draw_boss()` removed; `draw_ogre_1/2/3()` and `draw_boss_ogre(phase)` in place.
-2. ✗ `create_sprites()` exposes `enemy_1`, `enemy_2`, `enemy_3`, `boss_0`–`boss_3`.
-3. ✗ `_render_field()` picks the right sprite key for the current level.
-4. ✗ `_title_init()` sets up 4 corner ogre states; `update()` moves them; `_render_title()` draws them.
+1. ✓ `draw_enemy()` and `draw_boss()` removed; `draw_ogre_1/2/3()` and `draw_boss_ogre(phase)` in place. — 5ea193c
+2. ✓ `create_sprites()` exposes `enemy_1`, `enemy_2`, `enemy_3`, `boss_0`–`boss_3`. — 5ea193c
+3. ✓ `_render_field()` picks the right sprite key for the current level. — 145b565
+4. ✓ `_title_init()` sets up 4 corner ogre states; `update()` moves them; `_render_title()` draws them. — 145b565, 7bf3699, 05cd46e, 457d790

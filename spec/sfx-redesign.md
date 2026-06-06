@@ -4,11 +4,11 @@
 
 | # | Deliverable | Status |
 |---|---|---|
-| 1 | `_fm()` helper — FM synthesis voice | ✗ |
-| 2 | `_saturate()` helper — tanh waveshaper, applied to every SFX | ✗ |
-| 3 | `_impact()` helper — noise transient + resonant sine tail | ✗ |
-| 4 | Percussive SFX rebuilt with `_impact` (move, bump, break, place_wall, caught, item_hit) | ✗ |
-| 5 | Tonal SFX rebuilt with FM (collect, credit, shield_buy, shield_expire, caught_shield, level_up, game_over, boss_appear) | ✗ |
+| 1 | `_fm()` helper — FM synthesis voice | ✓ |
+| 2 | `_saturate()` helper — tanh waveshaper, applied to every SFX | ✓ |
+| 3 | `_impact()` helper — noise transient + resonant sine tail | ✓ |
+| 4 | Percussive SFX rebuilt with `_impact` (move, bump, break, place_wall, caught, item_hit) | ✓ |
+| 5 | Tonal SFX rebuilt with FM (collect, credit, shield_buy, shield_expire, caught_shield, level_up, game_over, boss_appear) | ✓ |
 
 ## Design
 
@@ -49,8 +49,8 @@ Physical model: white-noise burst with exponential decay (transient attack)
 
 ## Done when:
 
-1. ✗ All SFX audibly distinct from chiptune square/triangle sources.
-2. ✗ Impact SFX (move/bump/break/place_wall) sound physically grounded.
-3. ✗ FM SFX (collect/credit/shields/level_up/game_over) have metallic/harmonic complexity.
-4. ✗ Tanh saturation gives consistent grit across all sounds.
-5. ✗ `SoundManager._ok` still True after change; game runs without errors.
+1. ✓ All SFX audibly distinct from chiptune square/triangle sources. — f8e0938
+2. ✓ Impact SFX (move/bump/break/place_wall) sound physically grounded. — f8e0938
+3. ✓ FM SFX (collect/credit/shields/level_up/game_over) have metallic/harmonic complexity. — f8e0938
+4. ✓ Tanh saturation gives consistent grit across all sounds. — f8e0938
+5. ✓ `SoundManager._ok` still True after change; game runs without errors. — f8e0938
