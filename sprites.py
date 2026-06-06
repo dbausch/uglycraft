@@ -216,16 +216,25 @@ def draw_boss(phase=0, size=TILE):
 
 # ── Treasure sprites ──────────────────────────────────────────────────────────
 
-def draw_rope(size=TILE):
-    """item_no=1: brown rope with knots"""
+def draw_coin(size=TILE):
+    """item_no=1: gold coin"""
     s = _surf(size)
-    cx = size // 2
-    for y in range(2, size - 2):
-        offset = 1 if (y // 3) % 2 == 0 else -1
-        pygame.draw.circle(s, BROWN, (cx + offset, y), 2)
-    for ky in (size // 5, size // 2, 4 * size // 5):
-        pygame.draw.circle(s, (190, 110, 50), (cx, ky), 3)
-        pygame.draw.circle(s, DKBROWN, (cx, ky), 3, 1)
+    cx, cy = size // 2, size // 2
+    r = size // 2 - 3
+    # Outer rim (slightly darker)
+    pygame.draw.circle(s, (160, 120, 20), (cx, cy), r)
+    # Main face
+    pygame.draw.circle(s, GOLD, (cx, cy), r - 2)
+    # Raised rim highlight
+    pygame.draw.circle(s, (255, 225, 70), (cx, cy), r - 2, 2)
+    # Inner circle for relief detail
+    pygame.draw.circle(s, (190, 150, 30), (cx, cy), r - 6)
+    # Shine spot
+    pygame.draw.circle(s, CREAM, (cx - r // 3, cy - r // 3), max(2, r // 5))
+    # Bottom shadow arc
+    pygame.draw.arc(s, (130, 100, 10),
+                    pygame.Rect(cx - r + 2, cy - r + 2, (r - 2) * 2, (r - 2) * 2),
+                    math.radians(250), math.radians(350), 2)
     return s
 
 
@@ -243,15 +252,23 @@ def draw_big_diamond(size=TILE):
 
 
 def draw_small_gems(size=TILE):
-    """item_no=3: two small red gems"""
+    """item_no=3: scattered colorful gems of varying size"""
     s = _surf(size)
-    for gx in (size // 4, 3 * size // 4):
-        gy = size // 2
-        r = size // 6
-        pts = [(gx, gy - r), (gx + r, gy), (gx, gy + r), (gx - r, gy)]
-        pygame.draw.polygon(s, (220, 55, 80), pts)
-        pygame.draw.polygon(s, (255, 140, 155), pts, 1)
-        pygame.draw.circle(s, WHITE, (gx - 1, gy - 2), 1)
+    # (x, y, radius, color) — fixed layout, different colors and sizes
+    gems = [
+        ( 8,  7, 4, (220,  50,  80)),   # red
+        (23,  6, 3, ( 50, 160, 255)),   # blue
+        (16, 15, 5, ( 50, 210,  70)),   # green, largest
+        ( 6, 21, 3, (255, 200,  40)),   # yellow
+        (25, 19, 4, (190,  70, 255)),   # purple
+        (14, 25, 3, ( 60, 220, 210)),   # cyan
+    ]
+    for gx, gy, gr, color in gems:
+        pts = [(gx, gy - gr), (gx + gr, gy), (gx, gy + gr), (gx - gr, gy)]
+        pygame.draw.polygon(s, color, pts)
+        edge = tuple(min(255, c + 70) for c in color)
+        pygame.draw.polygon(s, edge, pts, 1)
+        pygame.draw.circle(s, WHITE, (gx - 1, gy - 1), max(1, gr // 3))
     return s
 
 
@@ -297,21 +314,31 @@ def draw_silver_bar(size=TILE):
     return s
 
 
-def draw_well(size=TILE):
-    """item_no=7: well/bucket in teal"""
+def draw_necklace(size=TILE):
+    """item_no=7: gold chain necklace with gem pendant"""
     s = _surf(size)
-    # Bucket body (trapezoid)
-    pts = [(6, 9), (size - 6, 9), (size - 4, size - 5), (4, size - 5)]
-    pygame.draw.polygon(s, (0, 155, 175), pts)
-    pygame.draw.polygon(s, (0, 210, 230), pts, 2)
-    # Bands
-    for by in (14, 20):
-        pygame.draw.line(s, (0, 90, 110), (6, by), (size - 6, by), 1)
-    # Rim
-    pygame.draw.rect(s, (0, 180, 200), (3, 7, size - 6, 4), border_radius=1)
-    # Handle arc
-    pygame.draw.arc(s, (80, 90, 100),
-                    pygame.Rect(8, 1, size - 16, 12), 0, math.pi, 2)
+    cx = size // 2
+    # Chain: 9 beads along a downward-dipping quadratic bezier arc
+    n  = 9
+    x0, y0 = 4,        6   # left end
+    xm, ym = cx,      17   # midpoint (lowest)
+    x1, y1 = size - 4, 6   # right end
+    for i in range(n):
+        t  = i / (n - 1)
+        bx = int((1 - t) ** 2 * x0 + 2 * (1 - t) * t * xm + t ** 2 * x1)
+        by = int((1 - t) ** 2 * y0 + 2 * (1 - t) * t * ym + t ** 2 * y1)
+        pygame.draw.circle(s, GOLD, (bx, by), 2)
+        pygame.draw.circle(s, LTYELLOW, (bx - 1, by - 1), 1)
+    # Short drop from lowest bead to pendant
+    drop_top = ym + 2
+    pygame.draw.line(s, GOLD, (cx, ym), (cx, drop_top), 1)
+    # Pendant: teardrop diamond gem
+    pr = 5
+    py = drop_top + pr
+    pts = [(cx, drop_top), (cx + pr, py), (cx, py + pr + 1), (cx - pr, py)]
+    pygame.draw.polygon(s, (200, 60, 220), pts)    # purple
+    pygame.draw.polygon(s, (240, 150, 255), pts, 1)
+    pygame.draw.circle(s, WHITE, (cx - 1, py - 2), 1)
     return s
 
 
@@ -415,13 +442,13 @@ def create_sprites():
         'boss_2':        draw_boss(2),
         'boss_3':        draw_boss(3),
         'shield':        draw_shield_overlay(),
-        1:               draw_rope(),
+        1:               draw_coin(),
         2:               draw_big_diamond(),
         3:               draw_small_gems(),
         4:               draw_small_diamond(),
         5:               draw_gold_bar(),
         6:               draw_silver_bar(),
-        7:               draw_well(),
+        7:               draw_necklace(),
         8:               draw_lamp(),
         9:               draw_big_gem(),
         10:              draw_crown(),
