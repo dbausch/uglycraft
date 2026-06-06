@@ -53,7 +53,9 @@ In debug mode the high-score entry screen is suppressed.
 
 **Scoring:** Points on collection (100/200/…/900 for item_no 1–9, 1000 for the Crown on level 10). Final score = accumulated score × lives remaining. High scores record both the score and the level reached.
 
-**Lives:** Start with 9. +1 on each level clear. On caught: if shielded → absorb (no life loss); else lose a life and deduct `LIFE_PENALTY` pts (min 0).
+**Lives:** Start with 9. +1 on each level clear. On caught: if shielded → shield consumed, no life lost, hitting enemy respawned far away; else lose a life, deduct `LIFE_PENALTY` pts (min 0), player returns to level start, hitting enemy still respawned far away.
+
+**Shield:** Press Enter in-game to instantly buy a shield for `SHIELD_COST_PTS` pts (requires score ≥ cost, no shield already active). Shield lasts `SHIELD_DURATION_MS` ms then expires automatically. HUD shows remaining seconds.
 
 **Wall mechanics:** Inner walls have hit points (`WALL_HITS_TO_BREAK = 3`). Bumping a wall damages it; after enough hits it breaks. Every `BREAKS_PER_CREDIT = 2` walls destroyed earns one wall-placement credit. Space places a wall at the player's tile (costs 1 credit).
 
@@ -73,15 +75,15 @@ In debug mode the high-score entry screen is suppressed.
 | `STARTING_LIVES` | 9 | Lives at game start |
 | `WALL_HITS_TO_BREAK` | 3 | Bumps to destroy one inner wall |
 | `BREAKS_PER_CREDIT` | 2 | Walls destroyed per placement credit earned |
-| `SHIELD_COST_PTS` | 1000 | Shop: shield cost |
-| `LIFE_COST_PTS` | 5000 | Shop: extra life cost |
+| `SHIELD_COST_PTS` | 250 | Instant shield cost (Enter key) |
+| `SHIELD_DURATION_MS` | 10000 | Shield lifetime in ms |
 | `LIFE_PENALTY` | 500 | Flat points lost on death |
 | `FPS` | 30 | Frame rate cap |
 
 ## Game states
 
 ```
-TITLE → DIFFICULTY → LEVEL_INTRO → PLAYING ↔ PAUSED / SHOP
+TITLE → DIFFICULTY → LEVEL_INTRO → PLAYING ↔ PAUSED
                                        ↓
                                 GAME_OVER / WIN → ENTER_SCORE → SHOW_SCORES → PLAY_AGAIN
                                                ↘ SHOW_SCORES ↗  (if score doesn't qualify)
@@ -107,16 +109,8 @@ A `STORY` state exists in code but is not reachable from the UI.
 |---|---|
 | Arrow keys | Move (held = auto-repeat after 180 ms, then every 80 ms); bump a wall 3× to mine it |
 | Space | Place wall at player's tile (costs 1 placement credit) |
-| Enter | Open shop |
+| Enter | Buy shield instantly (250 pts, lasts 10 s) |
 | P | Pause / unpause |
 | Escape | Go to "play again?" prompt |
 | F10 | Cheat: skip to next level |
 | F11 | Toggle fullscreen |
-
-**Shop**
-
-| Key | Action |
-|---|---|
-| 1 | Buy shield (1000 pts) |
-| 2 | Buy extra life (5000 pts) |
-| Any other key | Close shop without buying |
