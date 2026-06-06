@@ -1,4 +1,16 @@
+[project]
+name        = "uglycraft"
+version     = "1.0"
+description = "A remake of UGLI (1993), a DOS maze-chase game"
+authors     = [{name = "Daniel Bausch", email = "db@edv-bausch.de"}]
+requires-python = ">=3.10"
+dependencies    = ["pygame>=2.0", "numpy"]
+
 [tool.poe.tasks]
+
+[tool.poe.tasks.install]
+help  = "Create venv and install all dependencies"
+shell = "python3 -m venv .venv && .venv/bin/pip install pygame numpy poethepoet pyinstaller"
 
 [tool.poe.tasks.run]
 help = "Run the game"
