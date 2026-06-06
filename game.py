@@ -203,12 +203,14 @@ class Game:
         ]
         if open_tiles:
             self.treasure_pos = random.choice(open_tiles)
+            self.sounds.play('item_hit')
 
     # ── Title screen ─────────────────────────────────────────────────────────
 
     def _title_init(self):
         self.state = TITLE
         self._title_ms = 0
+        self.sounds.start_music('title')
         # One ogre per corner: [x, y, vx, vy] (floats; px and px/s).
         # Bounds are sprite top-left ranges keeping the 32×32 sprite inside its corner.
         # TL=ogre1, TR=ogre2, BL=ogre3, BR=boss
