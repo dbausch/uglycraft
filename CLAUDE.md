@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current version
+
+**v0.9** — bump this whenever a new git tag is created.
+
 ## What this is
 
 This repo contains two things:
