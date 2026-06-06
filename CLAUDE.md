@@ -8,14 +8,21 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). Run via `.venv/bin/poe
 
 | Task | Action |
 |---|---|
+| `poe install` | Create venv and install all dependencies |
 | `poe run` | Run the game |
 | `poe run-level N` | Run starting at level N |
-| `poe build-linux` | Build `dist/uglycraft` (~41 MB) |
-| `poe build-windows` | Build `dist/uglycraft.exe` (~25 MB) via Wine |
+| `poe build-linux` | Build `dist/linux-64/uglycraft` + license notices (~41 MB) |
+| `poe build-windows` | Build `dist/windows-64/uglycraft.exe` + license notices (~25 MB) via Wine |
 | `poe deploy` | Build both and push to itch.io with current git tag as version |
 
 Windows build requires one-time setup (Wine, Python 3.13 under Wine, pip deps) — see **README.md**.
 `poe deploy` reads the version from the latest git tag automatically.
+
+## Licensing
+
+UGLYCRAFT is GPLv3. Distributables also bundle pygame (LGPL 2.1) and numpy (BSD 3-Clause).
+License texts live in `LICENSES/` and are copied into each build by the poe tasks.
+`LICENSES/NOTICE.txt` summarises what is bundled and under what terms.
 
 ## Current version
 
@@ -32,19 +39,14 @@ This repo contains two things:
 ## Running UGLYCRAFT
 
 ```bash
-.venv/bin/python main.py
+python3 -m venv .venv && .venv/bin/pip install poethepoet
+.venv/bin/poe install   # installs pygame, numpy, pyinstaller
+.venv/bin/poe run
 ```
 
-Virtual environment at `.venv` (Python 3.14, pygame 2.6.1). Create with `python3 -m venv .venv && .venv/bin/pip install pygame`.
+Or directly: `.venv/bin/python main.py --level N --easy/--hard`
 
-Debug flags (skip menus, start mid-game):
-
-```bash
-.venv/bin/python main.py --level N      # start at level N (1–10)
-.venv/bin/python main.py --easy / --hard  # set difficulty (default: easy)
-```
-
-In debug mode the high-score entry screen is suppressed.
+In debug mode (`--level`) the high-score entry screen is suppressed.
 
 ## Architecture (8 Python files)
 
