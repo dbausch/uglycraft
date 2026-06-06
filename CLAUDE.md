@@ -11,16 +11,16 @@ Use the skills below to produce standalone executables; full setup instructions 
   requires one-time setup (Wine, Python 3.13 under Wine, pip deps); Python 3.13 is used
   because pygame has no Windows wheels for 3.14 yet
 
-**Publishing to itch.io** (`dbausch/uglycraft`):
+**Publishing to itch.io** (`dbausch/uglycraft`): always pass the current version tag via `--userversion`.
 
 ```bash
-butler push dist/uglycraft     dbausch/uglycraft:linux-64
-butler push dist/uglycraft.exe dbausch/uglycraft:windows-64
+butler push dist/uglycraft     dbausch/uglycraft:linux-64   --userversion 1.0
+butler push dist/uglycraft.exe dbausch/uglycraft:windows-64 --userversion 1.0
 ```
 
 ## Current version
 
-**v0.9** — bump this whenever a new git tag is created.
+**v1.0** — bump this whenever a new git tag is created.
 
 ## What this is
 

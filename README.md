@@ -165,8 +165,8 @@ wine dist/uglycraft.exe
 Requires [butler](https://itch.io/docs/butler/) and a one-time `butler login`.
 
 ```bash
-butler push dist/uglycraft     dbausch/uglycraft:linux-64
-butler push dist/uglycraft.exe dbausch/uglycraft:windows-64
+butler push dist/uglycraft     dbausch/uglycraft:linux-64   --userversion 1.0
+butler push dist/uglycraft.exe dbausch/uglycraft:windows-64 --userversion 1.0
 ```
 
 ---
