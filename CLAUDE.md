@@ -31,7 +31,7 @@ Debug flags (skip menus, start mid-game):
 
 In debug mode the high-score entry screen is suppressed.
 
-## Architecture (7 Python files)
+## Architecture (8 Python files)
 
 | File | Role |
 |---|---|
@@ -40,6 +40,7 @@ In debug mode the high-score entry screen is suppressed.
 | `levels.py` | 10 level definitions as dicts with `walls` and `enemy_starts` |
 | `entities.py` | `Player` and `Enemy` (+ `Entity` base) — tile-grid movement, BFS pathfinding |
 | `hiscore.py` | Top-10 score persistence to `uglycraft.hsc` |
+| `sounds.py` | `SoundManager` — 14 procedural SFX + 12 music tracks (10 levels, title, win) |
 | `game.py` | Full state machine + rendering |
 | `main.py` | Window creation, integer scaling, top-level event loop |
 
@@ -50,6 +51,8 @@ In debug mode the high-score entry screen is suppressed.
 **Grid:** 30 columns × 16 rows of 32×32 px tiles. Status bar is 28 px tall (bottom). Border tiles are always walls.
 
 **Sprites:** All procedurally drawn — no external image files.
+
+**Enemy sprites:** Three ogre types selected by level group: ogre 1 (levels 1–3), ogre 2 (levels 4–6), ogre 3 (levels 7–9). Level 10 uses a 4-phase animated boss ogre. Four bouncing ogres (one per type) are shown in the title-screen corners.
 
 **Difficulty:** Easy uses only the first `enemy_starts` position (1 enemy); Hard uses all positions (1 enemy for levels 1–3, 2 for levels 4–6, 3 for levels 7–9, always 1 boss on level 10).
 
@@ -63,9 +66,13 @@ In debug mode the high-score entry screen is suppressed.
 
 **Wall mechanics:** Inner walls have hit points (`WALL_HITS_TO_BREAK = 3`). Bumping a wall damages it; after enough hits it breaks. Every `BREAKS_PER_CREDIT = 2` walls destroyed earns one wall-placement credit. Space places a wall at the player's tile (costs 1 credit).
 
-**Enemy AI (levels 1–9):** Greedy chase — if |dx| ≥ |dy| tries horizontal first, else vertical first; falls back to perpendicular if blocked. Moves every `BASE_ENEMY_MS = 160` ms.
+**Speed scaling:** Both player and enemies are 7% slower per level below 10: `interval = BASE_MS × 1.07^(10 − level)`. Level 10 always runs at the base rates (`BASE_MOVE_MS` / `BOSS_MOVE_MS`).
 
-**Boss AI (level 10):** Single ghost-enemy. On Hard uses BFS pathfinding (always finds shortest path); on Easy uses the same greedy chase as normal enemies. Moves every `BOSS_MOVE_MS = 80` ms (same speed as player). If boss walks over a treasure it is relocated to a new random open tile.
+**Enemy AI (levels 1–9):** Greedy chase — if |dx| ≥ |dy| tries horizontal first, else vertical first; falls back to perpendicular if blocked. Moves every `BASE_ENEMY_MS = 160` ms (scaled by level).
+
+**Boss AI (level 10):** Single boss ogre. On Hard uses BFS pathfinding (always finds shortest path); on Easy uses the same greedy chase as normal enemies. Moves every `BOSS_MOVE_MS = 80` ms (same speed as player). If boss walks over a treasure it is relocated to a new random open tile.
+
+**Sound:** `SoundManager` in `sounds.py` owns all audio. 14 procedural SFX (FM synthesis, physical impact modelling, tanh saturation). 10 level music tracks (8-bar loops, composed melodic themes, marching rhythm). Title screen and win screen each have their own orchestral loop. Music key: `'title'`, `'win'`, or `int 1–10`. Fails silently if numpy or the mixer is unavailable.
 
 ## Key constants (`constants.py`)
 
@@ -73,9 +80,9 @@ In debug mode the high-score entry screen is suppressed.
 |---|---|---|
 | `COLS` / `ROWS` | 30 / 16 | Play field dimensions in tiles |
 | `TILE` | 32 | Tile size in pixels |
-| `BASE_MOVE_MS` | 80 | Player movement interval (ms) |
-| `BASE_ENEMY_MS` | 160 | Normal enemy movement interval (ms) |
-| `BOSS_MOVE_MS` | 80 | Boss movement interval (ms) |
+| `BASE_MOVE_MS` | 80 | Player movement interval at level 10 (ms); scaled up on earlier levels |
+| `BASE_ENEMY_MS` | 160 | Normal enemy movement interval at level 10 (ms); scaled up on earlier levels |
+| `BOSS_MOVE_MS` | 80 | Boss movement interval (ms); not scaled — boss always moves at player speed |
 | `STARTING_LIVES` | 9 | Lives at game start |
 | `WALL_HITS_TO_BREAK` | 3 | Bumps to destroy one inner wall |
 | `BREAKS_PER_CREDIT` | 2 | Walls destroyed per placement credit earned |
