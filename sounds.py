@@ -297,31 +297,42 @@ def _strings(np, root_midi: int, scale: list, bar_n: int,
     return buf
 
 
-# Level music configs: (bpm, list_of_4_bars)
+# Level music configs: (bpm, list_of_8_bars)
 # Each bar: (mel_root_midi, bas_root_midi, scale, arp_pattern)
 # mel_root: lead melody start note; bas_root: bass root (one octave below mel area);
 # strings play at bas_root + 12 (between bass and melody).
+# Structure: bars 1-4 establish the theme; bars 5-8 develop/escalate before looping back.
 _LEVEL_MUSIC_CFG = [
     # L1  A Dorian  i–IV–v–i  100 BPM  dark groove
-    (100, [(69,45,_DOR,_ARP_D1),(62,50,_MAJ,_ARP_D2),(64,52,_MIN,_ARP_D1),(69,45,_DOR,_ARP_D3)]),
+    (100, [(69,45,_DOR,_ARP_D1),(62,50,_MAJ,_ARP_D2),(64,52,_MIN,_ARP_D1),(69,45,_DOR,_ARP_D3),
+           (60,48,_MAJ,_ARP_D2),(64,52,_MIN,_ARP_D3),(67,55,_MIN,_ARP_D4),(69,45,_DOR,_ARP_D4)]),
     # L2  D Natural Minor  i–VII–VI–v  110 BPM  tense chase
-    (110, [(74,50,_MIN,_ARP_D2),(72,48,_MAJ,_ARP_D1),(70,46,_MAJ,_ARP_D2),(67,55,_MIN,_ARP_D3)]),
+    (110, [(74,50,_MIN,_ARP_D2),(72,48,_MAJ,_ARP_D1),(70,46,_MAJ,_ARP_D2),(67,55,_MIN,_ARP_D3),
+           (69,57,_MIN,_ARP_D3),(71,59,_MIN,_ARP_D4),(72,48,_MAJ,_ARP_D4),(74,50,_MIN,_ARP_D4)]),
     # L3  G Phrygian  i–♭II–i–♭II  120 BPM  ominous
-    (120, [(67,55,_PHR,_ARP_D1),(65,53,_MAJ,_ARP_D3),(67,55,_PHR,_ARP_D2),(65,53,_MAJ,_ARP_D4)]),
+    (120, [(67,55,_PHR,_ARP_D1),(65,53,_MAJ,_ARP_D3),(67,55,_PHR,_ARP_D2),(65,53,_MAJ,_ARP_D4),
+           (67,55,_PHR,_ARP_D4),(65,53,_MAJ,_ARP_D4),(67,55,_PHR,_ARP_D5),(65,53,_MAJ,_ARP_D5)]),
     # L4  A Harmonic Minor  i–iv–V–i  130 BPM  exotic danger
-    (130, [(69,45,_HARM,_ARP_D3),(62,50,_MIN,_ARP_D2),(64,52,_MAJ,_ARP_D4),(69,45,_HARM,_ARP_D3)]),
+    (130, [(69,45,_HARM,_ARP_D3),(62,50,_MIN,_ARP_D2),(64,52,_MAJ,_ARP_D4),(69,45,_HARM,_ARP_D3),
+           (65,53,_MAJ,_ARP_D4),(62,50,_MIN,_ARP_D4),(64,52,_MAJ,_ARP_D5),(69,45,_HARM,_ARP_D5)]),
     # L5  E Natural Minor  i–VII–VI–v  140 BPM  furious
-    (140, [(64,52,_MIN,_ARP_D4),(62,50,_MAJ,_ARP_D3),(60,48,_MAJ,_ARP_D4),(59,47,_MIN,_ARP_D5)]),
+    (140, [(64,52,_MIN,_ARP_D4),(62,50,_MAJ,_ARP_D3),(60,48,_MAJ,_ARP_D4),(59,47,_MIN,_ARP_D5),
+           (57,45,_MIN,_ARP_D5),(62,50,_MAJ,_ARP_D5),(64,52,_MIN,_ARP_D5),(59,47,_MIN,_ARP_D6)]),
     # L6  B Phrygian  i–♭II–i–♭VII  150 BPM  very tense
-    (150, [(71,59,_PHR,_ARP_D4),(72,48,_MAJ,_ARP_D5),(71,59,_PHR,_ARP_D4),(69,45,_MIN,_ARP_D5)]),
+    (150, [(71,59,_PHR,_ARP_D4),(72,48,_MAJ,_ARP_D5),(71,59,_PHR,_ARP_D4),(69,45,_MIN,_ARP_D5),
+           (71,59,_PHR,_ARP_D5),(72,48,_MAJ,_ARP_D5),(71,59,_DIM,_ARP_D5),(69,45,_MIN,_ARP_D6)]),
     # L7  F# Natural Minor  i–iv–♭VII–i  158 BPM  dark pursuit
-    (158, [(66,54,_MIN,_ARP_D5),(62,50,_MIN,_ARP_D4),(64,52,_MAJ,_ARP_D5),(66,54,_MIN,_ARP_D6)]),
+    (158, [(66,54,_MIN,_ARP_D5),(62,50,_MIN,_ARP_D4),(64,52,_MAJ,_ARP_D5),(66,54,_MIN,_ARP_D6),
+           (66,54,_DIM,_ARP_D5),(64,52,_MIN,_ARP_D6),(62,50,_DIM,_ARP_D6),(66,54,_MIN,_ARP_D6)]),
     # L8  C# Diminished  descending dim  165 BPM  chaotic
-    (165, [(61,49,_DIM,_ARP_D5),(64,52,_DIM,_ARP_D6),(67,55,_DIM,_ARP_D5),(61,49,_DIM,_ARP_D6)]),
+    (165, [(61,49,_DIM,_ARP_D5),(64,52,_DIM,_ARP_D6),(67,55,_DIM,_ARP_D5),(61,49,_DIM,_ARP_D6),
+           (64,52,_DIM,_ARP_D6),(67,55,_DIM,_ARP_D6),(61,49,_DIM,_ARP_D6),(64,52,_DIM,_ARP_D6)]),
     # L9  G# Phrygian  i–♭II–♭VII–i  172 BPM  terrifying
-    (172, [(68,44,_PHR,_ARP_D6),(69,45,_MAJ,_ARP_D5),(67,55,_DIM,_ARP_D6),(68,44,_PHR,_ARP_D6)]),
+    (172, [(68,44,_PHR,_ARP_D6),(69,45,_MAJ,_ARP_D5),(67,55,_DIM,_ARP_D6),(68,44,_PHR,_ARP_D6),
+           (68,44,_DIM,_ARP_D6),(69,45,_PHR,_ARP_D6),(67,55,_DIM,_ARP_D6),(68,44,_PHR,_ARP_D6)]),
     # L10  Chromatic Dim  all tritones  182 BPM  boss chaos
-    (182, [(71,59,_DIM,_ARP_D6),(68,56,_DIM,_ARP_D6),(65,53,_DIM,_ARP_D6),(62,50,_DIM,_ARP_D6)]),
+    (182, [(71,59,_DIM,_ARP_D6),(68,56,_DIM,_ARP_D6),(65,53,_DIM,_ARP_D6),(62,50,_DIM,_ARP_D6),
+           (59,47,_DIM,_ARP_D6),(56,44,_DIM,_ARP_D6),(59,47,_DIM,_ARP_D6),(62,50,_DIM,_ARP_D6)]),
 ]
 
 
@@ -360,15 +371,16 @@ def _make_music_track(np, level: int) -> pygame.Sound:
             * _env(np, brass_n, 0.005, 0.07, 0.28, 0.12)
         )
 
-        # Lead: pulse-wave arpeggio
+        # Lead: FM distorted arpeggio (index 4.0 → dense harmonics, tanh clip for grit)
         for step, deg in enumerate(arp):
             if deg < 0:
                 continue
-            pos = bar0 + step * eighth_n
-            buf[pos:pos+eighth_n] += (
-                _pulse(np, _hz(mel_root + scale[deg]), eighth_n, 0.25, 0.14)
-                * _env(np, eighth_n, 0.003, 0.015, 0.40, 0.025)
-            )
+            pos  = bar0 + step * eighth_n
+            n_e  = eighth_n
+            freq = _hz(mel_root + scale[deg])
+            ev   = _env(np, n_e, 0.003, 0.015, 0.40, 0.025)
+            wave = _fm(np, freq, 1.0, 4.0, n_e)
+            buf[pos:pos+n_e] += np.tanh(wave * ev * 2.8) * 0.13
 
         # Kick on beats 0 and 2
         for beat in (0, 2):
