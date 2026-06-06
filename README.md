@@ -33,8 +33,8 @@ Collect nine treasures across ten progressively harder levels while being hunted
 ```bash
 git clone <repo-url>
 cd uglycraft
-python3 -m venv .venv
-.venv/bin/pip install pygame numpy
+python3 -m venv .venv && .venv/bin/pip install poethepoet
+.venv/bin/poe install
 ```
 
 ---
@@ -42,7 +42,6 @@ python3 -m venv .venv
 ## Running
 
 ```bash
-.venv/bin/pip install poethepoet   # one-time
 .venv/bin/poe run
 .venv/bin/poe run-level 5          # start at a specific level
 ```
