@@ -22,23 +22,29 @@ shell  = ".venv/bin/python main.py --level ${level}"
 args   = [{name = "level", positional = true}]
 
 [tool.poe.tasks.build-linux]
-help  = "Build a standalone Linux executable (dist/uglycraft)"
-cmd   = ".venv/bin/pyinstaller --onefile --noconsole --name uglycraft main.py"
+help  = "Build standalone Linux distributable (dist/linux-64/)"
+shell = """
+  .venv/bin/pyinstaller --onefile --noconsole --name uglycraft \
+    --distpath dist/linux-64 main.py
+  cp -r LICENSES dist/linux-64/
+"""
 
 [tool.poe.tasks.build-windows]
-help  = "Build a standalone Windows executable via Wine (dist/uglycraft.exe)"
+help  = "Build standalone Windows distributable (dist/windows-64/) via Wine"
 shell = """
   WINEDEBUG=-all wine \
     ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
-    -m PyInstaller --onefile --noconsole --name uglycraft main.py
+    -m PyInstaller --onefile --noconsole --name uglycraft \
+    --distpath Z:\\home\\$USER\\prog\\uglycraft\\dist\\windows-64 main.py
+  cp -r LICENSES dist/windows-64/
 """
 
 [tool.poe.tasks.deploy]
-help     = "Build both executables and push to itch.io"
+help     = "Build both distributables and push to itch.io"
 sequence = ["build-linux", "build-windows", "_push-linux", "_push-windows"]
 
 [tool.poe.tasks._push-linux]
-shell = "butler push dist/uglycraft dbausch/uglycraft:linux-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"
+shell = "butler push dist/linux-64 dbausch/uglycraft:linux-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"
 
 [tool.poe.tasks._push-windows]
-shell = "butler push dist/uglycraft.exe dbausch/uglycraft:windows-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"
+shell = "butler push dist/windows-64 dbausch/uglycraft:windows-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"

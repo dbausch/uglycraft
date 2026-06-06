@@ -1,0 +1,24 @@
+UGLYCRAFT — Third-Party License Notices
+========================================
+
+This distributable bundles the following third-party software:
+
+------------------------------------------------------------------------
+pygame 2.x
+  License: GNU Lesser General Public License v2.1 (LGPL-2.1)
+  Full text: LGPL-2.1.txt
+  Source:    https://github.com/pygame/pygame
+
+------------------------------------------------------------------------
+NumPy
+  License: BSD 3-Clause License
+  Full text: BSD-3-Clause-numpy.txt
+  Source:    https://github.com/numpy/numpy
+
+------------------------------------------------------------------------
+UGLYCRAFT itself is distributed under the GNU General Public License v3.
+Full text: GPL-3.0.txt
+Source code: https://itch.io/games/by/dbausch
+
+In accordance with the LGPL, the pygame source code is available at the
+URL above and you may replace the bundled copy with a compatible version.
