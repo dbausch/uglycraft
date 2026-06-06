@@ -7,6 +7,7 @@ from sprites import create_sprites
 from levels import LEVELS
 from entities import Player, Enemy
 from hiscore import load_scores, save_score, qualifies
+from sounds import SoundManager
 
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
@@ -29,6 +30,7 @@ class Game:
     def __init__(self, surface: pygame.Surface):
         self.surf = surface
         self.sprites = create_sprites()
+        self.sounds = SoundManager()
         self._init_fonts()
         self.difficulty = EASY   # persists across games; player changes it on difficulty screen
         self._debug    = False   # set by main.py when launched with --level; skips menus/hiscore
@@ -94,16 +96,19 @@ class Game:
             self._break_wall(col, row)
         else:
             self._wall_hits[(col, row)] = hits
+            self.sounds.play('bump')
 
     def _break_wall(self, col, row):
         self._wall_hits.pop((col, row), None)
         self._level_walls.discard((col, row))
         self._placed_walls.discard((col, row))
         self._build_walls()
+        self.sounds.play('break')
         self._breaks_toward_credit += 1
         if self._breaks_toward_credit >= BREAKS_PER_CREDIT:
             self._breaks_toward_credit -= BREAKS_PER_CREDIT
             self._place_credits += 1
+            self.sounds.play('credit')
 
     # ── Game initialisation ───────────────────────────────────────────────────
 
@@ -161,6 +166,9 @@ class Game:
         self._key_repeat   = {}
         self._flash_timer  = 0
         self._intro_timer  = 0
+        self.sounds.start_music(level_num)
+        if level_num == NUM_LEVELS:
+            self.sounds.play('boss_appear')
 
     def _spawn_treasure(self):
         self.item_no += 1
@@ -275,6 +283,7 @@ class Game:
         elif self.state == PAUSED:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.state = PLAYING
+                self.sounds.unpause_music()
 
         elif self.state in (GAME_OVER, WIN):
             if event.type == pygame.KEYDOWN:
@@ -310,6 +319,7 @@ class Game:
                 self.state = PLAY_AGAIN
             elif k == pygame.K_p:
                 self.state = PAUSED
+                self.sounds.pause_music()
             elif k == pygame.K_RETURN:
                 self._buy_shield()
             elif k == pygame.K_SPACE:
@@ -331,6 +341,7 @@ class Game:
             self.shield = True
             self._shield_timer = SHIELD_DURATION_MS
             self.score -= SHIELD_COST_PTS
+            self.sounds.play('shield_buy')
 
     def _enter_score_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -360,6 +371,7 @@ class Game:
             # Successful step clears the bump-consumed flag so the player can
             # bump the next wall they reach without having to re-press the key.
             self._bump_consumed.discard(key)
+            self.sounds.play('move')
         else:
             tc = self.player.col + dcol
             tr = self.player.row + drow
@@ -372,6 +384,7 @@ class Game:
             self._place_credits -= 1
             self._placed_walls.add((c, r))
             self._build_walls()
+            self.sounds.play('place_wall')
 
     # ── Level transitions ─────────────────────────────────────────────────────
 
@@ -380,6 +393,7 @@ class Game:
             self._end_game(won=True)
             return
         self.lives += 1
+        self.sounds.play('level_up')
         self._start_level(self.level + 1)
         self._intro_timer = 2000
         self.state = LEVEL_INTRO
@@ -390,7 +404,9 @@ class Game:
         if self.shield:
             self.shield = False
             self._shield_timer = 0
+            self.sounds.play('caught_shield')
         else:
+            self.sounds.play('caught')
             self._lose_life()
 
     def _lose_life(self):
@@ -426,6 +442,8 @@ class Game:
     def _end_game(self, won):
         self._final_score = self.score * max(1, self.lives)
         self._final_level = self.level
+        self.sounds.stop_music()
+        self.sounds.play('level_up' if won else 'game_over')
         self.state = WIN if won else GAME_OVER
 
     # ── Update ───────────────────────────────────────────────────────────────
@@ -453,6 +471,7 @@ class Game:
             if self._shield_timer <= 0:
                 self._shield_timer = 0
                 self.shield = False
+                self.sounds.play('shield_expire')
 
         # Key repeat
         now = pygame.time.get_ticks()
@@ -496,6 +515,7 @@ class Game:
         # Treasure collection
         if (self.player.col, self.player.row) == self.treasure_pos:
             self.score += TREASURE_POINTS.get(self.treasure_item_no, 0)
+            self.sounds.play('collect')
             if self.item_no == 9:
                 self._advance_level()
             else:
