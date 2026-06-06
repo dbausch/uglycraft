@@ -29,13 +29,12 @@ Collect every treasure in order. Reach the Crown on level 10. Don't get caught.
 
 ## Features
 
-- **10 hand-crafted levels** — from an open field to a spiral fortress guarded by a boss
+- **10 levels** — from an open field to a spiral fortress guarded by a boss
 - **Three escalating ogre types** — friendly green, snarling orange, war-painted purple
 - **A boss on level 10** — crowned, armoured, and pathfinding directly toward you
 - **Interactive wall placement** — mine walls and rebuild them to cut off pursuers
 - **Instant shield purchase** — buy ten seconds of safety at any moment for 250 points
-- **Procedural sound and music** — original FM-synthesised tracks, one per level, each
-  faster and darker than the last; no audio files, all generated at runtime
+- **Original music and sound** — one track per level, getting faster and darker as you descend
 - **Two difficulty modes** — Easy (one enemy, greedy AI) and Hard (multiple enemies, BFS)
 - **High-score table** — your best runs remembered between sessions
 
