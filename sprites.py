@@ -220,10 +220,14 @@ def draw_coin(size=TILE):
     """item_no=1: flat gold coin with small engraved profile and rim legend marks"""
     s = _surf(size)
     cx, cy = size // 2, size // 2
-    r = 10   # smaller overall coin (was 13)
+    r = 10   # coin radius
+
+    # Shiny outer rim — drawn first so the coin face sits on top
+    outer_r = r + 2
+    pygame.draw.circle(s, (242, 205, 60), (cx, cy), outer_r)    # bright gold fill
+    pygame.draw.circle(s, (148, 108, 14), (cx, cy), outer_r, 1) # dark outer boundary
 
     # Flat disc
-    pygame.draw.circle(s, (148, 108, 14), (cx, cy), r)         # edge ring
     pygame.draw.circle(s, GOLD, (cx, cy), r - 1)               # face
     pygame.draw.circle(s, (250, 215, 75), (cx, cy), r - 1, 1)  # bright rim line
 
