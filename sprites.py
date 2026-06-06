@@ -272,15 +272,28 @@ def draw_small_gems(size=TILE):
     return s
 
 
-def draw_small_diamond(size=TILE):
-    """item_no=4: small cyan/blue diamond"""
+def draw_trophy(size=TILE):
+    """item_no=4: gold trophy cup"""
     s = _surf(size)
-    cx, cy = size // 2, size // 2
-    r = size // 3
-    pts = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
-    pygame.draw.polygon(s, (100, 185, 255), pts)
-    pygame.draw.polygon(s, (190, 235, 255), pts, 1)
-    pygame.draw.circle(s, WHITE, (cx - 2, cy - 3), 2)
+    cx = size // 2
+    # Cup body (trapezoid, wider at top)
+    cup = [(7, 5), (size - 7, 5), (size - 10, 18), (10, 18)]
+    pygame.draw.polygon(s, GOLD, cup)
+    pygame.draw.polygon(s, LTYELLOW, cup, 1)
+    # Rim
+    pygame.draw.rect(s, (255, 225, 60), (6, 4, size - 12, 4), border_radius=2)
+    # Handles (small rounded rects on each side)
+    for hx in (3, size - 8):
+        pygame.draw.rect(s, (185, 145, 30), (hx, 9, 5, 6), border_radius=2)
+        pygame.draw.rect(s, LTYELLOW,       (hx, 9, 5, 6), 1, border_radius=2)
+    # Stem
+    pygame.draw.rect(s, (190, 148, 35), (cx - 3, 18, 6, 5))
+    pygame.draw.rect(s, LTYELLOW,       (cx - 3, 18, 6, 5), 1)
+    # Base
+    pygame.draw.rect(s, GOLD,    (6, 23, size - 12, 5), border_radius=2)
+    pygame.draw.rect(s, LTYELLOW,(6, 23, size - 12, 5), 1, border_radius=2)
+    # Shine on cup body
+    pygame.draw.line(s, CREAM, (10, 7), (10, 16), 1)
     return s
 
 
@@ -445,7 +458,7 @@ def create_sprites():
         1:               draw_coin(),
         2:               draw_big_diamond(),
         3:               draw_small_gems(),
-        4:               draw_small_diamond(),
+        4:               draw_trophy(),
         5:               draw_gold_bar(),
         6:               draw_silver_bar(),
         7:               draw_necklace(),
