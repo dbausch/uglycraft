@@ -542,6 +542,93 @@ def _make_title_music(np) -> pygame.Sound:
     return _to_sound(np, buf)
 
 
+# ── Win / end-game music ──────────────────────────────────────────────────────
+
+# C-major melody at 8th-note resolution (4 bars × 8 steps).  -1 = rest.
+# Opens with a rising C major arpeggio (classic fanfare gesture), descends
+# warmly through Am and F, climbs back for a satisfying G→C resolution.
+_WIN_MELODY = [
+    67, 72, 76, 79,  79, 76, 74, 72,   # Bar 1  (C): G4 C5 E5 G5  G5 E5 D5 C5
+    76, 69, 72, 76,  74, 72, 71, 69,   # Bar 2 (Am): E5 A4 C5 E5  D5 C5 B4 A4
+    65, 69, 72, 77,  76, 74, 72, 74,   # Bar 3  (F): F4 A4 C5 F5  E5 D5 C5 D5
+    67, 74, 79, 74,  79, 76, 72, -1,   # Bar 4  (G): G4 D5 G5 D5  G5 E5 C5  _
+]
+
+_WIN_CHORDS = [
+    (60, _MAJ),   # C major
+    (57, _MIN),   # A minor — relative minor, warmth without drama
+    (65, _MAJ),   # F major
+    (67, _MAJ),   # G major — V of C, strong cadential lift
+]
+
+
+def _make_win_music(np) -> pygame.Sound:
+    """Joyful C-major fanfare for the win screen.
+
+    Same instrumentation as the title theme (thick strings, bass, brass,
+    timpani, pulse lead). BPM 108 — lively and celebratory, not pompous.
+    """
+    bpm      = 108
+    eighth_s = 30.0 / bpm
+    eighth_n = round(eighth_s * _RATE)
+    beat_n   = 2 * eighth_n
+    bar_n    = 8 * eighth_n
+    total_n  = 4 * bar_n
+    buf      = np.zeros(total_n, dtype=np.float32)
+
+    rng = np.random.default_rng(888)
+
+    for bar_idx, (chord_root, chord_scale) in enumerate(_WIN_CHORDS):
+        bar0 = bar_idx * bar_n
+
+        # Upper strings
+        buf[bar0:bar0+bar_n] += _strings(np, chord_root, chord_scale, bar_n,
+                                         vol_per_saw=0.06, detune=0.004)
+        # Lower strings — one octave below for body
+        buf[bar0:bar0+bar_n] += _strings(np, chord_root - 12, chord_scale, bar_n,
+                                         vol_per_saw=0.04, detune=0.003)
+
+        # Bass: root on beats 1&3, fifth on 2&4
+        bas_root  = chord_root - 12
+        bas_fifth = bas_root + chord_scale[4]
+        for beat in range(4):
+            freq = _hz(bas_fifth if beat % 2 else bas_root)
+            pos  = bar0 + beat * beat_n
+            buf[pos:pos+beat_n] += (
+                _tri(np, freq, beat_n, 0.19)
+                * _env(np, beat_n, 0.015, 0.08, 0.60, 0.12)
+            )
+
+        # Brass pedal on bar downbeat, fades over 2 beats
+        brass_n = 2 * beat_n
+        buf[bar0:bar0+brass_n] += (
+            _sq(np, _hz(chord_root - 24), brass_n, 0.13)
+            * _env(np, brass_n, 0.008, 0.10, 0.40, 0.18)
+        )
+
+        # Timpani on bars 1 and 3
+        if bar_idx in (0, 2):
+            tn    = min(round(_RATE * 0.18), bar_n)
+            t_t   = np.arange(tn, dtype=np.float32) / _RATE
+            t_frq = _hz(chord_root - 12) * 0.75
+            ph    = np.cumsum(np.full(tn, 2.0*np.pi*t_frq/_RATE, dtype=np.float32))
+            nz    = rng.standard_normal(tn).astype(np.float32) * 0.4
+            buf[bar0:bar0+tn] += (np.sin(ph)*0.6 + nz) * np.exp(-t_t*11.0) * 0.10
+
+    # Lead melody: pulse wave with upper harmonic
+    for step, midi in enumerate(_WIN_MELODY):
+        if midi < 0:
+            continue
+        pos  = step * eighth_n
+        freq = _hz(midi)
+        n    = eighth_n
+        ev   = _env(np, n, 0.005, 0.020, 0.52, 0.030)
+        buf[pos:pos+n] += _pulse(np, freq, n, 0.20, 0.20) * ev
+        buf[pos:pos+n] += _pulse(np, freq * 2.0, n, 0.12, 0.06) * ev
+
+    return _to_sound(np, buf)
+
+
 # ── SoundManager ──────────────────────────────────────────────────────────────
 
 class SoundManager:
@@ -572,7 +659,7 @@ class SoundManager:
             pygame.mixer.set_num_channels(16)
             self._music_ch = pygame.mixer.Channel(0)
             self._sfx  = _build_sfx(np)
-            self._music = {'title': _make_title_music(np)}
+            self._music = {'title': _make_title_music(np), 'win': _make_win_music(np)}
             self._music.update({lvl: _make_music_track(np, lvl) for lvl in range(1, 11)})
             self._ok = True
         except Exception:

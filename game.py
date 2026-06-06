@@ -446,6 +446,8 @@ class Game:
         self._final_level = self.level
         self.sounds.stop_music()
         self.sounds.play('level_up' if won else 'game_over')
+        if won:
+            self.sounds.start_music('win')
         self.state = WIN if won else GAME_OVER
 
     # ── Update ───────────────────────────────────────────────────────────────
