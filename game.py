@@ -205,10 +205,10 @@ class Game:
         # Bounds are sprite top-left ranges keeping the 32×32 sprite inside its corner.
         # TL=ogre1, TR=ogre2, BL=ogre3, BR=boss
         self._title_ogre_bounds = [
-            ( 10,  58,   0,  32),   # top-left
-            (870, 918,   0,  32),   # top-right
-            ( 10,  58, 476, 508),   # bottom-left
-            (870, 918, 476, 508),   # bottom-right
+            ( 10, 140,   0, 100),   # top-left
+            (800, 928,   0, 100),   # top-right
+            ( 10, 140, 420, 508),   # bottom-left
+            (800, 928, 420, 508),   # bottom-right
         ]
         self._title_ogres = [
             [float((b[0] + b[1]) // 2), float((b[2] + b[3]) // 2),
