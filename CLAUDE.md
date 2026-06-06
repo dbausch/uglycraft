@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Building distributables
+## Building and publishing distributables
 
 Use the skills below to produce standalone executables; full setup instructions in **README.md**.
 
@@ -10,6 +10,13 @@ Use the skills below to produce standalone executables; full setup instructions 
 - `/build-windows` — produces `dist/uglycraft.exe` (~25 MB) via Wine + PyInstaller;
   requires one-time setup (Wine, Python 3.13 under Wine, pip deps); Python 3.13 is used
   because pygame has no Windows wheels for 3.14 yet
+
+**Publishing to itch.io** (`dbausch/uglycraft`):
+
+```bash
+butler push dist/uglycraft     dbausch/uglycraft:linux-64
+butler push dist/uglycraft.exe dbausch/uglycraft:windows-64
+```
 
 ## Current version
 

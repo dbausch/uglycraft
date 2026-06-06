@@ -160,6 +160,17 @@ wine dist/uglycraft.exe
 
 ---
 
+## Publishing to itch.io
+
+Requires [butler](https://itch.io/docs/butler/) and a one-time `butler login`.
+
+```bash
+butler push dist/uglycraft     dbausch/uglycraft:linux-64
+butler push dist/uglycraft.exe dbausch/uglycraft:windows-64
+```
+
+---
+
 ## Project structure
 
 ```
