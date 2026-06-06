@@ -207,8 +207,8 @@ class Game:
         self._title_ogre_bounds = [
             ( 10,  58,  10,  58),   # top-left
             (870, 918,  10,  58),   # top-right
-            ( 10,  58, 376, 420),   # bottom-left
-            (870, 918, 376, 420),   # bottom-right
+            ( 10,  58, 476, 508),   # bottom-left
+            (870, 918, 476, 508),   # bottom-right
         ]
         self._title_ogres = [
             [float((b[0] + b[1]) // 2), float((b[2] + b[3]) // 2),
