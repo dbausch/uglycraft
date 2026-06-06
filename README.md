@@ -214,3 +214,14 @@ UGLYCRAFT is free software: you can redistribute it and/or modify it under the t
 See [LICENSE](LICENSE) for the full text.
 
 The original Pascal source files (`*.PAS`) are © 1996 Daniel Bausch and are included for historical reference only; they are not covered by the GPLv3 grant.
+
+### Third-party licenses (distributables)
+
+The standalone executables bundle the following third-party libraries:
+
+| Library | License | Full text |
+|---------|---------|-----------|
+| pygame | LGPL 2.1 | `LICENSES/LGPL-2.1.txt` |
+| numpy | BSD 3-Clause | `LICENSES/BSD-3-Clause-numpy.txt` |
+
+See `LICENSES/NOTICE.txt` for a summary of bundled components and how to obtain their source.
