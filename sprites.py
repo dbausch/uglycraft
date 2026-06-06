@@ -217,24 +217,41 @@ def draw_boss(phase=0, size=TILE):
 # ── Treasure sprites ──────────────────────────────────────────────────────────
 
 def draw_coin(size=TILE):
-    """item_no=1: gold coin"""
+    """item_no=1: flat gold coin with engraved right-facing profile head"""
     s = _surf(size)
     cx, cy = size // 2, size // 2
-    r = size // 2 - 3
-    # Outer rim (slightly darker)
-    pygame.draw.circle(s, (160, 120, 20), (cx, cy), r)
-    # Main face
-    pygame.draw.circle(s, GOLD, (cx, cy), r - 2)
-    # Raised rim highlight
-    pygame.draw.circle(s, (255, 225, 70), (cx, cy), r - 2, 2)
-    # Inner circle for relief detail
-    pygame.draw.circle(s, (190, 150, 30), (cx, cy), r - 6)
-    # Shine spot
-    pygame.draw.circle(s, CREAM, (cx - r // 3, cy - r // 3), max(2, r // 5))
-    # Bottom shadow arc
-    pygame.draw.arc(s, (130, 100, 10),
-                    pygame.Rect(cx - r + 2, cy - r + 2, (r - 2) * 2, (r - 2) * 2),
-                    math.radians(250), math.radians(350), 2)
+    r = size // 2 - 3   # 13 at TILE=32
+
+    # Flat disc: solid gold face + single-pixel rim — no spherical shading
+    pygame.draw.circle(s, (148, 108, 14), (cx, cy), r)         # edge ring (darker)
+    pygame.draw.circle(s, GOLD, (cx, cy), r - 1)               # face
+    pygame.draw.circle(s, (250, 215, 75), (cx, cy), r - 1, 1)  # bright rim line
+
+    # Engraved right-facing profile silhouette — darker than the face
+    engrave = (128, 92, 12)
+    profile = [
+        ( 9,  7),   # back-top of head
+        (13,  5),   # crown
+        (17,  6),   # forehead top
+        (20,  9),   # upper forehead
+        (21, 13),   # brow
+        (23, 16),   # nose tip (rightmost — key recognisable feature)
+        (21, 18),   # under nose
+        (20, 21),   # upper lip
+        (18, 24),   # chin
+        (14, 26),   # chin bottom
+        (12, 27),   # neck (front)
+        (10, 26),   # neck (back)
+        (10, 23),   # back of jaw
+        ( 8, 20),   # lower back of head
+        ( 7, 15),   # back of head (widest)
+        ( 7, 11),   # upper back of head
+        ( 8,  8),   # back-top
+    ]
+    pygame.draw.polygon(s, engrave, profile)
+    # 1-px lighter outline to suggest the slight relief of embossing
+    pygame.draw.polygon(s, (170, 128, 20), profile, 1)
+
     return s
 
 
