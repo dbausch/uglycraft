@@ -143,14 +143,14 @@ class Game:
                  else starts[:1]
         self.enemies = [Enemy(ec, er) for ec, er in active]
         # Speed: level 10 runs at full BASE_ENEMY_MS / BOSS_MOVE_MS.
-        # Each earlier level is 3% slower per step: factor = 1.03^(10 − level).
-        # At level 1 both enemy and player are ~31% slower than at level 10.
+        # Each earlier level is 5% slower per step: factor = 1.05^(10 − level).
+        # At level 1 both enemy and player are ~55% slower than at level 10.
         # self.move_ms replaces REPEAT_MS in the key-repeat check so player speed scales too.
         if level_num == NUM_LEVELS:
             self.enemy_ms = BOSS_MOVE_MS
             self.move_ms  = BASE_MOVE_MS
         else:
-            factor = 1.03 ** (NUM_LEVELS - level_num)
+            factor = 1.05 ** (NUM_LEVELS - level_num)
             self.enemy_ms = round(BASE_ENEMY_MS * factor)
             self.move_ms  = round(BASE_MOVE_MS  * factor)
         self.shield = False
