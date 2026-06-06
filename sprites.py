@@ -347,7 +347,7 @@ def draw_necklace(size=TILE):
         beads.append((bx, by))
     # Drop string: draw BEFORE beads so the centre bead covers the line's top
     cx_bead, cy_bead = beads[n // 2]
-    pendant_top = cy_bead + 7
+    pendant_top = cy_bead + 4
     pygame.draw.line(s, GOLD, (cx_bead, cy_bead), (cx_bead, pendant_top), 1)
     # Beads on top — centre bead overlaps and hides the string's upper end
     for bx, by in beads:
