@@ -4,19 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Building and publishing distributables
 
-Use the skills below to produce standalone executables; full setup instructions in **README.md**.
+Tasks are managed with **poethepoet** (`pyproject.toml`). Run via `.venv/bin/poe <task>`.
 
-- `/build-linux` — produces `dist/uglycraft` (~41 MB) using the project `.venv` directly
-- `/build-windows` — produces `dist/uglycraft.exe` (~25 MB) via Wine + PyInstaller;
-  requires one-time setup (Wine, Python 3.13 under Wine, pip deps); Python 3.13 is used
-  because pygame has no Windows wheels for 3.14 yet
+| Task | Action |
+|---|---|
+| `poe run` | Run the game |
+| `poe run-level N` | Run starting at level N |
+| `poe build-linux` | Build `dist/uglycraft` (~41 MB) |
+| `poe build-windows` | Build `dist/uglycraft.exe` (~25 MB) via Wine |
+| `poe deploy` | Build both and push to itch.io with current git tag as version |
 
-**Publishing to itch.io** (`dbausch/uglycraft`): always pass the current version tag via `--userversion`.
-
-```bash
-butler push dist/uglycraft     dbausch/uglycraft:linux-64   --userversion 1.0
-butler push dist/uglycraft.exe dbausch/uglycraft:windows-64 --userversion 1.0
-```
+Windows build requires one-time setup (Wine, Python 3.13 under Wine, pip deps) — see **README.md**.
+`poe deploy` reads the version from the latest git tag automatically.
 
 ## Current version
 

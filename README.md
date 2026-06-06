@@ -42,10 +42,12 @@ python3 -m venv .venv
 ## Running
 
 ```bash
-.venv/bin/python main.py
+.venv/bin/pip install poethepoet   # one-time
+.venv/bin/poe run
+.venv/bin/poe run-level 5          # start at a specific level
 ```
 
-Debug flags (skip menus, start mid-game):
+Or directly:
 
 ```bash
 .venv/bin/python main.py --level N        # start at level N (1–10)
@@ -87,6 +89,20 @@ Each level contains nine treasures to collect in sequence. Points are awarded on
 
 **Final score** = accumulated points × lives remaining.  
 Being caught without a shield costs 500 points and one life.
+
+---
+
+## Tasks (poethepoet)
+
+```bash
+.venv/bin/poe run              # run the game
+.venv/bin/poe run-level N      # run starting at level N
+.venv/bin/poe build-linux      # build dist/uglycraft
+.venv/bin/poe build-windows    # build dist/uglycraft.exe (requires Wine setup below)
+.venv/bin/poe deploy           # build both + push to itch.io
+```
+
+`poe deploy` reads the version from the latest git tag automatically.
 
 ---
 
