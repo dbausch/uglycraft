@@ -81,117 +81,164 @@ def _to_sound(np, arr) -> pygame.Sound:
     return pygame.sndarray.make_sound((stereo * 32767.0).astype(np.int16))
 
 
+# ── FM synthesis + saturation helpers ────────────────────────────────────────
+
+def _fm(np, carrier_hz: float, mod_ratio: float, index: float, n: int, vol: float = 1.0):
+    """FM synthesis: carrier modulated by carrier×mod_ratio at given index."""
+    t = np.arange(n, dtype=np.float32) / _RATE
+    return np.sin(2.0*np.pi*carrier_hz*t + index * np.sin(2.0*np.pi*carrier_hz*mod_ratio*t)) * vol
+
+
+def _saturate(np, x, drive: float = 3.0):
+    """Tanh waveshaper normalised so ±1 input → ±1 output."""
+    return np.tanh(x * drive) / np.tanh(drive)
+
+
+def _impact(np, rng, n: int, noise_vol: float, tone_hz: float, tone_vol: float,
+            noise_decay: float = 80.0, tone_decay: float = 15.0):
+    """Physical impact: exponentially decayed noise burst + resonant sine."""
+    t = np.arange(n, dtype=np.float32) / _RATE
+    noise = rng.standard_normal(n).astype(np.float32) * noise_vol * np.exp(-t * noise_decay)
+    tone  = np.sin(2.0*np.pi*tone_hz*t) * tone_vol * np.exp(-t * tone_decay)
+    return noise + tone
+
+
 # ── Sound effects ─────────────────────────────────────────────────────────────
 
 def _build_sfx(np) -> dict:
+    rng = np.random.default_rng(42)
+
     def sfx_move():
-        n = round(_RATE * 0.025)
-        return _to_sound(np, _sq(np, 880, n, 0.08) * _env(np, n, 0.001, 0.004, 0.0, 0.02))
+        n   = round(_RATE * 0.030)
+        sig = _impact(np, rng, n, 0.15, 250.0, 0.30, noise_decay=180.0, tone_decay=70.0)
+        return _to_sound(np, _saturate(np, sig, 2.0))
 
     def sfx_bump():
-        n = round(_RATE * 0.10)
-        tone = _tri(np, 110, n, 0.22)
-        rng = np.random.default_rng(1)
-        noise = rng.standard_normal(n).astype(np.float32) * 0.10
-        return _to_sound(np, (tone + noise) * _env(np, n, 0.003, 0.02, 0.30, 0.06))
+        n   = round(_RATE * 0.110)
+        sig = _impact(np, rng, n, 0.40, 95.0, 0.35, noise_decay=38.0, tone_decay=7.0)
+        return _to_sound(np, _saturate(np, sig, 4.0))
 
     def sfx_break():
-        n = round(_RATE * 0.22)
-        rng = np.random.default_rng(2)
-        noise = rng.standard_normal(n).astype(np.float32) * 0.38
-        tone = _tri(np, 60, n, 0.28)
-        return _to_sound(np, np.clip(noise + tone, -1.0, 1.0) * _env(np, n, 0.003, 0.04, 0.25, 0.14))
+        n   = round(_RATE * 0.220)
+        n2  = round(_RATE * 0.150)
+        sig  = _impact(np, rng, n,  0.55, 60.0,  0.40, noise_decay=14.0, tone_decay=4.5)
+        sig2 = _impact(np, rng, n2, 0.30, 130.0, 0.20, noise_decay=45.0, tone_decay=18.0)
+        buf = sig.copy()
+        buf[:n2] += sig2
+        return _to_sound(np, _saturate(np, buf, 5.5))
 
     def sfx_collect():
         notes = [72, 76, 79, 84]
-        nd = round(_RATE * 0.055)
+        nd  = round(_RATE * 0.065)
         buf = np.zeros(nd * len(notes), dtype=np.float32)
         for i, m in enumerate(notes):
-            buf[i*nd:(i+1)*nd] = _sq(np, _hz(m), nd, 0.20) * _env(np, nd, 0.002, 0.01, 0.5, 0.025)
+            t  = np.arange(nd, dtype=np.float32) / _RATE
+            ev = np.exp(-t * 14.0) * 0.40
+            buf[i*nd:(i+1)*nd] = _saturate(np, _fm(np, _hz(m), 1.0, 3.2, nd) * ev, 2.2)
         return _to_sound(np, buf)
 
     def sfx_credit():
-        n = round(_RATE * 0.18)
-        nd = n // 2
-        buf = np.zeros(n, dtype=np.float32)
-        buf[:nd] = _sin(np, _hz(76), nd, 0.28) * _env(np, nd, 0.002, 0.02, 0.6, 0.08)
-        buf[nd:] = _sin(np, _hz(81), nd, 0.28) * _env(np, nd, 0.002, 0.02, 0.6, 0.08)
+        nd  = round(_RATE * 0.100)
+        buf = np.zeros(nd * 2, dtype=np.float32)
+        for i, m in enumerate([76, 81]):
+            t  = np.arange(nd, dtype=np.float32) / _RATE
+            ev = np.exp(-t * 9.0) * 0.45
+            buf[i*nd:(i+1)*nd] = _saturate(np, _fm(np, _hz(m), 2.756, 2.8, nd) * ev, 2.5)
         return _to_sound(np, buf)
 
     def sfx_place_wall():
-        n = round(_RATE * 0.09)
-        return _to_sound(np, _sq(np, 220, n, 0.22) * _env(np, n, 0.005, 0.012, 0.4, 0.06))
+        n   = round(_RATE * 0.110)
+        sig = _impact(np, rng, n, 0.50, 80.0, 0.40, noise_decay=30.0, tone_decay=5.5)
+        return _to_sound(np, _saturate(np, sig, 5.5))
 
     def sfx_shield_buy():
-        n = round(_RATE * 0.28)
+        n = round(_RATE * 0.280)
         t = np.arange(n, dtype=np.float32) / _RATE
-        freq = 350.0 + 800.0 * (t / t[-1])
-        phase = np.cumsum(2.0 * np.pi * freq / _RATE)
-        wave = np.sign(np.sin(phase)) * 0.20
-        return _to_sound(np, wave * _env(np, n, 0.01, 0.02, 0.7, 0.08))
+        c_hz  = 300.0 + 700.0 * (t / t[-1])
+        m_idx = 1.5   +   3.5 * (t / t[-1])
+        c_ph  = np.cumsum(2.0 * np.pi * c_hz / _RATE)
+        m_ph  = np.cumsum(2.0 * np.pi * c_hz * 0.5 / _RATE)
+        wave  = np.sin(c_ph + m_idx * np.sin(m_ph)) * 0.40
+        ev    = _env(np, n, 0.020, 0.030, 0.70, 0.08)
+        return _to_sound(np, _saturate(np, wave * ev, 3.2))
 
     def sfx_shield_expire():
-        n = round(_RATE * 0.22)
+        n = round(_RATE * 0.220)
         t = np.arange(n, dtype=np.float32) / _RATE
-        freq = 850.0 - 400.0 * (t / t[-1])
-        phase = np.cumsum(2.0 * np.pi * freq / _RATE)
-        wave = np.sin(phase) * 0.20
-        return _to_sound(np, wave * _env(np, n, 0.005, 0.01, 0.6, 0.12))
+        c_hz  = 900.0 * np.exp(-t * 6.0) + 120.0
+        m_idx = 4.0   * np.exp(-t * 5.0) + 0.5
+        c_ph  = np.cumsum(2.0 * np.pi * c_hz / _RATE)
+        m_ph  = np.cumsum(2.0 * np.pi * c_hz * 0.75 / _RATE)
+        wave  = np.sin(c_ph + m_idx * np.sin(m_ph)) * 0.35
+        ev    = _env(np, n, 0.005, 0.015, 0.65, 0.14)
+        return _to_sound(np, _saturate(np, wave * ev, 3.0))
 
     def sfx_caught_shield():
-        n = round(_RATE * 0.22)
-        rng = np.random.default_rng(3)
-        noise = rng.standard_normal(n).astype(np.float32) * 0.25
-        tone = _sin(np, _hz(64), n, 0.22)
-        return _to_sound(np, (noise + tone) * _env(np, n, 0.002, 0.03, 0.35, 0.12))
+        n = round(_RATE * 0.220)
+        t = np.arange(n, dtype=np.float32) / _RATE
+        wave  = _fm(np, 240.0, 1.0, 6.5, n, 0.30)
+        noise = rng.standard_normal(n).astype(np.float32) * 0.25 * np.exp(-t * 35.0)
+        sig   = (wave + noise) * _env(np, n, 0.002, 0.025, 0.35, 0.12)
+        return _to_sound(np, _saturate(np, sig, 4.5))
 
     def sfx_caught():
         midi_seq = [72, 69, 66, 63, 60, 57]
-        nd = round(_RATE * 0.09)
+        nd  = round(_RATE * 0.095)
         buf = np.zeros(nd * len(midi_seq), dtype=np.float32)
         for i, m in enumerate(midi_seq):
-            buf[i*nd:(i+1)*nd] = (
-                _sq(np, _hz(m), nd, 0.16) * _env(np, nd, 0.002, 0.01, 0.55, 0.04)
-              + _tri(np, _hz(m - 12), nd, 0.12) * _env(np, nd, 0.002, 0.01, 0.45, 0.04)
-            )
-        return _to_sound(np, buf)
+            t  = np.arange(nd, dtype=np.float32) / _RATE
+            ev = np.exp(-t * 10.0) * 0.35
+            buf[i*nd:(i+1)*nd] = _saturate(np, _fm(np, _hz(m), 1.5, 4.5, nd) * ev, 4.5)
+        n_thud = round(_RATE * 0.080)
+        buf[:n_thud] += _saturate(np, _impact(np, rng, n_thud, 0.45, 80.0, 0.30,
+                                              noise_decay=40.0, tone_decay=8.0), 4.0)
+        return _to_sound(np, np.clip(buf, -1.0, 1.0))
 
     def sfx_level_up():
         midi_seq = [60, 64, 67, 72, 76, 79, 84]
-        nd = round(_RATE * 0.08)
+        nd  = round(_RATE * 0.085)
         buf = np.zeros(nd * len(midi_seq), dtype=np.float32)
         for i, m in enumerate(midi_seq):
-            buf[i*nd:(i+1)*nd] = (
-                _sq(np, _hz(m), nd, 0.20) * _env(np, nd, 0.003, 0.01, 0.55, 0.04)
-              + _tri(np, _hz(m - 12), nd, 0.13) * _env(np, nd, 0.003, 0.01, 0.45, 0.04)
-            )
+            t   = np.arange(nd, dtype=np.float32) / _RATE
+            ev  = np.exp(-t * 7.0) * 0.38
+            sub = np.sin(2.0*np.pi*_hz(m-12)*t) * np.exp(-t * 9.0) * 0.18
+            buf[i*nd:(i+1)*nd] = _saturate(np, _fm(np, _hz(m), 1.0, 2.0, nd) * ev + sub, 2.5)
         return _to_sound(np, buf)
 
     def sfx_game_over():
         midi_seq = [60, 59, 57, 55, 53, 52, 48]
-        nd = round(_RATE * 0.13)
+        nd  = round(_RATE * 0.130)
         buf = np.zeros(nd * len(midi_seq), dtype=np.float32)
         for i, m in enumerate(midi_seq):
-            buf[i*nd:(i+1)*nd] = (
-                _sq(np, _hz(m), nd, 0.18) * _env(np, nd, 0.003, 0.02, 0.50, 0.07)
-              + _tri(np, _hz(m - 12), nd, 0.13) * _env(np, nd, 0.003, 0.02, 0.45, 0.07)
-            )
+            t   = np.arange(nd, dtype=np.float32) / _RATE
+            ev  = np.exp(-t * 5.5) * 0.38
+            sub = np.sin(2.0*np.pi*_hz(m-12)*t) * np.exp(-t * 7.0) * 0.18
+            buf[i*nd:(i+1)*nd] = _saturate(np, _fm(np, _hz(m), 1.4, 1.8, nd) * ev + sub, 3.0)
         return _to_sound(np, buf)
 
     def sfx_boss_appear():
-        n = round(_RATE * 0.35)
-        drone = _sq(np, _hz(35), n, 0.18) * _env(np, n, 0.01, 0.06, 0.65, 0.15)
-        n2 = round(_RATE * 0.08)
-        stab = np.zeros(n, dtype=np.float32)
-        stab[:n2] = _sq(np, _hz(84), n2, 0.28) * _env(np, n2, 0.001, 0.012, 0.0, 0.06)
-        return _to_sound(np, np.clip(drone + stab, -1.0, 1.0))
+        n = round(_RATE * 0.350)
+        t = np.arange(n, dtype=np.float32) / _RATE
+        c_hz  = 35.0 + 45.0 * (t / t[-1])
+        m_idx = 6.0  * (t / t[-1])
+        c_ph  = np.cumsum(2.0 * np.pi * c_hz / _RATE)
+        m_ph  = np.cumsum(2.0 * np.pi * c_hz * np.pi / _RATE)
+        drone = np.sin(c_ph + m_idx * np.sin(m_ph)) * 0.35 * _env(np, n, 0.05, 0.10, 0.70, 0.15)
+        n2    = round(_RATE * 0.090)
+        stab  = _fm(np, _hz(84), 1.0, 4.0, n2, 0.40) * _env(np, n2, 0.003, 0.015, 0.0, 0.07)
+        buf   = drone.copy()
+        buf[:n2] += stab
+        return _to_sound(np, _saturate(np, buf, 4.0))
 
     def sfx_item_hit():
-        # Enemy displaced a treasure — soft two-tone ping
-        n = round(_RATE * 0.14)
-        hi = _sin(np, _hz(79), n, 0.16) * _env(np, n, 0.001, 0.025, 0.0, 0.025)
-        lo = _tri(np, _hz(67), n, 0.13) * _env(np, n, 0.002, 0.04, 0.15, 0.07)
-        return _to_sound(np, hi + lo)
+        n   = round(_RATE * 0.140)
+        sig = _impact(np, rng, n, 0.28, 120.0, 0.22, noise_decay=60.0, tone_decay=10.0)
+        n2  = round(_RATE * 0.120)
+        t2  = np.arange(n2, dtype=np.float32) / _RATE
+        ring = _fm(np, 440.0, 2.5, 3.0, n2, 0.22) * np.exp(-t2 * 18.0)
+        buf  = sig.copy()
+        buf[:n2] += ring
+        return _to_sound(np, _saturate(np, buf, 3.0))
 
     return {
         'move':          sfx_move(),
