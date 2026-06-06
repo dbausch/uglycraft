@@ -201,6 +201,35 @@ class Game:
     def _title_init(self):
         self.state = TITLE
         self._title_ms = 0
+        # One ogre per corner: [x, y, vx, vy] (floats; px and px/s).
+        # Bounds are sprite top-left ranges keeping the 32×32 sprite inside its corner.
+        # TL=ogre1, TR=ogre2, BL=ogre3, BR=boss
+        self._title_ogre_bounds = [
+            ( 10,  58,  10,  58),   # top-left
+            (870, 918,  10,  58),   # top-right
+            ( 10,  58, 376, 420),   # bottom-left
+            (870, 918, 376, 420),   # bottom-right
+        ]
+        self._title_ogres = [
+            [float((b[0] + b[1]) // 2), float((b[2] + b[3]) // 2),
+             random.choice([-1, 1]) * random.uniform(45, 75),
+             random.choice([-1, 1]) * random.uniform(35, 60)]
+            for b in self._title_ogre_bounds
+        ]
+
+    def _update_title_ogres(self, dt):
+        for i, ogre in enumerate(self._title_ogres):
+            xmin, xmax, ymin, ymax = self._title_ogre_bounds[i]
+            ogre[0] += ogre[2] * dt / 1000
+            ogre[1] += ogre[3] * dt / 1000
+            if ogre[0] < xmin:
+                ogre[0] = xmin; ogre[2] = abs(ogre[2])
+            elif ogre[0] > xmax:
+                ogre[0] = xmax; ogre[2] = -abs(ogre[2])
+            if ogre[1] < ymin:
+                ogre[1] = ymin; ogre[3] = abs(ogre[3])
+            elif ogre[1] > ymax:
+                ogre[1] = ymax; ogre[3] = -abs(ogre[3])
 
     # ── Input handling ────────────────────────────────────────────────────────
 
@@ -404,7 +433,10 @@ class Game:
     def update(self, dt):
         self._title_ms = getattr(self, '_title_ms', 0) + dt
 
-        if self.state == LEVEL_INTRO:
+        if self.state == TITLE:
+            self._update_title_ogres(dt)
+
+        elif self.state == LEVEL_INTRO:
             self._intro_timer -= dt
             if self._intro_timer <= 0:
                 self.state = PLAYING
@@ -539,12 +571,12 @@ class Game:
         # Enemies / boss
         if self.level == NUM_LEVELS:
             phase = (pygame.time.get_ticks() // 120) % 4
-            boss_sprite = sp[f'boss_{phase}']
             for enemy in self.enemies:
-                self.surf.blit(boss_sprite, (enemy.col * TILE, enemy.row * TILE))
+                self.surf.blit(sp[f'boss_{phase}'], (enemy.col * TILE, enemy.row * TILE))
         else:
+            ekey = f'enemy_{(self.level - 1) // 3 + 1}'
             for enemy in self.enemies:
-                self.surf.blit(sp['enemy'], (enemy.col * TILE, enemy.row * TILE))
+                self.surf.blit(sp[ekey], (enemy.col * TILE, enemy.row * TILE))
 
         # Player
         self.surf.blit(sp['player'],
@@ -633,12 +665,18 @@ class Game:
     def _render_title(self):
         self.surf.fill(BLACK)
         t = self._title_ms / 1000.0
+        sp = self.sprites
+
+        # Corner ogres (drawn first, behind all text)
+        phase = (pygame.time.get_ticks() // 120) % 4
+        ogre_keys = ['enemy_1', 'enemy_2', 'enemy_3', f'boss_{phase}']
+        for i, ogre in enumerate(self._title_ogres):
+            self.surf.blit(sp[ogre_keys[i]], (int(ogre[0]), int(ogre[1])))
 
         # Animated coloured title letters
         title = "UGLYCRAFT"
         colors = [RED, ORANGE, YELLOW, LTGREEN, CYAN, LTBLUE, MAGENTA, WHITE, GOLD]
         base_y = 120
-        sp = self.sprites
 
         # Measure actual glyph dimensions from the font
         gw     = self.font_title.size(title[0])[0]   # rendered width of one char
