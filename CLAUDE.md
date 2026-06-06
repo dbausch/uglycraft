@@ -70,7 +70,7 @@ In debug mode the high-score entry screen is suppressed.
 
 **Enemy AI (levels 1–9):** Greedy chase — if |dx| ≥ |dy| tries horizontal first, else vertical first; falls back to perpendicular if blocked. Moves every `BASE_ENEMY_MS = 160` ms (scaled by level).
 
-**Boss AI (level 10):** Single boss ogre. On Hard uses BFS pathfinding (always finds shortest path); on Easy uses the same greedy chase as normal enemies. Moves every `BOSS_MOVE_MS = 80` ms (same speed as player). If boss walks over a treasure it is relocated to a new random open tile.
+**Boss AI (level 10):** Single boss ogre. On Hard uses BFS pathfinding (always finds shortest path); on Easy uses the same greedy chase as normal enemies. Moves every `BOSS_MOVE_MS = 82` ms (~2% slower than the player). If boss walks over a treasure it is relocated to a new random open tile.
 
 **Sound:** `SoundManager` in `sounds.py` owns all audio. 14 procedural SFX (FM synthesis, physical impact modelling, tanh saturation). 10 level music tracks (8-bar loops, composed melodic themes, marching rhythm). Title screen and win screen each have their own orchestral loop. Music key: `'title'`, `'win'`, or `int 1–10`. Fails silently if numpy or the mixer is unavailable.
 
@@ -82,7 +82,7 @@ In debug mode the high-score entry screen is suppressed.
 | `TILE` | 32 | Tile size in pixels |
 | `BASE_MOVE_MS` | 80 | Player movement interval at level 10 (ms); scaled up on earlier levels |
 | `BASE_ENEMY_MS` | 160 | Normal enemy movement interval at level 10 (ms); scaled up on earlier levels |
-| `BOSS_MOVE_MS` | 80 | Boss movement interval (ms); not scaled — boss always moves at player speed |
+| `BOSS_MOVE_MS` | 82 | Boss movement interval (ms); not scaled — ~2% slower than the player (80 × 1.02) |
 | `STARTING_LIVES` | 9 | Lives at game start |
 | `WALL_HITS_TO_BREAK` | 3 | Bumps to destroy one inner wall |
 | `BREAKS_PER_CREDIT` | 2 | Walls destroyed per placement credit earned |

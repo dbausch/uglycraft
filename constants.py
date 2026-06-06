@@ -15,7 +15,7 @@ HARD = 'hard'
 # Movement timing (milliseconds per tile move)
 BASE_MOVE_MS  = 80
 BASE_ENEMY_MS = 160
-BOSS_MOVE_MS  = 80   # boss moves at the same speed as the player
+BOSS_MOVE_MS  = 82   # boss is ~2% slower than the player (80 ms × 1.02)
 
 # Key-repeat timings
 FIRST_REPEAT_MS = 180
