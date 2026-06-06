@@ -22,10 +22,10 @@ FIRST_REPEAT_MS = 180
 REPEAT_MS       = 80
 
 STARTING_LIVES  = 9
-SHIELD_COST_PTS    = 1000
+SHIELD_COST_PTS    = 250
+SHIELD_DURATION_MS = 10_000  # shield lasts 10 seconds
 WALL_HITS_TO_BREAK = 3   # bumps required to destroy one inner wall
 BREAKS_PER_CREDIT  = 2   # walls to destroy to earn one placement credit
-LIFE_COST_PTS      = 5000
 LIFE_PENALTY = 500         # flat points lost on death
 
 # Points awarded when treasure item_no is collected (item_no 1 yields 0, 2→100, …)
