@@ -654,8 +654,8 @@ class Game:
 
         # Subtitle and instructions sit below the item row (wave_y=0 is the lowest point)
         item_row_bottom = base_y + font_h + 4 + TILE
-        sub_y   = item_row_bottom + 12
-        instr_y = sub_y + 34
+        sub_y   = item_row_bottom + 20
+        instr_y = sub_y + 50
 
         sub = self.font_med.render("Inspired by UGLI (1996)", True, GRAY)
         self.surf.blit(sub, (LOGICAL_W // 2 - sub.get_width() // 2, sub_y))
