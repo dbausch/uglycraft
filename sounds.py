@@ -260,14 +260,6 @@ def _build_sfx(np) -> dict:
 
 # ── Music ─────────────────────────────────────────────────────────────────────
 
-# Arpeggio patterns (scale degree indices 0–6; -1 = rest).
-# Range extended to degree 6 (flat 7th in minor, tritone in diminished).
-_ARP_D1 = [ 0, 3, 5, 3,  0, 5, 3, 5]   # minor 3rd + 5th pulse
-_ARP_D2 = [ 0, 5, 3, 5,  0, 4, 5, 0]   # 5th emphasis, angular
-_ARP_D3 = [ 5, 3, 0, 3,  5, 6, 5, 3]   # descending with flat-7
-_ARP_D4 = [ 0, 3, 5, 6,  5, 3, 6, 0]   # flat-7 tension loop
-_ARP_D5 = [ 0, 4, 5, 6,  5, 4, 5, 0]   # very active, dissonant
-_ARP_D6 = [ 0, 6, 3, 6,  4, 6, 3,-1]   # tritone / diminished shapes
 
 
 def _kick(np, n: int, start_hz: float = 72.0, decay: float = 22.0, vol: float = 0.14):
@@ -298,41 +290,76 @@ def _strings(np, root_midi: int, scale: list, bar_n: int,
 
 
 # Level music configs: (bpm, list_of_8_bars)
-# Each bar: (mel_root_midi, bas_root_midi, scale, arp_pattern)
-# mel_root: lead melody start note; bas_root: bass root (one octave below mel area);
-# strings play at bas_root + 12 (between bass and melody).
-# Structure: bars 1-4 establish the theme; bars 5-8 develop/escalate before looping back.
+# Each bar: (mel_root_midi, bas_root_midi, scale)
+# mel_root: tonic for the harmony of this bar; bas_root: bass root (one octave lower);
+# strings play at mel_root - 12.  The lead melody uses _LEVEL_THEMES instead.
 _LEVEL_MUSIC_CFG = [
     # L1  A Dorian  i–IV–v–i  96 BPM  dark groove
-    ( 96, [(69,45,_DOR,_ARP_D1),(62,50,_MAJ,_ARP_D2),(64,52,_MIN,_ARP_D1),(69,45,_DOR,_ARP_D3),
-           (60,48,_MAJ,_ARP_D2),(64,52,_MIN,_ARP_D3),(67,55,_MIN,_ARP_D4),(69,45,_DOR,_ARP_D4)]),
+    ( 96, [(69,45,_DOR),(62,50,_MAJ),(64,52,_MIN),(69,45,_DOR),
+           (60,48,_MAJ),(64,52,_MIN),(67,55,_MIN),(69,45,_DOR)]),
     # L2  D Natural Minor  i–VII–VI–v  101 BPM  tense chase
-    (101, [(74,50,_MIN,_ARP_D2),(72,48,_MAJ,_ARP_D1),(70,46,_MAJ,_ARP_D2),(67,55,_MIN,_ARP_D3),
-           (69,57,_MIN,_ARP_D3),(71,59,_MIN,_ARP_D4),(72,48,_MAJ,_ARP_D4),(74,50,_MIN,_ARP_D4)]),
+    (101, [(74,50,_MIN),(72,48,_MAJ),(70,46,_MAJ),(67,55,_MIN),
+           (69,57,_MIN),(71,59,_MIN),(72,48,_MAJ),(74,50,_MIN)]),
     # L3  G Phrygian  i–♭II–i–♭II  106 BPM  ominous
-    (106, [(67,55,_PHR,_ARP_D1),(65,53,_MAJ,_ARP_D3),(67,55,_PHR,_ARP_D2),(65,53,_MAJ,_ARP_D4),
-           (67,55,_PHR,_ARP_D4),(65,53,_MAJ,_ARP_D4),(67,55,_PHR,_ARP_D5),(65,53,_MAJ,_ARP_D5)]),
+    (106, [(67,55,_PHR),(65,53,_MAJ),(67,55,_PHR),(65,53,_MAJ),
+           (67,55,_PHR),(65,53,_MAJ),(67,55,_PHR),(65,53,_MAJ)]),
     # L4  A Harmonic Minor  i–iv–V–i  111 BPM  exotic danger
-    (111, [(69,45,_HARM,_ARP_D3),(62,50,_MIN,_ARP_D2),(64,52,_MAJ,_ARP_D4),(69,45,_HARM,_ARP_D3),
-           (65,53,_MAJ,_ARP_D4),(62,50,_MIN,_ARP_D4),(64,52,_MAJ,_ARP_D5),(69,45,_HARM,_ARP_D5)]),
+    (111, [(69,45,_HARM),(62,50,_MIN),(64,52,_MAJ),(69,45,_HARM),
+           (65,53,_MAJ),(62,50,_MIN),(64,52,_MAJ),(69,45,_HARM)]),
     # L5  E Natural Minor  i–VII–VI–v  116 BPM  furious
-    (116, [(64,52,_MIN,_ARP_D4),(62,50,_MAJ,_ARP_D3),(60,48,_MAJ,_ARP_D4),(59,47,_MIN,_ARP_D5),
-           (57,45,_MIN,_ARP_D5),(62,50,_MAJ,_ARP_D5),(64,52,_MIN,_ARP_D5),(59,47,_MIN,_ARP_D6)]),
+    (116, [(64,52,_MIN),(62,50,_MAJ),(60,48,_MAJ),(59,47,_MIN),
+           (57,45,_MIN),(62,50,_MAJ),(64,52,_MIN),(59,47,_MIN)]),
     # L6  B Phrygian  i–♭II–i–♭VII  120 BPM  very tense
-    (120, [(71,59,_PHR,_ARP_D4),(72,48,_MAJ,_ARP_D5),(71,59,_PHR,_ARP_D4),(69,45,_MIN,_ARP_D5),
-           (71,59,_PHR,_ARP_D5),(72,48,_MAJ,_ARP_D5),(71,59,_DIM,_ARP_D5),(69,45,_MIN,_ARP_D6)]),
+    (120, [(71,59,_PHR),(72,48,_MAJ),(71,59,_PHR),(69,45,_MIN),
+           (71,59,_PHR),(72,48,_MAJ),(71,59,_DIM),(69,45,_MIN)]),
     # L7  F# Natural Minor  i–iv–♭VII–i  125 BPM  dark pursuit
-    (125, [(66,54,_MIN,_ARP_D5),(62,50,_MIN,_ARP_D4),(64,52,_MAJ,_ARP_D5),(66,54,_MIN,_ARP_D6),
-           (66,54,_DIM,_ARP_D5),(64,52,_MIN,_ARP_D6),(62,50,_DIM,_ARP_D6),(66,54,_MIN,_ARP_D6)]),
+    (125, [(66,54,_MIN),(62,50,_MIN),(64,52,_MAJ),(66,54,_MIN),
+           (66,54,_DIM),(64,52,_MIN),(62,50,_DIM),(66,54,_MIN)]),
     # L8  C# Diminished  descending dim  130 BPM  chaotic
-    (130, [(61,49,_DIM,_ARP_D5),(64,52,_DIM,_ARP_D6),(67,55,_DIM,_ARP_D5),(61,49,_DIM,_ARP_D6),
-           (64,52,_DIM,_ARP_D6),(67,55,_DIM,_ARP_D6),(61,49,_DIM,_ARP_D6),(64,52,_DIM,_ARP_D6)]),
+    (130, [(61,49,_DIM),(64,52,_DIM),(67,55,_DIM),(61,49,_DIM),
+           (64,52,_DIM),(67,55,_DIM),(61,49,_DIM),(64,52,_DIM)]),
     # L9  G# Phrygian  i–♭II–♭VII–i  135 BPM  terrifying
-    (135, [(68,44,_PHR,_ARP_D6),(69,45,_MAJ,_ARP_D5),(67,55,_DIM,_ARP_D6),(68,44,_PHR,_ARP_D6),
-           (68,44,_DIM,_ARP_D6),(69,45,_PHR,_ARP_D6),(67,55,_DIM,_ARP_D6),(68,44,_PHR,_ARP_D6)]),
+    (135, [(68,44,_PHR),(69,45,_MAJ),(67,55,_DIM),(68,44,_PHR),
+           (68,44,_DIM),(69,45,_PHR),(67,55,_DIM),(68,44,_PHR)]),
     # L10  Chromatic Dim  all tritones  140 BPM  boss chaos
-    (140, [(71,59,_DIM,_ARP_D6),(68,56,_DIM,_ARP_D6),(65,53,_DIM,_ARP_D6),(62,50,_DIM,_ARP_D6),
-           (59,47,_DIM,_ARP_D6),(56,44,_DIM,_ARP_D6),(59,47,_DIM,_ARP_D6),(62,50,_DIM,_ARP_D6)]),
+    (140, [(71,59,_DIM),(68,56,_DIM),(65,53,_DIM),(62,50,_DIM),
+           (59,47,_DIM),(56,44,_DIM),(59,47,_DIM),(62,50,_DIM)]),
+]
+
+
+# Per-level composed melody themes: 8 bars × 8 eighth-note steps = 64 MIDI pitches.
+# -1 = rest.  Pitches are absolute MIDI note numbers, played by the main lead voice.
+_LEVEL_THEMES = [
+    # L1  A Dorian — "The Wanderer": searching, rises and falls over the minor groove
+    [69,72,76,74, 76,72,71,69,  74,78,81,79, 78,76,74,-1,  76,74,72,71, 69,67,66,64,  69,71,72,76, 74,72,71,69,
+     79,76,72,74, 76,79,81,-1,  71,69,67,66, 67,69,71,72,  67,70,74,72, 70,67,69,-1,  69,-1,76,74, 72,71,69,64],
+    # L2  D Natural Minor — "The Chase": driving descent, relentless forward motion
+    [74,77,81,79, 77,76,74,72,  72,70,69,67, 69,70,72,74,  70,72,74,72, 70,69,67,65,  69,-1,67,69, 70,69,67,65,
+     67,70,74,72, 70,67,69,70,  69,72,76,74, 72,70,69,-1,  72,74,76,74, 72,70,69,67,  74,72,70,69, 67,65,64,62],
+    # L3  G Phrygian — "Shadow Step": the flat-2 half-step (G→Ab) dominates
+    [67,68,70,67, 68,70,72,70,  68,67,65,63, 62,63,65,67,  79,77,75,74, 72,70,68,67,  68,70,72,70, 68,67,65,63,
+     67,70,74,75, 74,72,70,68,  72,74,75,77, 79,77,75,74,  74,72,70,68, 67,68,70,72,  67,-1,68,67, 65,63,62,67],
+    # L4  A Harmonic Minor — "Ancient Danger": the augmented 2nd (F→G#) gives exotic colour
+    [69,76,80,81, 80,76,74,72,  74,72,71,69, 68,69,71,74,  76,80,81,80, 76,74,72,71,  69,-1,76,80, 81,80,76,69,
+     77,76,74,72, 71,69,68,65,  74,71,68,69, 71,74,76,-1,  76,74,72,71, 69,68,69,76,  69,68,69,72, 76,74,72,69],
+    # L5  E Natural Minor — "Pursuit": energetic, wide leaps, barely controlled
+    [76,74,71,67, 69,71,74,76,  74,72,71,69, 71,72,74,-1,  72,71,69,67, 66,67,69,71,  71,-1,74,78, 76,74,71,-1,
+     69,67,69,71, 72,74,76,78,  74,76,78,79, 78,76,74,72,  76,74,72,71, 69,67,66,64,  71,69,67,66, 64,-1,71,76],
+    # L6  B Phrygian — "Edge of Darkness": tense stepwise motion, chromatic inflections
+    [71,72,74,72, 71,69,67,66,  72,74,76,74, 72,71,72,-1,  71,69,67,66, 67,69,71,72,  69,67,66,64, 66,67,69,71,
+     71,72,71,69, 67,66,67,69,  72,74,76,78, 79,78,76,74,  71,74,78,76, 74,72,71,-1,  69,-1,67,69, 71,69,67,71],
+    # L7  F# Natural Minor — "Relentless": aggressive descent, angular leaps, no rest
+    [78,76,74,73, 71,69,68,66,  71,69,68,66, 68,69,71,73,  73,74,76,74, 73,71,69,68,  66,-1,71,73, 74,73,71,-1,
+     78,74,71,73, 74,76,78,-1,  76,73,69,71, 73,74,76,-1,  74,73,71,69, 68,69,71,73,  66,-1,73,71, 69,68,66,-1],
+    # L8  C# Diminished — "Fragmentation": wide leaps, tritones, unstable but purposeful
+    [73,76,79,-1, 78,76,75,73,  76,78,79,81, 82,81,79,78,  79,81,82,-1, 81,79,78,76,  73,-1,79,78, 76,75,73,-1,
+     75,76,78,79, 81,82,81,79,  81,79,78,76, 75,73,75,76,  78,76,75,73, 75,78,79,81,  79,-1,78,76, 75,73,76,73],
+    # L9  G# Phrygian — "Terror": unrelenting, descends from the top then rockets back up
+    [80,81,80,78, 76,75,73,71,  81,80,78,76, 75,73,71,69,  71,73,75,76, 78,80,81,-1,  80,-1,81,80, 78,76,75,80,
+     68,69,71,73, 75,76,78,80,  81,78,75,76, 78,80,81,-1,  78,76,75,73, 71,73,75,78,  80,-1,80,78, 76,75,73,68],
+    # L10  Chromatic Dim — "Boss": full B dim7 from top to bottom then back up in one sweep
+    [83,80,77,75, 74,71,68,-1,  80,79,77,75, 74,73,71,68,  77,75,74,73, 71,70,68,67,  74,-1,80,77, 75,74,71,-1,
+     71,68,65,63, 62,59,56,-1,  68,67,65,63, 62,61,59,-1,  59,62,65,68, 71,74,77,80,  83,-1,80,77, 74,71,68,71],
 ]
 
 
@@ -343,10 +370,11 @@ def _make_music_track(np, level: int) -> pygame.Sound:
     eighth_n  = round(eighth_s * _RATE)
     beat_n    = 2 * eighth_n
 
-    buf = np.zeros(len(bars) * 8 * eighth_n, dtype=np.float32)
-    rng = np.random.default_rng(level * 13)
+    buf   = np.zeros(len(bars) * 8 * eighth_n, dtype=np.float32)
+    rng   = np.random.default_rng(level * 13)
+    theme = _LEVEL_THEMES[level - 1]
 
-    for bar_idx, (mel_root, bas_root, scale, arp) in enumerate(bars):
+    for bar_idx, (mel_root, bas_root, scale) in enumerate(bars):
         bar0  = bar_idx * 8 * eighth_n
         bar_n = 8 * eighth_n
 
@@ -371,13 +399,14 @@ def _make_music_track(np, level: int) -> pygame.Sound:
             * _env(np, brass_n, 0.005, 0.07, 0.28, 0.12)
         )
 
-        # Lead: FM distorted arpeggio (index 4.0 → dense harmonics, tanh clip for grit)
-        for step, deg in enumerate(arp):
-            if deg < 0:
+        # Lead: composed melody theme
+        for step in range(8):
+            midi = theme[bar_idx * 8 + step]
+            if midi < 0:
                 continue
             pos  = bar0 + step * eighth_n
             n_e  = eighth_n
-            freq = _hz(mel_root + scale[deg])
+            freq = _hz(midi)
             ev   = _env(np, n_e, 0.003, 0.015, 0.40, 0.025)
             wave = _fm(np, freq, 1.0, 4.0, n_e)
             buf[pos:pos+n_e] += np.tanh(wave * ev * 2.8) * 0.13
