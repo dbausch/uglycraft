@@ -548,35 +548,43 @@ class Game:
 
     def _render_hud(self):
         hud_y = ROWS * TILE
-        hud_rect = pygame.Rect(0, hud_y, LOGICAL_W, STATUS_H)
-        pygame.draw.rect(self.surf, HUD_BG, hud_rect)
+        pygame.draw.rect(self.surf, HUD_BG, (0, hud_y, LOGICAL_W, STATUS_H))
 
-        def htext(txt, x, color=HUD_TEXT):
-            img = self.font_hud.render(txt, True, color)
-            self.surf.blit(img, (x, hud_y + (STATUS_H - img.get_height()) // 2))
-
-        htext(f"SCORE {self.score:>7}", 4)
-        htext(f"LEVEL {self.level}", 200)
-        htext(f"LIVES {self.lives}", 310, HUD_LIFE)
-        item = TREASURE_NAMES.get(self.treasure_item_no, "")
-        htext(f"SEEK: {item}", 430)
-        # Wall placement credits — colour signals state, no extra symbols needed:
-        #   green  = credits ready to spend
-        #   yellow = no credits yet but progress made toward next one
-        #   gray   = no credits, no progress
+        # Wall credit colour: green = spend now, yellow = progress, gray = none
         if self._place_credits > 0:
             wall_color = LTGREEN
         elif self._breaks_toward_credit > 0:
             wall_color = YELLOW
         else:
             wall_color = GRAY
-        htext(f"WALLS  {self._place_credits}", 680, wall_color)
+
+        # Pad SEEK name to the longest treasure name so the slot never shifts.
+        max_name = max(len(v) for v in TREASURE_NAMES.values())
+        item_name = TREASURE_NAMES.get(self.treasure_item_no, "")
+
+        elems = [
+            (f"SCORE {self.score:>7}",              HUD_TEXT),
+            (f"LEVEL {self.level:>2}",               HUD_TEXT),
+            (f"LIVES {self.lives:>2}",               HUD_LIFE),
+            (f"SEEK: {item_name:<{max_name}}",       HUD_TEXT),
+            (f"WALLS {self._place_credits:>2}",      wall_color),
+        ]
         if self.shield:
-            htext("★SHIELD", 778, LTBLUE)
+            elems.append(("SHIELD", LTBLUE))
         if self.level == NUM_LEVELS:
-            htext("BOSS", 878, MAGENTA)
+            elems.append(("BOSS", MAGENTA))
         elif self.difficulty == HARD:
-            htext("HARD", 878, RED)
+            elems.append(("HARD", RED))
+
+        imgs = [self.font_hud.render(txt, True, col) for txt, col in elems]
+        total_w = sum(img.get_width() for img in imgs)
+        margin = 10
+        gap = (LOGICAL_W - 2 * margin - total_w) / max(len(imgs) - 1, 1)
+        cy = hud_y + (STATUS_H - imgs[0].get_height()) // 2
+        x = float(margin)
+        for img in imgs:
+            self.surf.blit(img, (round(x), cy))
+            x += img.get_width() + gap
 
     # ── Overlays ─────────────────────────────────────────────────────────────
 
@@ -627,20 +635,23 @@ class Game:
         sub = self.font_med.render("Inspired by UGLI (1996)", True, GRAY)
         self.surf.blit(sub, (LOGICAL_W // 2 - sub.get_width() // 2, 210))
 
-        # Instructions
+        # Instructions — measure first, then centre the two-column block
         lines = [
             ("Arrow keys", "move  (bump a wall 3× to mine it)"),
             ("Space",      "place wall  (costs 1 credit)"),
             ("Enter",      "shop (shield / extra life)"),
             ("P",          "pause"),
         ]
-        lx = LOGICAL_W // 2 - 180
-        for i, (key, desc) in enumerate(lines):
+        gap = 14
+        rendered = [(self.font_small.render(f"[{k}]", True, HUD_KEY),
+                     self.font_small.render(d, True, WHITE)) for k, d in lines]
+        max_key_w  = max(ki.get_width() for ki, _ in rendered)
+        max_desc_w = max(di.get_width() for _, di in rendered)
+        block_x = (LOGICAL_W - max_key_w - gap - max_desc_w) // 2
+        for i, (ki, di) in enumerate(rendered):
             ky = 280 + i * 26
-            ki = self.font_small.render(f"[{key}]", True, HUD_KEY)
-            di = self.font_small.render(desc, True, WHITE)
-            self.surf.blit(ki, (lx, ky))
-            self.surf.blit(di, (lx + 180, ky))
+            self.surf.blit(ki, (block_x + max_key_w - ki.get_width(), ky))
+            self.surf.blit(di, (block_x + max_key_w + gap, ky))
 
         # Blink prompt
         if int(t * 2) % 2 == 0:
