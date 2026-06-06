@@ -277,6 +277,14 @@ def _hihat(np, rng, n: int, vol: float = 0.055):
     return noise * np.exp(-t * 130.0) * vol
 
 
+def _snare(np, rng, n: int, vol: float = 0.085):
+    """White noise burst + brief 220 Hz tone — snare / side-stick."""
+    t     = np.arange(n, dtype=np.float32) / _RATE
+    noise = rng.standard_normal(n).astype(np.float32)
+    tone  = np.sin(2.0 * np.pi * 220.0 * t) * 0.25
+    return (noise + tone) * np.exp(-t * 60.0) * vol
+
+
 def _strings(np, root_midi: int, scale: list, bar_n: int,
              vol_per_saw: float = 0.055, detune: float = 0.004):
     """Detuned sawtooth chord (root + 3rd + 5th), slow attack — ensemble strings."""
@@ -373,6 +381,8 @@ def _make_music_track(np, level: int) -> pygame.Sound:
     buf   = np.zeros(len(bars) * 8 * eighth_n, dtype=np.float32)
     rng   = np.random.default_rng(level * 13)
     theme = _LEVEL_THEMES[level - 1]
+    # March accent: beats 1&3 (steps 0,4) strong; beats 2&4 (steps 2,6) medium; off-beats soft
+    acc   = [1.00, 0.65, 0.80, 0.65, 1.00, 0.65, 0.80, 0.65]
 
     for bar_idx, (mel_root, bas_root, scale) in enumerate(bars):
         bar0  = bar_idx * 8 * eighth_n
@@ -399,23 +409,26 @@ def _make_music_track(np, level: int) -> pygame.Sound:
             * _env(np, brass_n, 0.005, 0.07, 0.28, 0.12)
         )
 
-        # Lead: composed melody theme
+        # Lead: staccato melody with march accent dynamics
         for step in range(8):
             midi = theme[bar_idx * 8 + step]
             if midi < 0:
                 continue
-            pos  = bar0 + step * eighth_n
-            n_e  = eighth_n
-            freq = _hz(midi)
-            ev   = _env(np, n_e, 0.003, 0.015, 0.40, 0.025)
-            wave = _fm(np, freq, 1.0, 4.0, n_e)
-            buf[pos:pos+n_e] += np.tanh(wave * ev * 2.8) * 0.13
+            pos    = bar0 + step * eighth_n
+            n_stac = round(eighth_n * 0.55)
+            freq   = _hz(midi)
+            ev     = _env(np, n_stac, 0.003, 0.012, 0.30, 0.012)
+            wave   = _fm(np, freq, 1.0, 4.0, n_stac)
+            buf[pos:pos+n_stac] += np.tanh(wave * ev * 2.8) * 0.13 * acc[step]
 
-        # Second lead: full-bar FM note one octave below, brighter mod ratio (2.0)
+        # Second lead: quarter-note staccato hits, one octave below, brighter FM
         freq2 = _hz(mel_root - 12 + scale[0])
-        ev2   = _env(np, bar_n, 0.012, 0.06, 0.58, 0.10)
-        wave2 = _fm(np, freq2, 2.0, 3.5, bar_n)
-        buf[bar0:bar0+bar_n] += np.tanh(wave2 * ev2 * 2.4) * 0.10
+        for beat in range(4):
+            pos2  = bar0 + beat * beat_n
+            n_e2  = round(beat_n * 0.50)
+            ev2   = _env(np, n_e2, 0.005, 0.018, 0.28, 0.012)
+            wave2 = _fm(np, freq2, 2.0, 3.5, n_e2)
+            buf[pos2:pos2+n_e2] += np.tanh(wave2 * ev2 * 2.4) * 0.10
 
         # Kick on beats 0 and 2
         for beat in (0, 2):
@@ -423,11 +436,17 @@ def _make_music_track(np, level: int) -> pygame.Sound:
             pos = bar0 + beat * beat_n
             buf[pos:pos+kn] += _kick(np, kn)
 
-        # Hi-hat on off-beats (beats 1 and 3)
+        # Snare on beats 1 and 3 (backbeat)
         for beat in (1, 3):
-            hn  = min(round(_RATE * 0.016), eighth_n)
+            sn  = min(round(_RATE * 0.045), beat_n)
             pos = bar0 + beat * beat_n
-            buf[pos:pos+hn] += _hihat(np, rng, hn)
+            buf[pos:pos+sn] += _snare(np, rng, sn)
+
+        # Hi-hat on off-eighth positions ("and" of every beat)
+        for step in (1, 3, 5, 7):
+            hn  = min(round(_RATE * 0.012), eighth_n)
+            pos = bar0 + step * eighth_n
+            buf[pos:pos+hn] += _hihat(np, rng, hn, vol=0.040)
 
     return _to_sound(np, buf)
 
