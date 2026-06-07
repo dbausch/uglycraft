@@ -1083,7 +1083,49 @@ End;
 
 procedure Taste;
   Begin
-    If KeyPressed Then t := ReadKey;
+    if KeyPressed then begin
+      t := ReadKey;
+      { Map terminal key sequences to DOS scan codes.
+        Arrow keys, Home: FPC CRT returns #0 + scan code (PushExt).
+        End (ESC[F): installed FPC CRT does not handle this sequence; it
+          pushes the bytes back LIFO so they arrive reversed: F(70),[,ESC.
+          We detect the F prefix, consume '[' and ESC, and map to chr(lans). }
+      if t = #0 then begin
+        { Extended-key prefix: next byte is the DOS scan code. }
+        if KeyPressed then t := ReadKey else t := #0;
+      end else if t = 'F' then begin
+        { Reversed ESC[F (End). Drain '[' + ESC if they follow. }
+        delay(5);
+        if KeyPressed then begin
+          t := ReadKey;
+          if t = '[' then begin
+            delay(5);
+            if KeyPressed then begin ReadKey; t := chr(lans); end;
+          end;
+        end;
+      end else if t = #27 then begin
+        { Standalone ESC or forward ESC[x from other terminal variants. }
+        delay(20);
+        if KeyPressed then begin
+          t := ReadKey;              { expect '[' }
+          if (t = '[') and KeyPressed then begin
+            t := ReadKey;
+            case t of
+              'F'  : t := chr(lans);
+              'H'  : t := chr(sped);
+              '4'  : begin while KeyPressed do ReadKey; t := chr(lans); end;
+              '1'  : begin while KeyPressed do ReadKey; t := chr(sped); end;
+            else
+              begin while KeyPressed do ReadKey; t := #0; end;
+            end;
+          end else begin
+            while KeyPressed do ReadKey;
+            t := #0;
+          end;
+        end;
+        { if not KeyPressed: standalone ESC, t stays #27 → goto 999 }
+      end;
+    end;
     timeslot := (timeslot + 1) MOD 2;
     gotoxy(1, 1);
     ti := ord(t);
