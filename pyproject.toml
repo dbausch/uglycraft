@@ -25,6 +25,7 @@ args   = [{name = "level", positional = true}]
 help  = "Build standalone Linux distributable (dist/linux-64/)"
 shell = """
   .venv/bin/pyinstaller --onefile --noconsole --name uglycraft \
+    --add-data "fonts/ShareTechMono-Regular.ttf:fonts" \
     --distpath dist/linux-64 main.py
   cp -r LICENSES dist/linux-64/
 """
@@ -34,7 +35,8 @@ help  = "Build standalone Windows distributable (dist/windows-64/) via Wine"
 shell = """
   WINEDEBUG=-all wine \
     ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
-    -m PyInstaller --onefile --noconsole --name uglycraft main.py
+    -m PyInstaller --onefile --noconsole --name uglycraft \
+    --add-data "fonts/ShareTechMono-Regular.ttf;fonts" main.py
   mkdir -p dist/windows-64
   mv dist/uglycraft.exe dist/windows-64/
   cp -r LICENSES dist/windows-64/
