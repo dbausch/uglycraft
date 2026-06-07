@@ -1,21 +1,11 @@
 unit DANISOFT;
 interface
-uses Crt;
+uses Crt,Extra1;
 
 procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;Nr,User,copyjahr:String);
+Procedure Erkennung2(s1,s2,s3,s4,s5,s6,s7,s8:String;sc,sbk:Byte;vers,Nr,user,copy_j_n:String);
 
 implementation
-
-function Zentriert(s:String) : String;
-var Laenge,Blanks,i : Integer;
-    BlankZone : String;
-Begin
-  Laenge := Length(s);
-  Blanks := 39 - (Laenge DIV 2);
-  BlankZone := '';
-  For I := 1 to Blanks do BlankZone := BlankZone + ' ';
-  Zentriert := BlankZone + s;
-End;
 
 procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;
                     Nr,User,copyjahr:String);
@@ -56,7 +46,7 @@ begin
   delay(200);
   writeln;
   delay(200);
-  writeln(Zentriert('* DANISOFT * PR�SENTIERT *'));
+  writeln(Zentriert('* DANISOFT * PRÄSENTIERT *'));
   delay(200);
   writeln;
   TextColor(red+Blink);
@@ -90,7 +80,7 @@ begin
   TextColor(black);
   TextBackground(15);
   delay(200);
-  writeln(Zentriert('Nicht kopierbares Programm f�r ' + User));
+  writeln(Zentriert('Nicht kopierbares Programm für ' + User));
   delay(200);
   writeln;
   delay(200);
@@ -106,7 +96,7 @@ begin
   writeln;
   delay(200);
   textcolor(4);
-  write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Dr�cken'));
+  write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
   readln;
   ClrScr;
   for I := 40 to 50 do
@@ -117,5 +107,115 @@ begin
     end;
   textcolor(Black);
 end;
+
+Procedure Erkennung2(s1,s2,s3,s4,s5,s6,s7,s8:String;sc,sbk:Byte;vers,Nr,user,copy_j_n:String);
+const
+     Bibb = true;
+     Schreibmaschine = false;
+
+var I,c : Integer;
+    t : Char;
+
+function Zent(s:String) : Integer;
+var Laenge,Blanks : Integer;
+Begin
+  Laenge := Length(s);
+  Blanks := 40 - (Laenge DIV 2);
+  Zent := Blanks;
+End;
+
+Procedure Schreib(s:String;schnell:Boolean;fg,hg:Integer);
+var x,y,I:Integer;
+Begin
+  x := WhereX;
+  y := WhereY;
+  textcolor(fg);
+  textbackground(hg);
+  For I := 1 to length(s) do Write(' ');
+  gotoxy(x,y);
+  IF schnell then
+  Begin
+    Sound(600);
+    Write(s);
+    delay(40);
+    Nosound;
+  End
+  else
+  Begin
+    For I := 1 to length(s) do
+    Begin
+      Sound(40);
+      Write(s[I]);
+      delay(50);
+      Nosound;
+      delay(35);
+    End;
+  End;
+End;
+
+Begin
+  textbackground(0);
+  ClrScr;
+  c := 1;
+  For I := 1 to 1999 do
+  Begin
+    Textcolor(c);
+    Write('█');
+    Inc(c);
+    IF c = 16 then c := 1;
+    Sound(WhereX*WhereY+40);
+    delay(3);
+  End;
+  textbackground(5);
+  ClrEol;
+  Sound(WhereX*WhereY);
+  delay(3);
+  NoSound;
+  Delay(200);
+  gotoxy(Zent('* DANISOFT * PRÄSENTIERT *'),4);
+  Schreib('* DANISOFT *',Bibb,14,1);
+  delay(300);
+  Schreib(' PRÄSENTIERT *',Schreibmaschine,14,1);
+  gotoxy(Zent(s1),7);
+  Schreib(s1,Bibb,sc,sbk);
+  gotoxy(Zent(s2),8);
+  Schreib(s2,Bibb,sc,sbk);
+  gotoxy(Zent(s3),9);
+  Schreib(s3,Bibb,sc,sbk);
+  gotoxy(Zent(s4),10);
+  Schreib(s4,Bibb,sc,sbk);
+  gotoxy(Zent(s5),11);
+  Schreib(s5,Bibb,sc,sbk);
+  gotoxy(Zent(s6),12);
+  Schreib(s6,Bibb,sc,sbk);
+  gotoxy(Zent(s7),13);
+  Schreib(s7,Bibb,sc,sbk);
+  gotoxy(Zent(s8),14);
+  Schreib(s8,Bibb,sc,sbk);
+  delay(300);
+  gotoxy(Zent('Dieses Programm ist lizenziert für '+user),18);
+  Schreib('Dieses Programm ist lizenziert für ',Bibb,14,1);
+  delay(300);
+  Schreib(user,Schreibmaschine,14,1);
+  gotoxy(Zent('Version '+ vers +'/'+Nr),20);
+  delay(300);
+  Schreib('Version ',Bibb,11,0);
+  delay(300);
+  Schreib(Vers,Schreibmaschine,11,0);
+  delay(300);
+  Schreib('/',Bibb,11,0);
+  delay(300);
+  Schreib(Nr,Schreibmaschine,11,0);
+  gotoxy(Zent('Copyright (C) '+copy_j_n),22);
+  delay(300);
+  Schreib('Copyright (C) ',Bibb,12,1);
+  delay(300);
+  Schreib(copy_j_n,Schreibmaschine,12,1);
+  gotoxy(Zent('Bitte die [Return] bzw. [Enter] Taste drücken!'),25);
+  Schreib('Bitte die [Return] bzw. [Enter] Taste drücken!',Schreibmaschine,10,7);
+  repeat
+   t := readkey;
+  until t = #13;
+End;
 
 end.
