@@ -1,4 +1,6 @@
 """Core game logic and rendering."""
+import os
+import sys
 import random
 from collections import deque
 import pygame
@@ -40,11 +42,13 @@ class Game:
     # ── Font setup ────────────────────────────────────────────────────────────
 
     def _init_fonts(self):
-        self.font_big   = pygame.font.SysFont('monospace', 36, bold=True)
-        self.font_med   = pygame.font.SysFont('monospace', 22, bold=True)
-        self.font_small = pygame.font.SysFont('monospace', 16)
-        self.font_hud   = pygame.font.SysFont('monospace', 16, bold=True)
-        self.font_title = pygame.font.SysFont('monospace', 64, bold=True)
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        ttf  = os.path.join(base, 'fonts', 'ShareTechMono-Regular.ttf')
+        self.font_big   = pygame.font.Font(ttf, 36)
+        self.font_med   = pygame.font.Font(ttf, 22)
+        self.font_small = pygame.font.Font(ttf, 16)
+        self.font_hud   = pygame.font.Font(ttf, 16)
+        self.font_title = pygame.font.Font(ttf, 64)
 
     # ── Pathfinding ───────────────────────────────────────────────────────────
 
