@@ -77,11 +77,11 @@ begin
   ClrScr;
   writeln;
   writeln('VORNAME ');
-  CursorOn;
+  Write(#27'[?25h');
   gotoxy (9,2); readln(IZ);
   writeln('NAME ');
   gotoxy (6,3); readln(A);
-  CursorOff;
+  Write(#27'[?25l');
   writexy(1,4,'Punkte '); write(punkte * leben);
   Assign(f,Name);
   {$I-}
@@ -1215,7 +1215,7 @@ end;
 {************************ H A U P T P R O G R A M M *************************}
 
 begin
-  CursorOff;
+  Write(#27'[?25l');
   repeat
    1:
    Def;
@@ -1300,7 +1300,7 @@ until i = 3000;
 until ti = 27;
 
 999:
- CursorOn;
+ Write(#27'[?25h');
  textbackground(0);
  textcolor(15);
 cls;
