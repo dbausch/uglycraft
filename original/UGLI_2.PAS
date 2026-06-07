@@ -582,52 +582,68 @@ Begin
 End; {brumm}
 
 procedure unten (Var x:integer; Var y:integer);
+var oldy: integer;
 begin
- delay(55);
- writexy(x, y,' ');
- if sper[x, y + 1] then Brumm
-                   else y := y + 1;
-  textcolor(14);
-  writexy(x,y,'☺');
+  oldy := y;
+  if sper[x, y + 1] then Brumm
+                    else y := y + 1;
+  if y <> oldy then begin
+    writexy(x, oldy,' ');
+    textcolor(14);
+    writexy(x,y,'☺');
+  end;
+  delay(55);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
 end; {unten}
 
 procedure links (Var x:Integer; Var y:integer);
- begin
-  delay(10);
-  writexy(x, y,' ');
+var oldx: integer;
+begin
+  oldx := x;
   if sper[x-1, y] then Brumm
                   else x := x - 1;
-  textcolor(14);
-  writexy(x,y,'☺');
+  if x <> oldx then begin
+    writexy(oldx, y,' ');
+    textcolor(14);
+    writexy(x,y,'☺');
+  end;
+  delay(10);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
 end;  {links}
 
 procedure rechts (Var x:Integer; Var y:integer);
+var oldx: integer;
 begin
-    delay(10);
-    writexy(x, y,' ');
-    if sper[x+1, y] then Brumm
-                    else x := x + 1;
-  textcolor(14);
-  writexy(x,y,'☺');
+  oldx := x;
+  if sper[x+1, y] then Brumm
+                  else x := x + 1;
+  if x <> oldx then begin
+    writexy(oldx, y,' ');
+    textcolor(14);
+    writexy(x,y,'☺');
+  end;
+  delay(10);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
 end;  {rechts}
 
 procedure oben (Var x:Integer; Var y:integer);
+var oldy: integer;
 begin
-    delay(55);
-    writexy(x, y,' ');
-    if sper[x, y - 1] then Brumm
-                      else y := y - 1;
-  textcolor(14);
-  writexy(x,y,'☺');
+  oldy := y;
+  if sper[x, y - 1] then Brumm
+                    else y := y - 1;
+  if y <> oldy then begin
+    writexy(x, oldy,' ');
+    textcolor(14);
+    writexy(x,y,'☺');
+  end;
+  delay(55);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
@@ -1057,9 +1073,6 @@ procedure Taste;
   Begin
     If KeyPressed Then t := ReadKey;
     timeslot := (timeslot + 1) MOD 2;
-    writexy(x,y,' ');
-    textcolor(14);
-    writexy(x,y,'☺');
     gotoxy(1, 1);
     ti := ord(t);
     Case ti of
@@ -1112,6 +1125,8 @@ procedure Taste;
       begin
         PausenZeigen;
       end;
+    textcolor(14);
+    writexy(x,y,'☺');
 
   End;
 
