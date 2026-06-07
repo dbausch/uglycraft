@@ -36,9 +36,15 @@ var
 {****************************** B E G I N N *********************************}
 {*************************** P R O C E D U R E N ****************************}
 
-procedure writexy(X,Y:integer;s:String);
+procedure writexy(col,row:integer;s:String);
 Begin
- gotoxy(x,y);
+ { Poison FPC's cursor tracker so the real gotoxy always emits its ESC
+   sequence. FPC advances the tracker by byte count after every write;
+   multi-byte UTF-8 chars (☺ ☻ █ = 3 bytes, 1 cell) leave it 2 ahead of
+   the real cursor, so gotoxy silently skips moves whose target matches the
+   stale position — writing to the wrong cell. }
+ gotoxy(1,1);
+ gotoxy(col,row);
  write(s);
 End;
 
@@ -543,7 +549,7 @@ begin
   begin
    repeat
        writexy(30, 8,'███████████████████████████');
-gotoxy(30, 9); write('█ L E V E L   ',level,'           █');
+writexy(30, 9,'█ L E V E L   '); write(level,'           █');
       writexy(30, 10,'███████████████████████████');
       writexy(30, 11,' T A S T E   D R Ü C K E N ');
     delay(1000);
@@ -834,7 +840,7 @@ end;
 
 procedure PausenZeigen;
 begin
- gotoxy(65, 1); write('PAUSEN ',Pausen);
+ writexy(65, 1,'PAUSEN '); write(Pausen);
  writexy(21, 9,'T A S T E   D R Ü C K E N');
  t := readkey;
  textcolor(4);
@@ -1071,8 +1077,7 @@ procedure Taste;
                  punkte := punkte - 1000;
                End;
              End;
-             gotoxy(35,2);
-             write('↑,↓,','←',' oder ← Drücken');
+             writexy(35,2,'↑,↓,← oder ← Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1082,8 +1087,7 @@ procedure Taste;
                Leben := Leben + 1;
                punkte := punkte - 5000;
              End;
-             gotoxy(2,2);
-             write('↑,↓,','←',' oder ← Drücken');
+             writexy(2,2,'↑,↓,← oder ← Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1118,9 +1122,9 @@ Begin
       sx := x;
       sy := y;
       writexy(21, 9,'T A S T E    D R Ü C K E N');
-      gotoxy(21,10); write('Noch vorhandene Steine: ',steine:4);
+      writexy(21,10,'Noch vorhandene Steine: '); write(steine:4);
       t := readkey;
-      gotoxy(21,10); write('                            ');
+      writexy(21,10,'                            ');
       writexy(21, 9,'                            ');
       ReStone;
       x := sx;
@@ -1266,7 +1270,7 @@ begin
      if (x = xx) and (y = yy) then Begin fressen; ReStone; End;
      textbackground(LightRed);
      textcolor(15);
-     gotoxy(6, 20); write('LEBEN ',leben);
+     writexy(6, 20,'LEBEN '); write(leben);
      textbackground(0);
      if leben = 0 then
       begin
