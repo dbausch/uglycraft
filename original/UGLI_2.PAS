@@ -6,7 +6,7 @@ uses crt, dos, danisoft;
 label     100, 300, 999, 998, 1, 997;
 
 Const
-  user = 'Benjamin Mildner';
+  user = 'Sonstwer';
   vers = 2.00;
   Nr   = '0009';
   MaxX = 80;
