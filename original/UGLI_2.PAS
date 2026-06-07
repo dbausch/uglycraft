@@ -205,7 +205,7 @@ Begin
   for I := 18 to 62 do
    begin
     gotoxy(I, 10);
-    write(chr(219));
+    write('█');
     sper[I, 10] := true;
    end; {For I}
 End;   {initl2}
@@ -220,16 +220,16 @@ var I:Integer;
   for I := 5 to 15 do
    begin
     gotoxy(20, I);
-    write(chr(219));
+    write('█');
     gotoxy(60, I);
-    write(chr(219));
+    write('█');
     sper[20, I] := true;
     sper[60, I] := true;
    end;
   for i := 20 to 60 do
   Begin
     gotoxy(I, 10);
-    write(chr(219));
+    write('█');
     sper[I, 10] := true;
   End;
   textbackground(0);
@@ -248,20 +248,20 @@ var I:Integer;
   t := #77;
   for I := 4 to 8 do
    begin
-    writexy(15, I,chr(219));
-    writexy(65, I,chr(219));
+    writexy(15, I,'█');
+    writexy(65, I,'█');
     sper[15, I] := true;
     sper[65, I] := true;
    end;
   for I := 5 to 75 do
    begin
-    writexy(I, 10,chr(219));
+    writexy(I, 10,'█');
     sper[I, 10] := true;
    end;
   for I := 12 to 16 do
    begin
-    writexy(15, I,chr(219));
-    writexy(65, I,chr(219));
+    writexy(15, I,'█');
+    writexy(65, I,'█');
     sper[15, I] := true;
     sper[65, I] := true;
    end;
@@ -281,15 +281,15 @@ textcolor(4);
     t := #72;
     for I := 5 to 15 do
     begin
-     writexy(20, I,chr(219));
-     writexy(60, I,chr(219));
+     writexy(20, I,'█');
+     writexy(60, I,'█');
      sper[20, I] := true;
      sper[60, I] := true;
     end; {FOR}
     for  I := 22 to 58 do
     begin
-     writexy(I, 7,chr(219));
-     writexy(I, 13,chr(219));
+     writexy(I, 7,'█');
+     writexy(I, 13,'█');
      sper[I, 7] := true;
      sper[I, 13] := true;
     end; {FOR}
@@ -310,13 +310,13 @@ textcolor(4);
     t := #80;
     for I := 2 to 8 do
     begin
-     writexy(10, I,chr(219));
-     writexy(20, I,chr(219));
-     writexy(30, I,chr(219));
-     writexy(40, I,chr(219));
-     writexy(50, I,chr(219));
-     writexy(60, I,chr(219));
-     writexy(70, I,chr(219));
+     writexy(10, I,'█');
+     writexy(20, I,'█');
+     writexy(30, I,'█');
+     writexy(40, I,'█');
+     writexy(50, I,'█');
+     writexy(60, I,'█');
+     writexy(70, I,'█');
      sper[10, I] := true;
      sper[20, I] := true;
      sper[30, I] := true;
@@ -327,13 +327,13 @@ textcolor(4);
     end;
     for I := 12 to 19 do
     begin
-     writexy(10, I,chr(219));
-     writexy(20, I,chr(219));
-     writexy(30, I,chr(219));
-     writexy(40, I,chr(219));
-     writexy(50, I,chr(219));
-     writexy(60, I,chr(219));
-     writexy(70, I,chr(219));
+     writexy(10, I,'█');
+     writexy(20, I,'█');
+     writexy(30, I,'█');
+     writexy(40, I,'█');
+     writexy(50, I,'█');
+     writexy(60, I,'█');
+     writexy(70, I,'█');
      sper[10, I] := true;
      sper[20, I] := true;
      sper[30, I] := true;
@@ -344,12 +344,12 @@ textcolor(4);
     end; {FOR}
     for i := 5 to 15 do
     begin
-      writexy(15,I,chr(219));
-      writexy(25,I,chr(219));
-      writexy(35, I,chr(219));
-      writexy(45, I,chr(219));
-      writexy(55, I,chr(219));
-      writexy(65, I,chr(219));
+      writexy(15,I,'█');
+      writexy(25,I,'█');
+      writexy(35, I,'█');
+      writexy(45, I,'█');
+      writexy(55, I,'█');
+      writexy(65, I,'█');
       sper[15,I] := true;
       sper[25,I] := true;
       sper[35,I] := true;
@@ -360,7 +360,7 @@ textcolor(4);
     textbackground(0);
     for I := 6 to 74 do
     begin
-      writexy(I, 10,chr(219));
+      writexy(I, 10,'█');
       writexy(I, 9,' ');
       writexy(I, 11,' ');
       sper[I, 10] := true;
@@ -419,10 +419,10 @@ textcolor(4);
      t := #80;
      for I := 2 to 15 do
      begin
-      writexy(10, I,chr(219));
-      writexy(30, I,chr(219));
-      writexy(50, I,chr(219));
-      writexy(70, I,chr(219));
+      writexy(10, I,'█');
+      writexy(30, I,'█');
+      writexy(50, I,'█');
+      writexy(70, I,'█');
       sper[10, I] := true;
       sper[30, I] := true;
       sper[50, I] := true;
@@ -430,9 +430,9 @@ textcolor(4);
      end; {FOR}
      for I := 5 to 19 do
      begin
-      writexy(20, I,chr(219));
-      writexy(40, I,chr(219));
-      writexy(60, I,chr(219));
+      writexy(20, I,'█');
+      writexy(40, I,'█');
+      writexy(60, I,'█');
       sper[20, I] := true;
       sper[40, I] := true;
       sper[60, I] := true;
@@ -448,10 +448,10 @@ textcolor(4);
      ti := 72;
      for I:= 5 to 15 do
      begin
-      writexy(20, I,chr(219));
-      writexy(60, I,chr(219));
-      writexy(39, I,chr(219));
-      writexy(41, I,chr(219));
+      writexy(20, I,'█');
+      writexy(60, I,'█');
+      writexy(39, I,'█');
+      writexy(41, I,'█');
       sper[20, I] := true;
       sper[60, I] := true;
       sper[39, I] := true;
@@ -459,22 +459,22 @@ textcolor(4);
      end; {FOR}
      for I := 21 to 38 do
      begin
-      writexy(I, 5,chr(219));
+      writexy(I, 5,'█');
       sper[I, 5] := true;
      end;
      for I := 42 to 59 do
      begin
-      writexy(I, 5,chr(219));
+      writexy(I, 5,'█');
       sper[I, 5] := true;
      end;
      for I := 22 to 37 do
      begin
-      writexy(I, 15,chr(219));
+      writexy(I, 15,'█');
       sper[I, 15] := true;
      end;
      for I := 43 to 58 do
      begin
-      writexy(I, 15,chr(219));
+      writexy(I, 15,'█');
       sper[I, 15] := true;
      end;
 end;
@@ -641,18 +641,18 @@ begin
  for I := 1 to 80 do
      begin
      textcolor(4);
-      writexy(I, 1,chr(219));
+      writexy(I, 1,'█');
       textcolor(4);
-      writexy(I, 20,chr(219));
+      writexy(I, 20,'█');
       sper[I, 1] := true;
       sper[I, 20] := true;
      end; {FOR}
  for I := 2 to 19 do
      begin
      textcolor(4);
-      writexy(1, I,chr(219));
+      writexy(1, I,'█');
       textcolor(4);
-      writexy(80, I,chr(219));
+      writexy(80, I,'█');
       sper[1, I] := true;
       sper[80, I] := true;
      end; {FOR}
@@ -723,7 +723,7 @@ begin
             end;
            
        end;
-    writexy(xx, yy,chr(2));
+    writexy(xx, yy,'☻');
 
 end;
 
@@ -762,7 +762,7 @@ begin
   textcolor(Red);
   for J := 1 to 80 do
   Begin
-    if sper[J,5] = true then writexy(J,5,chr(219)) else writexy(J,5,' ');
+    if sper[J,5] = true then writexy(J,5,'█') else writexy(J,5,' ');
   End;
   x := vx;
   y := vy;
@@ -779,7 +779,7 @@ begin
   textcolor(Red);
   for J := 1 to 80 do
   Begin
-    if sper[J,5] = true then writexy(J,5,chr(219)) else writexy(J,5,' ');
+    if sper[J,5] = true then writexy(J,5,'█') else writexy(J,5,' ');
   End;
  end;
  if langs = 0 then
@@ -792,7 +792,7 @@ begin
   Begin
     for J := 1 to 80 do
     Begin
-      if sper[J,I] = true then writexy(J,I,chr(219)) else writexy(J,I,' ');
+      if sper[J,I] = true then writexy(J,I,'█') else writexy(J,I,' ');
     End;
   End;
  end;
@@ -1017,7 +1017,7 @@ begin
   writeln('Mit <s> kann man Steine Setzen !!!');
   writeln('Mit <n> kann man alle gesetzten Steine entfernen !!!');
   writeln;
-  writeln('  ↓,↑,',#26,' oder ',#27,'   DRÜCKEN');
+  writeln('  ↓,↑,','→',' oder ','←','   DRÜCKEN');
   t := readkey;
   ReStone;
   textcolor(11);
@@ -1070,7 +1070,7 @@ procedure Taste;
                End;
              End;
              gotoxy(35,2);
-             write('↑,↓,',#27,' oder ← Drücken');
+             write('↑,↓,','←',' oder ← Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1081,7 +1081,7 @@ procedure Taste;
                punkte := punkte - 5000;
              End;
              gotoxy(2,2);
-             write('↑,↓,',#27,' oder ← Drücken');
+             write('↑,↓,','←',' oder ← Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1178,18 +1178,18 @@ Begin
  for I := 1 to 80 do
      begin
      textcolor(4);
-      writexy(I, 1,chr(219));
+      writexy(I, 1,'█');
       textcolor(4);
-      writexy(I, 20,chr(219));
+      writexy(I, 20,'█');
       sper[I, 1] := true;
       sper[I, 20] := true;
      end; {FOR}
  for I := 2 to 19 do
      begin
      textcolor(4);
-      writexy(1, I,chr(219));
+      writexy(1, I,'█');
       textcolor(4);
-      writexy(80, I,chr(219));
+      writexy(80, I,'█');
       sper[1, I] := true;
       sper[80, I] := true;
      end; {FOR}
