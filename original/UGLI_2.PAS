@@ -868,10 +868,6 @@ begin
  writexy(21, 9,'                           ');
  writexy(65, 1,'███████████████');
  ReStone;
- textbackground(4);
- textcolor(15);
- writexy(35, 1,'LEVEL ');
- write(level);
 end;
 
 procedure Gewonnen;
