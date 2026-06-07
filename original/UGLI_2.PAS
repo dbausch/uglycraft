@@ -77,9 +77,11 @@ begin
   ClrScr;
   writeln;
   writeln('VORNAME ');
+  CursorOn;
   gotoxy (9,2); readln(IZ);
   writeln('NAME ');
   gotoxy (6,3); readln(A);
+  CursorOff;
   writexy(1,4,'Punkte '); write(punkte * leben);
   Assign(f,Name);
   {$I-}
@@ -1213,6 +1215,7 @@ end;
 {************************ H A U P T P R O G R A M M *************************}
 
 begin
+  CursorOff;
   repeat
    1:
    Def;
@@ -1297,6 +1300,7 @@ until i = 3000;
 until ti = 27;
 
 999:
+ CursorOn;
  textbackground(0);
  textcolor(15);
 cls;
