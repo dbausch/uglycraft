@@ -40,27 +40,15 @@ procedure MyCursorOn;  begin Write(tty, #27'[?25h'); end;
 procedure MyCursorOff; begin Write(tty, #27'[?25l'); end;
 
 procedure writexy(col,row:integer;s:String);
-Begin
- { Poison FPC's cursor tracker so the real gotoxy always emits its ESC
-   sequence. FPC advances the tracker by byte count after every write;
-   multi-byte UTF-8 chars (☺ ☻ █ = 3 bytes, 1 cell) leave it 2 ahead of
-   the real cursor, so gotoxy silently skips moves whose target matches the
-   stale position — writing to the wrong cell. }
- gotoxy(1,1);
- gotoxy(col,row);
- write(s);
-End;
-
-procedure DrawHLine(x1,x2,y:integer;ch:String);
-var i:integer;
-Begin
- for i := x1 to x2 do
-  writexy(i,y,ch);
-End;
-
-procedure WriteStr(col,row:integer;s:String);
 var i,c,n:integer;ch:String;
 Begin
+ { Poison FPC's cursor tracker once at entry so the first gotoxy(c,row)
+   always emits its ESC sequence. For each character the loop uses a plain
+   gotoxy(c,row): if the previous write was ASCII the tracker is already
+   correct and gotoxy skips the ESC; if it was multi-byte the tracker is
+   stale and gotoxy corrects it. A final gotoxy leaves the tracker at the
+   position after the last character. }
+ gotoxy(1,1);
  c := col;
  i := 1;
  while i <= Length(s) do
@@ -72,11 +60,19 @@ Begin
    if n >= 1 then ch[1] := s[i];
    if n >= 2 then ch[2] := s[i+1];
    if n >= 3 then ch[3] := s[i+2];
-   writexy(c,row,ch);
+   gotoxy(c,row);
+   write(ch);
    inc(i,n);
    inc(c);
   end;
  gotoxy(c,row);
+End;
+
+procedure DrawHLine(x1,x2,y:integer;ch:String);
+var i:integer;
+Begin
+ for i := x1 to x2 do
+  writexy(i,y,ch);
 End;
 
 procedure ReStone;
@@ -101,7 +97,7 @@ Begin
   writexy(3, 1,'PUNKTE '); Write(punkte);
   textbackground(0);
   textcolor(11);
-  WriteStr(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
+  writexy(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
   DrawHLine(1,80,22,'─');
   writexy(1, 23,'<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
   DrawHLine(1,80,24,'─');
@@ -552,7 +548,7 @@ begin
   cls;
   writexy(2, 1,'                  HILFE VON UGLI');
   writexy(2, 2,'[p] = Pause (1 Pause Weniger)');
-  WriteStr(2, 3,'Bewegungs-Tasten: ◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
+  writexy(2, 3,'Bewegungs-Tasten: ◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
   writexy(2, 4,'[Esc] = Abbruch');
   writexy(2, 5,'[Ende] = Langsamer');
   writexy(2, 6,'[Pos1] = Schneller');
@@ -728,7 +724,7 @@ begin
        End; {case}
  
      textcolor(11);
-     WriteStr(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
+     writexy(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
      DrawHLine(1,80,22,'─');
      writexy(1, 23,'<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
      DrawHLine(1,80,24,'─');
@@ -863,7 +859,7 @@ procedure GameOver;
     writexy(x, y,' ');
     writexy(locx, locy,' ');
     DrawHLine(28,49,2,'█');
-    WriteStr(28, 3,'██ G A M E  O V E R ██');
+    writexy(28, 3,'██ G A M E  O V E R ██');
     DrawHLine(28,49,4,'█');
     sound(200);
     delay(100);
@@ -904,7 +900,7 @@ procedure Gewonnen;
 begin
  textcolor(12+Blink);
  DrawHLine(30,56,8,'█');
- WriteStr(30, 9,'██    G E W O N N E N    ██');
+ writexy(30, 9,'██    G E W O N N E N    ██');
  DrawHLine(30,56,10,'█');
  textcolor(4);
  writexy(30,11,' T A S T E   D R Ü C K E N ');
@@ -1066,7 +1062,7 @@ begin
   t := readkey;
   ReStone;
   textcolor(11);
-  WriteStr(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
+  writexy(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
   DrawHLine(1,80,22,'─');
   writexy(1, 23,'<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
   DrawHLine(1,80,24,'─');
@@ -1111,7 +1107,7 @@ procedure Taste;
                  punkte := punkte - 1000;
                End;
              End;
-             WriteStr(35,2,'↑,↓,← oder ← Drücken');
+             writexy(35,2,'↑,↓,← oder ← Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1121,7 +1117,7 @@ procedure Taste;
                Leben := Leben + 1;
                punkte := punkte - 5000;
              End;
-             WriteStr(2,2,'↑,↓,← oder ← Drücken');
+             writexy(2,2,'↑,↓,← oder ← Drücken');
              t := readkey;
              ReStone;
            End;
@@ -1177,12 +1173,12 @@ End;
 
 procedure SteineNehmen;
 Begin
- WriteStr(3,3,'╔═══════════════════════════════════╗');
- WriteStr(3,4,'║   S T E I N E  ═══  N E H M E N   ║');
- WriteStr(3,5,'╟───────────────────────────────────╢');
- WriteStr(3,6,'║Wirklich Alle Steine entfernen(J/N)║');
- WriteStr(3,7,'║                                   ║');
- WriteStr(3,8,'╚═══════════════════════════════════╝');
+ writexy(3,3,'╔═══════════════════════════════════╗');
+ writexy(3,4,'║   S T E I N E  ═══  N E H M E N   ║');
+ writexy(3,5,'╟───────────────────────────────────╢');
+ writexy(3,6,'║Wirklich Alle Steine entfernen(J/N)║');
+ writexy(3,7,'║                                   ║');
+ writexy(3,8,'╚═══════════════════════════════════╝');
  gotoxy(7,7); t := UpCase(readkey);
  ReStone;
  vx := x;
@@ -1327,8 +1323,8 @@ begin
 GameOver;
 997:
 DrawHLine(25,51,8,'█');
-WriteStr(25, 9,'██ NOCHMAL SPIELEN (J/N) ██');
-WriteStr(25,10,'██                       ██');
+writexy(25, 9,'██ NOCHMAL SPIELEN (J/N) ██');
+writexy(25,10,'██                       ██');
 DrawHLine(25,51,11,'█');
 repeat
 gotoxy(30,10);
