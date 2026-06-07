@@ -40,6 +40,10 @@ shell = """
   cp -r LICENSES dist/windows-64/
 """
 
+[tool.poe.tasks.build-original]
+help  = "Build the original 1996 Pascal source (original/UGLI_2.PAS) with FPC"
+shell = "cd original && fpc -Mtp UGLI_2.PAS"
+
 [tool.poe.tasks.deploy]
 help     = "Build both distributables and push to itch.io"
 sequence = ["build-linux", "build-windows", "_push-linux", "_push-windows"]
