@@ -28,13 +28,16 @@ var
     punkte : Longint;
     sper : array [1..MaxX,1..MaxY] of boolean;
     t  : char;
-    f : Text;
+    f, tty : Text;
     IZ,A : string;
     Zeile: string[80];
     Schutz : Boolean;
 
 {****************************** B E G I N N *********************************}
 {*************************** P R O C E D U R E N ****************************}
+
+procedure MyCursorOn;  begin Write(tty, #27'[?25h'); end;
+procedure MyCursorOff; begin Write(tty, #27'[?25l'); end;
 
 procedure writexy(col,row:integer;s:String);
 Begin
@@ -83,11 +86,11 @@ begin
   ClrScr;
   writeln;
   writeln('VORNAME ');
-  Write(#27'[?25h');
+  MyCursorOn;
   gotoxy (9,2); readln(IZ);
   writeln('NAME ');
   gotoxy (6,3); readln(A);
-  Write(#27'[?25l');
+  MyCursorOff;
   writexy(1,4,'Punkte '); write(punkte * leben);
   Assign(f,Name);
   {$I-}
@@ -1235,7 +1238,9 @@ end;
 {************************ H A U P T P R O G R A M M *************************}
 
 begin
-  Write(#27'[?25l');
+  Assign(tty, '/dev/tty');
+  Rewrite(tty);
+  MyCursorOff;
   repeat
    1:
    Def;
@@ -1320,10 +1325,11 @@ until i = 3000;
 until ti = 27;
 
 999:
- Write(#27'[?25h');
  textbackground(0);
  textcolor(15);
 cls;
+ MyCursorOn;
+ Close(tty);
 end.
 {******************************** E N D E ***********************************}
 {************************ H A U P T P R O G R A M M *************************}
