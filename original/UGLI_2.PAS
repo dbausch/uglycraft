@@ -24,7 +24,8 @@ Const
 
 var
     steine, langs, op, pausen, timeslot, ti, l, I, J, zahl, level, leben,
-    vx, vy, sx, sy, nehm, locx, locy, dx, dy, x, y, xx, yy, gx, gy : integer;
+    vx, vy, sx, sy, nehm, locx, locy, dx, dy, x, y, xx, yy, gx, gy,
+    escState : integer;
     punkte : Longint;
     sper : array [1..MaxX,1..MaxY] of boolean;
     t  : char;
@@ -540,6 +541,36 @@ Begin
   readln;
 End;
 
+{ All key reads go through GetKey so the state machine runs consistently.
+  The installed FPC CRT does not handle ESC[F (End); it pushes the bytes
+  back LIFO, delivering them reversed across three consecutive calls:
+    call 1: 'F' (70)  -> state 1, suppressed (returns #0)
+    call 2: '[' (91)  -> state 2, suppressed (returns #0)
+    call 3: ESC (27)  -> maps to chr(lans) = End key
+  Home (ESC[H) is handled by FPC CRT: arrives as #0 + chr(71) normally.
+  escState is a global integer, initialised to 0 at program start. }
+function GetKey: char;
+var raw: char;
+begin
+  raw := ReadKey;
+  if raw = #0 then begin
+    { Extended-key prefix (#0 + scan code). }
+    escState := 0;
+    if KeyPressed then raw := ReadKey else raw := #0;
+  end else if (escState = 2) and (raw = #27) then begin
+    { F + '[' + ESC completed: reversed ESC[F = End key. }
+    escState := 0; raw := chr(lans);
+  end else if (escState = 1) and (raw = '[') then begin
+    { Second byte of reversed End sequence; wait for ESC next call. }
+    escState := 2; raw := #0;
+  end else begin
+    { Any other byte resets partial state; check for new 'F' prefix. }
+    escState := 0;
+    if raw = 'F' then begin escState := 1; raw := #0; end;
+  end;
+  GetKey := raw;
+end;
+
 procedure Hilfe;
 begin
   vx := x;
@@ -561,7 +592,7 @@ begin
   writexy(2,13,'Achtung:  wenn irgend eine andere Taste gedrückt wird rast Ugli auf dich und du');
   writexy(2,14,'bist verloren');
   writexy(2,17,'                  T A S T E   D R Ü C K E N');
-  t := readkey;
+  t := GetKey;
   x := vx;
   y := vy;
 end;
@@ -580,7 +611,7 @@ begin
       writexy(30, 11,' T A S T E   D R Ü C K E N ');
     delay(1000);
    until keypressed;
-   t := readkey;
+   t := GetKey;
        writexy(30, 8,'                           ');
        writexy(30, 9,'                           ');
       writexy(30, 10,'                           ');
@@ -802,7 +833,7 @@ writexy(3, 5,'meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür z
 writexy(3, 6,'Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze');
 writexy(3, 7,'zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.');
 writexy(3, 9,'                 T A S T E   D R Ü C K E N');
-t := readkey;
+t := GetKey;
 end;
 
 procedure langsam;
@@ -810,7 +841,7 @@ begin
   delay(50);
   langs := langs + 1;
   writexy(3, 5,'        T A S T E   D R Ü C K E N');
-  t := readkey;
+  t := GetKey;
   writexy(3, 5,'                                   ');
   vx := x;
   vy := y;
@@ -830,7 +861,7 @@ begin
  begin
   langs := langs - 1;
   writexy(3, 5,'        T A S T E   D R Ü C K E N');
-  t := readkey;
+  t := GetKey;
   textcolor(Red);
   for J := 1 to 80 do
   Begin
@@ -841,7 +872,7 @@ begin
  begin
   writexy(3, 3,'                Schneller geht''s nicht');
   writexy(3, 5,'        T A S T E   D R Ü C K E N');
-  t := readkey;
+  t := GetKey;
   textcolor(Red);
   for I := 3 to 5 do
   Begin
@@ -889,7 +920,7 @@ procedure PausenZeigen;
 begin
  writexy(65, 1,'PAUSEN '); write(Pausen);
  writexy(21, 9,'T A S T E   D R Ü C K E N');
- t := readkey;
+ t := GetKey;
  textcolor(4);
  writexy(21, 9,'                           ');
  DrawHLine(65,79,1,'█');
@@ -919,14 +950,14 @@ begin
  textattr := random(255);
  textbackground(1);
  cls;
- While KeyPressed do t := readkey;
+ While KeyPressed do t := GetKey;
  t := #0;
  repeat
   begin
    textattr := random(255);
    if keypressed then
    Begin
-     t := readkey;
+     t := GetKey;
      op := ord(t);
    End;
    write('*');
@@ -1059,7 +1090,7 @@ begin
   writeln('Mit <n> kann man alle gesetzten Steine entfernen !!!');
   writeln;
   writeln('  ↓,↑,','→',' oder ','←','   DRÜCKEN');
-  t := readkey;
+  t := GetKey;
   ReStone;
   textcolor(11);
   writexy(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
@@ -1076,56 +1107,15 @@ Begin
   clrscr;
   writeln('1 )    Schutzschild (Währt einen angrif ab, dann ist es kaputt)  Kostet  1000');
   writeln('2 ♥    Leben        (Macht ein leben mehr)                       Kostet  5000');
-  t := readkey;
+  t := GetKey;
   window(1,1,80,25);
   ReStone;
 End;
 
 procedure Taste;
   Begin
-    if KeyPressed then begin
-      t := ReadKey;
-      { Map terminal key sequences to DOS scan codes.
-        Arrow keys, Home: FPC CRT returns #0 + scan code (PushExt).
-        End (ESC[F): installed FPC CRT does not handle this sequence; it
-          pushes the bytes back LIFO so they arrive reversed: F(70),[,ESC.
-          We detect the F prefix, consume '[' and ESC, and map to chr(lans). }
-      if t = #0 then begin
-        { Extended-key prefix: next byte is the DOS scan code. }
-        if KeyPressed then t := ReadKey else t := #0;
-      end else if t = 'F' then begin
-        { Reversed ESC[F (End). Drain '[' + ESC if they follow. }
-        delay(5);
-        if KeyPressed then begin
-          t := ReadKey;
-          if t = '[' then begin
-            delay(5);
-            if KeyPressed then begin ReadKey; t := chr(lans); end;
-          end;
-        end;
-      end else if t = #27 then begin
-        { Standalone ESC or forward ESC[x from other terminal variants. }
-        delay(20);
-        if KeyPressed then begin
-          t := ReadKey;              { expect '[' }
-          if (t = '[') and KeyPressed then begin
-            t := ReadKey;
-            case t of
-              'F'  : t := chr(lans);
-              'H'  : t := chr(sped);
-              '4'  : begin while KeyPressed do ReadKey; t := chr(lans); end;
-              '1'  : begin while KeyPressed do ReadKey; t := chr(sped); end;
-            else
-              begin while KeyPressed do ReadKey; t := #0; end;
-            end;
-          end else begin
-            while KeyPressed do ReadKey;
-            t := #0;
-          end;
-        end;
-        { if not KeyPressed: standalone ESC, t stays #27 → goto 999 }
-      end;
-    end;
+    if KeyPressed then
+      t := GetKey;
     timeslot := (timeslot + 1) MOD 2;
     gotoxy(1, 1);
     ti := ord(t);
@@ -1150,7 +1140,7 @@ procedure Taste;
                End;
              End;
              writexy(35,2,'↑,↓,← oder ← Drücken');
-             t := readkey;
+             t := GetKey;
              ReStone;
            End;
      50  : Begin
@@ -1160,7 +1150,7 @@ procedure Taste;
                punkte := punkte - 5000;
              End;
              writexy(2,2,'↑,↓,← oder ← Drücken');
-             t := readkey;
+             t := GetKey;
              ReStone;
            End;
     End; {case}
@@ -1197,7 +1187,7 @@ Begin
       sy := y;
       writexy(21, 9,'T A S T E    D R Ü C K E N');
       writexy(21,10,'Noch vorhandene Steine: '); write(steine:4);
-      t := readkey;
+      t := GetKey;
       writexy(21,10,'                            ');
       writexy(21, 9,'                            ');
       ReStone;
@@ -1208,7 +1198,7 @@ Begin
     Begin
       if Steine = 0 then writexy(21, 9,'Keine Steine mehr da!');
       if Punkte < 20 then writexy(21,10,'Nicht genug Punkte!');
-      t := readkey;
+      t := GetKey;
       ReStone;
     End;
 End;
@@ -1221,7 +1211,7 @@ Begin
  writexy(3,6,'║Wirklich Alle Steine entfernen(J/N)║');
  writexy(3,7,'║                                   ║');
  writexy(3,8,'╚═══════════════════════════════════╝');
- gotoxy(7,7); t := UpCase(readkey);
+ gotoxy(7,7); t := UpCase(GetKey);
  ReStone;
  vx := x;
  vy := y;
@@ -1254,7 +1244,7 @@ Begin
  End;
  if punkte > 0 then punkte := punkte - 20;
  writexy(3,9,'TASTE DRÜCKEN');
- t := readkey;
+ t := GetKey;
  for I := 1 to 80 do
      begin
      textcolor(4);
@@ -1372,7 +1362,7 @@ writexy(25,10,'██                       ██');
 DrawHLine(25,51,11,'█');
 repeat
 gotoxy(30,10);
-t := UpCase(readkey);
+t := UpCase(GetKey);
 case t of
  'J' : GOTO 300;
  'N' : GOTO 999;
