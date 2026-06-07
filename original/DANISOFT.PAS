@@ -22,6 +22,7 @@ procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;
 var I : Integer;
     StrVer : String;
 begin
+ Write(#27'[1;25r'); { confine scrolling to rows 1-25 }
  For I := 0 to 7 do
   Begin
    TextBackground(I);
@@ -116,6 +117,7 @@ begin
       nosound;
     end;
   textcolor(Black);
+  Write(#27'[r'); { reset scroll region to full screen }
 end;
 
 end.
