@@ -690,48 +690,53 @@ begin
 end; {rahmen}
 
 procedure ugli2;
+var oldxx, oldyy: integer;
 begin
-     textcolor(6);
-     dx := x - xx;
-     dy := y - yy;
-     writexy(xx, yy,' ');
+     oldxx := xx;
+     oldyy := yy;
      if timeslot = 0 then
-      if (ABS(dx) > ABS(dy)) then
-        begin
-         if (dx > 0) AND (sper[xx + 1,yy] = false) then
-            xx := xx + 1
-          else
-           begin
-            if (dx > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
-            if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
-           end;
-         if (dx < 0) AND (sper[xx - 1,yy] = false) then
-            xx := xx - 1
-          else
-           begin
-            if (dy > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
-            if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
-           end;
-        end
-       else
-        begin
-         IF (dy > 0) AND (sper[xx,yy + 1] = false) THEN
-            yy := yy + 1
-           ELSE
+      begin
+       dx := x - xx;
+       dy := y - yy;
+       if (ABS(dx) > ABS(dy)) then
+         begin
+          if (dx > 0) AND (sper[xx + 1,yy] = false) then
+             xx := xx + 1
+           else
             begin
-             IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
-             IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
+             if (dx > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
+             if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
             end;
-         IF (dy < 0) AND (sper[xx,yy - 1] = false) THEN
-            yy := yy - 1
-           ELSE
+          if (dx < 0) AND (sper[xx - 1,yy] = false) then
+             xx := xx - 1
+           else
             begin
-             IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
-             IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
+             if (dy > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
+             if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
             end;
-           
-       end;
-    writexy(xx, yy,'☻');
+         end
+        else
+         begin
+          IF (dy > 0) AND (sper[xx,yy + 1] = false) THEN
+             yy := yy + 1
+            ELSE
+             begin
+              IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
+              IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
+             end;
+          IF (dy < 0) AND (sper[xx,yy - 1] = false) THEN
+             yy := yy - 1
+            ELSE
+             begin
+              IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
+              IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
+             end;
+         end;
+      end;
+     if (xx <> oldxx) OR (yy <> oldyy) then
+       writexy(oldxx, oldyy,' ');
+     textcolor(6);
+     writexy(xx, yy,'☻');
 
 end;
 
