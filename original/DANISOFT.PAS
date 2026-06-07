@@ -21,7 +21,19 @@ procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;
                     Nr,User,copyjahr:String);
 var I : Integer;
     StrVer : String;
+    tty : Text;
+
+  procedure WLn(s: String);
+  begin
+    if s = '' then Write(' ') else Write(s); { at least one char forces FPC to emit SGR }
+    Write(tty, #27'[K'); Flush(tty);
+    Writeln;
+    Write(tty, #27'[K'); Flush(tty);
+  end;
+
 begin
+ Assign(tty, '/dev/tty');
+ Rewrite(tty);
  Write(#27'[1;25r'); { confine scrolling to rows 1-25 }
  For I := 0 to 7 do
   Begin
@@ -49,62 +61,62 @@ begin
   textbackground(7);
   gotoxy(1,25);
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
-  writeln(Zentriert('* DANISOFT * PRÄSENTIERT *'));
+  WLn(Zentriert('* DANISOFT * PRÄSENTIERT *'));
   delay(200);
-  writeln;
+  WLn('');
   TextColor(red+Blink);
   TextBackground(7);
   delay(200);
-  writeln(s1);
+  WLn(s1);
   delay(200);
-  writeln(s2);
+  WLn(s2);
   delay(200);
-  writeln(s3);
+  WLn(s3);
   delay(200);
-  writeln(s4);
+  WLn(s4);
   delay(200);
-  writeln(s5);
+  WLn(s5);
   delay(200);
-  writeln(s6);
+  WLn(s6);
   delay(200);
-  writeln(s7);
+  WLn(s7);
   delay(200);
-  writeln(s8);
+  WLn(s8);
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
   TextColor(black+Blink);
   TextBackground(7);
-  Writeln;
+  WLn('');
   delay(200);
-  Writeln(Zentriert('Hallo, gleich geht''s los!'));
+  WLn(Zentriert('Hallo, gleich geht''s los!'));
   delay(200);
-  writeln;
+  WLn('');
   TextColor(black);
   TextBackground(15);
   delay(200);
-  writeln(Zentriert('Nicht kopierbares Programm für ' + User));
+  WLn(Zentriert('Nicht kopierbares Programm für ' + User));
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
   System.Str(ver:2:2,StrVer);
-  writeln(Zentriert('Version: ' + StrVer + '/' + Nr));
+  WLn(Zentriert('Version: ' + StrVer + '/' + Nr));
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
-  writeln(Zentriert(copyjahr));
+  WLn(Zentriert(copyjahr));
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
-  writeln;
+  WLn('');
   delay(200);
   textcolor(4);
   write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
@@ -118,6 +130,7 @@ begin
     end;
   textcolor(Black);
   Write(#27'[r'); { reset scroll region to full screen }
+  Close(tty);
 end;
 
 end.
