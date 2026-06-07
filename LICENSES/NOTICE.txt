@@ -16,6 +16,13 @@ NumPy
   Source:    https://github.com/numpy/numpy
 
 ------------------------------------------------------------------------
+Share Tech Mono (font)
+  License: SIL Open Font License 1.1 (OFL-1.1)
+  Full text: OFL-1.1-ShareTechMono.txt
+  Copyright: © 2012 Carrois Type Design, Ralph du Carrois
+  Source:    https://github.com/google/fonts/tree/main/ofl/sharetechmono
+
+------------------------------------------------------------------------
 UGLYCRAFT itself is distributed under the GNU General Public License v3.
 Full text: GPL-3.0.txt
 Source code: https://itch.io/games/by/dbausch
