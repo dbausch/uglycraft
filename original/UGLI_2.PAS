@@ -1286,7 +1286,9 @@ begin
        rahmen;
        leben := leben + 1;            {Leben + 1}
        levelneu;                      {LevelNeu}
-       ReStone;
+       textbackground(Red); textcolor(15);
+       writexy(3, 1,'PUNKTE '); Write(punkte);
+       textbackground(0);
       end;                            {if zahl = 10}
 
     ZufalsPos;
