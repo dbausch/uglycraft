@@ -585,7 +585,6 @@ begin
        writexy(30, 9,'                           ');
       writexy(30, 10,'                           ');
       writexy(30, 11,'                           ');
-    delay(1000);
   end;
  Case level of
   1: initl1;
@@ -598,6 +597,7 @@ begin
   8: initl8;
   9: initl9;
  End; {case}
+ delay(1000);
 end;
 
 Procedure Brumm;
