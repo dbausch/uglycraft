@@ -42,13 +42,12 @@ procedure MyCursorOff; begin Write(tty, #27'[?25l'); end;
 procedure writexy(col,row:integer;s:String);
 var i,c,n:integer;ch:String;
 Begin
- { Poison FPC's cursor tracker once at entry so the first gotoxy(c,row)
-   always emits its ESC sequence. For each character the loop uses a plain
-   gotoxy(c,row): if the previous write was ASCII the tracker is already
-   correct and gotoxy skips the ESC; if it was multi-byte the tracker is
-   stale and gotoxy corrects it. A final gotoxy leaves the tracker at the
-   position after the last character. }
- gotoxy(1,1);
+ { Re-poison FPC's cursor tracker before every gotoxy(c,row) so it always
+   emits its ESC sequence. FPC advances the tracker by byte count after each
+   write; 3-byte UTF-8 chars leave it 2 ahead of the real cursor column, so
+   without the poison a later gotoxy whose numeric target matches the stale
+   tracker value is silently skipped — writing the character at the wrong
+   cell or losing it entirely. }
  c := col;
  i := 1;
  while i <= Length(s) do
@@ -60,6 +59,7 @@ Begin
    if n >= 1 then ch[1] := s[i];
    if n >= 2 then ch[2] := s[i+1];
    if n >= 3 then ch[3] := s[i+2];
+   gotoxy(1,1);
    gotoxy(c,row);
    write(ch);
    inc(i,n);
