@@ -9,6 +9,11 @@ dist/
 build/
 *.spec
 
+# FPC build artifacts
+original/*.o
+original/*.ppu
+original/UGLI_2
+
 # Runtime data
 uglycraft.hsc
 
