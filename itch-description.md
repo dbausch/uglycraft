@@ -60,3 +60,7 @@ It was, by any objective measure, ugly. That was rather the point.
 | Enter | Buy shield (250 pts, 10 s) |
 | P | Pause |
 | F11 | Fullscreen |
+
+---
+
+Source code (including the original 1996 Pascal source) is available on [GitHub](https://github.com/dbausch/uglycraft).
