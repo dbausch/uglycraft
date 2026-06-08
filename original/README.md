@@ -179,3 +179,18 @@ that are not UTF-8 continuation bytes (i.e. bytes outside the range `$80`–`$BF
 Each such byte starts a new character, so the result equals the number of
 terminal columns the string occupies regardless of how many bytes each character
 uses.  `Zentriert` now calls `UTF8Cols(s)` in place of `Length(s)`.
+
+### 11. Centring of level banner and LEVEL display
+
+Two visual centring issues were corrected:
+
+- **Level banner (`levelneu`)**: The banner box drawn during level transitions
+  (`DrawHLine`, the `█` borders, and the `LEVEL N` / `TASTE DRÜCKEN` text) was
+  positioned starting at column 30, making it off-centre on the 80-column field.
+  Shifted to start at column 27 (and the right edge from 56 to 53) so the
+  26-column-wide box is properly centred.
+
+- **LEVEL display in status bar**: The `LEVEL N` label in the top status bar was
+  placed at column 35 via three separate duplicated code blocks.  Corrected to
+  column 36 and consolidated into a `WriteLevel` procedure called from all three
+  sites (`rahmen`, `levelneu` post-draw, and `ReStone`).
