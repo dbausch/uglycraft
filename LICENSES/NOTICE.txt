@@ -25,7 +25,7 @@ Share Tech Mono (font)
 ------------------------------------------------------------------------
 UGLYCRAFT itself is distributed under the GNU General Public License v3.
 Full text: GPL-3.0.txt
-Source code: https://itch.io/games/by/dbausch
+Source code: https://github.com/dbausch/uglycraft
 
 In accordance with the LGPL, the pygame source code is available at the
 URL above and you may replace the bundled copy with a compatible version.
