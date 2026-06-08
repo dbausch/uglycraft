@@ -164,3 +164,18 @@ The wrapper also handles the forward-sequence case (`#0` prefix) correctly, so
 Home continues to work, and it is forward-compatible with future FPC versions
 that do handle `ESC[F` — those will return `#0` + `chr(79)` which maps to the
 same `chr(lans)` result via the `#0`-prefix branch.
+
+### 10. UTF-8 column count in `Zentriert`
+
+`Zentriert` centres a string within the 80-column display by computing
+`39 - (Length(s) DIV 2)` leading spaces.  `Length` counts **bytes**, so
+multi-byte UTF-8 characters — German umlauts such as `Ä`, `Ö`, `Ü`, `ß` used
+in `'PRÄSENTIERT'` and `'Drücken'` — inflate the byte count and shift the
+output too far left.
+
+Fixed by introducing a `UTF8Cols` helper that counts **display columns** instead
+of bytes.  It iterates over the string and increments the counter only for bytes
+that are not UTF-8 continuation bytes (i.e. bytes outside the range `$80`–`$BF`).
+Each such byte starts a new character, so the result equals the number of
+terminal columns the string occupies regardless of how many bytes each character
+uses.  `Zentriert` now calls `UTF8Cols(s)` in place of `Length(s)`.
