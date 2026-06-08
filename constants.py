@@ -7,7 +7,17 @@ STATUS_H = LOGICAL_H - ROWS * TILE  # 28
 
 FPS = 30
 TITLE = "UGLYCRAFT"
-SAVE_FILE = "uglycraft.hsc"
+def _save_file():
+    import sys, os
+    if sys.platform == 'win32':
+        base = os.environ.get('APPDATA') or os.path.expanduser('~')
+    else:
+        base = os.environ.get('XDG_DATA_HOME') or os.path.join(os.path.expanduser('~'), '.local', 'share')
+    data_dir = os.path.join(base, 'uglycraft')
+    os.makedirs(data_dir, exist_ok=True)
+    return os.path.join(data_dir, 'uglycraft.hsc')
+
+SAVE_FILE = _save_file()
 
 EASY = 'easy'
 HARD = 'hard'
