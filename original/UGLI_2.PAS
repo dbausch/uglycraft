@@ -69,6 +69,14 @@ Begin
  gotoxy(c,row);
 End;
 
+procedure WriteLevel;
+begin
+   textbackground(Red);
+   textcolor(15);
+   writexy(36, 1,'LEVEL ');
+   write(level);
+end;
+
 procedure DrawHLine(x1,x2,y:integer;ch:String);
 var i:integer;
 Begin
@@ -89,10 +97,7 @@ Begin
 
         End;
     End;
-  textbackground(Red);
-  textcolor(15);
-  writexy(35, 1,'LEVEL ');
-  write(level);
+   WriteLevel;
   textbackground(Red);
   textcolor(15);
   writexy(3, 1,'PUNKTE '); Write(punkte);
@@ -601,21 +606,21 @@ procedure levelneu;
 begin
   begin
    repeat
-       DrawHLine(30,56,8,'█');
-       writexy(30, 9,'█');
-       writexy(31, 9,' L E V E L   ');
+       DrawHLine(27,53,8,'█');
+       writexy(27, 9,'█');
+       writexy(28, 9,' L E V E L   ');
        write(level);
        write('           ');
-       writexy(56, 9,'█');
-       DrawHLine(30,56,10,'█');
-      writexy(30, 11,' T A S T E   D R Ü C K E N ');
+       writexy(53, 9,'█');
+       DrawHLine(27,53,10,'█');
+      writexy(27, 11,' T A S T E   D R Ü C K E N ');
     delay(1000);
    until keypressed;
    t := GetKey;
-       writexy(30, 8,'                           ');
-       writexy(30, 9,'                           ');
-      writexy(30, 10,'                           ');
-      writexy(30, 11,'                           ');
+       writexy(27, 8,'                           ');
+       writexy(27, 9,'                           ');
+      writexy(27, 10,'                           ');
+      writexy(27, 11,'                           ');
   end;
  Case level of
   1: initl1;
@@ -737,10 +742,7 @@ begin
       sper[1, I] := true;
       sper[80, I] := true;
      end; {FOR}
- textbackground(Red);
- textcolor(15);
- writexy(35, 1,'LEVEL ');
- write(level);
+   WriteLevel;
  textbackground(0);
        Case level of
         1: initl1;
@@ -1263,10 +1265,7 @@ Begin
       sper[1, I] := true;
       sper[80, I] := true;
      end; {FOR}
- textbackground(LightRed);
- textcolor(15);
- writexy(35, 1,'LEVEL ');
- write(level);
+   WriteLevel;
  textbackground(0);
  ReStone;
  x := vx;
