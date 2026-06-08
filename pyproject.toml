@@ -46,21 +46,28 @@ shell = """
 help  = "Build the original 1996 Pascal source (original/UGLI_2.PAS) with FPC"
 shell = "cd original && fpc -Mtp UGLI_2.PAS"
 
-[tool.poe.tasks.deploy-original]
-help  = "Build and push original UGLI 2 (Linux FPC port + DOS exe) to itch.io"
+[tool.poe.tasks.deploy-original-linux]
+help  = "Build and push the FPC Linux port of UGLI 2 to itch.io"
 shell = """
   cd original && fpc -Mtp UGLI_2.PAS && cd ..
-  mkdir -p dist/original-linux dist/original-dos
-  cp original/UGLI_2     dist/original-linux/
+  mkdir -p dist/original-linux
+  cp original/UGLI_2 dist/original-linux/
+  butler push dist/original-linux dbausch/uglycraft:original-linux \
+    --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')
+"""
+
+[tool.poe.tasks.deploy-original-dos]
+help  = "Push the original DOS executable of UGLI 2 to itch.io"
+shell = """
+  mkdir -p dist/original-dos
   cp original/UGLI_2.EXE dist/original-dos/
-  VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
-  butler push dist/original-linux dbausch/uglycraft:original-linux --userversion "$VERSION"
-  butler push dist/original-dos   dbausch/uglycraft:original-dos   --userversion "$VERSION"
+  butler push dist/original-dos dbausch/uglycraft:original-dos \
+    --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')
 """
 
 [tool.poe.tasks.deploy]
 help     = "Build all distributables and push to itch.io"
-sequence = ["build-linux", "build-windows", "deploy-original", "_push-linux", "_push-windows"]
+sequence = ["build-linux", "build-windows", "deploy-original-linux", "deploy-original-dos", "_push-linux", "_push-windows"]
 
 [tool.poe.tasks._push-linux]
 shell = "butler push dist/linux-64 dbausch/uglycraft:linux-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"
