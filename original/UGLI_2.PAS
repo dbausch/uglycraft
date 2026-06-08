@@ -6,9 +6,9 @@ uses crt, dos, danisoft;
 label     100, 300, 999, 998, 1, 997;
 
 Const
-  user = 'Sonstwer';
+  user = 'Public Domain';
   vers = 2.00;
-  Nr   = '0009';
+  Nr   = '0042';
   MaxX = 80;
   MaxY = 20;
   CurR = 77;
@@ -20,7 +20,7 @@ Const
   Kauf = 32;
   sped = 71;
   Name = 'UGLI.HSC';
-  copy = 'Copyright (C) 1996 Daniel Bausch';
+  copy = 'Released under the terms of the GNU GPLv3';
 
 var
     steine, langs, op, pausen, timeslot, ti, l, I, J, zahl, level, leben,

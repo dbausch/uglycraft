@@ -103,7 +103,7 @@ begin
   TextColor(black);
   TextBackground(15);
   delay(200);
-  WLn(Zentriert('Nicht kopierbares Programm für ' + User));
+  WLn(Zentriert(User));
   delay(200);
   WLn('');
   delay(200);
