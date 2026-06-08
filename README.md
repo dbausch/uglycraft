@@ -4,6 +4,8 @@ A Python/pygame spiritual remake of **UGLI** (1996), a DOS treasure-hunt game or
 
 Collect nine treasures across ten progressively harder levels while being hunted by an ever-closing enemy. Outsmart it by placing walls, buying a shield, or simply staying one step ahead.
 
+**Download compiled binaries (Linux, Windows, and the original DOS game) at [dbausch.itch.io/uglycraft](https://dbausch.itch.io/uglycraft).**
+
 ![UGLYCRAFT level 7 — hard mode](screenshot_level7.png)
 
 ---
