@@ -1,6 +1,6 @@
 # UGLI 2 — Original DOS Game (1996)
 
-Reference documentation for the original Turbo Pascal 7 source files kept in this repo. These files are released under the **GNU General Public License version 3**, the same licence as UGLYCRAFT. They also serve as design reference for mechanics, level layouts, and the spiritual remake UGLYCRAFT.
+Reference documentation for the original Turbo Pascal 7 source files kept in this repo. These files are released under the **GNU General Public License version 3**, the same licence as UGLYCRAFT. They can be built and run with Free Pascal (see `poe build-original`), and serve as design reference for the mechanics and level layouts that inspired UGLYCRAFT.
 
 ## Overview
 

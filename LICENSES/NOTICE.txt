@@ -23,7 +23,8 @@ Share Tech Mono (font)
   Source:    https://github.com/google/fonts/tree/main/ofl/sharetechmono
 
 ------------------------------------------------------------------------
-UGLYCRAFT itself is distributed under the GNU General Public License v3.
+UGLYCRAFT and the original UGLI 2 Pascal source (original/*.PAS) are
+distributed under the GNU General Public License v3.
 Full text: GPL-3.0.txt
 Source code: https://github.com/dbausch/uglycraft
 

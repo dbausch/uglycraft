@@ -45,9 +45,11 @@ Collect every treasure in order. Reach the Crown on level 10. Don't get caught.
 UGLI began in 1993 as a DOS text-mode game — 80×25 characters, enemies as the letter O,
 player as ASCII smiley face 1, sound from the PC speaker. By 1996 it had evolved into a
 second version with richer mechanics including the wall placement system that carries
-through to UGLYCRAFT today. Some features planned for that version were never released.
+through to UGLYCRAFT today.
 
-It was, by any objective measure, ugly. That was rather the point.
+The original 1996 Pascal source is preserved in this repository, ported to run on modern
+Linux with Free Pascal, and released under the GPLv3. It was, by any objective measure,
+ugly. That was rather the point.
 
 ---
 
