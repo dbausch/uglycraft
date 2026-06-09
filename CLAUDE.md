@@ -17,6 +17,7 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 | `poe build-original` | Fetch UOS source (curl) and build `original/UGLI_2` with FPC |
 | `poe clean` | Remove all build artifacts (`dist/`, `build/`, compiled Pascal output) |
 | `poe deploy` | Push all four itch.io channels with current git tag as version |
+| `poe deploy-uglycraft` | Push Linux and Windows channels only |
 | `poe deploy-original-linux` | Push `dist/original-linux` to itch.io |
 | `poe deploy-original-dos` | Push `dist/original-dos` to itch.io |
 

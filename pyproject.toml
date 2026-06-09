@@ -90,6 +90,10 @@ shell = """
     --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')
 """
 
+[tool.poe.tasks.deploy-uglycraft]
+help     = "Push Linux and Windows distributables to itch.io"
+sequence = ["_push-linux", "_push-windows"]
+
 [tool.poe.tasks.deploy]
 help     = "Push all distributables to itch.io"
 sequence = ["deploy-original-linux", "deploy-original-dos", "_push-linux", "_push-windows"]

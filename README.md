@@ -183,6 +183,7 @@ poe build-windows          # build dist/windows-64/uglycraft.exe
 poe build-original         # build original/UGLI_2 with FPC
 poe clean                  # remove all build artifacts
 poe deploy                 # push all four itch.io channels
+poe deploy-uglycraft       # push Linux and Windows only
 poe deploy-original-linux  # push FPC Linux port only
 poe deploy-original-dos    # push original DOS exe only
 ```
