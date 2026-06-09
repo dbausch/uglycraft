@@ -1344,9 +1344,8 @@ until i = 3000;
 until ti = 27;
 
 999:
- textbackground(0);
- textcolor(15);
 cls;
+ Write(tty, #27'[0m'); Flush(tty);   { reset all attributes before exit }
  MyCursorOn;
  Close(tty);
 end.
