@@ -43,16 +43,10 @@ procedure MyCursorOff; begin Write(tty, #27'[?25l'); end;
 procedure writexy(col,row:integer;s:String);
 var i,c,n:integer;ch:String;
 Begin
- { Re-poison FPC's cursor tracker before every gotoxy(c,row) so it always
-   emits its ESC sequence. FPC advances the tracker by byte count after each
-   write; 3-byte UTF-8 chars leave it 2 ahead of the real cursor column, so
-   without the poison a later gotoxy whose numeric target matches the stale
-   tracker value is silently skipped — writing the character at the wrong
-   cell or losing it entirely.
-   Column 80 is handled via raw tty with autowrap disabled: on a narrow
-   terminal the terminal clamps the cursor to its last column, and writing a
-   multi-byte UTF-8 character there with autowrap on splits the byte sequence
-   across lines and corrupts it. }
+ { All output goes directly to the raw tty — never through CRT — so cursor
+   positioning is always explicit and autowrap can never split a UTF-8
+   sequence. CRT's tracker is synced at the end via gotoxy. }
+ Write(tty, #27'[?7l');   { disable autowrap for the duration }
  c := col;
  i := 1;
  while i <= Length(s) do
@@ -64,23 +58,14 @@ Begin
    if n >= 1 then ch[1] := s[i];
    if n >= 2 then ch[2] := s[i+1];
    if n >= 3 then ch[3] := s[i+2];
-   if c = 80 then
-   begin
-     Write(tty, #27'[?7l');             { disable autowrap }
-     Write(tty, #27'[', row, ';80H');   { position cursor }
-     Write(tty, ch);                    { write character }
-     Write(tty, #27'[?7h');             { re-enable autowrap }
-   end
-   else
-   begin
-     gotoxy(1,1);
-     gotoxy(c,row);
-     write(ch);
-   end;
+   Write(tty, #27'[', row, ';', c, 'H');
+   Write(tty, ch);
    inc(i,n);
    inc(c);
   end;
- gotoxy(c,row);
+ Write(tty, #27'[?7h');   { re-enable autowrap }
+ gotoxy(1,1);
+ gotoxy(c,row);            { sync CRT's position tracker }
 End;
 
 procedure WriteLevel;
