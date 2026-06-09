@@ -213,7 +213,7 @@ Output: `original/UGLI_2` (native Linux executable).
 ./original/UGLI_2
 ```
 
-Requires a terminal of at least 80×25 characters. See [`original/README.md`](original/README.md) for full details of the porting work.
+Requires a terminal of at least 80×25 characters. Tested in [kitty](https://sw.kovidgoyal.net/kitty/). See [`original/README.md`](original/README.md) for full details of the porting work.
 
 ---
 
