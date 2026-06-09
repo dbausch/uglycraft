@@ -12,34 +12,26 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 - **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files from GitHub on first run, then compiles with `fpc -Mtp -Fuuos UGLI_2.PAS`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
-Note: `EXTRA1.PAS` uses `graph`, `Drivers`, and `Boosters` (Turbo Pascal BGI) and is not part of the FPC build.
-
 There are no tests, no lint tools, and no CI setup.
 
 ## File structure
-
-Three files, compiled in dependency order:
-
-### `EXTRA1.PAS` (unit `extra1`) — reusable TUI library
-
-- `Fenster` / `FensterMitObenLinks` / `FensterMitUntenMittig`: draw bordered windows with configurable corner/edge characters and colors via a DSL-style `Params` string (e.g. `FatLine`, `TwoLines` constants)
-- `HLinie` / `VLinie`: draw horizontal/vertical lines
-- `MyEingebProc`: inline text input field with cursor movement and editing
-- `Auswahl`: menu selection from a `WahlRec` list
-- `Ton` / `TonAuf` / `TonAb` / `DateiTon`: PC speaker sound routines (frequency-based beeps via port $42/$43)
-- `ColorPosWrite`, `Farbe`, `BlinkText`: color/position text output helpers
-- `Zentriert`, `RechtsBund`, `Str`, `StrZahl`: string utilities
-- Depends on: CRT, DOS, `graph`, `Drivers`, `Boosters` (Turbo Pascal BGI)
 
 ### `DANISOFT.PAS` (unit `DANISOFT`) — animated splash screen
 
 - `Erkennung`: scrolling color/sound intro that displays an ASCII art logo (8 lines) with version/copyright info
 - `Erkennung2`: alternative intro with typewriter-effect text rendering, playing ascending tones as characters appear
-- Depends on: `Extra1`
+- Depends on: `Crt`, `uossound`
+
+### `uossound.pas` (unit `uossound`) — FPC/Linux sound
+
+- Wraps UOS + PortAudio to provide `Sound(Hz)`, `NoSound`, `Ton(Hz, Ms)`
+- Named effects: `SoundBrumm`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundGewonnen`
+- Listed last in `uses` to shadow the empty CRT sound stubs on Linux
+- UOS source fetched from GitHub at build time; requires `libportaudio.so.2` at runtime
 
 ### `UGLI_2.PAS` (program `ugli_2`) — the game itself
 
-Uses `crt`, `dos`, `danisoft`.
+Uses `cthreads`, `crt`, `dos`, `danisoft`, `uossound`.
 
 ## Key data structures (`UGLI_2.PAS`)
 
@@ -140,11 +132,10 @@ Levels are defined by the `initl1`–`initl9` procedures via inline `GotoXY`/`Wr
 
 ## Sound design
 
-**Original DOS**: All sound via PC speaker (`Ton` in `EXTRA1.PAS`). Frequencies played directly via port $42/$43.
+**Original DOS**: All sound via PC speaker. Frequencies played directly via port $42/$43.
 
 **FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `uossound.pas`, a wrapper around UOS + PortAudio. It exposes the same `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as CRT (listed last in `uses` so it shadows the empty CRT stubs), plus named effect procedures: `SoundBrumm`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundGewonnen`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
 
-`DateiTon` reads tone sequences from an external file; `TonAuf`/`TonAb` play rising/falling sweeps used in `Erkennung` intro (DOS only — not used in the FPC port).
 
 ## How UGLYCRAFT maps from the original
 
