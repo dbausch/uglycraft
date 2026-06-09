@@ -24,7 +24,7 @@ procedure SoundGewonnen;  { level/game won fanfare }
 
 implementation
 
-uses ctypes, SysUtils, uos_flat;
+uses ctypes, SysUtils, BaseUnix, uos_flat;
 
 const
   PA_LIBS: array[0..1] of string = ('libportaudio.so.2', 'libportaudio.so');
@@ -35,13 +35,41 @@ var
   FPlayer:  cint32   = 0;
   FInput:   cint32   = -1;
 
+{ Redirect fd 2 to /dev/null; returns saved fd (or -1 on failure). }
+function SuppressStderr: cint;
+var nul: cint;
+begin
+  Result := fpDup(2);
+  nul := fpOpen('/dev/null', O_WRONLY);
+  if nul >= 0 then
+  begin
+    fpDup2(nul, 2);
+    fpClose(nul);
+  end;
+end;
+
+procedure RestoreStderr(saved: cint);
+begin
+  if saved >= 0 then
+  begin
+    fpDup2(saved, 2);
+    fpClose(saved);
+  end;
+end;
+
 procedure Init;
 var
   loaded: Boolean;
   i: Integer;
+  savedErr: cint;
 begin
   if FReady then Exit;
   FReady := True;  { mark attempted so we never retry on failure }
+
+  { PortAudio probes every configured ALSA/JACK/OSS backend at init time
+    and writes failure messages for absent hardware directly to fd 2.
+    Suppress for the duration of the device scan. }
+  savedErr := SuppressStderr;
 
   loaded := False;
   for i := 0 to High(PA_LIBS) do
@@ -50,38 +78,57 @@ begin
       loaded := True;
       Break;
     end;
-  if not loaded then Exit;
 
-  if not uos_CreatePlayer(FPlayer) then Exit;
+  if not loaded then
+  begin
+    RestoreStderr(savedErr);
+    Exit;
+  end;
 
-  { Mono square wave (WaveTypeL=1), 440 Hz placeholder, endless (duration=0) }
-  FInput := uos_AddFromSynth(FPlayer, 1, 1, -1, 440, 440, 0.5, 0.5,
-                              0, 0, 0, 0, -1, -1, -1);
-  if FInput < 0 then Exit;
+  if not uos_CreatePlayer(FPlayer) then
+  begin
+    RestoreStderr(savedErr);
+    Exit;
+  end;
+
+  { Stereo square wave, silent (volume=0), endless when active.
+    duration=-1 sets 1000 ms initially; we switch to endless below. }
+  FInput := uos_AddFromSynth(FPlayer, -1, 1, 1, 440, 440, 0, 0,
+                              -1, 0, 0, 0, -1, -1, -1);
+  if FInput < 0 then
+  begin
+    RestoreStderr(savedErr);
+    Exit;
+  end;
 
   if uos_AddIntoDevOut(FPlayer) < 0 then
   begin
     FInput := -1;
+    RestoreStderr(savedErr);
     Exit;
   end;
 
-  { Start player permanently; silence it immediately via Enable=False }
+  RestoreStderr(savedErr);
+
   uos_PlayNoFree(FPlayer);
   FPlaying := True;
-  uos_InputSetSynth(FPlayer, FInput, -1, -1, 440, 440, -1, -1, -1, -1, -1, False);
+  Sleep(150); { wait for audio thread to initialise }
+
+  { Switch to endless (duration=0 → dursine=0) at volume=0 }
+  uos_InputSetSynth(FPlayer, FInput, -1, -1, -1, -1, 0, 0, 0, -1, -1, True);
 end;
 
 procedure Sound(Hz: Word);
 begin
   Init;
   if FInput < 0 then Exit;
-  uos_InputSetSynth(FPlayer, FInput, -1, -1, Hz, Hz, -1, -1, -1, -1, -1, True);
+  uos_InputSetSynth(FPlayer, FInput, -1, -1, Hz, Hz, 0.5, 0.5, 0, -1, -1, True);
 end;
 
 procedure NoSound;
 begin
   if FInput < 0 then Exit;
-  uos_InputSetSynth(FPlayer, FInput, -1, -1, -1, -1, -1, -1, -1, -1, -1, False);
+  uos_InputSetSynth(FPlayer, FInput, -1, -1, -1, -1, 0, 0, -1, -1, -1, True);
 end;
 
 procedure Ton(Hz: Word; Ms: Integer);
