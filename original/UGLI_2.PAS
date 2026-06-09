@@ -30,7 +30,7 @@ var
     sper : array [1..MaxX,1..MaxY] of boolean;
     t  : char;
     f, tty : Text;
-    IZ,A : string;
+    IZ,A,S : string;
     Zeile: string[80];
     Schutz : Boolean;
 
@@ -43,9 +43,10 @@ procedure MyCursorOff; begin Write(tty, #27'[?25l'); end;
 procedure writexy(col,row:integer;s:String);
 var i,c,n:integer;ch:String;
 Begin
- { All output goes directly to the raw tty — never through CRT — so cursor
-   positioning is always explicit and autowrap can never split a UTF-8
-   sequence. CRT's tracker is synced at the end via gotoxy. }
+ { All output goes directly to the raw tty with autowrap disabled.
+   Each character is explicitly repositioned: a poison move to (1,1) first
+   guarantees the real position sequence is always freshly emitted.
+   CRT's tracker is synced at the end via gotoxy. }
  Write(tty, #27'[?7l');   { disable autowrap for the duration }
  c := col;
  i := 1;
@@ -58,22 +59,27 @@ Begin
    if n >= 1 then ch[1] := s[i];
    if n >= 2 then ch[2] := s[i+1];
    if n >= 3 then ch[3] := s[i+2];
-   Write(tty, #27'[', row, ';', c, 'H');
+   Write(tty, #27'[1;1H');               { poison }
+   Write(tty, #27'[', row, ';', c, 'H'); { real position }
    Write(tty, ch);
    inc(i,n);
    inc(c);
   end;
  Write(tty, #27'[?7h');   { re-enable autowrap }
+ Flush(tty);               { drain buffer before CRT sync — prevents a
+                             deferred tty flush from displacing the cursor
+                             between gotoxy(c,row) and the caller's write() }
  gotoxy(1,1);
  gotoxy(c,row);            { sync CRT's position tracker }
 End;
 
 procedure WriteLevel;
+var s: String;
 begin
    textbackground(Red);
    textcolor(15);
-   writexy(36, 1,'LEVEL ');
-   write(level);
+   Str(level, s);
+   writexy(36, 1, 'LEVEL ' + s);
 end;
 
 procedure DrawHLine(x1,x2,y:integer;ch:String);
@@ -99,7 +105,7 @@ Begin
    WriteLevel;
   textbackground(Red);
   textcolor(15);
-  writexy(3, 1,'PUNKTE '); Write(punkte);
+  Str(punkte, S); writexy(3, 1,'PUNKTE ' + S);
   textbackground(0);
   textcolor(11);
   writexy(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
@@ -119,7 +125,7 @@ begin
   writeln('NAME ');
   gotoxy (6,3); readln(A);
   MyCursorOff;
-  writexy(1,4,'Punkte '); write(punkte * leben);
+  Str(punkte * leben, S); writexy(1, 4,'Punkte ' + S);
   Assign(f,Name);
   {$I-}
   Append(f);
@@ -607,9 +613,8 @@ begin
    repeat
        DrawHLine(27,53,8,'█');
        writexy(27, 9,'█');
-       writexy(28, 9,' L E V E L   ');
-       write(level);
-       write('           ');
+       Str(level, S);
+       writexy(28, 9,' L E V E L   ' + S + '           ');
        writexy(53, 9,'█');
        DrawHLine(27,53,10,'█');
       writexy(27, 11,' T A S T E   D R Ü C K E N ');
@@ -896,7 +901,7 @@ end;
 
 procedure PausenZeigen;
 begin
- writexy(65, 1,'PAUSEN '); write(Pausen);
+ Str(Pausen, S); writexy(65, 1,'PAUSEN ' + S);
  writexy(21, 9,'T A S T E   D R Ü C K E N');
  t := GetKey;
  textcolor(4);
@@ -1156,7 +1161,7 @@ Begin
       sx := x;
       sy := y;
       writexy(21, 9,'T A S T E    D R Ü C K E N');
-      writexy(21,10,'Noch vorhandene Steine: '); write(steine:4);
+      Str(steine:4, S); writexy(21, 10,'Noch vorhandene Steine: ' + S);
       t := GetKey;
       writexy(21,10,'                            ');
       writexy(21, 9,'                            ');
@@ -1286,7 +1291,7 @@ begin
        leben := leben + 1;            {Leben + 1}
        levelneu;                      {LevelNeu}
        textbackground(Red); textcolor(15);
-       writexy(3, 1,'PUNKTE '); Write(punkte);
+       Str(punkte, S); writexy(3, 1,'PUNKTE ' + S);
        textbackground(0);
       end;                            {if zahl = 10}
 
@@ -1305,7 +1310,7 @@ begin
      if (x = xx) and (y = yy) then Begin fressen; ReStone; End;
      textbackground(LightRed);
      textcolor(15);
-     writexy(6, 20,'LEBEN '); write(leben);
+     Str(leben, S); writexy(6, 20,'LEBEN ' + S);
      textbackground(0);
      if leben = 0 then
       begin
