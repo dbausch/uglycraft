@@ -30,6 +30,17 @@ shell = """
   cp -r LICENSES dist/linux-64/
 """
 
+[tool.poe.tasks.setup-windows]
+help  = "One-time setup: install Python 3.13 + deps into Wine for Windows builds"
+shell = """
+  curl -LO https://www.python.org/ftp/python/3.13.0/python-3.13.0-amd64.exe
+  WINEDEBUG=-all wine python-3.13.0-amd64.exe /quiet PrependPath=1
+  rm python-3.13.0-amd64.exe
+  WINEDEBUG=-all wine \
+    ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
+    -m pip install pygame numpy pyinstaller
+"""
+
 [tool.poe.tasks.build-windows]
 help  = "Build standalone Windows distributable (dist/windows-64/) via Wine"
 shell = """

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Building and publishing distributables
 
-Tasks are managed with **poethepoet** (`pyproject.toml`). Run via `.venv/bin/poe <task>`.
+Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed globally via pipx.
 
 | Task | Action |
 |---|---|
@@ -12,6 +12,7 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). Run via `.venv/bin/poe
 | `poe run` | Run the game |
 | `poe run-level N` | Run starting at level N |
 | `poe build-linux` | Build `dist/linux-64/uglycraft` + license notices (~41 MB) |
+| `poe setup-windows` | One-time: install Python 3.13 + deps into Wine |
 | `poe build-windows` | Build `dist/windows-64/uglycraft.exe` + license notices (~25 MB) via Wine |
 | `poe build-original` | Fetch UOS source (curl) and build `original/UGLI_2` with FPC |
 | `poe clean` | Remove all build artifacts (`dist/`, `build/`, compiled Pascal output) |
@@ -20,7 +21,7 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). Run via `.venv/bin/poe
 | `poe deploy-original-dos` | Push `dist/original-dos` to itch.io |
 
 Build and deploy are separate steps — deploy tasks only call butler, never build.
-Windows build requires one-time setup (Wine, Python 3.13 under Wine, pip deps) — see **README.md**.
+Windows build requires Wine installed via the system package manager; `poe setup-windows` handles the rest.
 Version is read from the latest git tag automatically.
 
 ## Licensing

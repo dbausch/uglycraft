@@ -43,13 +43,65 @@ pipx ensurepath         # add ~/.local/bin to PATH (then restart your shell)
 pipx install poethepoet
 ```
 
-Then set up the game:
+Clone and set up:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/dbausch/uglycraft.git
 cd uglycraft
 poe install
 ```
+
+---
+
+## Building
+
+### Linux executable
+
+```bash
+poe build-linux
+```
+
+Output: `dist/linux-64/uglycraft` (~41 MB, self-contained).
+
+### Windows executable
+
+Requires Wine (one-time system install):
+
+```bash
+sudo pacman -S wine   # Arch / Manjaro
+# sudo apt install wine   # Debian / Ubuntu
+```
+
+Then set up Python under Wine (one-time):
+
+```bash
+poe setup-windows
+```
+
+Then build:
+
+```bash
+poe build-windows
+```
+
+Output: `dist/windows-64/uglycraft.exe` (~25 MB, self-contained).
+
+### Original UGLI 2 (Linux port)
+
+Requires Free Pascal (one-time system install):
+
+```bash
+sudo pacman -S fpc   # Arch / Manjaro
+# sudo apt install fpc   # Debian / Ubuntu
+```
+
+Then build:
+
+```bash
+poe build-original
+```
+
+Output: `original/UGLI_2`. Requires a terminal of at least 80×25 characters. Tested in [kitty](https://sw.kovidgoyal.net/kitty/).
 
 ---
 
@@ -66,6 +118,20 @@ Or directly:
 .venv/bin/python main.py --level N        # start at level N (1–10)
 .venv/bin/python main.py --easy/--hard    # set difficulty (default: easy)
 ```
+
+---
+
+## Deploying to itch.io
+
+Requires [butler](https://itch.io/docs/butler/) and a one-time `butler login`.
+
+```bash
+poe deploy                 # push all four channels
+poe deploy-original-linux  # push FPC Linux port only
+poe deploy-original-dos    # push original DOS exe only
+```
+
+`poe deploy` reads the version from the latest git tag automatically.
 
 ---
 
@@ -105,135 +171,20 @@ Being caught without a shield costs 500 points and one life.
 
 ---
 
-## Tasks (poethepoet)
+## All poe tasks
 
 ```bash
+poe install                # create venv and install dependencies
 poe run                    # run the game
 poe run-level N            # run starting at level N
 poe build-linux            # build dist/linux-64/uglycraft
-poe build-windows          # build dist/windows-64/uglycraft.exe (requires Wine setup below)
+poe setup-windows          # one-time: install Python + deps into Wine
+poe build-windows          # build dist/windows-64/uglycraft.exe
 poe build-original         # build original/UGLI_2 with FPC
-poe deploy                 # build all + push all four channels to itch.io
-poe deploy-original-linux  # build + push FPC Linux port only
+poe clean                  # remove all build artifacts
+poe deploy                 # push all four itch.io channels
+poe deploy-original-linux  # push FPC Linux port only
 poe deploy-original-dos    # push original DOS exe only
-```
-
-`poe deploy` reads the version from the latest git tag automatically.
-
----
-
-## Building a Linux executable
-
-No cross-compilation needed — PyInstaller runs natively.
-
-### One-time setup
-
-```bash
-.venv/bin/pip install pyinstaller
-```
-
-### Building
-
-```bash
-.venv/bin/pyinstaller --onefile --noconsole --name uglycraft main.py
-```
-
-Output: `dist/uglycraft` (~41 MB, self-contained).
-
-### Testing
-
-```bash
-dist/uglycraft
-```
-
----
-
-## Building a Windows executable (from Linux)
-
-### One-time setup
-
-Requires Wine and the Python 3.13 Windows installer (Python 3.14 is not yet supported by pygame's Windows wheels).
-
-```bash
-# 1. Install Wine
-sudo pacman -S wine          # Arch / Manjaro
-# sudo apt install wine      # Debian / Ubuntu
-
-# 2. Download Python 3.13 for Windows
-curl -LO https://www.python.org/ftp/python/3.13.0/python-3.13.0-amd64.exe
-
-# 3. Install Python into Wine
-#    In the GUI: tick "Add Python to PATH", then Install Now
-wine python-3.13.0-amd64.exe
-
-# 4. Install dependencies into the Wine Python
-WINEDEBUG=-all wine \
-  ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
-  -m pip install pygame numpy pyinstaller
-```
-
-### Building
-
-```bash
-WINEDEBUG=-all wine \
-  ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
-  -m PyInstaller --onefile --noconsole --name uglycraft main.py
-```
-
-Output: `dist/uglycraft.exe` (~25 MB, self-contained).
-
-The Wine prefix and all dependencies persist — subsequent rebuilds only need the PyInstaller command above.
-
-### Testing
-
-```bash
-wine dist/uglycraft.exe
-```
-
----
-
-## Building the ported original (UGLI 2)
-
-The original 1996 Pascal source has been ported to run on modern Linux using Free Pascal.
-
-### One-time setup
-
-```bash
-sudo pacman -S fpc          # Arch / Manjaro
-# sudo apt install fpc      # Debian / Ubuntu
-```
-
-### Building
-
-```bash
-.venv/bin/poe build-original
-```
-
-Or directly:
-
-```bash
-cd original && fpc -Mtp UGLI_2.PAS
-```
-
-Output: `original/UGLI_2` (native Linux executable).
-
-### Running
-
-```bash
-./original/UGLI_2
-```
-
-Requires a terminal of at least 80×25 characters. Tested in [kitty](https://sw.kovidgoyal.net/kitty/). See [`original/README.md`](original/README.md) for full details of the porting work.
-
----
-
-## Publishing to itch.io
-
-Requires [butler](https://itch.io/docs/butler/) and a one-time `butler login`.
-
-```bash
-butler push dist/uglycraft     dbausch/uglycraft:linux-64   --userversion 1.0
-butler push dist/uglycraft.exe dbausch/uglycraft:windows-64 --userversion 1.0
 ```
 
 ---
