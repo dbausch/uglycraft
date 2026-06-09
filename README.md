@@ -6,7 +6,7 @@ Collect nine treasures across ten progressively harder levels while being hunted
 
 **Download compiled binaries (Linux, Windows, and the original DOS game) at [dbausch.itch.io/uglycraft](https://dbausch.itch.io/uglycraft).**
 
-![UGLYCRAFT level 7 — hard mode](screenshot_level7.png)
+![UGLYCRAFT level 7 — hard mode](screenshot.png)
 
 ---
 
@@ -247,7 +247,7 @@ hiscore.py     Top-10 score persistence (uglycraft.hsc)
 
 UGLI was first written in 1993 by Daniel Bausch using Turbo Pascal on MS-DOS, then developed further through 1996 into a second version with improved mechanics including wall placement. The 1996 source code (`UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`) is preserved in this repository as a historical reference. UGLYCRAFT shares the genre and core mechanics but is otherwise a fresh implementation.
 
-![UGLI 2 (1996) — screenshot from the FPC port running on Linux](screenshot_original.png)
+![UGLI 2 (1996) — screenshot from the FPC port running on Linux](screenshot-original-linux.png)
 
 The screenshot above is taken from the Free Pascal port of the original, running in a Linux terminal. The video below is a let's play of the original DOS executable in DOSBox:
 
