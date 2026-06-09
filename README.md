@@ -98,11 +98,14 @@ Being caught without a shield costs 500 points and one life.
 ## Tasks (poethepoet)
 
 ```bash
-.venv/bin/poe run              # run the game
-.venv/bin/poe run-level N      # run starting at level N
-.venv/bin/poe build-linux      # build dist/uglycraft
-.venv/bin/poe build-windows    # build dist/uglycraft.exe (requires Wine setup below)
-.venv/bin/poe deploy           # build both + push to itch.io
+.venv/bin/poe run                    # run the game
+.venv/bin/poe run-level N            # run starting at level N
+.venv/bin/poe build-linux            # build dist/linux-64/uglycraft
+.venv/bin/poe build-windows          # build dist/windows-64/uglycraft.exe (requires Wine setup below)
+.venv/bin/poe build-original         # build original/UGLI_2 with FPC
+.venv/bin/poe deploy                 # build all + push all four channels to itch.io
+.venv/bin/poe deploy-original-linux  # build + push FPC Linux port only
+.venv/bin/poe deploy-original-dos    # push original DOS exe only
 ```
 
 `poe deploy` reads the version from the latest git tag automatically.
@@ -176,6 +179,41 @@ The Wine prefix and all dependencies persist — subsequent rebuilds only need t
 ```bash
 wine dist/uglycraft.exe
 ```
+
+---
+
+## Building the ported original (UGLI 2)
+
+The original 1996 Pascal source has been ported to run on modern Linux using Free Pascal.
+
+### One-time setup
+
+```bash
+sudo pacman -S fpc          # Arch / Manjaro
+# sudo apt install fpc      # Debian / Ubuntu
+```
+
+### Building
+
+```bash
+.venv/bin/poe build-original
+```
+
+Or directly:
+
+```bash
+cd original && fpc -Mtp UGLI_2.PAS
+```
+
+Output: `original/UGLI_2` (native Linux executable).
+
+### Running
+
+```bash
+./original/UGLI_2
+```
+
+Requires a terminal of at least 80×25 characters. See [`original/README.md`](original/README.md) for full details of the porting work.
 
 ---
 
