@@ -1,0 +1,4 @@
+# UOS source files are fetched at build time (see poe build-original)
+*.pas
+*.o
+*.ppu
