@@ -126,7 +126,6 @@ begin
   delay(200);
   textcolor(4);
   write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
-  delay(200);
   WLn('');
   readln;
   ClrScr;
