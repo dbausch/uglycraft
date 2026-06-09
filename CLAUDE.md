@@ -44,9 +44,9 @@ This repo contains two things:
 ## Running UGLYCRAFT
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install poethepoet
-.venv/bin/poe install   # installs pygame, numpy, pyinstaller
-.venv/bin/poe run
+pipx install poethepoet   # one-time; virtualenv via package manager
+poe install               # creates .venv and installs pygame, numpy, pyinstaller
+poe run
 ```
 
 Or directly: `.venv/bin/python main.py --level N --easy/--hard`

@@ -34,11 +34,21 @@ Collect nine treasures across ten progressively harder levels while being hunted
 
 ## Installation
 
+Install the required tools if you don't have them yet:
+
+```bash
+sudo apt install pipx python3-virtualenv   # Debian / Ubuntu
+sudo pacman -S python-pipx python-virtualenv  # Arch / Manjaro
+pipx ensurepath         # add ~/.local/bin to PATH (then restart your shell)
+pipx install poethepoet
+```
+
+Then set up the game:
+
 ```bash
 git clone <repo-url>
 cd uglycraft
-python3 -m venv .venv && .venv/bin/pip install poethepoet
-.venv/bin/poe install
+poe install
 ```
 
 ---
@@ -46,8 +56,8 @@ python3 -m venv .venv && .venv/bin/pip install poethepoet
 ## Running
 
 ```bash
-.venv/bin/poe run
-.venv/bin/poe run-level 5          # start at a specific level
+poe run
+poe run-level 5          # start at a specific level
 ```
 
 Or directly:
@@ -98,14 +108,14 @@ Being caught without a shield costs 500 points and one life.
 ## Tasks (poethepoet)
 
 ```bash
-.venv/bin/poe run                    # run the game
-.venv/bin/poe run-level N            # run starting at level N
-.venv/bin/poe build-linux            # build dist/linux-64/uglycraft
-.venv/bin/poe build-windows          # build dist/windows-64/uglycraft.exe (requires Wine setup below)
-.venv/bin/poe build-original         # build original/UGLI_2 with FPC
-.venv/bin/poe deploy                 # build all + push all four channels to itch.io
-.venv/bin/poe deploy-original-linux  # build + push FPC Linux port only
-.venv/bin/poe deploy-original-dos    # push original DOS exe only
+poe run                    # run the game
+poe run-level N            # run starting at level N
+poe build-linux            # build dist/linux-64/uglycraft
+poe build-windows          # build dist/windows-64/uglycraft.exe (requires Wine setup below)
+poe build-original         # build original/UGLI_2 with FPC
+poe deploy                 # build all + push all four channels to itch.io
+poe deploy-original-linux  # build + push FPC Linux port only
+poe deploy-original-dos    # push original DOS exe only
 ```
 
 `poe deploy` reads the version from the latest git tag automatically.
