@@ -13,10 +13,15 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). Run via `.venv/bin/poe
 | `poe run-level N` | Run starting at level N |
 | `poe build-linux` | Build `dist/linux-64/uglycraft` + license notices (~41 MB) |
 | `poe build-windows` | Build `dist/windows-64/uglycraft.exe` + license notices (~25 MB) via Wine |
-| `poe deploy` | Build both and push to itch.io with current git tag as version |
+| `poe build-original` | Fetch UOS source (curl) and build `original/UGLI_2` with FPC |
+| `poe clean` | Remove all build artifacts (`dist/`, `build/`, compiled Pascal output) |
+| `poe deploy` | Push all four itch.io channels with current git tag as version |
+| `poe deploy-original-linux` | Push `dist/original-linux` to itch.io |
+| `poe deploy-original-dos` | Push `dist/original-dos` to itch.io |
 
+Build and deploy are separate steps — deploy tasks only call butler, never build.
 Windows build requires one-time setup (Wine, Python 3.13 under Wine, pip deps) — see **README.md**.
-`poe deploy` reads the version from the latest git tag automatically.
+Version is read from the latest git tag automatically.
 
 ## Licensing
 
@@ -32,7 +37,7 @@ License texts live in `LICENSES/` and are copied into each build by the poe task
 
 This repo contains two things:
 
-1. **The original game** — UGLI (version 2, 1996), a DOS text-mode game written in Turbo Pascal 7 by Daniel Bausch. Three source files: `UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`. See [`original/CLAUDE.md`](original/CLAUDE.md) for a full analysis of the original code, data structures, and mechanics.
+1. **The original game** — UGLI (version 2, 1996), a DOS text-mode game written in Turbo Pascal 7 by Daniel Bausch. Main source files: `UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`, plus `uossound.pas` (FPC/Linux sound via UOS + PortAudio). See [`original/CLAUDE.md`](original/CLAUDE.md) for a full analysis of the original code, data structures, and mechanics.
 
 2. **UGLYCRAFT** — a new Python/pygame spiritual remake of UGLI, written from scratch. This is the active project.
 

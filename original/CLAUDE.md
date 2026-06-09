@@ -9,8 +9,10 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 ## Building (if you ever want to)
 
 - **Turbo Pascal 7** (original): Open `UGLI_2.PAS` in the TP7 IDE or run `tpc UGLI_2.PAS`
-- **Free Pascal** (modern): `fpc -Mtp UGLI_2.PAS` (TP compatibility mode). Note: `EXTRA1.PAS` uses `graph`, `Drivers`, and `Boosters` units which may need stubs or WinCrt/graph replacements.
+- **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files from GitHub on first run, then compiles with `fpc -Mtp -Fuuos UGLI_2.PAS`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
+
+Note: `EXTRA1.PAS` uses `graph`, `Drivers`, and `Boosters` (Turbo Pascal BGI) and is not part of the FPC build.
 
 There are no tests, no lint tools, and no CI setup.
 
@@ -138,15 +140,11 @@ Levels are defined by the `initl1`–`initl9` procedures via inline `GotoXY`/`Wr
 
 ## Sound design
 
-All sound via PC speaker (`Ton` procedure). Frequencies played:
-- Player move: short low beep
-- Wall bump: slightly higher beep
-- Treasure pickup: ascending scale fragment
-- Level complete: short fanfare sequence
-- Game over: descending tone
-- Shop purchase: confirmation beep
+**Original DOS**: All sound via PC speaker (`Ton` in `EXTRA1.PAS`). Frequencies played directly via port $42/$43.
 
-`DateiTon` reads tone sequences from an external file; `TonAuf`/`TonAb` play rising/falling sweeps used in `Erkennung` intro.
+**FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `uossound.pas`, a wrapper around UOS + PortAudio. It exposes the same `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as CRT (listed last in `uses` so it shadows the empty CRT stubs), plus named effect procedures: `SoundBrumm`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundGewonnen`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
+
+`DateiTon` reads tone sequences from an external file; `TonAuf`/`TonAb` play rising/falling sweeps used in `Erkennung` intro (DOS only — not used in the FPC port).
 
 ## How UGLYCRAFT maps from the original
 
