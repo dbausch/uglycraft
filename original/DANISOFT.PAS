@@ -73,13 +73,9 @@ begin
   delay(200);
   WLn('');
   delay(200);
-  WLn('');
-  delay(200);
-  WLn('');
-  delay(200);
-  WLn('');
-  delay(200);
   WLn(Zentriert('* DANISOFT * PRÄSENTIERT *'));
+  delay(200);
+  WLn('');
   delay(200);
   WLn('');
   TextColor(red+Blink);
@@ -130,6 +126,8 @@ begin
   delay(200);
   textcolor(4);
   write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
+  delay(200);
+  WLn('');
   readln;
   ClrScr;
   for I := 40 to 50 do
