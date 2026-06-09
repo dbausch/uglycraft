@@ -53,9 +53,8 @@ shell = """
 """
 
 [tool.poe.tasks.deploy-original-linux]
-help  = "Build and push the FPC Linux port of UGLI 2 to itch.io"
+help  = "Push the FPC Linux port of UGLI 2 to itch.io"
 shell = """
-  cd original && fpc -Mtp UGLI_2.PAS && cd ..
   mkdir -p dist/original-linux
   cp original/UGLI_2 dist/original-linux/
   butler push dist/original-linux dbausch/uglycraft:original-linux \
@@ -72,8 +71,8 @@ shell = """
 """
 
 [tool.poe.tasks.deploy]
-help     = "Build all distributables and push to itch.io"
-sequence = ["build-linux", "build-windows", "deploy-original-linux", "deploy-original-dos", "_push-linux", "_push-windows"]
+help     = "Push all distributables to itch.io"
+sequence = ["deploy-original-linux", "deploy-original-dos", "_push-linux", "_push-windows"]
 
 [tool.poe.tasks._push-linux]
 shell = "butler push dist/linux-64 dbausch/uglycraft:linux-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"
