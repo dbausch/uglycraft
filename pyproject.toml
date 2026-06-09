@@ -56,7 +56,8 @@ shell = """
 help  = "Remove build artifacts"
 shell = """
   rm -rf dist/ build/ uglycraft.spec
-  rm -f original/UGLI_2 original/UGLI_2.o
+  rm -f original/UGLI_2
+  rm -f original/*.o original/*.ppu
   rm -f original/uos/*.o original/uos/*.ppu
 """
 
