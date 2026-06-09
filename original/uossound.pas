@@ -1,0 +1,142 @@
+unit uossound;
+
+{ Sound wrapper for UGLI 2 FPC port.
+  Provides Sound(Hz)/NoSound/Ton(Hz,Ms) backed by UOS + PortAudio.
+  Falls back to silence if PortAudio is not installed. }
+
+{$mode objfpc}{$H+}
+
+interface
+
+{ Replaces CRT stubs — list uossound after crt in uses clause. }
+procedure Sound(Hz: Word);
+procedure NoSound;
+
+{ Play Hz for Ms milliseconds synchronously. }
+procedure Ton(Hz: Word; Ms: Integer);
+
+{ Named sound effects. }
+procedure SoundBrumm;     { wall bump — low 40 Hz blip }
+procedure SoundPickup;    { treasure collected }
+procedure SoundCaught;    { player caught by enemy }
+procedure SoundGameOver;  { game over fanfare }
+procedure SoundGewonnen;  { level/game won fanfare }
+
+implementation
+
+uses ctypes, SysUtils, uos_flat;
+
+const
+  PA_LIBS: array[0..1] of string = ('libportaudio.so.2', 'libportaudio.so');
+
+var
+  FReady:   Boolean  = False;
+  FPlaying: Boolean  = False;
+  FPlayer:  cint32   = 0;
+  FInput:   cint32   = -1;
+
+procedure Init;
+var
+  loaded: Boolean;
+  i: Integer;
+begin
+  if FReady then Exit;
+  FReady := True;  { mark attempted so we never retry on failure }
+
+  loaded := False;
+  for i := 0 to High(PA_LIBS) do
+    if uos_LoadLib(PChar(PA_LIBS[i]), nil, nil, nil, nil, nil) = 0 then
+    begin
+      loaded := True;
+      Break;
+    end;
+  if not loaded then Exit;
+
+  if not uos_CreatePlayer(FPlayer) then Exit;
+
+  { Mono square wave (WaveTypeL=1), 440 Hz placeholder, endless (duration=0) }
+  FInput := uos_AddFromSynth(FPlayer, 1, 1, -1, 440, 440, 0.5, 0.5,
+                              0, 0, 0, 0, -1, -1, -1);
+  if FInput < 0 then Exit;
+
+  if uos_AddIntoDevOut(FPlayer) < 0 then
+  begin
+    FInput := -1;
+    Exit;
+  end;
+
+  { Start player permanently; silence it immediately via Enable=False }
+  uos_PlayNoFree(FPlayer);
+  FPlaying := True;
+  uos_InputSetSynth(FPlayer, FInput, -1, -1, 440, 440, -1, -1, -1, -1, -1, False);
+end;
+
+procedure Sound(Hz: Word);
+begin
+  Init;
+  if FInput < 0 then Exit;
+  uos_InputSetSynth(FPlayer, FInput, -1, -1, Hz, Hz, -1, -1, -1, -1, -1, True);
+end;
+
+procedure NoSound;
+begin
+  if FInput < 0 then Exit;
+  uos_InputSetSynth(FPlayer, FInput, -1, -1, -1, -1, -1, -1, -1, -1, -1, False);
+end;
+
+procedure Ton(Hz: Word; Ms: Integer);
+begin
+  Sound(Hz);
+  Sleep(Ms);
+  NoSound;
+end;
+
+procedure SoundBrumm;
+begin
+  Ton(40, 5);
+end;
+
+procedure SoundPickup;
+begin
+  Ton(250, 50);
+end;
+
+procedure SoundCaught;
+begin
+  Ton(80, 200);
+end;
+
+procedure SoundGameOver;
+var
+  i: Integer;
+begin
+  Ton(200, 100);
+  Ton(150, 100);
+  Ton(200, 100);
+  Ton(150, 100);
+  Ton(100, 100);
+  NoSound;
+  Sleep(200);
+  i := 600;
+  while i > 0 do
+  begin
+    Sound(i);
+    Sleep(3);
+    Dec(i);
+  end;
+  NoSound;
+  Sleep(1000);
+end;
+
+procedure SoundGewonnen;
+begin
+  Ton(100, 500);
+  Ton(200, 500);
+  Ton(300, 500);
+  Ton(400, 500);
+end;
+
+finalization
+  if FPlaying then uos_stop(FPlayer);
+  if FReady   then uos_free;
+end.

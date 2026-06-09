@@ -1,6 +1,6 @@
 unit DANISOFT;
 interface
-uses Crt;
+uses Crt, uossound;
 
 procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;Nr,User,copyjahr:String);
 
@@ -52,12 +52,9 @@ begin
   Begin
    TextBackground(I);
    clrscr;
-   sound(I * 150);
-   delay(300);
-   nosound;
+   Ton(I * 150, 300);
    delay(20);
   end;
-  nosound;
   delay(100);
   TextColor(Black);
   TextBackground(0);
@@ -137,9 +134,7 @@ begin
   ClrScr;
   for I := 40 to 50 do
     begin
-      sound(I);
-      delay(150);
-      nosound;
+      Ton(I, 150);
     end;
   textcolor(Black);
   Write(#27'[r'); { reset scroll region to full screen }

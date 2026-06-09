@@ -44,7 +44,7 @@ shell = """
 
 [tool.poe.tasks.build-original]
 help  = "Build the original 1996 Pascal source (original/UGLI_2.PAS) with FPC"
-shell = "cd original && fpc -Mtp UGLI_2.PAS"
+shell = "cd original && fpc -Mtp -Fuuos UGLI_2.PAS"
 
 [tool.poe.tasks.deploy-original-linux]
 help  = "Build and push the FPC Linux port of UGLI 2 to itch.io"

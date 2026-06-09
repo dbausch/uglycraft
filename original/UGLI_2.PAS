@@ -2,7 +2,7 @@
 {******************************** U G L I ***********************************}
 Program ugli_2;
 
-uses crt, dos, danisoft;
+uses crt, dos, danisoft, uossound;
 label     100, 300, 999, 998, 1, 997;
 
 Const
@@ -638,9 +638,7 @@ end;
 
 Procedure Brumm;
 Begin
- sound(40);
- delay(5);
- nosound;
+ SoundBrumm;
 End; {brumm}
 
 procedure unten (Var x:integer; Var y:integer);
@@ -894,28 +892,7 @@ procedure GameOver;
     DrawHLine(28,49,2,'█');
     writexy(28, 3,'██ G A M E  O V E R ██');
     DrawHLine(28,49,4,'█');
-    sound(200);
-    delay(100);
-    sound(150);
-    delay(100);
-    sound(200);
-    delay(100);
-    sound(150);
-    delay(100);
-    sound(100);
-    delay(100);
-    nosound;
-    delay(200);
-    l := 600;
-    i := 600;
-    repeat
-      l := l - 1;
-      i := i - 1;
-      sound(i);
-      delay(3);
-    until l = 0;
-    nosound;
-    delay(1000);
+    SoundGameOver;
 end;
 
 procedure PausenZeigen;
@@ -938,15 +915,7 @@ begin
  textcolor(4);
  writexy(30,11,' T A S T E   D R Ü C K E N ');
  delay(1000);
- sound(100);
- delay(500);
- sound(200);
- delay(500);
- sound(300);
- delay(500);
- sound(400);
- delay(500);
- nosound;
+ SoundGewonnen;
  TEXTBACKGROUND(black);
  TextColor(random(255));
  textattr := random(255);
@@ -1002,7 +971,7 @@ begin
    If Schutz = false then
    Begin
      rahmen;
-     sound(80); delay(200); nosound;
+     SoundCaught;
      punkte := punkte - Zahl * 1000;
      If Punkte < 0 then punkte := 0;
      zahl := 1;
@@ -1347,7 +1316,7 @@ begin
 
      if (locx = x) AND (locy = y) then
        Begin
-         sound(250); delay(50); nosound;
+         SoundPickup;
          goto 100;
        End;
     Until ti = 27;
