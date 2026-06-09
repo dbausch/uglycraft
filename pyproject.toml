@@ -52,6 +52,14 @@ shell = """
   cd original && fpc -Mtp -Fuuos UGLI_2.PAS
 """
 
+[tool.poe.tasks.clean]
+help  = "Remove build artifacts"
+shell = """
+  rm -rf dist/ build/ uglycraft.spec
+  rm -f original/UGLI_2 original/UGLI_2.o
+  rm -f original/uos/*.o original/uos/*.ppu
+"""
+
 [tool.poe.tasks.deploy-original-linux]
 help  = "Push the FPC Linux port of UGLI 2 to itch.io"
 shell = """
