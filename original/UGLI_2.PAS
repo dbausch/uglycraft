@@ -23,9 +23,8 @@ Const
   copy = 'Released under the terms of the GNU GPLv3';
 
 var
-    steine, langs, op, pausen, timeslot, ti, l, I, J, zahl, level, leben,
-    vx, vy, sx, sy, nehm, locx, locy, dx, dy, x, y, xx, yy, gx, gy,
-    escState : integer;
+    steine, langs, op, pausen, timeslot, ti, I, J, zahl, level, leben,
+    vx, vy, sx, sy, locx, locy, dx, dy, x, y, xx, yy, escState : integer;
     punkte : Longint;
     sper : array [1..MaxX,1..MaxY] of boolean;
     t  : char;
@@ -957,8 +956,7 @@ begin
  pausen := 20;
  sx := 1;
  sy := 1;
- gx := 78;
- gy := 2;
+
  xx := 5;
  yy := 10;
  x := 40;
