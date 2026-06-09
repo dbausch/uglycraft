@@ -2,7 +2,7 @@
 {******************************** U G L I ***********************************}
 Program ugli_2;
 
-uses crt, dos, danisoft, uossound;
+uses cthreads, crt, dos, danisoft, uossound;
 label     100, 300, 999, 998, 1, 997;
 
 Const
