@@ -655,7 +655,6 @@ begin
     textcolor(14);
     writexy(x,y,'☺');
   end;
-  delay(55);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
@@ -672,7 +671,6 @@ begin
     textcolor(14);
     writexy(x,y,'☺');
   end;
-  delay(10);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
@@ -689,7 +687,6 @@ begin
     textcolor(14);
     writexy(x,y,'☺');
   end;
-  delay(10);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
@@ -706,7 +703,6 @@ begin
     textcolor(14);
     writexy(x,y,'☺');
   end;
-  delay(55);
   gotoxy(1,1);
   textcolor(4);
   writexy(sx,sy,'█');
@@ -952,7 +948,7 @@ begin
  textbackground(0);
  textcolor(4);
  cls;
- langs := 45;
+ langs := 100;
  pausen := 20;
  sx := 1;
  sy := 1;
