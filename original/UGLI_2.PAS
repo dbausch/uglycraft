@@ -762,55 +762,54 @@ begin
 end; {rahmen}
 
 procedure ugli2;
-var oldxx, oldyy: integer;
+var
+  oldxx, oldyy: integer;
+  tryx: boolean;
+  tryn: integer;
 begin
-     oldxx := xx;
-     oldyy := yy;
-     if timeslot = 0 then
-      begin
-       dx := x - xx;
-       dy := y - yy;
-       if (ABS(dx) > ABS(dy)) then
-         begin
-          if (dx > 0) AND (sper[xx + 1,yy] = false) then
-             xx := xx + 1
-           else
+  if timeslot = 0 then
+    begin
+      oldxx := xx;
+      oldyy := yy;
+      dx := x - xx;
+      dy := y - yy;
+      tryx := Abs(dx) > Abs(dy);
+      for tryn := 1 to 2 do
+        begin
+          if tryx then
             begin
-             if (dx > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
-             if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
-            end;
-          if (dx < 0) AND (sper[xx - 1,yy] = false) then
-             xx := xx - 1
-           else
+              if (dx > 0) and (sper[xx + 1,yy] = false) then
+                begin
+                  xx := xx + 1;
+                  break;
+                end;
+              if (dx < 0) and (sper[xx - 1, yy] = false) then
+                begin
+                  xx := xx - 1;
+                  break;
+                end;
+            end
+          else
             begin
-             if (dy > 0) AND (sper[xx,yy + 1] = false) then yy := yy + 1;
-             if (dy < 0) AND (sper[xx,yy - 1] = false) then yy := yy - 1;
+              if (dy > 0) and (sper[xx, yy + 1] = false) then
+                begin
+                  yy := yy + 1;
+                  break;
+                end;
+              if (dy < 0) and (sper[xx, yy - 1] = false) then
+                begin
+                  yy := yy - 1;
+                  break;
+                end;
             end;
-         end
-        else
-         begin
-          IF (dy > 0) AND (sper[xx,yy + 1] = false) THEN
-             yy := yy + 1
-            ELSE
-             begin
-              IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
-              IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
-             end;
-          IF (dy < 0) AND (sper[xx,yy - 1] = false) THEN
-             yy := yy - 1
-            ELSE
-             begin
-              IF (dx > 0) AND (sper[xx + 1,yy] = false) THEN xx := xx + 1;
-              IF (dx < 0) AND (sper[xx - 1,yy] = false) THEN xx := xx - 1;
-             end;
-         end;
-      end;
-     if (xx <> oldxx) OR (yy <> oldyy) then
-       writexy(oldxx, oldyy,' ');
-     textcolor(6);
-     writexy(xx, yy,'☻');
-
-end;
+          tryx := not tryx;
+        end;
+      if (xx <> oldxx) Or (yy <> oldyy) then
+        writexy(oldxx, oldyy,' ');
+      textcolor(6);
+      writexy(xx, yy,'☻');
+    end;
+end; {ugli2}
 
 procedure untbr;
 label 200;
