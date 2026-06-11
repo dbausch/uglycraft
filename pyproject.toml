@@ -22,8 +22,8 @@ shell  = ".venv/bin/python main.py --level ${level}"
 args   = [{name = "level", positional = true}]
 
 [tool.poe.tasks.run-original]
-help = "Run the Linux port of the original UGLI 2 (must build-original first)"
-cmd  = "original/UGLI_2"
+help  = "Run the Linux port of the original UGLI 2 in a new terminal (must build-original first)"
+shell = "${TERMINAL:-kitty} original/UGLI_2"
 
 [tool.poe.tasks.build-linux]
 help  = "Build standalone Linux distributable (dist/linux-64/)"
