@@ -89,30 +89,23 @@ Begin
 End;
 
 procedure ReStone;
-var I,J:Integer;
-Begin
-  For I := 1 to 80 do
-    Begin
-      For J := 1 to 20 do
-        Begin
-          textcolor(4);
-          If sper[I,J] then writexy(I,J,'█')
-                       else writexy(I,J,' ');
-
-        End;
-    End;
-   WriteLevel;
-  textbackground(Red);
-  textcolor(15);
-  Str(punkte, S); writexy(3, 1,'PUNKTE ' + S);
-  textbackground(0);
-  textcolor(11);
-  writexy(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
-  DrawHLine(1,80,22,'─');
-  writexy(1, 23,'<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
-  DrawHLine(1,80,24,'─');
-  writexy(1, 25,'<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
-End;
+var
+  I, J: Integer;
+  C: String;
+begin
+  TextColor(Red);
+  for I := 2 to 79 do
+    begin
+      for J := 2 to 19 do
+        begin
+          if sper[I, J] then
+            C := '█'
+          else
+            C := ' ';
+          writexy(I, J, C);
+        end;
+    end;
+end;
 
 procedure abfrage;
 begin
@@ -232,292 +225,245 @@ end;
 {****************************** B E G I N N *********************************}
 {****************************** L E V E L S *********************************}
 
-procedure initl1;
+procedure InitL1;
 begin
- t := #77;
- x := 40;
- y := 10;
-end;
+  x := 40;
+  y := 10;
+  t := Chr(CurR);
+end; {InitL1}
 
-procedure initl2;
-var I:Integer;
+procedure InitL2;
+var
+  I: Integer;
 Begin
-   textcolor(4);
-   x := 40;
-   y := 5;
-   t := #77;
   for I := 18 to 62 do
-   begin
-    writexy(I, 10,'█');
-    sper[I, 10] := true;
-   end; {For I}
-End;   {initl2}
-
-procedure initl3;
-var I:Integer;
- Begin
-  textcolor(4);
-  x := 40;
-  y := 9;
-  t := #80;
-  for I := 5 to 15 do
-   begin
-    writexy(20, I,'█');
-    writexy(60, I,'█');
-    sper[20, I] := true;
-    sper[60, I] := true;
-   end;
-  for i := 20 to 60 do
-  Begin
-    writexy(I, 10,'█');
-    sper[I, 10] := true;
-  End;
-  textbackground(0);
-  writexy(39,10,'   ');
-  sper[39,10] := false;
-  sper[40,10] := false;
-  sper[41,10] := false;
-end; {initl3}
-
-procedure initl4;
-var I:Integer;
- Begin
- textcolor(4);
-  x := 40;
-  y := 9;
-  t := #77;
-  for I := 4 to 8 do
-   begin
-    writexy(15, I,'█');
-    writexy(65, I,'█');
-    sper[15, I] := true;
-    sper[65, I] := true;
-   end;
-  for I := 5 to 75 do
-   begin
-    writexy(I, 10,'█');
-    sper[I, 10] := true;
-   end;
-  for I := 12 to 16 do
-   begin
-    writexy(15, I,'█');
-    writexy(65, I,'█');
-    sper[15, I] := true;
-    sper[65, I] := true;
-   end;
-  textbackground(0);
-  writexy(39,10,'   ');
-  sper[39,10] := false;
-  sper[40,10] := false;
-  sper[41,10] := false;
-end; {initl4}
-
-procedure initl5;
-var I:Integer;
-begin
-textcolor(4);
-    x := 40;
-    y := 10;
-    t := #72;
-    for I := 5 to 15 do
     begin
-     writexy(20, I,'█');
-     writexy(60, I,'█');
-     sper[20, I] := true;
-     sper[60, I] := true;
-    end; {FOR}
-    for  I := 22 to 58 do
-    begin
-     writexy(I, 7,'█');
-     writexy(I, 13,'█');
-     sper[I, 7] := true;
-     sper[I, 13] := true;
-    end; {FOR}
-    textbackground(0);
-    for i := 20 to 60 do
-    Begin
-      writexy(i,10,' ');
-      sper[i,10] := false;
-    End;
-end; {initl5}
-
-procedure initl6;
-var I:Integer;
-begin
-textcolor(4);
-    x := 75;
-    y := 5;
-    t := #80;
-    for I := 2 to 8 do
-    begin
-     writexy(10, I,'█');
-     writexy(20, I,'█');
-     writexy(30, I,'█');
-     writexy(40, I,'█');
-     writexy(50, I,'█');
-     writexy(60, I,'█');
-     writexy(70, I,'█');
-     sper[10, I] := true;
-     sper[20, I] := true;
-     sper[30, I] := true;
-     sper[40, I] := true;
-     sper[50, I] := true;
-     sper[60, I] := true;
-     sper[70, I] := true;
+      sper[I, 10] := true;
     end;
-    for I := 12 to 19 do
+
+  x := 40;
+  y := 5;
+  t := Chr(CurR);;
+End; {InitL2}
+
+procedure InitL3;
+var
+  I: Integer;
+begin
+  for I := 5 to 15 do
     begin
-     writexy(10, I,'█');
-     writexy(20, I,'█');
-     writexy(30, I,'█');
-     writexy(40, I,'█');
-     writexy(50, I,'█');
-     writexy(60, I,'█');
-     writexy(70, I,'█');
-     sper[10, I] := true;
-     sper[20, I] := true;
-     sper[30, I] := true;
-     sper[40, I] := true;
-     sper[50, I] := true;
-     sper[60, I] := true;
-     sper[70, I] := true;
-    end; {FOR}
-    for i := 5 to 15 do
+      sper[20, I] := true;
+      sper[60, I] := true;
+    end;
+  for i := 20 to 60 do
     begin
-      writexy(15,I,'█');
-      writexy(25,I,'█');
-      writexy(35, I,'█');
-      writexy(45, I,'█');
-      writexy(55, I,'█');
-      writexy(65, I,'█');
+      sper[I, 10] := true;
+    end;
+  sper[39,10] := false;
+  sper[40,10] := false;
+  sper[41,10] := false;
+
+  x := 40;
+  y := 9;
+  t := Chr(CurO);
+end; {InitL3}
+
+procedure InitL4;
+var
+  I: Integer;
+begin
+  for I := 4 to 8 do
+    begin
+      sper[15, I] := true;
+      sper[65, I] := true;
+    end;
+  for I := 5 to 75 do
+    sper[I, 10] := true;
+  for I := 12 to 16 do
+    begin
+      sper[15, I] := true;
+      sper[65, I] := true;
+    end;
+  sper[39,10] := false;
+  sper[40,10] := false;
+  sper[41,10] := false;
+
+  x := 40;
+  y := 9;
+  t := Chr(CurR);
+end; {InitL4}
+
+procedure InitL5;
+var
+  I: Integer;
+begin
+  for I := 5 to 15 do
+    begin
+      sper[20, I] := true;
+      sper[60, I] := true;
+    end;
+  for I := 22 to 58 do
+    begin
+      sper[I, 7] := true;
+      sper[I, 13] := true;
+    end;
+  for i := 20 to 60 do
+    begin
+      sper[i,10] := false;
+    end;
+
+  x := 40;
+  y := 10;
+  t := Chr(CurO);
+end; {InitL5}
+
+procedure InitL6;
+var
+  I: Integer;
+begin
+  for I := 2 to 8 do
+    begin
+      sper[10, I] := true;
+      sper[20, I] := true;
+      sper[30, I] := true;
+      sper[40, I] := true;
+      sper[50, I] := true;
+      sper[60, I] := true;
+      sper[70, I] := true;
+    end;
+  for I := 12 to 19 do
+    begin
+      sper[10, I] := true;
+      sper[20, I] := true;
+      sper[30, I] := true;
+      sper[40, I] := true;
+      sper[50, I] := true;
+      sper[60, I] := true;
+      sper[70, I] := true;
+    end;
+  for i := 5 to 15 do
+    begin
       sper[15,I] := true;
       sper[25,I] := true;
       sper[35,I] := true;
       sper[45,I] := true;
       sper[55,I] := true;
       sper[65,I] := true;
-    EnD;
-    textbackground(0);
-    for I := 6 to 74 do
+    end;
+  for I := 6 to 74 do
     begin
-      writexy(I, 10,'█');
-      writexy(I, 9,' ');
-      writexy(I, 11,' ');
       sper[I, 10] := true;
       sper[I,  9] := false;
       sper[I, 11] := false;
     end;
-  textbackground(0);
-  writexy(38,10,'     ');
   sper[38,10] := false;
   sper[39,10] := false;
   sper[40,10] := false;
   sper[41,10] := false;
   sper[42,10] := false;
-end; {initl6}
 
-procedure initl7;
-var I:Integer;
+  x := 75;
+  y := 5;
+  t := Chr(CurU);
+end; {InitL6}
+
+procedure InitL7;
+var
+  I, J: Integer;
 begin
+  j := 0;
+  for i := 3 to 17 do
+  begin
+    inc(j);
+    sper[5 + j, i] := true;
+    sper[33 + j, i] := true;
+    sper[60 + j, i] := true;
+  end;
+  j := 16;
+  for i := 3 to 17 do
+  begin
+    dec(j);
+    sper[5+j,i] := true;
+    sper[33+j,i] := true;
+    sper[60+j,i] := true;
+  end;
+  for j := 9 to 11 do
+    for i := 2 to 79 do
+      sper[i,j] := false;
+  for i := 6 to 74 do
+    sper[i,10] := true;
+  for i := 54 to 56 do
+    sper[i,10] := false;
+  for i := 26 to 28 do
+    sper[i,10] := false;
+
   x := 75;
   y := 10;
-  textcolor(4);
-  j := 0;
-  For i := 3 to 17 do
-  Begin
-    inc(j);
-    writexy(5 + j,i,'█');
-    sper[5 + j,i] := true;
-    writexy(33 + j,i,'█');
-    sper[33 + j,i] := true;
-    writexy(60 + j,i,'█');
-    sper[60 + j,i] := true;
-  End;
-  j := 16;
-  For i := 3 to 17 do
-  Begin
-    dec(j);
-    writexy(5 + j,i,'█');
-    sper[5+j,i] := true;
-    writexy(33 + j,i,'█');
-    sper[33+j,i] := true;
-    writexy(60 + j,i,'█');
-    sper[60+j,i] := true;
-  End;
-  for j := 9 to 11 do for i := 2 to 79 do sper[i,j] := false;
-  for i := 6 to 74 do sper[i,10] := true;
-  for i := 54 to 56 do sper[i,10] := false;
-  for i := 26 to 28 do sper[i,10] := false;
-end; {initl7}
+  t := Chr(CurR);
+end; {InitL7}
 
-procedure initl8;
-var I:Integer;
+procedure InitL8;
+var
+  I: Integer;
 begin
-textcolor(4);
-     x := 75;
-     y := 5;
-     t := #80;
-     for I := 2 to 15 do
-     begin
-      writexy(10, I,'█');
-      writexy(30, I,'█');
-      writexy(50, I,'█');
-      writexy(70, I,'█');
+  for I := 2 to 15 do
+    begin
       sper[10, I] := true;
       sper[30, I] := true;
       sper[50, I] := true;
       sper[70, I] := true;
-     end; {FOR}
-     for I := 5 to 19 do
-     begin
-      writexy(20, I,'█');
-      writexy(40, I,'█');
-      writexy(60, I,'█');
+    end;
+  for I := 5 to 19 do
+    begin
       sper[20, I] := true;
       sper[40, I] := true;
       sper[60, I] := true;
-     end; {FOR}
-end; {initl8}
+    end;
 
-procedure initl9;
-var I:Integer;
+  x := 75;
+  y := 5;
+  t := Chr(CurU);
+end; {InitL8}
+
+procedure InitL9;
+var I: Integer;
 begin
-textcolor(4);
-     x := 40;
-     y := 10;
-     ti := 72;
-     for I:= 5 to 15 do
-     begin
-      writexy(20, I,'█');
-      writexy(60, I,'█');
-      writexy(39, I,'█');
-      writexy(41, I,'█');
-      sper[20, I] := true;
-      sper[60, I] := true;
-      sper[39, I] := true;
-      sper[41, I] := true;
-     end; {FOR}
-     for I := 21 to 38 do
-     begin
-      writexy(I, 5,'█');
-      sper[I, 5] := true;
+  for I := 5 to 15 do
+    begin
+      sper[20, I] := True;
+      sper[60, I] := True;
+      sper[39, I] := True;
+      sper[41, I] := True;
      end;
-     for I := 42 to 59 do
-     begin
-      writexy(I, 5,'█');
-      sper[I, 5] := true;
-     end;
-     for I := 22 to 37 do
-     begin
-      writexy(I, 15,'█');
-      sper[I, 15] := true;
-     end;
-     for I := 43 to 58 do
-     begin
-      writexy(I, 15,'█');
-      sper[I, 15] := true;
-     end;
+  for I := 21 to 38 do
+    sper[I, 5] := True;
+  for I := 42 to 59 do
+    sper[I, 5] := True;
+  for I := 22 to 37 do
+    sper[I, 15] := True;
+  for I := 43 to 58 do
+    sper[I, 15] := True;
+
+  x := 40;
+  y := 10;
+  t := Chr(CurO);
 end;
+
+procedure InitL(L: Integer);
+begin
+  case L of
+    1: InitL1;
+    2: InitL2;
+    3: InitL3;
+    4: InitL4;
+    5: InitL5;
+    6: InitL6;
+    7: InitL7;
+    8: InitL8;
+    9: InitL9;
+  end; {case}
+  ReStone;
+end; {InitL}
 
 {******************************** E N D E ***********************************}
 {****************************** L E V E L S *********************************}
@@ -625,17 +571,7 @@ begin
       writexy(27, 10,'                           ');
       writexy(27, 11,'                           ');
   end;
- Case level of
-  1: initl1;
-  2: initl2;
-  3: initl3;
-  4: initl4;
-  5: initl5;
-  6: initl6;
-  7: initl7;
-  8: initl8;
-  9: initl9;
- End; {case}
+  InitL(level);
  delay(1000);
 end;
 
@@ -741,18 +677,8 @@ begin
      end; {FOR}
    WriteLevel;
  textbackground(0);
-       Case level of
-        1: initl1;
-        2: initl2;
-        3: initl3;
-        4: initl4;
-        5: initl5;
-        6: initl6;
-        7: initl7;
-        8: initl8;
-        9: initl9;
-       End; {case}
- 
+  InitL(level);
+
      textcolor(11);
      writexy(1, 21,'◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
      DrawHLine(1,80,22,'─');
@@ -1194,17 +1120,7 @@ Begin
              End;
            textcolor(4);
            textbackground(0);
-           case level of
-            1 : Initl1;
-            2 : Initl2;
-            3 : Initl3;
-            4 : Initl4;
-            5 : Initl5;
-            6 : Initl6;
-            7 : Initl7;
-            8 : Initl8;
-            9 : Initl9;
-           End;
+           InitL(level);
            sx := 1;
            sy := 1;
          End;
