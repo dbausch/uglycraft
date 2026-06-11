@@ -2,7 +2,7 @@ unit DANISOFT;
 interface
 uses Crt, uossound;
 
-procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;Nr,User,copyjahr:String);
+procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:String;Nr,User,copyjahr:String);
 
 implementation
 
@@ -30,10 +30,9 @@ Begin
   Zentriert := BlankZone + s;
 End;
 
-procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:Real;
+procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:String;
                     Nr,User,copyjahr:String);
 var I : Integer;
-    StrVer : String;
     tty : Text;
 
   procedure WLn(s: String);
@@ -113,8 +112,7 @@ begin
   delay(200);
   WLn('');
   delay(200);
-  System.Str(ver:2:2,StrVer);
-  WLn(Zentriert('Version: ' + StrVer + '/' + Nr));
+  WLn(Zentriert('Version: ' + Ver + '/' + Nr));
   delay(200);
   WLn('');
   delay(200);

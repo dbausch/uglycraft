@@ -7,7 +7,7 @@ label     100, 300, 999, 998, 1, 997;
 
 Const
   user = 'Public Domain';
-  vers = 2.00;
+  vers = '2.1';
   Nr   = '0042';
   MaxX = 80;
   MaxY = 20;
