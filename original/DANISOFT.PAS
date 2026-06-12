@@ -1,139 +1,139 @@
 unit DANISOFT;
 interface
-uses Crt, uossound;
+uses Crt, UOSSound;
 
-procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:String;Nr,User,copyjahr:String);
+procedure Erkennung(S1, S2, S3, S4, S5, S6, S7, S8: String; Ver: String; Nr, User, Copyjahr: String);
 
 implementation
 
-function UTF8Cols(s: String): Integer;
-var i, count: Integer;
-    b: Byte;
-Begin
-  count := 0;
-  for i := 1 to Length(s) do
-  begin
-    b := Ord(s[i]);
-    if (b < $80) or (b >= $C0) then Inc(count);
-  end;
-  UTF8Cols := count;
-End;
+function UTF8Cols(S: String): Integer;
+var I, Count: Integer;
+  B: Byte;
+begin
+  Count := 0;
+  for I := 1 to Length(S) do
+    begin
+      B := Ord(S[I]);
+      if (B < $80) or (B >= $C0) then Inc(Count);
+    end;
+  UTF8Cols := Count;
+end;
 
-function Zentriert(s:String) : String;
-var Laenge,Blanks,i : Integer;
-    BlankZone : String;
-Begin
-  Laenge := UTF8Cols(s);
-  Blanks := 39 - (Laenge DIV 2);
+function Zentriert(S: String): String;
+var Laenge, Blanks, I: Integer;
+  BlankZone: String;
+begin
+  Laenge := UTF8Cols(S);
+  Blanks := 39 - (Laenge div 2);
   BlankZone := '';
-  For I := 1 to Blanks do BlankZone := BlankZone + ' ';
-  Zentriert := BlankZone + s;
-End;
+  for I := 1 to Blanks do BlankZone := BlankZone + ' ';
+  Zentriert := BlankZone + S;
+end;
 
-procedure Erkennung(s1,s2,s3,s4,s5,s6,s7,s8:String;ver:String;
-                    Nr,User,copyjahr:String);
-var I : Integer;
-    tty : Text;
+procedure Erkennung(S1, S2, S3, S4, S5, S6, S7, S8: String; Ver: String;
+                    Nr, User, Copyjahr: String);
+var I: Integer;
+  Tty: Text;
 
-  procedure WLn(s: String);
-  begin
-    if s = '' then Write(' ') else Write(s); { at least one char forces FPC to emit SGR }
-    Write(tty, #27'[K'); Flush(tty);
-    Writeln;
-    Write(tty, #27'[K'); Flush(tty);
-  end;
+procedure WLn(S: String);
+begin
+  if S = '' then Write(' ') else Write(S); { at least one char forces FPC to emit SGR }
+  Write(Tty, #27'[K'); Flush(Tty);
+  WriteLn;
+  Write(Tty, #27'[K'); Flush(Tty);
+end;
 
 begin
- Assign(tty, '/dev/tty');
- Rewrite(tty);
- Write(#27'[1;25r'); { confine scrolling to rows 1-25 }
- For I := 0 to 7 do
-  Begin
-   TextBackground(I);
-   clrscr;
-   Ton(I * 150, 300);
-   delay(20);
-  end;
-  delay(100);
+  Assign(Tty, '/dev/tty');
+  ReWrite(Tty);
+  Write(#27'[1;25r'); { confine scrolling to rows 1-25 }
+  for I := 0 to 7 do
+    begin
+      TextBackground(I);
+      ClrScr;
+      Ton(I * 150, 300);
+      Delay(20);
+    end;
+  Delay(100);
   TextColor(Black);
   TextBackground(0);
-  gotoxy(1,1);
-  textcolor(15);
-  For i := 1 to 25 do
-  Begin
-    delay(200);
-    gotoxy(1,i);
-    ClrEol;
-    write('                        |                            |');
-  End;
-  textcolor(0);
-  textbackground(7);
-  gotoxy(1,25);
-  delay(200);
+  GotoXY(1, 1);
+  TextColor(15);
+  for I := 1 to 25 do
+    begin
+      Delay(200);
+      GotoXY(1, I);
+      ClrEol;
+      Write('                        |                            |');
+    end;
+  TextColor(0);
+  TextBackground(7);
+  GotoXY(1, 25);
+  Delay(200);
   WLn('');
-  delay(200);
+  Delay(200);
   WLn(Zentriert('* DANISOFT * PRÄSENTIERT *'));
-  delay(200);
+  Delay(200);
   WLn('');
-  delay(200);
+  Delay(200);
   WLn('');
-  TextColor(red+Blink);
+  TextColor(Red + Blink);
   TextBackground(7);
-  delay(200);
-  WLn(s1);
-  delay(200);
-  WLn(s2);
-  delay(200);
-  WLn(s3);
-  delay(200);
-  WLn(s4);
-  delay(200);
-  WLn(s5);
-  delay(200);
-  WLn(s6);
-  delay(200);
-  WLn(s7);
-  delay(200);
-  WLn(s8);
-  delay(200);
+  Delay(200);
+  WLn(S1);
+  Delay(200);
+  WLn(S2);
+  Delay(200);
+  WLn(S3);
+  Delay(200);
+  WLn(S4);
+  Delay(200);
+  WLn(S5);
+  Delay(200);
+  WLn(S6);
+  Delay(200);
+  WLn(S7);
+  Delay(200);
+  WLn(S8);
+  Delay(200);
   WLn('');
-  delay(200);
-  TextColor(black+Blink);
+  Delay(200);
+  TextColor(Black + Blink);
   TextBackground(7);
   WLn('');
-  delay(200);
+  Delay(200);
   WLn(Zentriert('Hallo, gleich geht''s los!'));
-  delay(200);
+  Delay(200);
   WLn('');
-  TextColor(black);
+  TextColor(Black);
   TextBackground(15);
-  delay(200);
+  Delay(200);
   WLn(Zentriert(User));
-  delay(200);
+  Delay(200);
   WLn('');
-  delay(200);
+  Delay(200);
   WLn(Zentriert('Version: ' + Ver + '/' + Nr));
-  delay(200);
+  Delay(200);
   WLn('');
-  delay(200);
-  WLn(Zentriert(copyjahr));
-  delay(200);
+  Delay(200);
+  WLn(Zentriert(Copyjahr));
+  Delay(200);
   WLn('');
-  delay(200);
+  Delay(200);
   WLn('');
-  delay(200);
-  textcolor(4);
-  write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
+  Delay(200);
+  TextColor(4);
+  Write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
   WLn('');
-  readln;
+  ReadLn;
   ClrScr;
   for I := 40 to 50 do
     begin
       Ton(I, 150);
     end;
-  textcolor(Black);
+  TextColor(Black);
   Write(#27'[r'); { reset scroll region to full screen }
-  Close(tty);
+  Close(Tty);
 end;
 
 end.
