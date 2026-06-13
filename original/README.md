@@ -4,17 +4,21 @@ This directory contains the original Pascal source of UGLI 2 (1996), a DOS
 text-mode game written in Turbo Pascal 7 by Daniel Bausch.  Starting from the
 raw CP437 files as they came off the original floppy, a series of changes were
 made so the game compiles and runs cleanly under Free Pascal (FPC) on a modern
-Linux terminal — with no functional changes to the gameplay itself.
+Linux terminal.  The initial port (version 2.0) kept gameplay identical to the
+DOS original; later versions (2.1–2.3) added gameplay improvements and
+significant code quality work.  See `CHANGELOG.md` for the full record.
 
 ## Building
 
 ```bash
 # from the repo root
-.venv/bin/poe build-original   # runs: cd original && fpc -Mtp UGLI_2.PAS
+poe build-original   # fetches UOS audio sources, then: cd original && fpc -Mtp -Fuuos UGLI_2.pp
 ./original/UGLI_2
 ```
 
-FPC 3.2.2 (the current Arch Linux package) is what this was developed against.
+Or simply `poe run-original` to build and launch in a terminal window.
+
+FPC 3.2.2 (current Arch Linux package) is what this was developed against.
 
 ## What was changed, and why
 
@@ -23,26 +27,28 @@ FPC 3.2.2 (the current Arch Linux package) is what this was developed against.
 The original files were saved in **CP437** (DOS code page) with **CRLF** line
 endings.  Modern FPC on Linux chokes on both.
 
-- Converted `UGLI_2.PAS` and `DANISOFT.PAS` from CP437 to **UTF-8** and
-  stripped CRLF line endings.  The conversion required two passes: a first
-  attempt left some German umlauts corrupted and had to be redone.
+- Converted source files from CP437 to **UTF-8** and stripped CRLF line
+  endings.
 - Replaced every `chr(N)` call and `#N` character literal that referred to a
   CP437 box-drawing or graphic character with the equivalent **Unicode
-  literal** (e.g. `'█'`, `'☺'`, `'╔'`).  This makes the source readable and
+  literal** (e.g. `'█'`, `'☺'`).  This makes the source readable and
   means FPC can emit the right UTF-8 bytes directly.
+- All identifiers renamed from original German shorthand to English PascalCase
+  (see `CHANGELOG.md` § 2.1 for the full list).
 
 ### 2. Dependency reduction
 
 The original program depended on three units: `EXTRA1.PAS` (a TUI library),
 `DANISOFT.PAS` (an animated splash screen), and the game itself.  `EXTRA1`
-pulled in Turbo Pascal BGI graphics units (`graph`, `Drivers`, `Boosters`)
-that do not exist under FPC.
+pulled in Turbo Pascal BGI graphics units that do not exist under FPC.
 
 - Stripped `EXTRA1.PAS` to only the single helper function actually used
-  (`Zentriert`, a string-centring utility), then inlined that function into
-  `DANISOFT.PAS` and **deleted EXTRA1.PAS** entirely.
-- Stripped `DANISOFT.PAS` to the single procedure used by the game
-  (`Erkennung`, the splash screen), removing everything else.
+  (`Zentriert`, a string-centring utility), then inlined it into `DANISOFT.PAS`
+  and **deleted `EXTRA1.PAS`** entirely.
+- All content from `DANISOFT.PAS` (`UTF8Cols`, `Center`, `Intro`) was later
+  merged directly into `UGLI_2.pp` and **`DANISOFT.pp` deleted**, eliminating
+  the unit boundary and allowing all procedures to be ordered by dependency
+  with no forward declarations.
 
 ### 3. Licensing
 
@@ -58,13 +64,11 @@ needs to hide the cursor during play and restore it on exit.
   sequences** (`ESC[?25l` / `ESC[?25h`).
 - Cursor control sequences must be written to `/dev/tty`, not to stdout.
   FPC's CRT unit writes to stdout which may be redirected or buffered, so a
-  separate `tty : Text` file variable is opened to `/dev/tty` and all cursor
+  separate `TTY : Text` file variable is opened to `/dev/tty` and all cursor
   and scroll-region escapes are sent through it.  Two small helpers
   `MyCursorOff` and `MyCursorOn` wrap this.
-- On exit the cursor is always restored even if the game crashes, because the
-  write goes to the raw tty rather than through CRT's buffering.
 
-### 5. Splash screen (`DANISOFT.PAS` / `Erkennung`)
+### 5. Splash screen (`Intro`)
 
 The animated colour intro screen had two rendering bugs under FPC:
 
@@ -78,64 +82,64 @@ The animated colour intro screen had two rendering bugs under FPC:
   writing at least one space on blank lines and flushing the ANSI erase-to-EOL
   sequence (`ESC[K`) explicitly.
 
-### 6. The `writexy` procedure and FPC's cursor tracker bug
+### 6. The `Draw` procedure and FPC's cursor tracker bug
 
 The game positions every character with `GotoXY` before writing it.  FPC CRT
-maintains an internal cursor position tracker and **skips emitting the `ESC[y;xH`
-sequence when the target matches the tracked position**.  The tracker is
-advanced by the **byte count** of what is written, not the display-cell count.
-UTF-8 characters that are one cell wide but three bytes long therefore advance
-the tracker by 2 more than the real cursor moves, causing subsequent `GotoXY`
-calls to be silently dropped — writing characters at the wrong column or
-losing them entirely.
+maintains an internal cursor position tracker and **skips emitting the
+`ESC[y;xH` sequence when the target matches the tracked position**.  The
+tracker is advanced by the **byte count** of what is written, not the
+display-cell count.  UTF-8 characters that are one cell wide but three bytes
+long therefore advance the tracker by 2 more than the real cursor moves,
+causing subsequent `GotoXY` calls to be silently dropped — writing characters
+at the wrong column or losing them entirely.
 
-The fix is a `writexy(col, row, s)` procedure that:
+The fix is a `Draw(Col, Row, Fg, Bg: Integer; S: String)` procedure that:
 
 1. Splits the string into individual characters (handling 1-, 2-, and 3-byte
    UTF-8 sequences).
-2. Before every `GotoXY(c, row)`, first calls `GotoXY(1, 1)` to force the
-   tracker to a known-wrong value, guaranteeing that the subsequent real
+2. Before every real `GotoXY(C, Row)`, first calls `GotoXY(1, 1)` to force
+   the tracker to a known-wrong value, guaranteeing that the subsequent real
    `GotoXY` always emits its escape sequence.
 3. Writes each character individually so the tracker drift per character is
    bounded to one character width.
+4. Takes explicit `Fg` and `Bg` color parameters so no call site can
+   accidentally inherit stale colors from a prior draw.
 
-All `GotoXY` + `Write` call sites were replaced with `writexy`.
+All `GotoXY` + `Write` call sites were replaced with `Draw` or `DrawHLine`.
 
 ### 7. Sprite rendering fixes
 
-Three visual artefacts were fixed after the `writexy` work:
+Three visual artefacts were fixed after the `Draw` work:
 
 - **Enemy ghost**: the enemy position was erased every tick even when the
   enemy had not moved, leaving a blank cell at the old position when the enemy
-  was stationary.  Fixed by only erasing the old position when `ugli2`
-  actually changed `(xx, yy)`.
+  was stationary.  Fixed by only erasing the old position when the enemy
+  actually changed position.
 - **Player face flicker when bumping walls**: the player sprite was redrawn
   unconditionally after every keypress, causing a flicker on wall bumps.
   Fixed by not re-drawing the player sprite when movement was blocked.
-- **Leftover text attributes after PausenZeigen**: the pause display set
-  colours that were not reset afterwards, leaving subsequent screen writes in
-  the wrong colour.  Fixed by resetting attributes on exit from the procedure.
+- **Leftover text attributes after `DoPause`**: the pause display set colours
+  that were not reset afterwards, leaving subsequent screen writes in the
+  wrong colour.  Fixed by resetting attributes on exit from the procedure.
 
 ### 8. Level transition polish
 
-- **Delay before redraw**: in `levelneu`, the 1-second delay that shows the
-  new level number ran before the level walls were drawn.  Moved the delay to
-  after the `initlN` call so the level is visible before the game pauses.
-- **Wall flicker**: a `ReStone` call immediately after `levelneu` cleared all
-  non-wall cells and rewrote the walls from scratch, causing a visible
-  flash.  This call was redundant (the level was already drawn) and was
-  removed.
+- **Delay before redraw**: in `LevelTransition`, the 1-second delay that shows
+  the new level number ran before the level walls were drawn.  Moved the delay
+  to after the `InitLevelN` call so the level is visible before the game
+  pauses.
+- **Wall flicker**: a redundant full redraw call immediately after
+  `LevelTransition` cleared all non-wall cells and rewrote them from scratch,
+  causing a visible flash.  Removed.
 
 ### 9. End / Home key (`GetKey` wrapper)
 
 On a Linux terminal, **Home** sends `ESC[H` and **End** sends `ESC[F`.  FPC
-CRT 3.2.2 (the current stable, Arch build date 2024-05-01) handles `ESC[H`
-correctly — it recognises the sequence and returns `#0` + `chr(71)` (the DOS
-scan code for Home).  It does **not** handle `ESC[F`: instead it pushes the
-three bytes back onto its internal LIFO buffer, so they emerge in **reversed
-order** across three consecutive `ReadKey` calls: `'F'` (70), then `'['`
-(91), then `ESC` (27).  The trailing ESC was reaching the main-loop quit
-check (`if ti = 27 then goto 999`) and terminating the game.
+CRT 3.2.2 handles `ESC[H` correctly but does **not** handle `ESC[F`: instead
+it pushes the three bytes back onto its internal LIFO buffer in **reversed
+order**, so they emerge across three consecutive `ReadKey` calls: `'F'` (70),
+then `'['` (91), then `ESC` (27).  The trailing ESC was reaching the main-loop
+quit check and terminating the game.
 
 (FPC issue #36328, fixed in FPC trunk commit `1d9aadd717` on 2026-04-10, is
 not yet in any released FPC version.)
@@ -150,47 +154,73 @@ machine:
 | 0 (idle) | anything else | Return as-is |
 | 1 (saw F) | `'['` | Second byte of End sequence → state 2, return `#0` (suppress) |
 | 1 (saw F) | anything else | Reset to state 0, re-evaluate the byte |
-| 2 (saw F+[) | `ESC` | End sequence complete → state 0, return `chr(lans)` (slow-down key) |
+| 2 (saw F+[) | `ESC` | End sequence complete → state 0, return `chr(KeySlower)` |
 | 2 (saw F+[) | anything else | Reset to state 0, re-evaluate the byte |
 
 The state persists between calls so the three bytes can be spread across
-different procedures.  Crucially, **every `ReadKey` call in the entire program
-was replaced with `GetKey`**, including calls inside `langsam`, `schnell`,
-`Hilfe`, `levelneu`, and everywhere else.  This is essential: if any procedure
-consumes a byte via the raw `ReadKey`, the state machine desynchronises and
-the trailing ESC leaks to the quit check anyway.
+different procedures.  **Every `ReadKey` call in the entire program was
+replaced with `GetKey`** — if any procedure consumed a byte via raw `ReadKey`,
+the state machine would desynchronise and the trailing ESC would leak to the
+quit check anyway.
 
-The wrapper also handles the forward-sequence case (`#0` prefix) correctly, so
-Home continues to work, and it is forward-compatible with future FPC versions
-that do handle `ESC[F` — those will return `#0` + `chr(79)` which maps to the
-same `chr(lans)` result via the `#0`-prefix branch.
+### 10. UTF-8 column count (`UTF8Cols` / `Center`)
 
-### 10. UTF-8 column count in `Zentriert`
+The original `Zentriert` centred a string within the 80-column display by
+computing `39 - (Length(s) DIV 2)` leading spaces.  `Length` counts
+**bytes**, so multi-byte UTF-8 characters — German umlauts — inflate the byte
+count and shift the output too far left.
 
-`Zentriert` centres a string within the 80-column display by computing
-`39 - (Length(s) DIV 2)` leading spaces.  `Length` counts **bytes**, so
-multi-byte UTF-8 characters — German umlauts such as `Ä`, `Ö`, `Ü`, `ß` used
-in `'PRÄSENTIERT'` and `'Drücken'` — inflate the byte count and shift the
-output too far left.
+Fixed by introducing a `UTF8Cols` helper that counts **display columns**
+instead of bytes: it increments the counter only for bytes that are not UTF-8
+continuation bytes (i.e. outside `$80`–`$BF`).  `Center` now calls `UTF8Cols`
+in place of `Length`.
 
-Fixed by introducing a `UTF8Cols` helper that counts **display columns** instead
-of bytes.  It iterates over the string and increments the counter only for bytes
-that are not UTF-8 continuation bytes (i.e. bytes outside the range `$80`–`$BF`).
-Each such byte starts a new character, so the result equals the number of
-terminal columns the string occupies regardless of how many bytes each character
-uses.  `Zentriert` now calls `UTF8Cols(s)` in place of `Length(s)`.
+### 11. Centring of level banner and status bar label
 
-### 11. Centring of level banner and LEVEL display
+Two visual centring issues were corrected at version 2.0:
 
-Two visual centring issues were corrected:
+- **Level banner (`LevelTransition`)**: the banner box was positioned starting
+  at column 30, making it off-centre.  Shifted to properly centre the
+  26-column-wide box on the 80-column field.
+- **LEVEL display in status bar**: the `LEVEL N` label was placed at column 35
+  via three separate duplicated code blocks.  Corrected to column 36 and
+  consolidated into a `DrawLevel` procedure.
 
-- **Level banner (`levelneu`)**: The banner box drawn during level transitions
-  (`DrawHLine`, the `█` borders, and the `LEVEL N` / `TASTE DRÜCKEN` text) was
-  positioned starting at column 30, making it off-centre on the 80-column field.
-  Shifted to start at column 27 (and the right edge from 56 to 53) so the
-  26-column-wide box is properly centred.
+### 12. Sound backend (`UOSSound`)
 
-- **LEVEL display in status bar**: The `LEVEL N` label in the top status bar was
-  placed at column 35 via three separate duplicated code blocks.  Corrected to
-  column 36 and consolidated into a `WriteLevel` procedure called from all three
-  sites (`rahmen`, `levelneu` post-draw, and `ReStone`).
+The original game used the PC speaker directly via port I/O — not available
+on Linux.  A `UOSSound.pp` unit wraps the
+[UOS](https://github.com/fredvs/uos) + PortAudio stack to provide the same
+`Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as Turbo Pascal's CRT, plus
+named effect procedures (`SoundBump`, `SoundPickup`, `SoundCaught`,
+`SoundGameOver`, `SoundWon`).  Listed last in `uses` so it shadows the empty
+CRT sound stubs on Linux.  UOS source is fetched from GitHub at build time;
+`libportaudio.so.2` is required at runtime and falls back to silence if
+unavailable.
+
+### 13. Gameplay and code improvements (2.1–2.3)
+
+After the initial port reached version 2.0, several rounds of gameplay and
+code quality work followed:
+
+- **Gameplay (2.1)**: removed the shield/shop feature; bound life-buying to
+  F3; made pause time-based; switched block placement to Space and block
+  removal to F5; continuous movement in the last pressed direction.
+- **Dialog system (2.3)**: unified all message boxes behind `WaitKey` (drains
+  key queue) and `Dialog(Title, Prompt)` (draws a centered `█`-bordered box,
+  waits, restores the interior via `DrawInner`).  `DrawInner` now redraws the
+  player, enemy, and current item, so any overlay can restore the full game
+  field with a single call.
+- **`TDirection` enum (2.3)**: replaced `Direction: Char` (which stored
+  raw keyboard scan codes) with a `TDirection = (DirRight, DirLeft, DirDown,
+  DirUp)` enum.  `KeyToDir` converts scan codes to the enum; `MovePlayer`
+  dispatches on it.
+- **`TItemData` record (2.3)**: treasure character, name, and gameplay color
+  are defined once in an `Items[1..10]` typed constant array.  `DrawItem` and
+  `ShowItemDescriptions` both derive from it, eliminating duplicated data.
+- **Level initialisation (2.3)**: `InitLevel1`–`InitLevel9` write to
+  `StartX/StartY/StartEX/StartEY/StartDir`; `PrepareLevel` copies these to
+  live variables.  This means `RemoveBlocks` can call `InitLevel` to rebuild
+  walls without disturbing any live game state.
+
+See `CHANGELOG.md` for the complete list of fixes and changes per version.
