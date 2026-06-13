@@ -202,7 +202,7 @@ var S: String;
 begin
   TextBackground(Red);
   TextColor(15);
-  Str(Score, S);
+  Str(Score:5, S);
   WriteXY(3, 1, 'PUNKTE ' + S);
   TextBackground(0);
 end; {DrawScore}
@@ -1047,7 +1047,7 @@ GameLoop:
 NewGame:
     Level := 0;
     ItemNo := 9;
-    Lives := 9;
+    Lives := 10;
 NextItem:
     EnemyTick := 0;
     ItemNo := ItemNo + 1;
@@ -1070,7 +1070,8 @@ NextItem:
             goto PlayAgain;
           end;
         DrawFrame;
-        Lives := Lives + 1;
+        if Level > 1 then Lives := Lives + 1;
+        DrawLives;
         LevelTransition;
       end; {if ItemNo = 10}
     RandomPos;
