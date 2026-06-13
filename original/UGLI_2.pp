@@ -1085,10 +1085,9 @@ NextItem:
     if KeyCode = KeyF5 then RemoveBlocks;
     EnemyMove;
     if (X = EX) and (Y = EY) then
-      PlayerCaught;
-    if Lives = 0 then
       begin
-        goto OnGameOver;
+        PlayerCaught;
+        if Lives = 0 then goto OnGameOver;
       end;
     if (ItemX = X) and (ItemY = Y) then
       begin
