@@ -379,7 +379,7 @@ begin
     end;
   for J := 9 to 11 do
     for I := 2 to 79 do
-    Sper[I, J] := false;
+      Sper[I, J] := false;
   for I := 6 to 74 do
     Sper[I, 10] := true;
   for I := 54 to 56 do
@@ -1106,9 +1106,9 @@ begin
           begin
             for I := 1 to 80 do
               for J := 1 to 25 do
-              begin
-                Sper[I, J] := false;
-              end;
+                begin
+                  Sper[I, J] := false;
+                end;
             TextColor(4);
             TextBackground(0);
             InitL(Level);

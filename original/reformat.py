@@ -276,9 +276,12 @@ def indent_lines(lines) -> list[str]:
       emit_depth  = depth at which 'begin'/'repeat'/'case' was emitted
                     (also used as the depth for the matching 'end'/'until')
       outer_depth = depth to restore after the closing 'end'/'until'
-                    For ctrl-blocks (after then/do/else): outer_depth < emit_depth
-                    For body-blocks (procedure/repeat/case):  outer_depth == emit_depth
       is_case     = True when the block is a case...of block (so numeric N: are case arms)
+
+    after_ctrl_extra: accumulated extra indent levels from chained then/do/else.
+      0 = normal. N means the next non-structural line gets depth+N.
+      Incremented by 1 for each chained ctrl keyword, so nested single-statement
+      bodies like 'for J do\nfor I do\nstmt' each deepen by one extra level.
 
     paren_depth: unclosed '(' from previous lines; when > 0 the current line is a
       continuation of an argument list and gets depth+1 indentation.
@@ -286,24 +289,16 @@ def indent_lines(lines) -> list[str]:
     depth = 0
     begin_stack: list[tuple[int, int, bool]] = []
     result = []
-    in_decl = False     # inside var/const/type section
-    after_ctrl = False  # last sig was then/do/else: next 'begin' indents one extra
-    in_case = False     # saw 'case', waiting for 'of'
-    paren_depth = 0     # unclosed '(' from previous lines
-
-    def push_ctrl(d: int):
-        """Push for a ctrl-block (then/do/else begin). emit_depth = d+1."""
-        emit = d + 1
-        begin_stack.append((emit, d, False))
-        return emit
+    in_decl = False
+    after_ctrl_extra: int = 0
+    in_case = False
+    paren_depth = 0
 
     def push_body(d: int, is_case: bool = False):
-        """Push for a body-block (procedure begin / repeat / case-of). emit_depth = d."""
         begin_stack.append((d, d, is_case))
         return d
 
     def pop_block():
-        """Pop and return (emit_depth, outer_depth). Falls back gracefully."""
         if begin_stack:
             e, o, _ = begin_stack.pop()
             return (e, o)
@@ -324,8 +319,7 @@ def indent_lines(lines) -> list[str]:
         # ── Goto labels at column 0 ───────────────────────────────────────
         if is_goto_label(line, innermost_is_case()):
             result.append(format_line(line))
-            after_ctrl = False
-            # Update paren_depth for this line
+            after_ctrl_extra = 0
             for k, v in line:
                 if k == 'P':
                     if v == '(':
@@ -338,37 +332,32 @@ def indent_lines(lines) -> list[str]:
         line_depth = depth
 
         if fs == 'begin':
-            if after_ctrl:
-                ed = push_ctrl(depth)
-            else:
-                ed = push_body(depth)
+            ed = depth + after_ctrl_extra
+            begin_stack.append((ed, depth, False))
             line_depth = ed
             depth = ed + 1
             in_decl = False
-            after_ctrl = False
+            after_ctrl_extra = 0
 
         elif fs in ('end', 'until'):
             ed, od = pop_block()
-            line_depth = ed    # 'end' emitted at same depth as 'begin'
-            depth = od         # outer depth restored for what follows
+            line_depth = ed
+            depth = od
             in_decl = False
-            after_ctrl = False
+            after_ctrl_extra = 0
 
         elif fs == 'else':
-            # depth was already restored to outer_depth by the 'end' pop above,
-            # so 'else' naturally lands at the 'if' level.
             line_depth = depth
+            after_ctrl_extra = 0
             ls = last_sig(line)
-            if ls == ';':
-                after_ctrl = False  # else stmt; — body complete inline
-            else:
-                after_ctrl = True   # else alone, else-if chain, or else without ';'
+            if ls != ';':
+                after_ctrl_extra = 1
 
         elif fs == 'repeat':
             ed = push_body(depth)
-            line_depth = ed    # repeat emitted at current depth
-            depth = ed + 1     # body is one deeper
-            after_ctrl = False
+            line_depth = ed
+            depth = ed + 1
+            after_ctrl_extra = 0
 
         elif fs == 'case':
             in_case = True
@@ -377,43 +366,40 @@ def indent_lines(lines) -> list[str]:
                 ed = push_body(depth, is_case=True)
                 depth = ed + 1
                 in_case = False
+            after_ctrl_extra = 0
 
         elif fs in ('var', 'const', 'type', 'label'):
             in_decl = True
             line_depth = depth
-            after_ctrl = False
+            after_ctrl_extra = 0
 
         elif fs in ('procedure', 'function', 'program', 'unit',
                     'interface', 'implementation'):
             in_decl = False
             line_depth = depth
-            after_ctrl = False
+            after_ctrl_extra = 0
 
         elif in_decl and fs not in KEYWORDS:
             line_depth = depth + 1
 
-        elif after_ctrl:
-            # Single-statement body (no 'begin'): one extra level, depth unchanged
-            line_depth = depth + 1
-            after_ctrl = False
-
         else:
-            line_depth = depth
+            # Regular statements and single-statement bodies.
+            # after_ctrl_extra accumulates for nested chains (e.g. for J do\nfor I do\nstmt).
+            line_depth = depth + after_ctrl_extra
 
         # ── Override indentation for continuation lines (unclosed parens) ──
-        # Continuation lines of wrapped argument lists get depth+1 regardless.
-        # Skip structural keywords that manage their own depth.
         if is_continuation and fs not in ('begin', 'end', 'until', 'repeat', 'case'):
             line_depth = depth + 1
 
-        # ── Update after_ctrl from this line's last keyword ──────────────
+        # ── Update after_ctrl_extra from this line's last keyword ──────────
         if fs not in ('begin', 'end', 'until', 'repeat', 'else', 'case'):
             ls = last_sig(line)
             if ls in ('then', 'do'):
-                after_ctrl = True
+                after_ctrl_extra += 1
             elif ls == ':' and begin_stack:
-                # Case arm colon: the body that follows gets +1 indent
-                after_ctrl = True
+                after_ctrl_extra += 1
+            else:
+                after_ctrl_extra = 0
 
         # ── Update paren_depth ────────────────────────────────────────────
         for k, v in line:
