@@ -17,6 +17,13 @@ const
   KeyPause = 112;
   KeySlower = 79;
   KeyFaster = 71;
+  KeyEscape = 27;
+  KeySpace = 32;
+  KeyF1 = 59;
+  KeyF2 = 60;
+  KeyF3 = 61;
+  KeyF4 = 62;
+  KeyF5 = 63;
   HighScoreFileName = 'UGLI.HSC';
   License = 'Released under the terms of the GNU GPLv3';
 
@@ -949,8 +956,8 @@ begin
         KeyPause: DoPause;
         KeySlower: SlowDown;
         KeyFaster: SpeedUp;
-        32: Laying := not Laying;
-        61:
+        KeySpace: Laying := not Laying;
+        KeyF3:
           begin
             if Score >= 5000 then
               begin
@@ -960,14 +967,14 @@ begin
                 DrawScore;
               end;
           end;
-        59:
+        KeyF1:
           begin
             TextColor(6);
             ShowHelp;
             DrawFrame;
             DrawInner;
           end;
-        60:
+        KeyF2:
           begin
             ShowStory;
             DrawFrame;
@@ -1107,9 +1114,9 @@ NextItem:
       DrawItem;
       TextColor(4);
       HandleInput;
-      if KeyCode = 27 then goto CleanUp;
-      if KeyCode = 62 then goto NewGame;
-      if KeyCode = 63 then RemoveBlocks;
+      if KeyCode = KeyEscape then goto CleanUp;
+      if KeyCode = KeyF4 then goto NewGame;
+      if KeyCode = KeyF5 then RemoveBlocks;
       EnemyMove;
       if (X = EX) and (Y = EY) then
         begin
@@ -1125,7 +1132,7 @@ NextItem:
           SoundPickup;
           goto NextItem;
         end;
-    until KeyCode = 27;
+    until KeyCode = KeyEscape;
 OnGameOver:
     GameOver;
 PlayAgain:
@@ -1141,7 +1148,7 @@ PlayAgain:
         'N': goto CleanUp;
       end;
     until I = 3000;
-  until KeyCode = 27;
+  until KeyCode = KeyEscape;
 CleanUp:
   ClrScr;
   Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
