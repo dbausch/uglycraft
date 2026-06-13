@@ -11,13 +11,20 @@ Rules applied by `reformat.py` to `UGLI_2.PAS` and `DANISOFT.PAS`.
 | RTL routines PascalCase | ✓ |
 | User identifiers PascalCase | ✓ |
 | Two-letter abbreviations ALL CAPS | ✓ |
+| `TTY` ALL CAPS (standalone and in compounds) | ✓ |
+| Compound identifiers: abbreviation suffix uppercased | ✓ |
 | Brand/product names ALL CAPS | ✓ |
 | 2-space indentation | ✓ |
 | `begin`/`end` on own lines | ✓ |
 | `begin` after `then`/`do`/`else` indented one extra level | ✓ |
 | Short single-statement `if` on one line | ✓ |
 | Goto labels at column 0 | ✓ |
+| End-comments: identifiers cased, no inner spaces | ✓ |
 | One space after comma | ✓ |
+| Wrapped argument list continuation: 2 spaces (not paren-aligned) | ✓ |
+| No blank line after `begin` or goto label | ✓ |
+| No blank line before `end`/`until` | ✓ |
+| Blank line between top-level procedure/function definitions | ✓ |
 | Compiles with `fpc -Mtp` | ✓ |
 
 ---
@@ -61,12 +68,26 @@ First letter uppercase, rest unchanged: `Steine`, `Punkte`, `EscState`,
 `Timeslot`, `Schutz`, `Level`, `Leben`, `Rahmen`, `Abfrage`, etc.
 
 **Exception — two-letter abbreviations → ALL CAPS:**
-`VX`, `VY`, `SX`, `SY`, `DX`, `DY`, `XX`, `YY`, `TI`, `OP`, `IZ`.
+`VX`, `VY`, `SX`, `SY`, `DX`, `DY`, `XX`, `YY`, `TI`, `OP`, `IZ`, `TTY`.
 
 **Exception — x/y suffix form:** `LocX`, `LocY`.
 
 **Exception — brand/product names → ALL CAPS:**
 `DANISOFT`, `UGLI`, `UGLI_2`, `UGLI2`.
+
+**Compound identifiers:** when a user-defined identifier ends with a known
+coordinate abbreviation or `TTY`, that suffix is uppercased even inside a
+longer name. Requires the prefix to be ≥ 2 characters.
+
+| Abbreviations used as suffixes | Example |
+|---|---|
+| `XX`, `YY` (coordinate pairs) | `Oldxx` → `OldXX`, `Oldyy` → `OldYY` |
+| `X`, `Y` (single-letter coordinate) | `Tryx` → `TryX`, `Oldx` → `OldX`, `Oldy` → `OldY` |
+| `TTY` | `SomeTty` → `SomeTTY` |
+
+Two-letter direction abbreviations (`VX`, `VY`, `SX`, `SY`, `DX`, `DY`) are
+NOT applied as compound suffixes because they appear as false matches inside
+unrelated words (e.g. `Oldy` ends in `dy`).
 
 ### Unit names → specific casing
 
@@ -96,6 +117,42 @@ First letter uppercase, rest unchanged: `Steine`, `Punkte`, `EscState`,
   reformatter tracks which blocks are `case...of` blocks.
 - `var`/`const`/`type`/`label` section: the keyword is at current depth;
   declarations on subsequent lines are at `depth + 1`.
+- **Wrapped argument lists:** when a `(` is not closed on its opening line, all
+  continuation lines are indented `depth + 1` (2 more spaces than the opening
+  line) — not aligned to the `(`.
+
+  ```pascal
+  procedure Erkennung(S1, S2, S3, S4, S5, S6, S7, S8: String; Ver: String;
+    Nr, User, Copyjahr: String);
+  ```
+
+---
+
+## End-comments
+
+`{...}` comments that appear on a line beginning with `end` are reformatted:
+identifiers inside are cased according to the same rules, and leading/trailing
+spaces are stripped (no space after `{`, no space before `}`).
+
+```pascal
+end; {case}           { keyword → lowercase }
+end; {Rahmen}         { identifier → PascalCase }
+end; {UGLI2}          { brand name → ALL CAPS }
+end; {for J}          { was {FOR J} }
+end; {if Zahl = 10}   { was {if zahl = 10} }
+```
+
+---
+
+## Blank lines
+
+- No blank line immediately after `begin`.
+- No blank line immediately before `end` or `until`.
+- No blank line after a goto label (e.g. `100:`).
+- No blank line before the `program` declaration.
+- A blank line is inserted between any two top-level procedure/function
+  definitions if one is not already present (detected by `end;` or `end.` at
+  column 0 followed directly by `procedure`/`function`).
 
 ---
 
