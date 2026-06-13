@@ -947,10 +947,12 @@ procedure PlaceBlock; forward;
 
 procedure HandleInput;
 begin
+  KeyCode := 0;
   if KeyPressed then
     begin
       Key := GetKey;
-      case Ord(Key) of
+      KeyCode := Ord(Key);
+      case KeyCode of
         KeyRight, KeyLeft, KeyUp, KeyDown: Direction := Key;
         KeyPause: DoPause;
         KeySlower: SlowDown;
@@ -983,7 +985,6 @@ begin
     end;
   EnemyTick := (EnemyTick + 1) mod 2;
   GotoXY(1, 1);
-  KeyCode := Ord(Key);
   case Ord(Direction) of
     KeyRight: MoveRight(X, Y);
     KeyLeft: MoveLeft(X, Y);
