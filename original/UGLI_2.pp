@@ -2,7 +2,7 @@ program UGLI_2;
 
 uses CThreads, CRT, DOS, DANISOFT, UOSSound;
 
-label GameLoop, NewGame, NextItem, PlayAgain, OnGameOver, CleanUp;
+label NewGame, NextItem, PlayAgain, OnGameOver, CleanUp;
 
 const
   User = 'Public Domain';
@@ -843,17 +843,7 @@ begin
   ClrScr;
   MoveDelay := 100;
   PausesRemaining := 20;
-  BlockX := 1;
-  BlockY := 1;
-  EX := 5;
-  EY := 10;
-  X := 40;
-  Y := 10;
   BlocksRemaining := 2000;
-  Score := 0;
-  Lives := 9;
-  Level := 0;
-  ItemNo := 9;
   Laying := false;
 end;
 
@@ -1034,13 +1024,25 @@ begin
   DrawInner;
 end;
 
+function AskPlayAgain: Boolean;
+var Answer: Char;
+begin
+  DrawHLine(25, 51, 8, '█');
+  WriteXY(25, 9, '██ NOCHMAL SPIELEN (J/N) ██');
+  WriteXY(25, 10, '██                       ██');
+  DrawHLine(25, 51, 11, '█');
+  GotoXY(30, 10);
+  repeat
+    Answer := UpCase(GetKey);
+  until Answer in ['J', 'N'];
+  AskPlayAgain := Answer = 'J';
+end;
+
 begin
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
   MyCursorOff;
-  repeat
-GameLoop:
-    Init;
+  Init;
 NewGame:
     Level := 0;
     ItemNo := 9;
@@ -1099,19 +1101,7 @@ NextItem:
 OnGameOver:
     GameOver;
 PlayAgain:
-    DrawHLine(25, 51, 8, '█');
-    WriteXY(25, 9, '██ NOCHMAL SPIELEN (J/N) ██');
-    WriteXY(25, 10, '██                       ██');
-    DrawHLine(25, 51, 11, '█');
-    GotoXY(30, 10);
-    repeat
-      Key := UpCase(GetKey);
-      case Key of
-        'J': goto NewGame;
-        'N': goto CleanUp;
-      end;
-    until false;
-  until KeyCode = KeyEscape;
+    if AskPlayAgain then goto NewGame else goto CleanUp;
 CleanUp:
   ClrScr;
   Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
