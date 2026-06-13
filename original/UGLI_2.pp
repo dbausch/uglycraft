@@ -548,7 +548,7 @@ begin
   WriteXY(2, 7, '[F4] = Neustart');
   WriteXY(2, 8, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
   WriteXY(2, 9, '[F2] = Die Geschichte von Ugli');
-  WriteXY(2, 10, '[Space] = Blöcke legen umschalten (an/aus)');
+  WriteXY(2, 10, '[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)');
   WriteXY(2, 11, '[F5] = Alle gesetzten Blöcke wieder entfernen');
   WriteXY(2, 12, '[F1] = Diese Hilfe');
   WriteXY(2, 15, '                  T A S T E   D R Ü C K E N');
