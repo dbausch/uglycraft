@@ -1,6 +1,7 @@
 program UGLI_2;
 
-uses CThreads, Crt, Dos, DANISOFT, UOSSound;
+uses CThreads, CRT, DOS, DANISOFT, UOSSound;
+
 label 100, 300, 999, 998, 1, 997;
 
 const
@@ -21,8 +22,9 @@ const
   License = 'Released under the terms of the GNU GPLv3';
 
 var
-  BlocksRemaining, MoveDelay, Code, PausesRemaining, EnemyTick, KeyCode, I, J, ItemNo, Level, Lives,
-  SaveX, SaveY, BlockX, BlockY, ItemX, ItemY, DX, DY, X, Y, EX, EY, EscState: Integer;
+  BlocksRemaining, MoveDelay, Code, PausesRemaining, EnemyTick, KeyCode, I, J,
+  ItemNo, Level, Lives, SaveX, SaveY, BlockX, BlockY, ItemX, ItemY, DX, DY, X,
+  Y, EX, EY, EscState: Integer;
   Score: LongInt;
   Blocked: array[1..FieldW, 1..FieldH] of Boolean;
   Key: Char;
@@ -64,8 +66,8 @@ begin
     end;
   Write(TTY, #27'[?7h'); { re-enable autowrap }
   Flush(TTY); { drain buffer before CRT sync — prevents a
-                             deferred tty flush from displacing the cursor
-                             between gotoxy(c,row) and the caller's write() }
+                deferred tty flush from displacing the cursor
+                between gotoxy(c,row) and the caller's write() }
   GotoXY(1, 1);
   GotoXY(C, Row); { sync CRT's position tracker }
 end;
@@ -117,9 +119,7 @@ begin
   MyCursorOff;
   Str(Score * Lives, S); WriteXY(1, 4, 'Punkte ' + S);
   Assign(F, HighScoreFileName);
-
   Append(F);
-
   if IOResult = 0
   then
     begin
@@ -144,9 +144,7 @@ begin
   ReadLn;
   ClrScr;
   Assign(F, HighScoreFileName);
-
   Reset(F);
-
   if IOResult = 0
   then
     begin
@@ -162,7 +160,7 @@ begin
       ReWrite(F);
       if IOResult <> 0 then
         begin
-          WriteLn('Datei UGLI.HSC konnte nicht erzeugt werden.');
+          WriteLn('Datei ' + HighScoreFileName + ' konnte nicht erzeugt werden.');
         end
       else
         begin
@@ -175,7 +173,7 @@ begin
         end;
     end;
   GotoXY(1, 25);
-  Write('Bitte [Return] -Taste drücken..');
+  Write('Bitte [Return]-Taste drücken...');
   ReadLn;
 end;
 
@@ -225,10 +223,9 @@ begin
     begin
       Blocked[I, 10] := true;
     end;
-
   X := 40;
   Y := 5;
-  Key := Chr(KeyRight);;
+  Key := Chr(KeyRight);
 end; {InitLevel2}
 
 procedure InitLevel3;
@@ -247,7 +244,6 @@ begin
   Blocked[39, 10] := false;
   Blocked[40, 10] := false;
   Blocked[41, 10] := false;
-
   X := 40;
   Y := 9;
   Key := Chr(KeyUp);
@@ -272,7 +268,6 @@ begin
   Blocked[39, 10] := false;
   Blocked[40, 10] := false;
   Blocked[41, 10] := false;
-
   X := 40;
   Y := 9;
   Key := Chr(KeyRight);
@@ -296,7 +291,6 @@ begin
     begin
       Blocked[I, 10] := false;
     end;
-
   X := 40;
   Y := 10;
   Key := Chr(KeyUp);
@@ -346,7 +340,6 @@ begin
   Blocked[40, 10] := false;
   Blocked[41, 10] := false;
   Blocked[42, 10] := false;
-
   X := 75;
   Y := 5;
   Key := Chr(KeyDown);
@@ -381,7 +374,6 @@ begin
     Blocked[I, 10] := false;
   for I := 26 to 28 do
     Blocked[I, 10] := false;
-
   X := 75;
   Y := 10;
   Key := Chr(KeyRight);
@@ -404,7 +396,6 @@ begin
       Blocked[40, I] := true;
       Blocked[60, I] := true;
     end;
-
   X := 75;
   Y := 5;
   Key := Chr(KeyDown);
@@ -428,7 +419,6 @@ begin
     Blocked[I, 15] := true;
   for I := 43 to 58 do
     Blocked[I, 15] := true;
-
   X := 40;
   Y := 10;
   Key := Chr(KeyUp);
@@ -482,7 +472,7 @@ function GetKey: Char;
 var Raw: Char;
 begin
   Raw := ReadKey;
-  if Raw = #0then
+  if Raw = #0 then
     begin
       EscState := 0;
       if KeyPressed then Raw := ReadKey else Raw := #0;
@@ -639,7 +629,6 @@ begin
           Blocked[I, J] := false;
         end; {for J}
     end; {for I}
-
   ClrScr;
   for I := 1 to 80 do
     begin
@@ -662,7 +651,6 @@ begin
   WriteLevel;
   TextBackground(0);
   InitLevel(Level);
-
   TextColor(11);
   WriteXY(1, 21, '◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
   DrawHLine(1, 80, 22, '─');
@@ -730,7 +718,7 @@ begin
 200:
 end;
 
-procedure ShowStorY;
+procedure ShowStory;
 begin
   TextColor(13);
   ClrScr;
@@ -861,7 +849,6 @@ begin
   PausesRemaining := 20;
   BlockX := 1;
   BlockY := 1;
-
   EX := 5;
   EY := 10;
   X := 40;
@@ -953,8 +940,8 @@ end;
 procedure RandomPos;
 begin
   repeat
-    ItemX := Round((Random * 77) + 2); {Zufalls-Zahlen-X-Pos}
-    ItemY := Round((Random * 17) + 2); {Zufalls-Zahlen-Y-Pos}
+    ItemX := Round((Random * 77) + 2);
+    ItemY := Round((Random * 17) + 2);
   until not Blocked[ItemX, ItemY];
 end;
 
@@ -1042,7 +1029,7 @@ begin
     end;
   if KeyCode = 60 then
     begin
-      ShowStorY;
+      ShowStory;
       DrawInner;
     end;
   if KeyCode = 61 then
@@ -1159,31 +1146,29 @@ begin
     AwardPoints;
     if ItemNo = 10 then
       begin
-        ItemNo := 1; {Zahl Zurückstellen}
-        Level := Level + 1; {Levelzahl + 1}
+        ItemNo := 1;
+        Level := Level + 1;
         BlockX := 1;
         BlockY := 1;
-        if Level = 1 then {Anfangs-Punkte}
+        if Level = 1 then
           begin
             Score := 0;
           end;
-        EX := 5; {X-Pos Gegner}
-        EY := 10; {Y-Pos Gegner}
-        if Level = 10 then {Abfrage: Wenn Level = 10 dann Gewonnen}
+        EX := 5; {Enemy X}
+        EY := 10; {Enemy Y}
+        if Level = 10 then
           begin
             WinScreen;
-            goto 997; {Goto Ende}
+            goto 997; {clean up}
           end;
         DrawFrame;
-        Lives := Lives + 1; {Leben + 1}
-        LevelTransition; {LevelNeu}
+        Lives := Lives + 1;
+        LevelTransition;
         TextBackground(Red); TextColor(15);
         Str(Score, S); WriteXY(3, 1, 'PUNKTE ' + S);
         TextBackground(0);
       end; {if ItemNo = 10}
-
     RandomPos;
-
     repeat
       Delay(MoveDelay);
       DrawItem;
@@ -1206,7 +1191,6 @@ begin
         begin
           goto 998;
         end;
-
       if (ItemX = X) and (ItemY = Y) then
         begin
           SoundPickup;
@@ -1229,7 +1213,6 @@ begin
       end;
     until I = 3000;
   until KeyCode = 27;
-
 999:
   ClrScr;
   Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
