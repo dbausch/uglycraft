@@ -683,12 +683,8 @@ begin
     end;
 end; {DrawBorder}
 
-procedure DrawFrame;
-var I, J: Integer;
+procedure Redraw;
 begin
-  for I := 1 to FieldW do
-    for J := 1 to FieldH do
-      Blocked[I, J] := false;
   ClrScr;
   DrawBorder;
   WriteLevel;
@@ -697,8 +693,17 @@ begin
   DrawPauses;
   DrawBlocks;
   TextBackground(0);
-  InitLevel(Level);
   DrawKeys;
+end; {Redraw}
+
+procedure DrawFrame;
+var I, J: Integer;
+begin
+  for I := 1 to FieldW do
+    for J := 1 to FieldH do
+      Blocked[I, J] := false;
+  Redraw;
+  InitLevel(Level);
 end; {DrawFrame}
 
 procedure EnemyMove;
@@ -965,13 +970,13 @@ begin
           begin
             TextColor(6);
             ShowHelp;
-            DrawFrame;
+            Redraw;
             DrawInner;
           end;
         KeyF2:
           begin
             ShowStory;
-            DrawFrame;
+            Redraw;
             DrawInner;
           end;
       end; {case}
