@@ -47,11 +47,11 @@ type
 var
   BlocksRemaining, MoveDelay, PausesRemaining, EnemyTick, KeyCode, I, J,
   ItemNo, Level, Lives, SaveX, SaveY, BlockX, BlockY, ItemX, ItemY, DX, DY, X,
-  Y, EX, EY, EscState: Integer;
+  Y, EX, EY, EscState, StartX, StartY, StartEX, StartEY: Integer;
   Score: LongInt;
   Blocked: array[1..FieldW, 1..FieldH] of Boolean;
   Key: Char;
-  Direction: TDirection;
+  Direction, StartDir: TDirection;
   Laying: Boolean;
   F, TTY: Text;
   FirstName, LastName, S: String;
@@ -431,11 +431,11 @@ end; {Redraw}
 
 procedure InitLevel1;
 begin
-  X := 40;
-  Y := 10;
-  Direction := DirRight;
-  EX := 5;
-  EY := 10;
+  StartX := 40;
+  StartY := 10;
+  StartDir := DirRight;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel1}
 
 procedure InitLevel2;
@@ -446,11 +446,11 @@ begin
     begin
       Blocked[I, 10] := true;
     end;
-  X := 40;
-  Y := 5;
-  Direction := DirRight;
-  EX := 5;
-  EY := 10;
+  StartX := 40;
+  StartY := 5;
+  StartDir := DirRight;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel2}
 
 procedure InitLevel3;
@@ -469,11 +469,11 @@ begin
   Blocked[39, 10] := false;
   Blocked[40, 10] := false;
   Blocked[41, 10] := false;
-  X := 40;
-  Y := 9;
-  Direction := DirUp;
-  EX := 5;
-  EY := 10;
+  StartX := 40;
+  StartY := 9;
+  StartDir := DirUp;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel3}
 
 procedure InitLevel4;
@@ -495,11 +495,11 @@ begin
   Blocked[39, 10] := false;
   Blocked[40, 10] := false;
   Blocked[41, 10] := false;
-  X := 40;
-  Y := 9;
-  Direction := DirRight;
-  EX := 5;
-  EY := 10;
+  StartX := 40;
+  StartY := 9;
+  StartDir := DirRight;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel4}
 
 procedure InitLevel5;
@@ -520,11 +520,11 @@ begin
     begin
       Blocked[I, 10] := false;
     end;
-  X := 40;
-  Y := 10;
-  Direction := DirUp;
-  EX := 5;
-  EY := 10;
+  StartX := 40;
+  StartY := 10;
+  StartDir := DirUp;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel5}
 
 procedure InitLevel6;
@@ -571,11 +571,11 @@ begin
   Blocked[40, 10] := false;
   Blocked[41, 10] := false;
   Blocked[42, 10] := false;
-  X := 75;
-  Y := 5;
-  Direction := DirDown;
-  EX := 5;
-  EY := 10;
+  StartX := 75;
+  StartY := 5;
+  StartDir := DirDown;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel6}
 
 procedure InitLevel7;
@@ -607,11 +607,11 @@ begin
     Blocked[I, 10] := false;
   for I := 26 to 28 do
     Blocked[I, 10] := false;
-  X := 75;
-  Y := 10;
-  Direction := DirRight;
-  EX := 5;
-  EY := 10;
+  StartX := 75;
+  StartY := 10;
+  StartDir := DirRight;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel7}
 
 procedure InitLevel8;
@@ -631,11 +631,11 @@ begin
       Blocked[40, I] := true;
       Blocked[60, I] := true;
     end;
-  X := 75;
-  Y := 5;
-  Direction := DirDown;
-  EX := 5;
-  EY := 10;
+  StartX := 75;
+  StartY := 5;
+  StartDir := DirDown;
+  StartEX := 5;
+  StartEY := 10;
 end; {InitLevel8}
 
 procedure InitLevel9;
@@ -656,11 +656,11 @@ begin
     Blocked[I, 15] := true;
   for I := 43 to 58 do
     Blocked[I, 15] := true;
-  X := 40;
-  Y := 10;
-  Direction := DirUp;
-  EX := 5;
-  EY := 10;
+  StartX := 40;
+  StartY := 10;
+  StartDir := DirUp;
+  StartEX := 5;
+  StartEY := 10;
 end;
 
 procedure InitLevel(L: Integer);
@@ -685,6 +685,9 @@ begin
     for J := 2 to FieldH - 1 do
       Blocked[I, J] := false;
   InitLevel(Level);
+  X := StartX; Y := StartY;
+  EX := StartEX; EY := StartEY;
+  Direction := StartDir;
   Redraw;
 end; {PrepareLevel}
 
@@ -1171,20 +1174,18 @@ begin
 end;
 
 procedure RemoveBlocks;
-var Code: Integer; SaveDir: TDirection;
+var Code: Integer;
 begin
   repeat
     Code := Dialog('B L Ö C K E   E N T F E R N E N', 'J / N');
   until (Byte(Code) in YesKey) or (Byte(Code) in NoKey);
   if Byte(Code) in YesKey then
     begin
-      SaveX := X; SaveY := Y; SaveDir := Direction;
       for I := 2 to FieldW - 1 do
         for J := 2 to FieldH - 1 do
           Blocked[I, J] := false;
       InitLevel(Level);
       DrawBorder;
-      X := SaveX; Y := SaveY; Direction := SaveDir;
       BlockX := 1; BlockY := 1;
     end;
   DrawInner;
