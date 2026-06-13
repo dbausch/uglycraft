@@ -214,8 +214,8 @@ var S: String;
 begin
   TextBackground(Red);
   TextColor(15);
-  Str(PausesRemaining, S);
-  WriteXY(65, 1, 'PAUSEN ' + S);
+  Str(PausesRemaining:2, S);
+  WriteXY(70, 1, 'PAUSEN ' + S);
   TextBackground(0);
 end; {DrawPauses}
 
@@ -649,7 +649,7 @@ begin
   TextColor(11);
   WriteXY(1, 21, '◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
   DrawHLine(1, 80, 22, '─');
-  WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen (5000)  <F4> = Neustart');
+  WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart    ');
   DrawHLine(1, 80, 24, '─');
   WriteXY(1, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
 end; {DrawKeys}
