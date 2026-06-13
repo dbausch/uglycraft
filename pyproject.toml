@@ -58,13 +58,13 @@ shell = """
 """
 
 [tool.poe.tasks.build-original]
-help  = "Build the original 1996 Pascal source (original/UGLI_2.pas) with FPC"
+help  = "Build the original 1996 Pascal source (original/UGLI_2.pp) with FPC"
 shell = """
   UOS_BASE="https://raw.githubusercontent.com/fredvs/uos/main/src"
   for f in uos.pas uos_flat.pas uos_portaudio.pas; do
     [ -f original/uos/$f ] || curl -fsSL "$UOS_BASE/$f" -o original/uos/$f
   done
-  cd original && fpc -Mtp -Fuuos UGLI_2.pas
+  cd original && fpc -Mtp -Fuuos UGLI_2.pp
 """
 
 [tool.poe.tasks.clean]

@@ -8,32 +8,32 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 
 ## Building (if you ever want to)
 
-- **Turbo Pascal 7** (original): Open `UGLI_2.pas` in the TP7 IDE or run `tpc UGLI_2.pas`
-- **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files from GitHub on first run, then compiles with `fpc -Mtp -Fuuos UGLI_2.pas`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
+- **Turbo Pascal 7** (original): Open `UGLI_2.pp` in the TP7 IDE or run `tpc UGLI_2.pp`
+- **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files from GitHub on first run, then compiles with `fpc -Mtp -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
 There are no tests, no lint tools, and no CI setup.
 
 ## File structure
 
-### `DANISOFT.pas` (unit `DANISOFT`) — animated splash screen
+### `DANISOFT.pp` (unit `DANISOFT`) — animated splash screen
 
 - `Intro`: scrolling color/sound intro that displays an ASCII art logo (8 lines) with version/copyright info
 - `Intro2`: alternative intro with typewriter-effect text rendering, playing ascending tones as characters appear
 - Depends on: `Crt`, `UOSSound`
 
-### `UOSSound.pas` (unit `UOSSound`) — FPC/Linux sound
+### `UOSSound.pp` (unit `UOSSound`) — FPC/Linux sound
 
 - Wraps UOS + PortAudio to provide `Sound(Hz)`, `NoSound`, `Ton(Hz, Ms)`
 - Named effects: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`
 - Listed last in `uses` to shadow the empty CRT sound stubs on Linux
 - UOS source fetched from GitHub at build time; requires `libportaudio.so.2` at runtime
 
-### `UGLI_2.pas` (program `UGLI_2`) — the game itself
+### `UGLI_2.pp` (program `UGLI_2`) — the game itself
 
 Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 
-## Key data structures (`UGLI_2.pas`)
+## Key data structures (`UGLI_2.pp`)
 
 | Identifier | Type | Meaning |
 |---|---|---|
@@ -49,7 +49,7 @@ Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 | `EX`, `EY` | Integer | Enemy position |
 | `Shield` | Boolean | Whether player has active shield |
 
-## Key constants (`UGLI_2.pas`)
+## Key constants (`UGLI_2.pp`)
 
 | Constant | Value | Meaning |
 |---|---|---|
@@ -134,7 +134,7 @@ Levels are defined by the `InitLevel1`–`InitLevel9` procedures via inline `Got
 
 **Original DOS**: All sound via PC speaker. Frequencies played directly via port $42/$43.
 
-**FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `UOSSound.pas`, a wrapper around UOS + PortAudio. It exposes the same `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as CRT (listed last in `uses` so it shadows the empty CRT stubs), plus named effect procedures: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
+**FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `UOSSound.pp`, a wrapper around UOS + PortAudio. It exposes the same `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as CRT (listed last in `uses` so it shadows the empty CRT stubs), plus named effect procedures: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
 
 
 ## How UGLYCRAFT maps from the original
