@@ -2,7 +2,7 @@ program UGLI_2;
 
 uses CThreads, CRT, DOS, DANISOFT, UOSSound;
 
-label 100, 300, 999, 998, 1, 997;
+label GameLoop, NewGame, NextItem, PlayAgain, OnGameOver, CleanUp;
 
 const
   User = 'Public Domain';
@@ -1078,13 +1078,13 @@ begin
   ReWrite(TTY);
   MyCursorOff;
   repeat
-1:
+GameLoop:
     Init;
-300:
+NewGame:
     Level := 0;
     ItemNo := 9;
     Lives := 9;
-100:
+NextItem:
     EnemyTick := 0;
     ItemNo := ItemNo + 1;
     AwardPoints;
@@ -1103,7 +1103,7 @@ begin
         if Level = 10 then
           begin
             WinScreen;
-            goto 997; {clean up}
+            goto PlayAgain;
           end;
         DrawFrame;
         Lives := Lives + 1;
@@ -1115,8 +1115,8 @@ begin
       DrawItem;
       TextColor(4);
       HandleInput;
-      if KeyCode = 27 then goto 999;
-      if KeyCode = 62 then goto 300;
+      if KeyCode = 27 then goto CleanUp;
+      if KeyCode = 62 then goto NewGame;
       if KeyCode = 63 then RemoveBlocks;
       EnemyMove;
       if (X = EX) and (Y = EY) then
@@ -1126,17 +1126,17 @@ begin
       DrawLives;
       if Lives = 0 then
         begin
-          goto 998;
+          goto OnGameOver;
         end;
       if (ItemX = X) and (ItemY = Y) then
         begin
           SoundPickup;
-          goto 100;
+          goto NextItem;
         end;
     until KeyCode = 27;
-998:
+OnGameOver:
     GameOver;
-997:
+PlayAgain:
     DrawHLine(25, 51, 8, '█');
     WriteXY(25, 9, '██ NOCHMAL SPIELEN (J/N) ██');
     WriteXY(25, 10, '██                       ██');
@@ -1145,12 +1145,12 @@ begin
       GotoXY(30, 10);
       Key := UpCase(GetKey);
       case Key of
-        'J': goto 300;
-        'N': goto 999;
+        'J': goto NewGame;
+        'N': goto CleanUp;
       end;
     until I = 3000;
   until KeyCode = 27;
-999:
+CleanUp:
   ClrScr;
   Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
   MyCursorOn;
