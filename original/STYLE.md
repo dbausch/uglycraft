@@ -112,6 +112,14 @@ unrelated words (e.g. `Oldy` ends in `dy`).
   ```pascal
   if Zahl = 2 then Punkte := Punkte + 100;
   ```
+- Chained single-statement control lines (`then`/`do` without `begin`) accumulate
+  indentation: each ctrl line adds one extra level so the terminal statement ends up
+  correctly nested:
+  ```pascal
+  for J := 9 to 11 do
+    for I := 2 to 79 do
+      Sper[I, J] := false;
+  ```
 - Numeric goto labels (`100:`, `300:`, etc.) are always emitted at column 0.
   Numeric case-arm labels (`1:`, `2:`, etc.) are indented normally because the
   reformatter tracks which blocks are `case...of` blocks.
