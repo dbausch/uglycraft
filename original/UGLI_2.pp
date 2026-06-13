@@ -539,10 +539,8 @@ begin
   WriteXY(2, 9, '[F2] = Die Geschichte von Ugli');
   WriteXY(2, 10, '[s] = Setzt an der Posision von dir einen Block (danach Richtungstaste drücken)');
   WriteXY(2, 11, '[n] = alle gesetzeten Blöcke wieder entfernen');
-  WriteXY(2, 12, '');
-  WriteXY(2, 13, 'Achtung:  wenn irgend eine andere Taste gedrückt wird rast Ugli auf dich und du');
-  WriteXY(2, 14, 'bist verloren');
-  WriteXY(2, 17, '                  T A S T E   D R Ü C K E N');
+  WriteXY(2, 12, '[F1] = Diese Hilfe');
+  WriteXY(2, 15, '                  T A S T E   D R Ü C K E N');
   Key := GetKey;
   X := SaveX;
   Y := SaveY;
