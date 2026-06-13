@@ -37,12 +37,34 @@ const
   HelpFg    = Magenta;   { help-screen and story-screen text }
   SplashFg  = White;     { level-transition splash text }
   DialogFg  = White;     { modal dialog text (AskPlayAgain, RemoveBlocks) }
-  WinFg     = LightRed;  { win-screen text }
+  WinFg      = LightRed;   { win-screen text }
+  ItemDescFg = Black;      { item-descriptions screen foreground }
+  ItemDescBg = LightGray;  { item-descriptions screen background }
+  ItemCount  = 10;
   YesKey    : set of Byte = [Ord('J'), Ord('j')];
   NoKey     : set of Byte = [Ord('N'), Ord('n')];
 
 type
   TDirection = (DirRight, DirLeft, DirDown, DirUp);
+  TItemData = record
+    Ch:   String[4];   { UTF-8 character (max 3 bytes) }
+    Name: String[40];  { German treasure name }
+    Fg:   Integer;     { foreground color during gameplay }
+  end;
+
+const
+  Items : array[1..ItemCount] of TItemData = (
+    (Ch: '|'; Name: 'Seil';                       Fg: Brown),
+    (Ch: '☼'; Name: 'grosser glänzender Diamant';  Fg: LightBlue),
+    (Ch: ':'; Name: 'kleine Edelsteine';            Fg: LightRed),
+    (Ch: '*'; Name: 'kleiner glänzender Diamant';   Fg: LightBlue),
+    (Ch: '='; Name: 'Goldbarren';                   Fg: Yellow),
+    (Ch: '≡'; Name: 'Silberbarren';                 Fg: LightGray),
+    (Ch: 'Γ'; Name: 'Brunnen';                      Fg: Cyan),
+    (Ch: 'Φ'; Name: 'Lampe';                        Fg: Yellow),
+    (Ch: '♦'; Name: 'grosser Edelstein';            Fg: LightGreen),
+    (Ch: '⌂'; Name: 'Krone';                        Fg: Yellow)
+  );
 
 var
   BlocksRemaining, MoveDelay, PausesRemaining, EnemyTick, KeyCode, I, J,
@@ -271,27 +293,11 @@ begin
 end;
 
 procedure DrawItem;
+var Idx: Integer;
 begin
-  if ItemNo = 1 then
-    Draw(ItemX, ItemY, Brown, FieldBg, '|');
-  if ItemNo = 2 then
-    Draw(ItemX, ItemY, LightBlue, FieldBg, '☼');
-  if ItemNo = 3 then
-    Draw(ItemX, ItemY, LightRed, FieldBg, ':');
-  if ItemNo = 4 then
-    Draw(ItemX, ItemY, LightBlue, FieldBg, '*');
-  if ItemNo = 5 then
-    Draw(ItemX, ItemY, Yellow, FieldBg, '=');
-  if ItemNo = 6 then
-    Draw(ItemX, ItemY, LightGray, FieldBg, '≡');
-  if ItemNo = 7 then
-    Draw(ItemX, ItemY, Cyan, FieldBg, 'Γ');
-  if ItemNo = 8 then
-    Draw(ItemX, ItemY, Yellow, FieldBg, 'Φ');
-  if ItemNo = 9 then
-    Draw(ItemX, ItemY, LightGreen, FieldBg, '♦');
-  if (ItemNo = 9) and (Level = 9) then
-    Draw(ItemX, ItemY, Yellow, FieldBg, '⌂');
+  Idx := ItemNo;
+  if (ItemNo = 9) and (Level = 9) then Idx := 10;
+  Draw(ItemX, ItemY, Items[Idx].Fg, FieldBg, Items[Idx].Ch);
 end;
 
 procedure DrawInner;
@@ -1069,30 +1075,30 @@ begin
 end;
 
 procedure ShowItemDescriptions;
+const
+  Fg = ItemDescFg;
+  Bg = ItemDescBg;
+var
+  I, Col, MaxW, ItemW: Integer;
 begin
+  TextBackground(Bg);
   ClrScr;
-  WriteLn;
-  WriteLn(' L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E ');
-  WriteLn;
-  WriteLn('    | Seil ');
-  WriteLn('    ☼ grosser glänzender Diamant ');
-  WriteLn('    : kleine Edelsteiene ');
-  WriteLn('    * kleiner glänzender Diamant ');
-  WriteLn('    = Goldbarren ');
-  WriteLn('    ≡ Silberbarren ');
-  WriteLn('    Γ Brunnen ');
-  WriteLn('    Φ Lampe ');
-  WriteLn('    ♦ grosser Edelstein ');
-  WriteLn('    ⌂ Krone ');
-  WriteLn;
-  GotoXY(1, 15);
-  WriteLn('   S P I E L A N L E I T U N G   ');
-  WriteLn;
-  WriteLn('Du drückst jetzt eine Taste, dann drückst du eine der ');
-  WriteLn('Richtungstasten danach musst du mit den Richtungstasten die oben gezeigten ');
-  WriteLn('Dinge einsammeln.       (Die Krone kommt ganz zum Schluss.)');
-  WriteLn('Während des Spiels kann man mit <F1> die anderen Tasten die zum bedienen ');
-  WriteLn('des Spiels nachlesen.');
+  Draw(1, 2, Fg, Bg, Center('L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E'));
+  MaxW := 0;
+  for I := 1 to ItemCount do
+    begin
+      ItemW := UTF8Cols(Items[I].Ch) + 2 + UTF8Cols(Items[I].Name);
+      if ItemW > MaxW then MaxW := ItemW;
+    end;
+  Col := (FieldW - MaxW) div 2 + 1;
+  for I := 1 to ItemCount do
+    Draw(Col, 3 + I, Fg, Bg, Items[I].Ch + '  ' + Items[I].Name);
+  Draw(1, 16, Fg, Bg, Center('S P I E L A N L E I T U N G'));
+  Draw(5, 18, Fg, Bg, 'Du drückst jetzt eine Taste, dann drückst du eine der Richtungstasten');
+  Draw(5, 19, Fg, Bg, 'danach musst du mit den Richtungstasten die oben gezeigten Dinge');
+  Draw(5, 20, Fg, Bg, 'einsammeln. (Die Krone kommt ganz zum Schluss.) Während des Spiels kann');
+  Draw(5, 21, Fg, Bg, 'man mit <F1> die anderen Tasten die zum bedienen des Spiels nachlesen.');
+  Draw(1, 24, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
   WaitKey;
 end;
 
