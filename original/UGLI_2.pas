@@ -547,7 +547,7 @@ end;
 
 procedure BumpSound;
 begin
-  SoundBrumm;
+  SoundBump;
 end; {BumpSound}
 
 procedure MoveDown(var X: Integer; var Y: Integer);
@@ -811,7 +811,7 @@ begin
   TextColor(4);
   WriteXY(30, 11, ' T A S T E   D R Ü C K E N ');
   Delay(1000);
-  SoundGewonnen;
+  SoundWon;
   TextBackground(Black);
   TextColor(Random(255));
   TextAttr := Random(255);

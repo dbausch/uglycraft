@@ -57,10 +57,10 @@ CRT color constants: `Black`, `Blue`, `Green`, `Cyan`, `Red`, `Magenta`, `Brown`
 `LightGray`, `DarkGray`, `LightBlue`, `LightGreen`, `LightCyan`, `LightRed`,
 `LightMagenta`, `Yellow`, `White`, `Blink`.
 
-Sound routines: `Ton`, `Sound`, `NoSound`, `SoundBrumm`, `SoundPickup`,
-`SoundCaught`, `SoundGameOver`, `SoundGewonnen`.
+Sound routines: `Ton`, `Sound`, `NoSound`, `SoundBump`, `SoundPickup`,
+`SoundCaught`, `SoundGameOver`, `SoundWon`.
 
-Splash screen: `Erkennung`, `Erkennung2`, `UTF8Cols`, `Zentriert`, `WLn`.
+Splash screen: `Intro`, `Intro2`, `UTF8Cols`, `Center`, `WLn`.
 
 ### User-defined identifiers → English, PascalCase
 

@@ -1,4 +1,4 @@
-unit uossound;
+unit UOSSound;
 
 { Sound wrapper for UGLI 2 FPC port.
   Provides Sound(Hz)/NoSound/Ton(Hz,Ms) backed by UOS + PortAudio.
@@ -8,7 +8,7 @@ unit uossound;
 
 interface
 
-{ Replaces CRT stubs — list uossound after crt in uses clause. }
+{ Replaces CRT stubs — list UOSSound after crt in uses clause. }
 procedure Sound(Hz: Word);
 procedure NoSound;
 
@@ -16,11 +16,11 @@ procedure NoSound;
 procedure Ton(Hz: Word; Ms: Integer);
 
 { Named sound effects. }
-procedure SoundBrumm;     { wall bump — low 40 Hz blip }
+procedure SoundBump;      { wall bump — low 40 Hz blip }
 procedure SoundPickup;    { treasure collected }
 procedure SoundCaught;    { player caught by enemy }
 procedure SoundGameOver;  { game over fanfare }
-procedure SoundGewonnen;  { level/game won fanfare }
+procedure SoundWon;       { level/game won fanfare }
 
 implementation
 
@@ -138,7 +138,7 @@ begin
   NoSound;
 end;
 
-procedure SoundBrumm;
+procedure SoundBump;
 begin
   Ton(40, 5);
 end;
@@ -175,7 +175,7 @@ begin
   Sleep(1000);
 end;
 
-procedure SoundGewonnen;
+procedure SoundWon;
 begin
   Ton(100, 500);
   Ton(200, 500);
