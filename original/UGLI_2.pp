@@ -2,7 +2,7 @@ program UGLI_2;
 
 uses CThreads, CRT, DOS, DANISOFT, UOSSound;
 
-label NewGame, NextItem, PlayAgain, OnGameOver, CleanUp;
+label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
 const
   User = 'Public Domain';
@@ -249,7 +249,7 @@ end;
 
 procedure AwardPoints;
 begin
-  Score := Score + (ItemNo - 1) * 100;
+  Score := Score + ItemNo * 100;
   DrawScore;
 end;
 
@@ -258,6 +258,8 @@ begin
   X := 40;
   Y := 10;
   Key := Chr(KeyRight);
+  EX := 5;
+  EY := 10;
 end; {InitLevel1}
 
 procedure InitLevel2;
@@ -271,6 +273,8 @@ begin
   X := 40;
   Y := 5;
   Key := Chr(KeyRight);
+  EX := 5;
+  EY := 10;
 end; {InitLevel2}
 
 procedure InitLevel3;
@@ -292,6 +296,8 @@ begin
   X := 40;
   Y := 9;
   Key := Chr(KeyUp);
+  EX := 5;
+  EY := 10;
 end; {InitLevel3}
 
 procedure InitLevel4;
@@ -316,6 +322,8 @@ begin
   X := 40;
   Y := 9;
   Key := Chr(KeyRight);
+  EX := 5;
+  EY := 10;
 end; {InitLevel4}
 
 procedure InitLevel5;
@@ -339,6 +347,8 @@ begin
   X := 40;
   Y := 10;
   Key := Chr(KeyUp);
+  EX := 5;
+  EY := 10;
 end; {InitLevel5}
 
 procedure InitLevel6;
@@ -388,6 +398,8 @@ begin
   X := 75;
   Y := 5;
   Key := Chr(KeyDown);
+  EX := 5;
+  EY := 10;
 end; {InitLevel6}
 
 procedure InitLevel7;
@@ -422,6 +434,8 @@ begin
   X := 75;
   Y := 10;
   Key := Chr(KeyRight);
+  EX := 5;
+  EY := 10;
 end; {InitLevel7}
 
 procedure InitLevel8;
@@ -444,6 +458,8 @@ begin
   X := 75;
   Y := 5;
   Key := Chr(KeyDown);
+  EX := 5;
+  EY := 10;
 end; {InitLevel8}
 
 procedure InitLevel9;
@@ -467,6 +483,8 @@ begin
   X := 40;
   Y := 10;
   Key := Chr(KeyUp);
+  EX := 5;
+  EY := 10;
 end;
 
 procedure InitLevel(L: Integer);
@@ -882,6 +900,26 @@ begin
   PrepareLevel;
 end;
 
+procedure LevelComplete;
+begin
+  Lives := Lives + 1;
+  ItemNo := 1;
+  BlockX := 1;
+  BlockY := 1;
+  PrepareLevel;
+  LevelTransition;
+end;
+
+function IsPlayerCaught: Boolean;
+begin
+  IsPlayerCaught := (X = EX) and (Y = EY);
+end;
+
+function IsItemPickedUp: Boolean;
+begin
+  IsItemPickedUp := (ItemX = X) and (ItemY = Y);
+end;
+
 procedure DrawItem;
 begin
   if ItemNo = 1 then
@@ -1032,35 +1070,16 @@ begin
   MyCursorOff;
   Init;
 NewGame:
-  Level := 0;
-  ItemNo := 9;
+  Level := 1;
+  Score := 0;
   Lives := 10;
-NextItem:
+  ItemNo := 1;
+  BlockX := 1;
+  BlockY := 1;
+  PrepareLevel;
+  LevelTransition;
+StartLevel:
   EnemyTick := 0;
-  ItemNo := ItemNo + 1;
-  AwardPoints;
-  if ItemNo = 10 then
-    begin
-      ItemNo := 1;
-      Level := Level + 1;
-      BlockX := 1;
-      BlockY := 1;
-      if Level = 1 then
-        begin
-          Score := 0;
-        end;
-      EX := 5; {Enemy X}
-      EY := 10; {Enemy Y}
-      if Level = 10 then
-        begin
-          WinScreen;
-          goto PlayAgain;
-        end;
-      PrepareLevel;
-      if Level > 1 then Lives := Lives + 1;
-      DrawLives;
-      LevelTransition;
-    end; {if ItemNo = 10}
   RandomPos;
   repeat
     Delay(MoveDelay);
@@ -1070,15 +1089,27 @@ NextItem:
     if KeyCode = KeyF4 then goto NewGame;
     if KeyCode = KeyF5 then RemoveBlocks;
     EnemyMove;
-    if (X = EX) and (Y = EY) then
+    if IsPlayerCaught then
       begin
         PlayerCaught;
         if Lives = 0 then goto OnGameOver;
       end;
-    if (ItemX = X) and (ItemY = Y) then
+    if IsItemPickedUp then
       begin
         SoundPickup;
-        goto NextItem;
+        AwardPoints;
+        ItemNo := ItemNo + 1;
+        if ItemNo = 10 then
+          begin
+            Level := Level + 1;
+            if Level = 10 then
+              begin
+                WinScreen;
+                goto PlayAgain;
+              end;
+            LevelComplete;
+          end;
+        goto StartLevel;
       end;
   until KeyCode = KeyEscape;
 OnGameOver:
