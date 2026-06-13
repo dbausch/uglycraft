@@ -26,6 +26,18 @@ const
   KeyF5 = 63;
   HighScoreFileName = 'UGLI.HSC';
   License = 'Released under the terms of the GNU GPLv3';
+  { Foreground / background color roles }
+  WallFg    = Red;       { border and interior wall blocks █ }
+  PlayerFg  = Yellow;    { player smiley ☺ }
+  EnemyFg   = Brown;     { enemy smiley ☻ }
+  CounterFg = White;     { HUD counter text }
+  CounterBg = Red;       { background for all HUD counters }
+  FieldBg   = Black;     { playing field background }
+  KeyHelpFg = LightCyan; { key-help bar text }
+  HelpFg    = Magenta;   { help-screen and story-screen text }
+  SplashFg  = White;     { level-transition splash text }
+  DialogFg  = White;     { modal dialog text (AskPlayAgain, RemoveBlocks) }
+  WinFg     = LightRed;  { win-screen text (with Blink) }
 
 var
   BlocksRemaining, MoveDelay, Code, PausesRemaining, EnemyTick, KeyCode, I, J,
@@ -49,9 +61,11 @@ begin
   Write(TTY, #27'[?25l');
 end;
 
-procedure WriteXY(Col, Row: Integer; S: String);
+procedure Draw(Col, Row, Fg, Bg: Integer; S: String);
 var I, C, N: Integer; Ch: String;
 begin
+  TextColor(Fg);
+  TextBackground(Bg);
   Write(TTY, #27'[?7l'); { disable autowrap for the duration }
   C := Col;
   I := 1;
@@ -71,50 +85,46 @@ begin
       Inc(C);
     end;
   Write(TTY, #27'[?7h'); { re-enable autowrap }
-  Flush(TTY); { drain buffer before CRT sync — prevents a
-                deferred tty flush from displacing the cursor
-                between gotoxy(c,row) and the caller's write() }
+  Flush(TTY);
   GotoXY(1, 1);
   GotoXY(C, Row); { sync CRT's position tracker }
 end;
 
-procedure WriteLevel;
+procedure DrawLevel;
+const
+  Fg = CounterFg;
+  Bg = CounterBg;
 var S: String;
 begin
-  TextBackground(Red);
-  TextColor(15);
   Str(Level, S);
-  WriteXY(36, 1, 'LEVEL ' + S);
+  Draw(36, 1, Fg, Bg, 'LEVEL ' + S);
 end;
 
-procedure DrawHLine(X1, X2, Y: Integer; Ch: String);
+procedure DrawHLine(X1, X2, Y, Fg, Bg: Integer; Ch: String);
 var I: Integer;
 begin
   for I := X1 to X2 do
-    WriteXY(I, Y, Ch);
+    Draw(I, Y, Fg, Bg, Ch);
 end;
 
 procedure DrawInner;
-var
-  I, J: Integer;
-  C: String;
+const
+  Fg = WallFg;
+  Bg = FieldBg;
+var I, J: Integer;
 begin
-  TextColor(Red);
   for I := 2 to 79 do
-    begin
-      for J := 2 to 19 do
-        begin
-          if Blocked[I, J] then
-            C := '█'
-          else
-            C := ' ';
-          WriteXY(I, J, C);
-        end;
-    end;
+    for J := 2 to 19 do
+      if Blocked[I, J] then
+        Draw(I, J, Fg, Bg, '█')
+      else
+        Draw(I, J, Fg, Bg, ' ');
 end;
 
 procedure HighScoreEntry;
 begin
+  TextColor(LightBlue);
+  TextBackground(Black);
   ClrScr;
   WriteLn;
   WriteLn('VORNAME ');
@@ -123,7 +133,7 @@ begin
   WriteLn('NAME ');
   GotoXY(6, 3); ReadLn(LastName);
   MyCursorOff;
-  Str(Score * Lives, S); WriteXY(1, 4, 'Punkte ' + S);
+  Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, 'Punkte ' + S);
   Assign(F, HighScoreFileName);
   Append(F);
   if IOResult = 0
@@ -198,44 +208,44 @@ begin
 end;
 
 procedure DrawScore;
+const
+  Fg = CounterFg;
+  Bg = CounterBg;
 var S: String;
 begin
-  TextBackground(Red);
-  TextColor(15);
   Str(Score:5, S);
-  WriteXY(3, 1, 'PUNKTE ' + S);
-  TextBackground(0);
-end; {DrawScore}
+  Draw(3, 1, Fg, Bg, 'PUNKTE ' + S);
+end;
 
 procedure DrawLives;
+const
+  Fg = CounterFg;
+  Bg = CounterBg;
 var S: String;
 begin
-  TextBackground(LightRed);
-  TextColor(15);
   Str(Lives:2, S);
-  WriteXY(3, 20, 'LEBEN ' + S);
-  TextBackground(0);
-end; {DrawLives}
+  Draw(3, 20, Fg, Bg, 'LEBEN ' + S);
+end;
 
 procedure DrawPauses;
+const
+  Fg = CounterFg;
+  Bg = CounterBg;
 var S: String;
 begin
-  TextBackground(Red);
-  TextColor(15);
   Str(PausesRemaining:2, S);
-  WriteXY(70, 1, 'PAUSEN ' + S);
-  TextBackground(0);
-end; {DrawPauses}
+  Draw(70, 1, Fg, Bg, 'PAUSEN ' + S);
+end;
 
 procedure DrawBlocks;
+const
+  Fg = CounterFg;
+  Bg = CounterBg;
 var S: String;
 begin
-  TextBackground(LightRed);
-  TextColor(15);
   Str(BlocksRemaining:4, S);
-  WriteXY(68, 20, 'STEINE ' + S);
-  TextBackground(0);
-end; {DrawBlocks}
+  Draw(68, 20, Fg, Bg, 'STEINE ' + S);
+end;
 
 procedure AwardPoints;
 begin
@@ -533,43 +543,47 @@ begin
 end;
 
 procedure ShowHelp;
+const
+  Fg = HelpFg;
+  Bg = FieldBg;
 begin
   SaveX := X;
   SaveY := Y;
-  TextColor(13);
   ClrScr;
-  WriteXY(2, 1, '                  HILFE VON UGLI');
-  WriteXY(2, 2, '[p] = Pause (1 Pause Weniger)');
-  WriteXY(2, 3, 'Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben');
-  WriteXY(2, 4, '[Esc] = Abbruch');
-  WriteXY(2, 5, '[Ende] = Langsamer');
-  WriteXY(2, 6, '[Pos1] = Schneller');
-  WriteXY(2, 7, '[F4] = Neustart');
-  WriteXY(2, 8, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
-  WriteXY(2, 9, '[F2] = Die Geschichte von Ugli');
-  WriteXY(2, 10, '[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)');
-  WriteXY(2, 11, '[F5] = Alle gesetzten Blöcke wieder entfernen');
-  WriteXY(2, 12, '[F1] = Diese Hilfe');
-  WriteXY(2, 15, '                  T A S T E   D R Ü C K E N');
+  Draw(2, 1, Fg, Bg, '                  HILFE VON UGLI');
+  Draw(2, 2, Fg, Bg, '[p] = Pause (1 Pause Weniger)');
+  Draw(2, 3, Fg, Bg, 'Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben');
+  Draw(2, 4, Fg, Bg, '[Esc] = Abbruch');
+  Draw(2, 5, Fg, Bg, '[Ende] = Langsamer');
+  Draw(2, 6, Fg, Bg, '[Pos1] = Schneller');
+  Draw(2, 7, Fg, Bg, '[F4] = Neustart');
+  Draw(2, 8, Fg, Bg, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
+  Draw(2, 9, Fg, Bg, '[F2] = Die Geschichte von Ugli');
+  Draw(2, 10, Fg, Bg, '[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)');
+  Draw(2, 11, Fg, Bg, '[F5] = Alle gesetzten Blöcke wieder entfernen');
+  Draw(2, 12, Fg, Bg, '[F1] = Diese Hilfe');
+  Draw(2, 15, Fg, Bg, '                  T A S T E   D R Ü C K E N');
   Key := GetKey;
   X := SaveX;
   Y := SaveY;
 end;
 
 procedure LevelTransition;
+const
+  Fg = SplashFg;
+  Bg = FieldBg;
 var UserDir: Char;
 begin
   UserDir := #0;
   begin
-    TextColor(White);
     repeat
-      DrawHLine(27, 53, 8, '█');
-      WriteXY(27, 9, '█');
+      DrawHLine(27, 53, 8, Fg, Bg, '█');
+      Draw(27, 9, Fg, Bg, '█');
       Str(Level, S);
-      WriteXY(28, 9, ' L E V E L   ' + S + '           ');
-      WriteXY(53, 9, '█');
-      DrawHLine(27, 53, 10, '█');
-      WriteXY(27, 11, ' T A S T E   D R Ü C K E N ');
+      Draw(28, 9, Fg, Bg, ' L E V E L   ' + S + '           ');
+      Draw(53, 9, Fg, Bg, '█');
+      DrawHLine(27, 53, 10, Fg, Bg, '█');
+      Draw(27, 11, Fg, Bg, ' T A S T E   D R Ü C K E N ');
       Delay(1000);
     until KeyPressed;
     Key := GetKey;
@@ -583,6 +597,8 @@ end;
 
 
 procedure MoveDown(var X: Integer; var Y: Integer);
+const
+  Bg = FieldBg;
 var OldY: Integer;
 begin
   OldY := Y;
@@ -590,16 +606,16 @@ begin
   else Y := Y + 1;
   if Y <> OldY then
     begin
-      WriteXY(X, OldY, ' ');
-      TextColor(14);
-      WriteXY(X, Y, '☺');
+      Draw(X, OldY, Bg, Bg, ' ');
+      Draw(X, Y, PlayerFg, Bg, '☺');
     end;
   GotoXY(1, 1);
-  TextColor(4);
-  WriteXY(BlockX, BlockY, '█');
+  Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveDown}
 
 procedure MoveLeft(var X: Integer; var Y: Integer);
+const
+  Bg = FieldBg;
 var OldX: Integer;
 begin
   OldX := X;
@@ -607,16 +623,16 @@ begin
   else X := X - 1;
   if X <> OldX then
     begin
-      WriteXY(OldX, Y, ' ');
-      TextColor(14);
-      WriteXY(X, Y, '☺');
+      Draw(OldX, Y, Bg, Bg, ' ');
+      Draw(X, Y, PlayerFg, Bg, '☺');
     end;
   GotoXY(1, 1);
-  TextColor(4);
-  WriteXY(BlockX, BlockY, '█');
+  Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveLeft}
 
 procedure MoveRight(var X: Integer; var Y: Integer);
+const
+  Bg = FieldBg;
 var OldX: Integer;
 begin
   OldX := X;
@@ -624,16 +640,16 @@ begin
   else X := X + 1;
   if X <> OldX then
     begin
-      WriteXY(OldX, Y, ' ');
-      TextColor(14);
-      WriteXY(X, Y, '☺');
+      Draw(OldX, Y, Bg, Bg, ' ');
+      Draw(X, Y, PlayerFg, Bg, '☺');
     end;
   GotoXY(1, 1);
-  TextColor(4);
-  WriteXY(BlockX, BlockY, '█');
+  Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveRight}
 
 procedure MoveUp(var X: Integer; var Y: Integer);
+const
+  Bg = FieldBg;
 var OldY: Integer;
 begin
   OldY := Y;
@@ -641,40 +657,42 @@ begin
   else Y := Y - 1;
   if Y <> OldY then
     begin
-      WriteXY(X, OldY, ' ');
-      TextColor(14);
-      WriteXY(X, Y, '☺');
+      Draw(X, OldY, Bg, Bg, ' ');
+      Draw(X, Y, PlayerFg, Bg, '☺');
     end;
   GotoXY(1, 1);
-  TextColor(4);
-  WriteXY(BlockX, BlockY, '█');
+  Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveUp}
 
 procedure DrawKeys;
+const
+  Fg = KeyHelpFg;
+  Bg = FieldBg;
 begin
-  TextColor(11);
-  WriteXY(2, 21, '← = links  ↓ = unten  → = rechts  ↑ = oben');
-  DrawHLine(1, 80, 22, '─');
-  WriteXY(2, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart');
-  DrawHLine(1, 80, 24, '─');
-  WriteXY(2, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
+  Draw(2, 21, Fg, Bg, '← = links  ↓ = unten  → = rechts  ↑ = oben');
+  DrawHLine(1, 80, 22, Fg, Bg, '─');
+  Draw(2, 23, Fg, Bg, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart');
+  DrawHLine(1, 80, 24, Fg, Bg, '─');
+  Draw(2, 25, Fg, Bg, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
 end; {DrawKeys}
 
 procedure DrawBorder;
+const
+  Fg = WallFg;
+  Bg = FieldBg;
 var I: Integer;
 begin
-  TextColor(4);
   for I := 1 to FieldW do
     begin
-      WriteXY(I, 1, '█');
-      WriteXY(I, FieldH, '█');
+      Draw(I, 1, Fg, Bg, '█');
+      Draw(I, FieldH, Fg, Bg, '█');
       Blocked[I, 1] := true;
       Blocked[I, FieldH] := true;
     end;
   for I := 2 to FieldH - 1 do
     begin
-      WriteXY(1, I, '█');
-      WriteXY(FieldW, I, '█');
+      Draw(1, I, Fg, Bg, '█');
+      Draw(FieldW, I, Fg, Bg, '█');
       Blocked[1, I] := true;
       Blocked[FieldW, I] := true;
     end;
@@ -682,14 +700,14 @@ end; {DrawBorder}
 
 procedure Redraw;
 begin
+  TextBackground(FieldBg);
   ClrScr;
   DrawBorder;
-  WriteLevel;
+  DrawLevel;
   DrawScore;
   DrawLives;
   DrawPauses;
   DrawBlocks;
-  TextBackground(0);
   DrawKeys;
 end; {Redraw}
 
@@ -747,9 +765,8 @@ begin
           TryHoriz := not TryHoriz;
         end;
       if (EX <> OldEX) or (EY <> OldEY) then
-        WriteXY(OldEX, OldEY, ' ');
-      TextColor(6);
-      WriteXY(EX, EY, '☻');
+        Draw(OldEX, OldEY, FieldBg, FieldBg, ' ');
+      Draw(EX, EY, EnemyFg, FieldBg, '☻');
     end;
 end; {EnemyMove}
 
@@ -764,16 +781,18 @@ begin
 end;
 
 procedure ShowStory;
+const
+  Fg = HelpFg;
+  Bg = FieldBg;
 begin
-  TextColor(13);
   ClrScr;
-  WriteXY(1, 1, Center('Geschichte von UGLI'));
-  WriteXY(1, 3, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
-  WriteXY(1, 4, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
-  WriteXY(1, 5, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
-  WriteXY(1, 6, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
-  WriteXY(1, 7, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
-  WriteXY(1, 9, Center('T A S T E   D R Ü C K E N'));
+  Draw(1, 1, Fg, Bg, Center('Geschichte von UGLI'));
+  Draw(1, 3, Fg, Bg, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
+  Draw(1, 4, Fg, Bg, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
+  Draw(1, 5, Fg, Bg, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
+  Draw(1, 6, Fg, Bg, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
+  Draw(1, 7, Fg, Bg, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
+  Draw(1, 9, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
   Key := GetKey;
 end;
 
@@ -789,29 +808,24 @@ end;
 
 procedure GameOver;
 begin
-  WriteXY(EX, EY, ' ');
-  WriteXY(X, Y, ' ');
-  WriteXY(ItemX, ItemY, ' ');
-  DrawHLine(28, 49, 2, '█');
-  WriteXY(28, 3, '██ G A M E  O V E R ██');
-  DrawHLine(28, 49, 4, '█');
+  Draw(EX, EY, FieldBg, FieldBg, ' ');
+  Draw(X, Y, FieldBg, FieldBg, ' ');
+  Draw(ItemX, ItemY, FieldBg, FieldBg, ' ');
+  DrawHLine(28, 49, 2, SplashFg, FieldBg, '█');
+  Draw(28, 3, SplashFg, FieldBg, '██ G A M E  O V E R ██');
+  DrawHLine(28, 49, 4, SplashFg, FieldBg, '█');
   SoundGameOver;
 end;
 
 procedure WinScreen;
 begin
-  TextColor(12 + Blink);
-  DrawHLine(30, 56, 8, '█');
-  WriteXY(30, 9, '██    G E W O N N E N    ██');
-  DrawHLine(30, 56, 10, '█');
-  TextColor(4);
-  WriteXY(30, 11, ' T A S T E   D R Ü C K E N ');
+  DrawHLine(30, 56, 8, WinFg + Blink, FieldBg, '█');
+  Draw(30, 9, WinFg + Blink, FieldBg, '██    G E W O N N E N    ██');
+  DrawHLine(30, 56, 10, WinFg + Blink, FieldBg, '█');
+  Draw(30, 11, SplashFg, FieldBg, ' T A S T E   D R Ü C K E N ');
   Delay(1000);
   SoundWon;
-  TextBackground(Black);
-  TextColor(Random(255));
   TextAttr := Random(255);
-  TextBackground(1);
   ClrScr;
   while KeyPressed do Key := GetKey;
   Key := #0;
@@ -827,8 +841,6 @@ begin
       Delay(10);
     end;
   until Code > 0;
-  TextBackground(Black);
-  TextColor(9);
   HighScoreEntry;
   ClrScr;
 end;
@@ -838,8 +850,7 @@ begin
   Randomize;
   ShowIntro;
   ShowItemDescriptions;
-  TextBackground(0);
-  TextColor(4);
+  TextBackground(FieldBg);
   ClrScr;
   MoveDelay := 100;
   PausesRemaining := 20;
@@ -862,62 +873,26 @@ end;
 
 procedure DrawItem;
 begin
-  TextColor(2);
   if ItemNo = 1 then
-    begin
-      TextBackground(Black);
-      TextColor(Brown);
-      WriteXY(ItemX, ItemY, '|');
-    end;
+    Draw(ItemX, ItemY, Brown, FieldBg, '|');
   if ItemNo = 2 then
-    begin
-      TextBackground(Black);
-      TextColor(LightBlue);
-      WriteXY(ItemX, ItemY, '☼');
-    end;
+    Draw(ItemX, ItemY, LightBlue, FieldBg, '☼');
   if ItemNo = 3 then
-    begin
-      TextColor(LightRed);
-      TextBackground(Black);
-      WriteXY(ItemX, ItemY, ':');
-    end;
+    Draw(ItemX, ItemY, LightRed, FieldBg, ':');
   if ItemNo = 4 then
-    begin
-      TextBackground(Black);
-      TextColor(LightBlue);
-      WriteXY(ItemX, ItemY, '*');
-    end;
+    Draw(ItemX, ItemY, LightBlue, FieldBg, '*');
   if ItemNo = 5 then
-    begin
-      TextColor(Yellow);
-      WriteXY(ItemX, ItemY, '=');
-    end;
+    Draw(ItemX, ItemY, Yellow, FieldBg, '=');
   if ItemNo = 6 then
-    begin
-      TextColor(LightGray);
-      WriteXY(ItemX, ItemY, '≡');
-    end;
+    Draw(ItemX, ItemY, LightGray, FieldBg, '≡');
   if ItemNo = 7 then
-    begin
-      TextColor(Cyan);
-      WriteXY(ItemX, ItemY, 'Γ');
-    end;
+    Draw(ItemX, ItemY, Cyan, FieldBg, 'Γ');
   if ItemNo = 8 then
-    begin
-      TextColor(Yellow);
-      WriteXY(ItemX, ItemY, 'Φ');
-    end;
+    Draw(ItemX, ItemY, Yellow, FieldBg, 'Φ');
   if ItemNo = 9 then
-    begin
-      TextColor(LightGreen);
-      WriteXY(ItemX, ItemY, '♦');
-    end;
+    Draw(ItemX, ItemY, LightGreen, FieldBg, '♦');
   if (ItemNo = 9) and (Level = 9) then
-    begin
-      TextColor(Yellow);
-      WriteXY(ItemX, ItemY, '⌂');
-    end;
-  TextBackground(Black);
+    Draw(ItemX, ItemY, Yellow, FieldBg, '⌂');
 end;
 
 procedure RandomPos;
@@ -956,7 +931,6 @@ begin
           end;
         KeyF1:
           begin
-            TextColor(6);
             ShowHelp;
             Redraw;
             DrawInner;
@@ -978,8 +952,7 @@ begin
     KeyDown: MoveDown(X, Y);
   end; {case}
   if Laying then PlaceBlock;
-  TextColor(14);
-  WriteXY(X, Y, '☺');
+  Draw(X, Y, PlayerFg, FieldBg, '☺');
 end;
 
 procedure PlaceBlock;
@@ -988,8 +961,7 @@ begin
     Laying := false
   else if not Blocked[X, Y] then
     begin
-      TextColor(4);
-      WriteXY(X, Y, '█');
+      Draw(X, Y, WallFg, FieldBg, '█');
       Blocked[X, Y] := true;
       BlockX := X;
       BlockY := Y;
@@ -1001,13 +973,16 @@ begin
 end;
 
 procedure RemoveBlocks;
+const
+  Fg = DialogFg;
+  Bg = FieldBg;
 begin
-  WriteXY(3, 3, '╔═══════════════════════════════════╗');
-  WriteXY(3, 4, '║   S T E I N E  ═══  N E H M E N   ║');
-  WriteXY(3, 5, '╟───────────────────────────────────╢');
-  WriteXY(3, 6, '║Wirklich Alle Steine entfernen(J/N)║');
-  WriteXY(3, 7, '║                                   ║');
-  WriteXY(3, 8, '╚═══════════════════════════════════╝');
+  Draw(3, 3, Fg, Bg, '╔═══════════════════════════════════╗');
+  Draw(3, 4, Fg, Bg, '║   S T E I N E  ═══  N E H M E N   ║');
+  Draw(3, 5, Fg, Bg, '╟───────────────────────────────────╢');
+  Draw(3, 6, Fg, Bg, '║Wirklich Alle Steine entfernen(J/N)║');
+  Draw(3, 7, Fg, Bg, '║                                   ║');
+  Draw(3, 8, Fg, Bg, '╚═══════════════════════════════════╝');
   GotoXY(7, 7);
   Key := UpCase(GetKey);
   if (Key = 'J') and (Score >= 20) then
@@ -1026,12 +1001,15 @@ begin
 end;
 
 function AskPlayAgain: Boolean;
+const
+  Fg = DialogFg;
+  Bg = FieldBg;
 var Answer: Char;
 begin
-  DrawHLine(25, 51, 8, '█');
-  WriteXY(25, 9, '██ NOCHMAL SPIELEN (J/N) ██');
-  WriteXY(25, 10, '██                       ██');
-  DrawHLine(25, 51, 11, '█');
+  DrawHLine(25, 51, 8, Fg, Bg, '█');
+  Draw(25, 9, Fg, Bg, '██ NOCHMAL SPIELEN (J/N) ██');
+  Draw(25, 10, Fg, Bg, '██                       ██');
+  DrawHLine(25, 51, 11, Fg, Bg, '█');
   GotoXY(30, 10);
   repeat
     Answer := UpCase(GetKey);
@@ -1078,7 +1056,6 @@ NextItem:
   repeat
     Delay(MoveDelay);
     DrawItem;
-    TextColor(4);
     HandleInput;
     if KeyCode = KeyEscape then goto CleanUp;
     if KeyCode = KeyF4 then goto NewGame;
