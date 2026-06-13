@@ -1,4 +1,3 @@
-
 program UGLI_2;
 
 uses CThreads, Crt, Dos, DANISOFT, UOSSound;
@@ -8,7 +7,7 @@ const
   User = 'Public Domain';
   Vers = '2.1';
   Nr = '0042';
-  MaxX = 80;
+  MaXX = 80;
   MaxY = 20;
   CurR = 77;
   CurL = 75;
@@ -25,27 +24,27 @@ var
   Steine, Langs, OP, Pausen, Timeslot, TI, I, J, Zahl, Level, Leben,
   VX, VY, SX, SY, LocX, LocY, DX, DY, X, Y, XX, YY, EscState: Integer;
   Punkte: LongInt;
-  Sper: array[1..MaxX, 1..MaxY] of Boolean;
+  Sper: array[1..MaXX, 1..MaxY] of Boolean;
   T: Char;
-  F, Tty: Text;
+  F, TTY: Text;
   IZ, A, S: String;
   Zeile: String[80];
   Schutz: Boolean;
 
 procedure MyCursorOn;
 begin
-  Write(Tty, #27'[?25h');
+  Write(TTY, #27'[?25h');
 end;
+
 procedure MyCursorOff;
 begin
-  Write(Tty, #27'[?25l');
+  Write(TTY, #27'[?25l');
 end;
 
 procedure WriteXY(Col, Row: Integer; S: String);
 var I, C, N: Integer; Ch: String;
 begin
-
-  Write(Tty, #27'[?7l'); { disable autowrap for the duration }
+  Write(TTY, #27'[?7l'); { disable autowrap for the duration }
   C := Col;
   I := 1;
   while I <= Length(S) do
@@ -57,14 +56,14 @@ begin
       if N >= 1 then Ch[1] := S[I];
       if N >= 2 then Ch[2] := S[I + 1];
       if N >= 3 then Ch[3] := S[I + 2];
-      Write(Tty, #27'[1;1H'); { poison }
-      Write(Tty, #27'[', Row, ';', C, 'H'); { real position }
-      Write(Tty, Ch);
+      Write(TTY, #27'[1;1H'); { poison }
+      Write(TTY, #27'[', Row, ';', C, 'H'); { real position }
+      Write(TTY, Ch);
       Inc(I, N);
       Inc(C);
     end;
-  Write(Tty, #27'[?7h'); { re-enable autowrap }
-  Flush(Tty); { drain buffer before CRT sync — prevents a
+  Write(TTY, #27'[?7h'); { re-enable autowrap }
+  Flush(TTY); { drain buffer before CRT sync — prevents a
                              deferred tty flush from displacing the cursor
                              between gotoxy(c,row) and the caller's write() }
   GotoXY(1, 1);
@@ -130,7 +129,6 @@ begin
     end
   else
     begin
-
       ReWrite(F);
       if IOResult <> 0 then
         begin
@@ -142,7 +140,6 @@ begin
           Close(F);
           WriteLn;
         end;
-
     end;
   ReadLn;
   ClrScr;
@@ -162,7 +159,6 @@ begin
     end
   else
     begin
-
       ReWrite(F);
       if IOResult <> 0 then
         begin
@@ -177,12 +173,10 @@ begin
             end;
           Close(F);
         end;
-
     end;
   GotoXY(1, 25);
   Write('Bitte [Return] -Taste drücken..');
   ReadLn;
-
 end;
 
 procedure Cls;
@@ -193,15 +187,15 @@ end;
 procedure Verwirrung;
 begin
   Erkennung(
-  '                  **        **    **********   **           **                 ',
-  '                  **        **   **        **  **           **                 ',
-  '                  **        **   **        **  **           **                 ',
-  '                  **        **   **            **           **                 ',
-  '                  **        **   **     *****  **           **                 ',
-  '                  **        **   **        **  **           **                 ',
-  '                  **        **   **        **  **           **                 ',
-  '                   **********     **********   **********   **                 ',
-  Vers, Nr, User, Copy);
+    '                  **        **    **********   **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                  **        **   **            **           **                 ',
+    '                  **        **   **     *****  **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                   **********     **********   **********   **                 ',
+    Vers, Nr, User, Copy);
 end;
 
 procedure PunkteZaehlen;
@@ -219,7 +213,6 @@ begin
   TextColor(15);
   WriteXY(3, 1, 'PUNKTE '); Write(Punkte);
   TextBackground(0);
-
 end;
 
 procedure InitL1;
@@ -496,23 +489,19 @@ begin
   Raw := ReadKey;
   if Raw = #0then
     begin
-
       EscState := 0;
       if KeyPressed then Raw := ReadKey else Raw := #0;
     end
   else if (EscState = 2) and (Raw = #27) then
     begin
-
       EscState := 0; Raw := Chr(Lans);
     end
   else if (EscState = 1) and (Raw = '[') then
     begin
-
       EscState := 2; Raw := #0;
     end
   else
     begin
-
       EscState := 0;
       if Raw = 'F' then
         begin
@@ -574,87 +563,87 @@ end;
 procedure Brumm;
 begin
   SoundBrumm;
-end; {brumm}
+end; {Brumm}
 
 procedure Unten(var X: Integer; var Y: Integer);
-var Oldy: Integer;
+var OldY: Integer;
 begin
-  Oldy := Y;
+  OldY := Y;
   if Sper[X, Y + 1] then Brumm
   else Y := Y + 1;
-  if Y <> Oldy then
+  if Y <> OldY then
     begin
-      WriteXY(X, Oldy, ' ');
+      WriteXY(X, OldY, ' ');
       TextColor(14);
       WriteXY(X, Y, '☺');
     end;
   GotoXY(1, 1);
   TextColor(4);
   WriteXY(SX, SY, '█');
-end; {unten}
+end; {Unten}
 
 procedure Links(var X: Integer; var Y: Integer);
-var Oldx: Integer;
+var OldX: Integer;
 begin
-  Oldx := X;
+  OldX := X;
   if Sper[X - 1, Y] then Brumm
   else X := X - 1;
-  if X <> Oldx then
+  if X <> OldX then
     begin
-      WriteXY(Oldx, Y, ' ');
+      WriteXY(OldX, Y, ' ');
       TextColor(14);
       WriteXY(X, Y, '☺');
     end;
   GotoXY(1, 1);
   TextColor(4);
   WriteXY(SX, SY, '█');
-end; {links}
+end; {Links}
 
 procedure Rechts(var X: Integer; var Y: Integer);
-var Oldx: Integer;
+var OldX: Integer;
 begin
-  Oldx := X;
+  OldX := X;
   if Sper[X + 1, Y] then Brumm
   else X := X + 1;
-  if X <> Oldx then
+  if X <> OldX then
     begin
-      WriteXY(Oldx, Y, ' ');
+      WriteXY(OldX, Y, ' ');
       TextColor(14);
       WriteXY(X, Y, '☺');
     end;
   GotoXY(1, 1);
   TextColor(4);
   WriteXY(SX, SY, '█');
-end; {rechts}
+end; {Rechts}
 
 procedure Oben(var X: Integer; var Y: Integer);
-var Oldy: Integer;
+var OldY: Integer;
 begin
-  Oldy := Y;
+  OldY := Y;
   if Sper[X, Y - 1] then Brumm
   else Y := Y - 1;
-  if Y <> Oldy then
+  if Y <> OldY then
     begin
-      WriteXY(X, Oldy, ' ');
+      WriteXY(X, OldY, ' ');
       TextColor(14);
       WriteXY(X, Y, '☺');
     end;
   GotoXY(1, 1);
   TextColor(4);
   WriteXY(SX, SY, '█');
-end; {oben}
+end; {Oben}
 
 procedure Rahmen;
 var I, J: Integer;
 begin
   TextColor(4);
-  for I := 1 to MaxX do
+  for I := 1 to MaXX do
     begin
       for J := 1 to MaxY do
         begin
           Sper[I, J] := false;
-        end; {FOR J}
-    end; {FOR I}
+        end; {for J}
+    end; {for I}
 
   ClrScr;
   for I := 1 to 80 do
@@ -665,7 +654,7 @@ begin
       WriteXY(I, 20, '█');
       Sper[I, 1] := true;
       Sper[I, 20] := true;
-    end; {FOR}
+    end; {for}
   for I := 2 to 19 do
     begin
       TextColor(4);
@@ -674,7 +663,7 @@ begin
       WriteXY(80, I, '█');
       Sper[1, I] := true;
       Sper[80, I] := true;
-    end; {FOR}
+    end; {for}
   WriteLevel;
   TextBackground(0);
   InitL(Level);
@@ -685,24 +674,24 @@ begin
   WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
   DrawHLine(1, 80, 24, '─');
   WriteXY(1, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
-end; {rahmen}
+end; {Rahmen}
 
 procedure UGLI2;
 var
-  Oldxx, Oldyy: Integer;
-  Tryx: Boolean;
+  OldXX, OldYY: Integer;
+  TryX: Boolean;
   Tryn: Integer;
 begin
   if Timeslot = 0 then
     begin
-      Oldxx := XX;
-      Oldyy := YY;
+      OldXX := XX;
+      OldYY := YY;
       DX := X - XX;
       DY := Y - YY;
-      Tryx := Abs(DX) > Abs(DY);
+      TryX := Abs(DX) > Abs(DY);
       for Tryn := 1 to 2 do
         begin
-          if Tryx then
+          if TryX then
             begin
               if (DX > 0) and (Sper[XX + 1, YY] = false) then
                 begin
@@ -728,14 +717,14 @@ begin
                   break;
                 end;
             end;
-          Tryx := not Tryx;
+          TryX := not TryX;
         end;
-      if (XX <> Oldxx) or (YY <> Oldyy) then
-        WriteXY(Oldxx, Oldyy, ' ');
+      if (XX <> OldXX) or (YY <> OldYY) then
+        WriteXY(OldXX, OldYY, ' ');
       TextColor(6);
       WriteXY(XX, YY, '☻');
     end;
-end; {ugli2}
+end; {UGLI2}
 
 procedure Untbr;
 label 200;
@@ -1067,7 +1056,6 @@ begin
     end;
   TextColor(14);
   WriteXY(X, Y, '☺');
-
 end;
 
 procedure SteineSetzen;
@@ -1140,7 +1128,7 @@ begin
       WriteXY(I, 20, '█');
       Sper[I, 1] := true;
       Sper[I, 20] := true;
-    end; {FOR}
+    end; {for}
   for I := 2 to 19 do
     begin
       TextColor(4);
@@ -1149,7 +1137,7 @@ begin
       WriteXY(80, I, '█');
       Sper[1, I] := true;
       Sper[80, I] := true;
-    end; {FOR}
+    end; {for}
   WriteLevel;
   TextBackground(0);
   ReStone;
@@ -1159,8 +1147,8 @@ begin
 end;
 
 begin
-  Assign(Tty, '/dev/tty');
-  ReWrite(Tty);
+  Assign(TTY, '/dev/tty');
+  ReWrite(TTY);
   MyCursorOff;
   repeat
 1:
@@ -1197,7 +1185,7 @@ begin
         TextBackground(Red); TextColor(15);
         Str(Punkte, S); WriteXY(3, 1, 'PUNKTE ' + S);
         TextBackground(0);
-      end; {if zahl = 10}
+      end; {if Zahl = 10}
 
     ZufalsPos;
 
@@ -1221,7 +1209,6 @@ begin
       TextBackground(0);
       if Leben = 0 then
         begin
-
           goto 998;
         end;
 
@@ -1232,7 +1219,6 @@ begin
         end;
     until TI = 27;
 998:
-
     GameOver;
 997:
     DrawHLine(25, 51, 8, '█');
@@ -1247,13 +1233,12 @@ begin
         'N': goto 999;
       end;
     until I = 3000;
-
   until TI = 27;
 
 999:
   Cls;
-  Write(Tty, #27'[0m'); Flush(Tty); { reset all attributes before exit }
+  Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
   MyCursorOn;
-  Close(Tty);
+  Close(TTY);
 end.
 

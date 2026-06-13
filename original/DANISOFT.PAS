@@ -31,21 +31,21 @@ begin
 end;
 
 procedure Erkennung(S1, S2, S3, S4, S5, S6, S7, S8: String; Ver: String;
-                    Nr, User, Copyjahr: String);
+  Nr, User, Copyjahr: String);
 var I: Integer;
-  Tty: Text;
+  TTY: Text;
 
 procedure WLn(S: String);
 begin
   if S = '' then Write(' ') else Write(S); { at least one char forces FPC to emit SGR }
-  Write(Tty, #27'[K'); Flush(Tty);
+  Write(TTY, #27'[K'); Flush(TTY);
   WriteLn;
-  Write(Tty, #27'[K'); Flush(Tty);
+  Write(TTY, #27'[K'); Flush(TTY);
 end;
 
 begin
-  Assign(Tty, '/dev/tty');
-  ReWrite(Tty);
+  Assign(TTY, '/dev/tty');
+  ReWrite(TTY);
   Write(#27'[1;25r'); { confine scrolling to rows 1-25 }
   for I := 0 to 7 do
     begin
@@ -133,7 +133,6 @@ begin
     end;
   TextColor(Black);
   Write(#27'[r'); { reset scroll region to full screen }
-  Close(Tty);
+  Close(TTY);
 end;
-
 end.
