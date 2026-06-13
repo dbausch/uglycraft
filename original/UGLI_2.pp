@@ -41,13 +41,17 @@ const
   YesKey    : set of Byte = [Ord('J'), Ord('j')];
   NoKey     : set of Byte = [Ord('N'), Ord('n')];
 
+type
+  TDirection = (DirRight, DirLeft, DirDown, DirUp);
+
 var
   BlocksRemaining, MoveDelay, PausesRemaining, EnemyTick, KeyCode, I, J,
   ItemNo, Level, Lives, SaveX, SaveY, BlockX, BlockY, ItemX, ItemY, DX, DY, X,
   Y, EX, EY, EscState: Integer;
   Score: LongInt;
   Blocked: array[1..FieldW, 1..FieldH] of Boolean;
-  Key, Direction: Char;
+  Key: Char;
+  Direction: TDirection;
   Laying: Boolean;
   F, TTY: Text;
   FirstName, LastName, S: String;
@@ -429,7 +433,7 @@ procedure InitLevel1;
 begin
   X := 40;
   Y := 10;
-  Key := Chr(KeyRight);
+  Direction := DirRight;
   EX := 5;
   EY := 10;
 end; {InitLevel1}
@@ -444,7 +448,7 @@ begin
     end;
   X := 40;
   Y := 5;
-  Key := Chr(KeyRight);
+  Direction := DirRight;
   EX := 5;
   EY := 10;
 end; {InitLevel2}
@@ -467,7 +471,7 @@ begin
   Blocked[41, 10] := false;
   X := 40;
   Y := 9;
-  Key := Chr(KeyUp);
+  Direction := DirUp;
   EX := 5;
   EY := 10;
 end; {InitLevel3}
@@ -493,7 +497,7 @@ begin
   Blocked[41, 10] := false;
   X := 40;
   Y := 9;
-  Key := Chr(KeyRight);
+  Direction := DirRight;
   EX := 5;
   EY := 10;
 end; {InitLevel4}
@@ -518,7 +522,7 @@ begin
     end;
   X := 40;
   Y := 10;
-  Key := Chr(KeyUp);
+  Direction := DirUp;
   EX := 5;
   EY := 10;
 end; {InitLevel5}
@@ -569,7 +573,7 @@ begin
   Blocked[42, 10] := false;
   X := 75;
   Y := 5;
-  Key := Chr(KeyDown);
+  Direction := DirDown;
   EX := 5;
   EY := 10;
 end; {InitLevel6}
@@ -605,7 +609,7 @@ begin
     Blocked[I, 10] := false;
   X := 75;
   Y := 10;
-  Key := Chr(KeyRight);
+  Direction := DirRight;
   EX := 5;
   EY := 10;
 end; {InitLevel7}
@@ -629,7 +633,7 @@ begin
     end;
   X := 75;
   Y := 5;
-  Key := Chr(KeyDown);
+  Direction := DirDown;
   EX := 5;
   EY := 10;
 end; {InitLevel8}
@@ -654,7 +658,7 @@ begin
     Blocked[I, 15] := true;
   X := 40;
   Y := 10;
-  Key := Chr(KeyUp);
+  Direction := DirUp;
   EX := 5;
   EY := 10;
 end;
@@ -672,7 +676,6 @@ begin
     8: InitLevel8;
     9: InitLevel9;
   end; {case}
-  Direction := Key;
 end; {InitLevel}
 
 procedure PrepareLevel;
@@ -919,12 +922,32 @@ begin
   DrawInner;
 end;
 
+function KeyToDir(Code: Integer): TDirection;
+begin
+  case Code of
+    KeyRight: KeyToDir := DirRight;
+    KeyLeft:  KeyToDir := DirLeft;
+    KeyUp:    KeyToDir := DirUp;
+    KeyDown:  KeyToDir := DirDown;
+  end;
+end;
+
+procedure MovePlayer;
+begin
+  case Direction of
+    DirRight: MoveRight(X, Y);
+    DirLeft:  MoveLeft(X, Y);
+    DirUp:    MoveUp(X, Y);
+    DirDown:  MoveDown(X, Y);
+  end;
+end;
+
 procedure LevelTransition;
 begin
   Str(Level, S);
   KeyCode := Dialog('L E V E L   ' + S, 'T A S T E   D R Ü C K E N');
   if KeyCode in [KeyRight, KeyLeft, KeyUp, KeyDown] then
-    Direction := Chr(KeyCode);
+    Direction := KeyToDir(KeyCode);
   Delay(1000);
 end;
 
@@ -936,7 +959,7 @@ begin
       Key := GetKey;
       KeyCode := Ord(Key);
       case KeyCode of
-        KeyRight, KeyLeft, KeyUp, KeyDown: Direction := Key;
+        KeyRight, KeyLeft, KeyUp, KeyDown: Direction := KeyToDir(KeyCode);
         KeyPause: DoPause;
         KeySlower: SlowDown;
         KeyFaster: SpeedUp;
@@ -965,12 +988,7 @@ begin
     end;
   EnemyTick := (EnemyTick + 1) mod 2;
   GotoXY(1, 1);
-  case Ord(Direction) of
-    KeyRight: MoveRight(X, Y);
-    KeyLeft: MoveLeft(X, Y);
-    KeyUp: MoveUp(X, Y);
-    KeyDown: MoveDown(X, Y);
-  end; {case}
+  MovePlayer;
   if Laying then PlaceBlock;
   Draw(X, Y, PlayerFg, FieldBg, '☺');
 end;
@@ -1153,7 +1171,7 @@ begin
 end;
 
 procedure RemoveBlocks;
-var Code: Integer; SaveDir: Char;
+var Code: Integer; SaveDir: TDirection;
 begin
   repeat
     Code := Dialog('B L Ö C K E   E N T F E R N E N', 'J / N');
