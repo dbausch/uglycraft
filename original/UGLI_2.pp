@@ -561,6 +561,7 @@ var UserDir: Char;
 begin
   UserDir := #0;
   begin
+    TextColor(White);
     repeat
       DrawHLine(27, 53, 8, '█');
       WriteXY(27, 9, '█');
