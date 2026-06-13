@@ -849,7 +849,6 @@ end;
 
 procedure PlayerCaught;
 begin
-  DrawFrame;
   SoundCaught;
   Score := Score - ItemNo * 1000;
   if Score < 0 then Score := 0;
@@ -857,6 +856,8 @@ begin
   Lives := Lives - 1;
   BlockX := 1;
   BlockY := 1;
+  DrawFrame;
+  DrawInner;
 end;
 
 procedure DrawItem;
@@ -1084,10 +1085,7 @@ NextItem:
     if KeyCode = KeyF5 then RemoveBlocks;
     EnemyMove;
     if (X = EX) and (Y = EY) then
-      begin
-        PlayerCaught; DrawInner;
-      end;
-    DrawLives;
+      PlayerCaught;
     if Lives = 0 then
       begin
         goto OnGameOver;
