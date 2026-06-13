@@ -201,6 +201,16 @@ begin
   TextBackground(0);
 end; {DrawScore}
 
+procedure DrawLives;
+var S: String;
+begin
+  TextBackground(LightRed);
+  TextColor(15);
+  Str(Lives, S);
+  WriteXY(3, 20, 'LEBEN ' + S);
+  TextBackground(0);
+end; {DrawLives}
+
 procedure AwardPoints;
 begin
   if ItemNo = 2 then Score := Score + 100;
@@ -667,6 +677,7 @@ begin
     end; {for}
   WriteLevel;
   DrawScore;
+  DrawLives;
   TextBackground(0);
   InitLevel(Level);
   DrawKeys;
@@ -1190,10 +1201,7 @@ begin
         begin
           PlayerCaught; DrawInner;
         end;
-      TextBackground(LightRed);
-      TextColor(15);
-      Str(Lives, S); WriteXY(3, 20, 'LEBEN ' + S);
-      TextBackground(0);
+      DrawLives;
       if Lives = 0 then
         begin
           goto 998;
