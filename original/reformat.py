@@ -4,7 +4,7 @@
 Usage: python reformat.py input.pas [output.pas]
 Overwrites input.pas in-place (saves .bak) if output not given.
 """
-import re, sys, shutil
+import re, sys, shutil, tomllib
 from pathlib import Path
 
 # ── Casing tables ─────────────────────────────────────────────────────────────
@@ -74,106 +74,12 @@ UNIT_NAMES = {
 }
 
 # ── Renames: old-lowercase → new-cased name ───────────────────────────────────
+# Loaded from renames.toml (same directory as this script).
 # Checked first in case(), overrides every other table.
 
-RENAMES = {
-    # Global constants
-    'vers':     'Version',
-    'nr':       'Release',
-    'maxx':     'FieldW',
-    'maxy':     'FieldH',
-    'curr':     'KeyRight',
-    'curl':     'KeyLeft',
-    'curo':     'KeyUp',
-    'curu':     'KeyDown',
-    'unbr':     'KeyPause',
-    'lans':     'KeySlower',
-    'kauf':     'KeyBuy',
-    'sped':     'KeyFaster',
-    'name':     'HighScoreFileName',
-    'copy':     'License',
-    # Global variables
-    'steine':   'BlocksRemaining',
-    'langs':    'MoveDelay',
-    'op':       'Code',
-    'pausen':   'PausesRemaining',
-    'timeslot': 'EnemyTick',
-    'ti':       'KeyCode',
-    'zahl':     'ItemNo',
-    'leben':    'Lives',
-    'vx':       'SaveX',
-    'vy':       'SaveY',
-    'sx':       'BlockX',
-    'sy':       'BlockY',
-    'locx':     'ItemX',
-    'locy':     'ItemY',
-    'xx':       'EX',
-    'yy':       'EY',
-    'punkte':   'Score',
-    'sper':     'Blocked',
-    't':        'Key',
-    'iz':       'FirstName',
-    'a':        'LastName',
-    'zeile':    'Line',
-    'schutz':   'Shield',
-    # Procedures and functions
-    'cls':              'ClrScr',        # inlined — see post-processing below
-    'restone':          'DrawInner',
-    'abfrage':          'HighScoreEntry',
-    'verwirrung':       'ShowIntro',
-    'punktezaehlen':    'AwardPoints',
-    'initl1': 'InitLevel1', 'initl2': 'InitLevel2', 'initl3': 'InitLevel3',
-    'initl4': 'InitLevel4', 'initl5': 'InitLevel5', 'initl6': 'InitLevel6',
-    'initl7': 'InitLevel7', 'initl8': 'InitLevel8', 'initl9': 'InitLevel9',
-    'initl':            'InitLevel',
-    'wertsachen':       'ShowItemDescriptions',
-    'hilfe':            'ShowHelp',
-    'levelneu':         'LevelTransition',
-    'brumm':            'BumpSound',
-    'unten':            'MoveDown',
-    'links':            'MoveLeft',
-    'rechts':           'MoveRight',
-    'oben':             'MoveUp',
-    'rahmen':           'DrawFrame',
-    'ugli2':            'EnemyMove',
-    'untbr':            'DoPause',
-    'geschichte':       'ShowStory',
-    'langsam':          'SlowDown',
-    'schnell':          'SpeedUp',
-    'pausenzeigen':     'ShowPauses',
-    'gewonnen':         'WinScreen',
-    'def':              'Init',
-    'fressen':          'PlayerCaught',
-    'zahlensetzung':    'DrawItem',
-    'zufalspos':        'RandomPos',
-    'geheimtricks':     'CheatScreen',
-    'kaufen':           'ShopMenu',
-    'taste':            'HandleInput',
-    'steinesetzen':     'PlaceBlock',
-    'steinenehmen':     'RemoveBlocks',
-    # Local variables
-    'oldxx':    'OldEX',
-    'oldyy':    'OldEY',
-    'oldx':     'OldX',
-    'oldy':     'OldY',
-    'tryx':     'TryHoriz',
-    'tryn':     'Attempt',
-    # New names that were mis-cased by the first reformatter pass (x/y suffix rule
-    # fired before it was removed); pinned here so subsequent runs fix them.
-    'key':              'Key',
-    'movedelay':        'MoveDelay',
-    'highscoreentry':   'HighScoreEntry',
-    # DANISOFT.PAS
-    'zentriert':    'Center',
-    'erkennung':    'Intro',
-    'erkennung2':   'Intro2',
-    's1': 'Logo1', 's2': 'Logo2', 's3': 'Logo3', 's4': 'Logo4',
-    's5': 'Logo5', 's6': 'Logo6', 's7': 'Logo7', 's8': 'Logo8',
-    'ver':      'Version',
-    'copyjahr': 'CopyYear',
-    'laenge':   'Cols',
-    'blankzone':'Padding',
-}
+_RENAMES_FILE = Path(__file__).parent / 'renames.toml'
+with _RENAMES_FILE.open('rb') as _f:
+    RENAMES: dict[str, str] = tomllib.load(_f)['renames']
 
 # ── Compound identifier abbreviation suffix rule ───────────────────────────────
 # After PascalCase, identifiers whose tail matches one of these are uppercased.

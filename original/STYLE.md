@@ -62,10 +62,11 @@ Sound routines: `Ton`, `Sound`, `NoSound`, `SoundBrumm`, `SoundPickup`,
 
 Splash screen: `Erkennung`, `Erkennung2`, `UTF8Cols`, `Zentriert`, `WLn`.
 
-### User-defined identifiers → PascalCase
+### User-defined identifiers → English, PascalCase
 
-First letter uppercase, rest unchanged: `Steine`, `Punkte`, `EscState`,
-`Timeslot`, `Schutz`, `Level`, `Leben`, `Rahmen`, `Abfrage`, etc.
+All user-defined identifiers must be English.
+First letter uppercase, rest unchanged: `BlocksRemaining`, `Score`, `EscState`,
+`EnemyTick`, `Shield`, `Level`, `Lives`, `DrawFrame`, `HighScoreEntry`, etc.
 
 **Exception — two-letter abbreviations → ALL CAPS:**
 `VX`, `VY`, `SX`, `SY`, `DX`, `DY`, `XX`, `YY`, `TI`, `OP`, `IZ`, `TTY`.
