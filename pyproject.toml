@@ -81,8 +81,9 @@ help  = "Push the FPC Linux port of UGLI 2 to itch.io"
 shell = """
   mkdir -p dist/original-linux
   cp original/UGLI_2 dist/original-linux/
+  VERSION=$(grep -oP "(?<=Version = ')[^']+" original/UGLI_2.pp)
   butler push dist/original-linux dbausch/uglycraft:original-linux \
-    --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')
+    --userversion "$VERSION"
 """
 
 [tool.poe.tasks.deploy-original-dos]
@@ -91,7 +92,7 @@ shell = """
   mkdir -p dist/original-dos
   cp original/UGLI_2.EXE dist/original-dos/
   butler push dist/original-dos dbausch/uglycraft:original-dos \
-    --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')
+    --userversion 2.0
 """
 
 [tool.poe.tasks.deploy-uglycraft]
