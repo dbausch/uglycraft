@@ -16,7 +16,6 @@ const
   KeyUp = 72;
   KeyPause = 112;
   KeySlower = 79;
-  KeyBuY = 32;
   KeyFaster = 71;
   HighScoreFileName = 'UGLI.HSC';
   License = 'Released under the terms of the GNU GPLv3';
@@ -27,11 +26,10 @@ var
   Y, EX, EY, EscState: Integer;
   Score: LongInt;
   Blocked: array[1..FieldW, 1..FieldH] of Boolean;
-  Key: Char;
+  Key, Direction: Char;
   F, TTY: Text;
   FirstName, LastName, S: String;
   Line: String[80];
-  Shield: Boolean;
 
 procedure MyCursorOn;
 begin
@@ -210,6 +208,16 @@ begin
   WriteXY(3, 20, 'LEBEN ' + S);
   TextBackground(0);
 end; {DrawLives}
+
+procedure DrawPauses;
+var S: String;
+begin
+  TextBackground(Red);
+  TextColor(15);
+  Str(PausesRemaining, S);
+  WriteXY(65, 1, 'PAUSEN ' + S);
+  TextBackground(0);
+end; {DrawPauses}
 
 procedure AwardPoints;
 begin
@@ -454,6 +462,7 @@ begin
     8: InitLevel8;
     9: InitLevel9;
   end; {case}
+  Direction := Key;
   DrawInner;
 end; {InitLevel}
 
@@ -526,7 +535,7 @@ begin
   WriteXY(2, 5, '[Ende] = Langsamer');
   WriteXY(2, 6, '[Pos1] = Schneller');
   WriteXY(2, 7, '[F4] = Neustart');
-  WriteXY(2, 8, '[F3] = Anzeige der noch vorhandenen Pausen (oben-links)');
+  WriteXY(2, 8, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
   WriteXY(2, 9, '[F2] = Die Geschichte von Ugli');
   WriteXY(2, 10, '[s] = Setzt an der Posision von dir einen Block (danach Richtungstaste drücken)');
   WriteXY(2, 11, '[n] = alle gesetzeten Blöcke wieder entfernen');
@@ -640,7 +649,7 @@ begin
   TextColor(11);
   WriteXY(1, 21, '◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
   DrawHLine(1, 80, 22, '─');
-  WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
+  WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen (5000)  <F4> = Neustart');
   DrawHLine(1, 80, 24, '─');
   WriteXY(1, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
 end; {DrawKeys}
@@ -678,6 +687,7 @@ begin
   WriteLevel;
   DrawScore;
   DrawLives;
+  DrawPauses;
   TextBackground(0);
   InitLevel(Level);
   DrawKeys;
@@ -734,12 +744,13 @@ begin
 end; {EnemyMove}
 
 procedure DoPause;
-label 200;
 begin
-  if PausesRemaining = 0 then goto 200;
-  PausesRemaining := PausesRemaining - 1;
-  Delay(5000);
-200:
+  if PausesRemaining > 0 then
+    begin
+      PausesRemaining := PausesRemaining - 1;
+      DrawPauses;
+      Delay(5000);
+    end;
 end;
 
 procedure ShowStory;
@@ -758,50 +769,12 @@ end;
 
 procedure SlowDown;
 begin
-  Delay(50);
   MoveDelay := MoveDelay + 1;
-  WriteXY(3, 5, '        T A S T E   D R Ü C K E N');
-  Key := GetKey;
-  WriteXY(3, 5, '                                   ');
-  SaveX := X;
-  SaveY := Y;
-  TextColor(Red);
-  for J := 1 to 80 do
-    begin
-      if Blocked[J, 5] = true then WriteXY(J, 5, '█') else WriteXY(J, 5, ' ');
-    end;
-  X := SaveX;
-  Y := SaveY;
 end;
 
 procedure SpeedUp;
 begin
-  Delay(50);
-  if MoveDelay > 0 then
-    begin
-      MoveDelay := MoveDelay - 1;
-      WriteXY(3, 5, '        T A S T E   D R Ü C K E N');
-      Key := GetKey;
-      TextColor(Red);
-      for J := 1 to 80 do
-        begin
-          if Blocked[J, 5] = true then WriteXY(J, 5, '█') else WriteXY(J, 5, ' ');
-        end;
-    end;
-  if MoveDelay = 0 then
-    begin
-      WriteXY(3, 3, '                Schneller geht''s nicht');
-      WriteXY(3, 5, '        T A S T E   D R Ü C K E N');
-      Key := GetKey;
-      TextColor(Red);
-      for I := 3 to 5 do
-        begin
-          for J := 1 to 80 do
-            begin
-              if Blocked[J, I] = true then WriteXY(J, I, '█') else WriteXY(J, I, ' ');
-            end;
-        end;
-    end;
+  if MoveDelay > 0 then MoveDelay := MoveDelay - 1;
 end;
 
 procedure GameOver;
@@ -813,17 +786,6 @@ begin
   WriteXY(28, 3, '██ G A M E  O V E R ██');
   DrawHLine(28, 49, 4, '█');
   SoundGameOver;
-end;
-
-procedure ShowPauses;
-begin
-  Str(PausesRemaining, S); WriteXY(65, 1, 'PAUSEN ' + S);
-  WriteXY(21, 9, 'T A S T E   D R Ü C K E N');
-  Key := GetKey;
-  TextColor(4);
-  WriteXY(21, 9, '                           ');
-  DrawHLine(65, 79, 1, '█');
-  DrawInner;
 end;
 
 procedure WinScreen;
@@ -886,19 +848,14 @@ end;
 
 procedure PlayerCaught;
 begin
-  if Shield = false then
-    begin
-      DrawFrame;
-      SoundCaught;
-      Score := Score - ItemNo * 1000;
-      if Score < 0 then Score := 0;
-      ItemNo := 1;
-      Lives := Lives - 1;
-      BlockX := 1;
-      BlockY := 1;
-    end
-  else
-    Shield := false;
+  DrawFrame;
+  SoundCaught;
+  Score := Score - ItemNo * 1000;
+  if Score < 0 then Score := 0;
+  ItemNo := 1;
+  Lives := Lives - 1;
+  BlockX := 1;
+  BlockY := 1;
 end;
 
 procedure DrawItem;
@@ -984,79 +941,50 @@ begin
   DrawInner;
 end;
 
-procedure ShopMenu;
-begin
-  Window(2, 2, 79, 19);
-  TextBackground(0);
-  ClrScr;
-  WriteLn('1 )    Schutzschild (Währt einen angrif ab, dann ist es kaputt)  Kostet  1000');
-  WriteLn('2 ♥    Leben        (Macht ein leben mehr)                       Kostet  5000');
-  Key := GetKey;
-  Window(1, 1, 80, 25);
-  DrawInner;
-end;
-
 procedure HandleInput;
 begin
   if KeyPressed then
-    Key := GetKey;
+    begin
+      Key := GetKey;
+      case Ord(Key) of
+        KeyRight, KeyLeft, KeyUp, KeyDown: Direction := Key;
+        KeyPause: DoPause;
+        KeySlower: SlowDown;
+        KeyFaster: SpeedUp;
+        61:
+          begin
+            if Score >= 5000 then
+              begin
+                Lives := Lives + 1;
+                Score := Score - 5000;
+                DrawLives;
+                DrawScore;
+              end;
+          end;
+        59:
+          begin
+            TextColor(6);
+            ShowHelp;
+            DrawFrame;
+            DrawInner;
+          end;
+        60:
+          begin
+            ShowStory;
+            DrawFrame;
+            DrawInner;
+          end;
+      end; {case}
+    end;
   EnemyTick := (EnemyTick + 1) mod 2;
   GotoXY(1, 1);
   KeyCode := Ord(Key);
-  case KeyCode of
+  case Ord(Direction) of
     KeyRight: MoveRight(X, Y);
     KeyLeft: MoveLeft(X, Y);
     KeyUp: MoveUp(X, Y);
     KeyDown: MoveDown(X, Y);
-    KeyPause: DoPause;
-    KeySlower: SlowDown;
-    KeyFaster: SpeedUp;
-    KeyBuY: ShopMenu;
-    49:
-      begin
-        if Score >= 1000 then
-          begin
-            if Shield = true then
-              WriteXY(2, 2, 'Du hast schon ein Schutzschild.')
-            else
-              begin
-                Shield := true;
-                Score := Score - 1000;
-              end;
-          end;
-        WriteXY(35, 2, '↑,↓,← oder ← Drücken');
-        Key := GetKey;
-        DrawInner;
-      end;
-    50:
-      begin
-        if Score >= 5000 then
-          begin
-            Lives := Lives + 1;
-            Score := Score - 5000;
-          end;
-        WriteXY(2, 2, '↑,↓,← oder ← Drücken');
-        Key := GetKey;
-        DrawInner;
-      end;
   end; {case}
-  if KeyCode = 59 then
-    begin
-      TextColor(6);
-      ShowHelp;
-      DrawFrame;
-      DrawInner;
-    end;
-  if KeyCode = 60 then
-    begin
-      ShowStory;
-      DrawFrame;
-      DrawInner;
-    end;
-  if KeyCode = 61 then
-    begin
-      ShowPauses;
-    end;
   TextColor(14);
   WriteXY(X, Y, '☺');
 end;
@@ -1160,7 +1088,6 @@ begin
     Level := 0;
     ItemNo := 9;
     Lives := 9;
-    Shield := false;
 100:
     EnemyTick := 0;
     ItemNo := ItemNo + 1;
