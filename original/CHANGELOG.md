@@ -16,6 +16,9 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   start position.
 - `ShowHelp`: headline moved to row 2, centered, with a blank line before the
   key list. Previously it was at row 1 with no padding.
+- `ShowHelp` / `ShowStory`: "T A S T E   D R Ü C K E N" prompt moved to row 24
+  (was row 16 and row 9 respectively). `ShowStory` content shifted one row down
+  so the headline sits on row 2 with a blank line above it.
 
 ### Code quality
 - Dialog/message box refactor: unified all key-reading through `WaitKey`
@@ -88,6 +91,14 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 - Fix `DrawLives` and `DrawBlocks` using `LightRed` background (bug); all HUD
   counters now use `CounterBg = Red`.
 - Rename `WriteLevel` → `DrawLevel` (consistent with `DrawScore`, `DrawLives`, …).
+- Add `TItemData` record (`Ch`, `Name`, `Fg`) and `Items[1..10]` typed constant
+  array with all treasure data. `DrawItem` reduced from a 10-branch if-chain to
+  a single array lookup; crown (index 10) is selected when `Level = 9` and
+  `ItemNo = 9`. `ShowItemDescriptions` fully rewritten using `Draw`: headlines
+  centered on rows 2 and 16, item list block-centered (longest line determines
+  left margin), description text wrapped at 72 display columns with 4-space
+  margins, key prompt on row 24. Items shown in `ItemDescFg`/`ItemDescBg`
+  (black on gray) regardless of their gameplay color. Typo "Edelsteiene" fixed.
 
 ### Gameplay fixes
 - Fix rope scoring: rope (item 1) now correctly awards 100 points. The old

@@ -2,14 +2,14 @@
 
 ## Status
 
-- ✗ `TDirection = (DirRight, DirLeft, DirDown, DirUp)` type declared
-- ✗ `Direction: TDirection` declared in `var` block (replaces `Direction: Char`)
-- ✗ `KeyToDir(Code: Integer): TDirection` function added before `HandleInput`
-- ✗ `MovePlayer` procedure extracted from `HandleInput`, added before `HandleInput`
-- ✗ `InitLevelN` (1–9): `Key := Chr(KeyXxx)` replaced by `Direction := DirXxx`
-- ✗ `InitLevel`: `Direction := Key` line removed
-- ✗ `HandleInput` arrow-key branch: `Direction := Key` → `Direction := KeyToDir(KeyCode)`
-- ✗ `LevelTransition` direction capture: `Direction := Chr(KeyCode)` → `Direction := KeyToDir(KeyCode)`
+- ✓ `TDirection = (DirRight, DirLeft, DirDown, DirUp)` type declared
+- ✓ `Direction: TDirection` declared in `var` block (replaces `Direction: Char`)
+- ✓ `KeyToDir(Code: Integer): TDirection` function added before `HandleInput`
+- ✓ `MovePlayer` procedure extracted from `HandleInput`, added before `HandleInput`
+- ✓ `InitLevelN` (1–9): `Key := Chr(KeyXxx)` replaced by `Direction := DirXxx`
+- ✓ `InitLevel`: `Direction := Key` line removed
+- ✓ `HandleInput` arrow-key branch: `Direction := Key` → `Direction := KeyToDir(KeyCode)`
+- ✓ `LevelTransition` direction capture: `Direction := Chr(KeyCode)` → `Direction := KeyToDir(KeyCode)`
 
 ---
 
@@ -140,8 +140,8 @@ if KeyCode in [KeyRight, KeyLeft, KeyUp, KeyDown] then
 
 ## Done when
 
-- ✗ `poe build-original` compiles with no errors or warnings
-- ✗ `poe run-original`:
+- ✓ `poe build-original` compiles with no errors or warnings (e310d02)
+- ✓ `poe run-original` (e310d02, confirmed by user):
   - Direction keys work correctly (player moves in the pressed direction on all 9 levels)
   - Each level starts with the correct initial direction (check levels 1, 3, 5, 6, 8, 9 which differ)
   - Pressing a direction key during the level-transition splash sets that direction correctly

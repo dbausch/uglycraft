@@ -2,11 +2,11 @@
 
 ## Status
 
-- ✗ `TItemData` record type declared (`Ch`, `Name`, `Fg` fields)
-- ✗ `ItemDescFg`, `ItemDescBg`, `ItemCount` constants added
-- ✗ `Items : array[1..ItemCount] of TItemData` typed constant defined
-- ✗ `DrawItem` rewritten to use `Items` array
-- ✗ `ShowItemDescriptions` rewritten to use `Draw`; layout per spec below
+- ✓ `TItemData` record type declared (`Ch`, `Name`, `Fg` fields)
+- ✓ `ItemDescFg`, `ItemDescBg`, `ItemCount` constants added
+- ✓ `Items : array[1..ItemCount] of TItemData` typed constant defined
+- ✓ `DrawItem` rewritten to use `Items` array
+- ✓ `ShowItemDescriptions` rewritten to use `Draw`; layout per spec below
 
 ---
 
@@ -135,8 +135,8 @@ Row 21: 'man mit <F1> die anderen Tasten die zum bedienen des Spiels nachlesen.'
 
 ## Done when
 
-- ✗ `poe build-original` compiles with no errors or warnings
-- ✗ `poe run-original`:
+- ✓ `poe build-original` compiles with no errors or warnings (11e86d5)
+- ✓ `poe run-original` (11e86d5, 14ea528; confirmed by user):
   - Item-descriptions screen uses Draw throughout (no WriteLn/GotoXY)
   - Headline 1 centered on row 2, headline 2 centered on row 16
   - Item list centered as a block; two empty lines before second headline
