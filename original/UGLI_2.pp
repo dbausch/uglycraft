@@ -6,7 +6,7 @@ label GameLoop, NewGame, NextItem, PlayAgain, OnGameOver, CleanUp;
 
 const
   User = 'Public Domain';
-  Version = '2.1';
+  Version = '2.2';
   Release = '0042';
   FieldW = 80;
   FieldH = 20;
