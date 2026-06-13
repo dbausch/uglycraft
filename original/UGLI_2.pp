@@ -219,6 +219,16 @@ begin
   TextBackground(0);
 end; {DrawPauses}
 
+procedure DrawBlocks;
+var S: String;
+begin
+  TextBackground(LightRed);
+  TextColor(15);
+  Str(BlocksRemaining:4, S);
+  WriteXY(68, 20, 'STEINE ' + S);
+  TextBackground(0);
+end; {DrawBlocks}
+
 procedure AwardPoints;
 begin
   if ItemNo = 2 then Score := Score + 100;
@@ -547,7 +557,9 @@ begin
 end;
 
 procedure LevelTransition;
+var UserDir: Char;
 begin
+  UserDir := #0;
   begin
     repeat
       DrawHLine(27, 53, 8, '█');
@@ -560,12 +572,15 @@ begin
       Delay(1000);
     until KeyPressed;
     Key := GetKey;
+    if Key in [Chr(KeyRight), Chr(KeyLeft), Chr(KeyUp), Chr(KeyDown)] then
+      UserDir := Key;
     WriteXY(27, 8, '                           ');
     WriteXY(27, 9, '                           ');
     WriteXY(27, 10, '                           ');
     WriteXY(27, 11, '                           ');
   end;
   InitLevel(Level);
+  if UserDir <> #0 then Direction := UserDir;
   Delay(1000);
 end;
 
@@ -686,6 +701,7 @@ begin
   DrawScore;
   DrawLives;
   DrawPauses;
+  DrawBlocks;
   TextBackground(0);
   InitLevel(Level);
   DrawKeys;
@@ -975,30 +991,17 @@ end;
 
 procedure PlaceBlock;
 begin
-  BlocksRemaining := BlocksRemaining - 1;
   if (BlocksRemaining > 0) and (Score >= 20) then
     begin
       TextColor(4);
       WriteXY(X, Y, '█');
-      if Score > 0 then Score := Score - 20;
       Blocked[X, Y] := true;
       BlockX := X;
       BlockY := Y;
-      WriteXY(21, 9, 'T A S T E    D R Ü C K E N');
-      Str(BlocksRemaining: 4, S); WriteXY(21, 10, 'Noch vorhandene Steine: ' + S);
-      Key := GetKey;
-      WriteXY(21, 10, '                            ');
-      WriteXY(21, 9, '                            ');
-      DrawInner;
-      X := BlockX;
-      Y := BlockY;
-    end
-  else
-    begin
-      if BlocksRemaining = 0 then WriteXY(21, 9, 'Keine Steine mehr da!');
-      if Score < 20 then WriteXY(21, 10, 'Nicht genug Punkte!');
-      Key := GetKey;
-      DrawInner;
+      if Score > 0 then Score := Score - 20;
+      BlocksRemaining := BlocksRemaining - 1;
+      DrawBlocks;
+      DrawScore;
     end;
 end;
 
