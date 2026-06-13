@@ -34,6 +34,10 @@ shell = """
   fi
 """
 
+[tool.poe.tasks.run-original-dos]
+help  = "Run the original DOS version of UGLI 2 in DOSBox"
+cmd   = "dosbox original/UGLI_2.EXE -exit"
+
 [tool.poe.tasks.build-linux]
 help  = "Build standalone Linux distributable (dist/linux-64/)"
 shell = """
