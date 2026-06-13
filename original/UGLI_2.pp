@@ -78,6 +78,16 @@ begin
   GotoXY(C, Row); { sync CRT's position tracker }
 end;
 
+function Center(S: String): String;
+var Pad, I: Integer; R: String;
+begin
+  Pad := (FieldW - Length(S)) div 2;
+  if Pad < 0 then Pad := 0;
+  R := '';
+  for I := 1 to Pad do R := R + ' ';
+  Center := R + S;
+end;
+
 procedure WriteLevel;
 var S: String;
 begin
@@ -663,36 +673,34 @@ begin
   WriteXY(1, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
 end; {DrawKeys}
 
-procedure DrawFrame;
-var I, J: Integer;
+procedure DrawBorder;
+var I: Integer;
 begin
   TextColor(4);
   for I := 1 to FieldW do
     begin
-      for J := 1 to FieldH do
-        begin
-          Blocked[I, J] := false;
-        end; {for J}
-    end; {for I}
-  ClrScr;
-  for I := 1 to 80 do
-    begin
-      TextColor(4);
       WriteXY(I, 1, '█');
-      TextColor(4);
-      WriteXY(I, 20, '█');
+      WriteXY(I, FieldH, '█');
       Blocked[I, 1] := true;
-      Blocked[I, 20] := true;
-    end; {for}
-  for I := 2 to 19 do
+      Blocked[I, FieldH] := true;
+    end;
+  for I := 2 to FieldH - 1 do
     begin
-      TextColor(4);
       WriteXY(1, I, '█');
-      TextColor(4);
-      WriteXY(80, I, '█');
+      WriteXY(FieldW, I, '█');
       Blocked[1, I] := true;
-      Blocked[80, I] := true;
-    end; {for}
+      Blocked[FieldW, I] := true;
+    end;
+end; {DrawBorder}
+
+procedure DrawFrame;
+var I, J: Integer;
+begin
+  for I := 1 to FieldW do
+    for J := 1 to FieldH do
+      Blocked[I, J] := false;
+  ClrScr;
+  DrawBorder;
   WriteLevel;
   DrawScore;
   DrawLives;
@@ -767,13 +775,13 @@ procedure ShowStory;
 begin
   TextColor(13);
   ClrScr;
-  WriteXY(3, 1, Center('Geschichte von UGLI'));
-  WriteXY(3, 3, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
-  WriteXY(3, 4, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
-  WriteXY(3, 5, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
-  WriteXY(3, 6, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
-  WriteXY(3, 7, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
-  WriteXY(3, 9, Center('T A S T E   D R Ü C K E N'));
+  WriteXY(1, 1, Center('Geschichte von UGLI'));
+  WriteXY(1, 3, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
+  WriteXY(1, 4, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
+  WriteXY(1, 5, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
+  WriteXY(1, 6, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
+  WriteXY(1, 7, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
+  WriteXY(1, 9, Center('T A S T E   D R Ü C K E N'));
   Key := GetKey;
 end;
 
@@ -1017,55 +1025,20 @@ begin
   WriteXY(3, 6, '║Wirklich Alle Steine entfernen(J/N)║');
   WriteXY(3, 7, '║                                   ║');
   WriteXY(3, 8, '╚═══════════════════════════════════╝');
-  GotoXY(7, 7); Key := UpCase(GetKey);
-  DrawInner;
-  SaveX := X;
-  SaveY := Y;
-  if Score >= 20 then
+  GotoXY(7, 7);
+  Key := UpCase(GetKey);
+  if (Key = 'J') and (Score >= 20) then
     begin
-      case Key of
-        'J':
-          begin
-            for I := 1 to 80 do
-              for J := 1 to 25 do
-                begin
-                  Blocked[I, J] := false;
-                end;
-            TextColor(4);
-            TextBackground(0);
-            InitLevel(Level);
-            BlockX := 1;
-            BlockY := 1;
-          end;
-      end;
+      SaveX := X; SaveY := Y;
+      for I := 1 to FieldW do
+        for J := 1 to FieldH do
+          Blocked[I, J] := false;
+      InitLevel(Level);
+      DrawBorder;
+      X := SaveX; Y := SaveY;
     end;
   if Score > 0 then Score := Score - 20;
-  WriteXY(3, 9, 'TASTE DRÜCKEN');
-  Key := GetKey;
-  for I := 1 to 80 do
-    begin
-      TextColor(4);
-      WriteXY(I, 1, '█');
-      TextColor(4);
-      WriteXY(I, 20, '█');
-      Blocked[I, 1] := true;
-      Blocked[I, 20] := true;
-    end; {for}
-  for I := 2 to 19 do
-    begin
-      TextColor(4);
-      WriteXY(1, I, '█');
-      TextColor(4);
-      WriteXY(80, I, '█');
-      Blocked[1, I] := true;
-      Blocked[80, I] := true;
-    end; {for}
-  WriteLevel;
-  TextBackground(0);
   DrawInner;
-  X := SaveX;
-  Y := SaveY;
-  LastName := '';
 end;
 
 begin
