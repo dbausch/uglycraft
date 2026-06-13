@@ -574,10 +574,6 @@ begin
     Key := GetKey;
     if Key in [Chr(KeyRight), Chr(KeyLeft), Chr(KeyUp), Chr(KeyDown)] then
       UserDir := Key;
-    WriteXY(27, 8, '                           ');
-    WriteXY(27, 9, '                           ');
-    WriteXY(27, 10, '                           ');
-    WriteXY(27, 11, '                           ');
   end;
   InitLevel(Level);
   if UserDir <> #0 then Direction := UserDir;
@@ -771,13 +767,13 @@ procedure ShowStory;
 begin
   TextColor(13);
   ClrScr;
-  WriteXY(3, 1, '                Geschichte von UGLI');
-  WriteXY(3, 3, 'Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.');
-  WriteXY(3, 4, 'Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle');
-  WriteXY(3, 5, 'meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.');
-  WriteXY(3, 6, 'Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze');
-  WriteXY(3, 7, 'zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.');
-  WriteXY(3, 9, '                 T A S T E   D R Ü C K E N');
+  WriteXY(3, 1, Center('Geschichte von UGLI'));
+  WriteXY(3, 3, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
+  WriteXY(3, 4, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
+  WriteXY(3, 5, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
+  WriteXY(3, 6, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
+  WriteXY(3, 7, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
+  WriteXY(3, 9, Center('T A S T E   D R Ü C K E N'));
   Key := GetKey;
 end;
 
@@ -1155,4 +1151,3 @@ CleanUp:
   MyCursorOn;
   Close(TTY);
 end.
-
