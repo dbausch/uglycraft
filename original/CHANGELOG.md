@@ -5,6 +5,60 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ---
 
+## [unreleased]
+
+### Gameplay fixes
+- Fix rope scoring: rope (item 1) now correctly awards 100 points. The old
+  formula `(ItemNo − 1) × 100` made rope worth 0; the new formula `ItemNo × 100`
+  gives rope=100, big gem=900, matching the intended value table.
+- Fix lives display at Level 1: lives counter now correctly shows 10 from the
+  start. Previously a fake level-0→1 transition awarded a bonus life immediately,
+  requiring a `if Level > 1` guard to suppress it.
+
+### Code quality
+- Eliminate the `NewGame: Level := 0; ItemNo := 9;` bootstrap hack. `NewGame:`
+  now directly sets `Level := 1; Score := 0; Lives := 10; ItemNo := 1` and calls
+  `PrepareLevel` + `LevelTransition`. No fake level transition occurs.
+- Rename label `NextItem:` to `StartLevel:` — it marks the start of playing an
+  item, not a transition between items.
+- `AwardPoints` is now called *before* `ItemNo := ItemNo + 1` at the pickup site,
+  eliminating the off-by-one formula that compensated for the wrong call site.
+- Extract `LevelComplete` procedure: increments `Lives` before `PrepareLevel` so
+  `Redraw` displays the updated count in the next-level splash.
+- Add `IsPlayerCaught` and `IsItemPickedUp` boolean helper functions, replacing
+  raw coordinate comparisons in the main loop.
+- Each `InitLevel1`–`InitLevel9` now sets `EX := 5; EY := 10` directly, so every
+  level owns its enemy start position; the assignments are removed from the main
+  block.
+- Add `InitBorder` procedure: sets border `Blocked` cells to `true` once at
+  program start (called from `Init`). Border cells are now permanent and never
+  reset; `PrepareLevel` and `RemoveBlocks` clear interior cells only
+  (`2..FieldW−1, 2..FieldH−1`).
+- Remove `Blocked` assignments from `DrawBorder` (pure rendering procedure); move
+  HUD counter calls (`DrawLevel`, `DrawScore`, `DrawLives`, `DrawPauses`,
+  `DrawBlocks`) into `DrawBorder` so `Redraw` delegates to it.
+- Remove `DrawInner` call from `InitLevel` (state procedure no longer triggers
+  rendering); `Redraw` is the sole owner of `DrawInner`.
+- Rename `DrawFrame` → `PrepareLevel` and fix call order: clear interior
+  `Blocked`, call `InitLevel(Level)`, then `Redraw` (previously `Redraw` ran
+  before `InitLevel`, drawing walls one tick stale).
+- `LevelTransition` no longer calls `InitLevel` (state was already set by the
+  preceding `PrepareLevel`); calls `DrawInner` after the splash is dismissed to
+  restore the interior.
+- `Redraw` simplified to `ClrScr + DrawBorder + DrawKeys + DrawInner`; redundant
+  explicit `DrawInner` calls removed from F1/F2 handlers and `PlayerCaught`.
+- Add named color role constants (`WallFg`, `PlayerFg`, `EnemyFg`, `CounterFg`,
+  `CounterBg`, `FieldBg`, `KeyHelpFg`, `HelpFg`, `SplashFg`, `DialogFg`,
+  `WinFg`) and local `const Fg/Bg` blocks inside drawing procedures.
+- Rename `WriteXY` → `Draw`; add `Fg, Bg: Integer` parameters. Every write now
+  declares its own colors; no write can inherit a stale color from a prior call.
+  All floating `TextColor`/`TextBackground` calls removed.
+- Fix `DrawLives` and `DrawBlocks` using `LightRed` background (bug); all HUD
+  counters now use `CounterBg = Red`.
+- Rename `WriteLevel` → `DrawLevel` (consistent with `DrawScore`, `DrawLives`, …).
+
+---
+
 ## 2.2
 
 ### Gameplay fixes
