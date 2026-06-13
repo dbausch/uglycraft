@@ -191,6 +191,16 @@ begin
     Version, Release, User, License);
 end;
 
+procedure DrawScore;
+var S: String;
+begin
+  TextBackground(Red);
+  TextColor(15);
+  Str(Score, S);
+  WriteXY(3, 1, 'PUNKTE ' + S);
+  TextBackground(0);
+end; {DrawScore}
+
 procedure AwardPoints;
 begin
   if ItemNo = 2 then Score := Score + 100;
@@ -202,10 +212,7 @@ begin
   if ItemNo = 8 then Score := Score + 700;
   if ItemNo = 9 then Score := Score + 800;
   if ItemNo = 10 then Score := Score + 900;
-  TextBackground(Red);
-  TextColor(15);
-  WriteXY(3, 1, 'PUNKTE '); Write(Score);
-  TextBackground(0);
+  DrawScore;
 end;
 
 procedure InitLevel1;
@@ -649,6 +656,7 @@ begin
       Blocked[80, I] := true;
     end; {for}
   WriteLevel;
+  DrawScore;
   TextBackground(0);
   InitLevel(Level);
   TextColor(11);
@@ -1025,11 +1033,13 @@ begin
     begin
       TextColor(6);
       ShowHelp;
+      DrawFrame;
       DrawInner;
     end;
   if KeyCode = 60 then
     begin
       ShowStory;
+      DrawFrame;
       DrawInner;
     end;
   if KeyCode = 61 then
@@ -1164,9 +1174,6 @@ begin
         DrawFrame;
         Lives := Lives + 1;
         LevelTransition;
-        TextBackground(Red); TextColor(15);
-        Str(Score, S); WriteXY(3, 1, 'PUNKTE ' + S);
-        TextBackground(0);
       end; {if ItemNo = 10}
     RandomPos;
     repeat
