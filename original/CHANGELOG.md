@@ -5,7 +5,7 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ---
 
-## [unreleased]
+## 2.3
 
 ### Bug fixes
 - Level 4: horizontal middle wall shortened by one block on each end (was
