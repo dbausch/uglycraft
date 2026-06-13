@@ -1153,20 +1153,20 @@ begin
 end;
 
 procedure RemoveBlocks;
-var Code: Integer;
+var Code: Integer; SaveDir: Char;
 begin
   repeat
     Code := Dialog('B L Ö C K E   E N T F E R N E N', 'J / N');
   until (Byte(Code) in YesKey) or (Byte(Code) in NoKey);
   if Byte(Code) in YesKey then
     begin
-      SaveX := X; SaveY := Y;
+      SaveX := X; SaveY := Y; SaveDir := Direction;
       for I := 2 to FieldW - 1 do
         for J := 2 to FieldH - 1 do
           Blocked[I, J] := false;
       InitLevel(Level);
       DrawBorder;
-      X := SaveX; Y := SaveY;
+      X := SaveX; Y := SaveY; Direction := SaveDir;
       BlockX := 1; BlockY := 1;
     end;
   DrawInner;
