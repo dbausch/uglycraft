@@ -7,6 +7,48 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ## [unreleased]
 
+### Bug fixes
+- Level 4: horizontal middle wall shortened by one block on each end (was
+  columns 5–75); enemy start position (5, 10) was inside the wall.
+- `RemoveBlocks`: direction and enemy position are now preserved across the
+  `InitLevel` call. Previously only the player position was saved/restored,
+  leaving direction reset to the level default and enemy teleported to its
+  start position.
+- `ShowHelp`: headline moved to row 2, centered, with a blank line before the
+  key list. Previously it was at row 1 with no padding.
+
+### Code quality
+- Dialog/message box refactor: unified all key-reading through `WaitKey`
+  (drains the key queue, returns the last key code) and `Dialog(Title, Prompt)`
+  (draws a centered `█`-bordered box, calls `WaitKey`, restores the interior
+  via `DrawInner`).
+- `DrawInner` extended to redraw the player (`☺`), enemy (`☻`), and current
+  item after the wall/space pass. `ItemX := 0` is used as a sentinel ("no item
+  on field") to prevent a ghost item appearing during `LevelTransition`.
+- Add `YesKey` / `NoKey` typed set constants (`set of Byte`) for J/j and N/n.
+- `LevelTransition` replaced six ad-hoc `Draw`/`DrawHLine` calls with a single
+  `Dialog` call; box now correctly centered at rows 9–11 (was rows 8–10).
+- `GameOver`, `WinScreen`, `AskPlayAgain`, `RemoveBlocks` all use `Dialog`;
+  Y/N prompts loop the entire `Dialog` call so the box is redrawn on invalid
+  input. Star animation removed from `WinScreen`.
+- `RemoveBlocks`: 20-point deduction removed.
+- `DrawBlocks` HUD label renamed from `STEINE` to `BLÖCKE`.
+- `ShowHelp`, `ShowStory`, `ShowItemDescriptions`, `HighScoreEntry`: all
+  wait-for-key prompts converted to `WaitKey`.
+- `DANISOFT.pp` merged into `UGLI_2.pp` (`UTF8Cols`, `Center`, `Intro`);
+  `DANISOFT.pp` deleted. `Intro` now uses `WaitKey` and says
+  `T A S T E   D R Ü C K E N` instead of the old Enter/Return prompt.
+- All procedures reordered in dependency order; no forward declarations remain.
+- `TDirection = (DirRight, DirLeft, DirDown, DirUp)` enum replaces
+  `Direction: Char`. `KeyToDir(Code)` converts arrow-key scan codes to
+  `TDirection`; `MovePlayer` dispatches on `Direction` to the four move
+  procedures. `case Ord(Direction) of KeyRight: …` removed from `HandleInput`.
+- `InitLevel1`–`InitLevel9` now write player position, enemy position, and
+  direction to `StartX`/`StartY`, `StartEX`/`StartEY`, `StartDir`. `PrepareLevel`
+  copies these to the live variables after calling `InitLevel`. `RemoveBlocks`
+  therefore calls `InitLevel` to rebuild walls without disturbing any live game
+  state; no save/restore needed.
+
 ### Gameplay fixes
 - Fix rope scoring: rope (item 1) now correctly awards 100 points. The old
   formula `(ItemNo − 1) × 100` made rope worth 0; the new formula `ItemNo × 100`
