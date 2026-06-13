@@ -657,11 +657,11 @@ end; {MoveUp}
 procedure DrawKeys;
 begin
   TextColor(11);
-  WriteXY(1, 21, '← = links  ↓ = unten  → = rechts  ↑ = oben');
+  WriteXY(2, 21, '← = links  ↓ = unten  → = rechts  ↑ = oben');
   DrawHLine(1, 80, 22, '─');
-  WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart');
+  WriteXY(2, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart');
   DrawHLine(1, 80, 24, '─');
-  WriteXY(1, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
+  WriteXY(2, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
 end; {DrawKeys}
 
 procedure DrawBorder;
@@ -1032,6 +1032,7 @@ begin
       InitLevel(Level);
       DrawBorder;
       X := SaveX; Y := SaveY;
+      BlockX := 1; BlockY := 1;
     end;
   if Score > 0 then Score := Score - 20;
   DrawInner;
