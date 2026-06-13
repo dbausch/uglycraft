@@ -48,16 +48,6 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   copies these to the live variables after calling `InitLevel`. `RemoveBlocks`
   therefore calls `InitLevel` to rebuild walls without disturbing any live game
   state; no save/restore needed.
-
-### Gameplay fixes
-- Fix rope scoring: rope (item 1) now correctly awards 100 points. The old
-  formula `(ItemNo − 1) × 100` made rope worth 0; the new formula `ItemNo × 100`
-  gives rope=100, big gem=900, matching the intended value table.
-- Fix lives display at Level 1: lives counter now correctly shows 10 from the
-  start. Previously a fake level-0→1 transition awarded a bonus life immediately,
-  requiring a `if Level > 1` guard to suppress it.
-
-### Code quality
 - Eliminate the `NewGame: Level := 0; ItemNo := 9;` bootstrap hack. `NewGame:`
   now directly sets `Level := 1; Score := 0; Lives := 10; ItemNo := 1` and calls
   `PrepareLevel` + `LevelTransition`. No fake level transition occurs.
@@ -98,6 +88,14 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 - Fix `DrawLives` and `DrawBlocks` using `LightRed` background (bug); all HUD
   counters now use `CounterBg = Red`.
 - Rename `WriteLevel` → `DrawLevel` (consistent with `DrawScore`, `DrawLives`, …).
+
+### Gameplay fixes
+- Fix rope scoring: rope (item 1) now correctly awards 100 points. The old
+  formula `(ItemNo − 1) × 100` made rope worth 0; the new formula `ItemNo × 100`
+  gives rope=100, big gem=900, matching the intended value table.
+- Fix lives display at Level 1: lives counter now correctly shows 10 from the
+  start. Previously a fake level-0→1 transition awarded a bonus life immediately,
+  requiring a `if Level > 1` guard to suppress it.
 
 ---
 
