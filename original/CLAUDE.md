@@ -18,8 +18,9 @@ There are no tests, no lint tools, and no CI setup.
 
 ### `DANISOFT.pp` (unit `DANISOFT`) — animated splash screen
 
-- `Intro`: scrolling color/sound intro that displays an ASCII art logo (8 lines) with version/copyright info
-- `Intro2`: alternative intro with typewriter-effect text rendering, playing ascending tones as characters appear
+- `UTF8Cols(S)`: counts display columns in a UTF-8 string (skips continuation bytes)
+- `Center(S)`: pads `S` with leading spaces to centre it on an 80-column line
+- `Intro`: scrolling colour/sound intro that displays an ASCII art logo (8 lines) with version/copyright info
 - Depends on: `Crt`, `UOSSound`
 
 ### `UOSSound.pp` (unit `UOSSound`) — FPC/Linux sound
@@ -37,17 +38,18 @@ Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 
 | Identifier | Type | Meaning |
 |---|---|---|
-| `Blocked[1..80, 1..20]` | `Boolean` array | Collision map; walls and placed blocks set cells to `true` |
-| `SperBlock[1..2000]` | record array | Tracks player-placed blocks (position + char) for removal |
-| `BlocksRemaining` | Integer | Block-placement budget (starts 2000, decremented on place) |
-| `ItemNo` | Integer | Current treasure index (1–9, then wraps per level) |
+| `Blocked[1..80, 1..20]` | `Boolean` array | Collision map; border, level walls, and player-placed blocks set cells to `true` |
+| `BlocksRemaining` | Integer | Block-placement budget (starts 2000, decremented on place, costs 20 pts each) |
+| `ItemNo` | Integer | Current treasure index (1–9, wraps per level) |
 | `Score` | LongInt | Score |
-| `Lives` | Integer | Lives remaining |
+| `Lives` | Integer | Lives remaining (starts 10) |
 | `PausesRemaining` | Integer | Pause tokens remaining (starts 20) |
 | `MoveDelay` | Integer | Movement delay in ms (lower = faster; Home/End adjusts) |
-| `BlockX`, `BlockY` | Integer | Player position (1-indexed, column × row) |
+| `X`, `Y` | Integer | Player position (1-indexed, column × row) |
+| `BlockX`, `BlockY` | Integer | Position of the last player-placed block; redrawn by movement functions |
 | `EX`, `EY` | Integer | Enemy position |
-| `Shield` | Boolean | Whether player has active shield |
+| `Direction` | Char | Last direction key pressed; player keeps moving in this direction each tick |
+| `Laying` | Boolean | When `true`, a block is placed at the player's position every tick (Space toggles) |
 
 ## Key constants (`UGLI_2.pp`)
 
@@ -55,51 +57,67 @@ Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 |---|---|---|
 | `FieldW` / `FieldH` | 80 / 20 | Play field dimensions |
 | `KeyRight/Left/Down/Up` | 77/75/80/72 | Scan codes for arrow keys |
-| `MoveDelay` | init 45 | Base movement delay in ms (lower = faster) |
-| `PausesRemaining` | init 20 | Number of pause tokens available |
+| `KeyPause` / `KeySlower` / `KeyFaster` | 112 / 79 / 71 | P / End / Home |
+| `KeyEscape` / `KeySpace` | 27 / 32 | Escape / Space |
+| `KeyF1`–`KeyF5` | 59–63 | Function keys F1–F5 |
 | `BlocksRemaining` | init 2000 | Block-placement budget |
 | `HighScoreFileName` | `'UGLI.HSC'` | High score file path |
 
 ## Key procedures
 
-**`InitLevel1`–`InitLevel9`**: Populate `Blocked` collision map and set player start position/direction for each level. Each draws walls directly using `GotoXY` + character writes and marks corresponding `Blocked` cells. Levels are defined inline as sequences of `GotoXY`/`Write` calls — no separate data structure.
+**`InitLevel1`–`InitLevel9`**: Set player start position/direction and populate `Blocked` for level walls. Called via the `InitLevel(N)` dispatcher.
 
-**`DrawFrame`**: Clears screen and redraws the border (double-line box characters) + current level layout by calling the appropriate `InitLevelN`.
+**`DrawBorder`**: Draws the `█` border and marks border cells in `Blocked`.
 
-**`EnemyMove`** (enemy AI): Greedy chase. Each `EnemyTick`, computes `DX = EX - BlockX`, `DY = EY - BlockY`. If `|DX| ≥ |DY|`, tries to move horizontally toward player first; falls back to vertical if blocked. Vice versa otherwise. No pathfinding — can get stuck behind walls.
+**`DrawFrame`**: Full level reset — clears `Blocked`, clears screen, calls `DrawBorder`, draws all counters, calls `InitLevel(Level)`, draws key help bar. Use only at genuine level-start time.
 
-**`HandleInput`**: Main input handler. Dispatches:
-- Arrow keys → move player (checks `Blocked`, plays bump sound if blocked)
-- Home/End → speed up/slow down (`MoveDelay` ± 5)
-- Space → open shop (`Lives` for 5000 pts, `Shield` for 1000 pts)
-- S → place block at player position (decrements `BlocksRemaining`, appends to `SperBlock`)
-- N → remove all player-placed blocks (iterates `SperBlock`, clears `Blocked` entries)
-- P → pause (decrements `PausesRemaining` token)
+**`Redraw`**: Lightweight screen repaint — same visuals as `DrawFrame` but does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
+
+**`DrawScore` / `DrawLives` / `DrawPauses` / `DrawBlocks`**: Draw individual HUD counters; all called from `DrawFrame` and `Redraw`, and also called individually when only one counter changes.
+
+**`EnemyMove`** (enemy AI): Greedy chase. Each `EnemyTick`, computes `DX = EX - X`, `DY = EY - Y`. If `|DX| ≥ |DY|`, tries to move horizontally toward player first; falls back to vertical if blocked. Vice versa otherwise. No pathfinding — can get stuck behind walls.
+
+**`HandleInput`**: Main input handler. Sets `KeyCode := 0` at entry so each keystroke is processed exactly once. Dispatches:
+- Arrow keys → set `Direction`
+- Home/End → adjust `MoveDelay`
+- Space → toggle `Laying` (continuous block-placement mode)
 - F1 → help screen
-- Escape → quit prompt
+- F2 → story screen
+- F3 → buy a life (5000 pts)
+- P → pause (5 s, decrements `PausesRemaining`)
+- Escape → quit (checked in main loop after `HandleInput`)
+- F4 → restart (checked in main loop)
+- F5 → `RemoveBlocks` (checked in main loop)
 
-**`DrawItem` / `RandomPos`**: Place current treasure at a random non-blocked position. `RandomPos` picks random `(x, y)` until `Blocked[x,y] = false` and position is not occupied by player/enemy.
+**`PlaceBlock`**: Places a `█` at the player's current position if not already blocked; costs 20 pts. Auto-disables `Laying` if points or block budget run out.
 
-**`HighScoreEntry`**: End-of-game high score entry. Reads player name, appends `name|score|level` record to `UGLI.HSC`, then displays the full file content on screen.
+**`RemoveBlocks`**: Modal dialog (J/N). On J: clears all `Blocked`, calls `InitLevel`, redraws border, restores player position and resets `BlockX`/`BlockY`. Always deducts 20 pts.
+
+**`DrawItem` / `RandomPos`**: Place current treasure at a random non-blocked position.
+
+**`HighScoreEntry`**: End-of-game high score entry. Reads player name, appends `name score` record to `UGLI.HSC`, then displays the full file content on screen.
 
 ## Main loop structure
 
-Uses `goto` labels rather than structured loops:
+Uses named `goto` labels:
 
 ```
-label 100, 300, 997, 998, 999;
+label GameLoop, NewGame, NextItem, PlayAgain, OnGameOver, CleanUp;
 ...
-100: { start of level loop — calls initlN, spawns treasure }
-300: { main game tick — calls ugli2 (enemy move), Taste (input), checks collision }
-     { if treasure collected → ZahlenSetzung, check level complete → goto 100 }
-     { if caught → lose life, check game over → goto 998 }
-     goto 300;
-997: { level complete fanfare }
-998: { game over sequence → abfrage }
-999: { exit }
+GameLoop: { outer repeat — calls Init }
+NewGame:  { reset Level=0, Lives=10, ItemNo=9 }
+NextItem: { increment ItemNo; if 10: advance level, DrawFrame, LevelTransition }
+          { repeat: Delay, DrawItem, HandleInput, EnemyMove, collision checks }
+          {   treasure collected → goto NextItem }
+          {   lives = 0 → goto OnGameOver }
+          { until Escape }
+OnGameOver: { calls GameOver }
+PlayAgain:  { "NOCHMAL SPIELEN (J/N)" prompt }
+            {   J → goto NewGame;  N → goto CleanUp }
+CleanUp:  { ClrScr, reset terminal, exit }
 ```
 
-## Treasure types (ItemNo 1–9, plus Crown)
+## Treasure types (ItemNo 1–9)
 
 | ItemNo | Name (German) | Points |
 |---|---|---|
@@ -112,11 +130,12 @@ label 100, 300, 997, 998, 999;
 | 7 | Brunnen (Well) | 600 |
 | 8 | Lampe (Lamp) | 700 |
 | 9 | Großer Edelstein (Big Gem) | 800 |
-| 10 | Krone (Crown) | — (level 9 special) |
+
+Points formula: `(ItemNo − 1) × 100`.
 
 ## Level structure (original 80×20 grid)
 
-Levels are defined by the `InitLevel1`–`InitLevel9` procedures via inline `GotoXY`/`Write` calls. The field is 80 columns × 20 rows (1-indexed), bordered by a double-line box drawn by `DrawFrame`. Interior walls are single or double line characters.
+Levels are defined by the `InitLevel1`–`InitLevel9` procedures via `Blocked[x,y] := true` assignments. The field is 80 columns × 20 rows (1-indexed), bordered by `█` drawn by `DrawBorder`.
 
 | Level | Theme |
 |---|---|
