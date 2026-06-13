@@ -871,7 +871,7 @@ begin
   Draw(2, 12, Fg, Bg, '[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)');
   Draw(2, 13, Fg, Bg, '[F5] = Alle gesetzten Blöcke wieder entfernen');
   Draw(2, 14, Fg, Bg, '[F1] = Diese Hilfe');
-  Draw(1, 16, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
+  Draw(1, 24, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
   WaitKey;
   X := SaveX;
   Y := SaveY;
@@ -883,13 +883,13 @@ const
   Bg = FieldBg;
 begin
   ClrScr;
-  Draw(1, 1, Fg, Bg, Center('Geschichte von UGLI'));
-  Draw(1, 3, Fg, Bg, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
-  Draw(1, 4, Fg, Bg, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
-  Draw(1, 5, Fg, Bg, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
-  Draw(1, 6, Fg, Bg, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
-  Draw(1, 7, Fg, Bg, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
-  Draw(1, 9, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
+  Draw(1, 2, Fg, Bg, Center('Geschichte von UGLI'));
+  Draw(1, 4, Fg, Bg, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
+  Draw(1, 5, Fg, Bg, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
+  Draw(1, 6, Fg, Bg, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
+  Draw(1, 7, Fg, Bg, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
+  Draw(1, 8, Fg, Bg, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
+  Draw(1, 24, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
   WaitKey;
 end;
 
