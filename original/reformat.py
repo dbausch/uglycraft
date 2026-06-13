@@ -64,6 +64,7 @@ BUILTINS = {
 ALLCAPS = {
     'vx': 'VX', 'vy': 'VY', 'sx': 'SX', 'sy': 'SY', 'dx': 'DX', 'dy': 'DY',
     'xx': 'XX', 'yy': 'YY', 'ti': 'TI', 'op': 'OP', 'iz': 'IZ',
+    'tty': 'TTY',
     'danisoft': 'DANISOFT',
     'locx': 'LocX', 'locy': 'LocY',  # x/y suffix form
     'ugli_2': 'UGLI_2',               # program name
@@ -74,6 +75,28 @@ UNIT_NAMES = {
     'cthreads': 'CThreads', 'crt': 'Crt', 'dos': 'Dos', 'uossound': 'UOSSound',
 }
 
+# ── Compound identifier abbreviation suffix rule ───────────────────────────────
+# After PascalCase, identifiers whose tail matches one of these are uppercased.
+# Sorted longest-first so 'TTY' is tried before 'TY', 'XX' before 'X', etc.
+# Require prefix ≥ 2 chars so short words like 'My' are not altered.
+_SUFFIX_ABBREVS: list[tuple[str, str]] = sorted([
+    ('tty', 'TTY'),
+    ('xx', 'XX'), ('yy', 'YY'),
+    ('x', 'X'), ('y', 'Y'),         # single-letter coordinate suffixes
+    # VX/VY/SX/SY/DX/DY are standalone abbreviations only; as compound suffixes
+    # they produce false positives (e.g. 'Oldx' would become 'OlDX' via 'dx').
+], key=lambda t: len(t[0]), reverse=True)
+
+
+def apply_compound_abbrevs(s: str) -> str:
+    """Uppercase the first matching abbreviation found at the end of the identifier."""
+    low = s.lower()
+    for abbr_low, abbr_up in _SUFFIX_ABBREVS:
+        n = len(abbr_low)
+        if len(s) - n >= 2 and low.endswith(abbr_low):
+            return s[:-n] + abbr_up
+    return s
+
 
 def case(val: str) -> str:
     low = val.lower()
@@ -82,7 +105,8 @@ def case(val: str) -> str:
             return tbl[low]
     if low in KEYWORDS:
         return low
-    return val[0].upper() + val[1:] if val else val
+    pascal = val[0].upper() + val[1:] if val else val
+    return apply_compound_abbrevs(pascal)
 
 
 # ── Tokenizer ─────────────────────────────────────────────────────────────────
@@ -199,7 +223,16 @@ NO_SPACE_BEFORE = frozenset([')', ']', ',', ';', ':', '.', '..', '['])
 NO_SPACE_AFTER  = frozenset(['(', '[', '@', '^', '..'])
 
 
-def format_line(line) -> str:
+def reformat_end_comment(tok: str) -> str:
+    """Reformat {content} on an end line: apply casing, strip leading/trailing spaces."""
+    inner = tok[1:-1].strip()
+    if not inner:
+        return '{}'
+    toks = [(k, v) for k, v in tokenize(inner) if k != 'NL']
+    return '{' + format_line(toks) + '}'
+
+
+def format_line(line, is_end_line: bool = False) -> str:
     """Apply casing and normalize spacing within one line."""
     out = []
     prev_kind, prev_val = None, None
@@ -209,6 +242,8 @@ def format_line(line) -> str:
             continue
         if k == 'ID':
             v = case(v)
+        if k == 'CB' and is_end_line:
+            v = reformat_end_comment(v)
 
         if prev_val is not None:
             need_space = True
@@ -237,21 +272,24 @@ def indent_lines(lines) -> list[str]:
     """
     Assign indentation to each line.
 
-    begin_stack entries: (emit_depth, outer_depth)
+    begin_stack entries: (emit_depth, outer_depth, is_case)
       emit_depth  = depth at which 'begin'/'repeat'/'case' was emitted
                     (also used as the depth for the matching 'end'/'until')
       outer_depth = depth to restore after the closing 'end'/'until'
                     For ctrl-blocks (after then/do/else): outer_depth < emit_depth
                     For body-blocks (procedure/repeat/case):  outer_depth == emit_depth
+      is_case     = True when the block is a case...of block (so numeric N: are case arms)
+
+    paren_depth: unclosed '(' from previous lines; when > 0 the current line is a
+      continuation of an argument list and gets depth+1 indentation.
     """
     depth = 0
-    # Each entry: (emit_depth, outer_depth, is_case)
-    # is_case=True marks a case...of block so numeric 'N:' lines are case arms.
     begin_stack: list[tuple[int, int, bool]] = []
     result = []
     in_decl = False     # inside var/const/type section
     after_ctrl = False  # last sig was then/do/else: next 'begin' indents one extra
     in_case = False     # saw 'case', waiting for 'of'
+    paren_depth = 0     # unclosed '(' from previous lines
 
     def push_ctrl(d: int):
         """Push for a ctrl-block (then/do/else begin). emit_depth = d+1."""
@@ -281,11 +319,19 @@ def indent_lines(lines) -> list[str]:
             continue
 
         fs = sv[0]
+        is_continuation = paren_depth > 0
 
         # ── Goto labels at column 0 ───────────────────────────────────────
         if is_goto_label(line, innermost_is_case()):
             result.append(format_line(line))
             after_ctrl = False
+            # Update paren_depth for this line
+            for k, v in line:
+                if k == 'P':
+                    if v == '(':
+                        paren_depth += 1
+                    elif v == ')':
+                        paren_depth = max(0, paren_depth - 1)
             continue
 
         # ── Compute this line's indentation ──────────────────────────────
@@ -313,8 +359,6 @@ def indent_lines(lines) -> list[str]:
             # so 'else' naturally lands at the 'if' level.
             line_depth = depth
             ls = last_sig(line)
-            # If the else body is already on this line (ends with ';' or a value),
-            # don't set after_ctrl — the branch is complete.
             if ls == ';':
                 after_ctrl = False  # else stmt; — body complete inline
             else:
@@ -356,6 +400,12 @@ def indent_lines(lines) -> list[str]:
         else:
             line_depth = depth
 
+        # ── Override indentation for continuation lines (unclosed parens) ──
+        # Continuation lines of wrapped argument lists get depth+1 regardless.
+        # Skip structural keywords that manage their own depth.
+        if is_continuation and fs not in ('begin', 'end', 'until', 'repeat', 'case'):
+            line_depth = depth + 1
+
         # ── Update after_ctrl from this line's last keyword ──────────────
         if fs not in ('begin', 'end', 'until', 'repeat', 'else', 'case'):
             ls = last_sig(line)
@@ -365,11 +415,79 @@ def indent_lines(lines) -> list[str]:
                 # Case arm colon: the body that follows gets +1 indent
                 after_ctrl = True
 
+        # ── Update paren_depth ────────────────────────────────────────────
+        for k, v in line:
+            if k == 'P':
+                if v == '(':
+                    paren_depth += 1
+                elif v == ')':
+                    paren_depth = max(0, paren_depth - 1)
+
         # ── Emit ─────────────────────────────────────────────────────────
-        content = format_line(line)
+        content = format_line(line, is_end_line=(fs == 'end'))
         result.append('  ' * max(0, line_depth) + content)
 
     return result
+
+
+# ── Blank-line cleanup pass ───────────────────────────────────────────────────
+
+def cleanup_blanks(lines: list[str]) -> list[str]:
+    """
+    Remove blank lines immediately after 'begin' or a goto label.
+    Remove blank lines immediately before 'end'/'until'.
+    Remove blank lines immediately before 'program'.
+    Ensure a blank line between a top-level 'end;'/'end.' and the next procedure/function.
+    """
+    def _is_begin(ln: str) -> bool:
+        return bool(re.search(r'\bbegin\s*(?:\{[^}]*\})?\s*$', ln))
+
+    def _is_end_or_until(ln: str) -> bool:
+        return bool(re.match(r'\s*(end|until)\b', ln))
+
+    def _is_goto_label(ln: str) -> bool:
+        return bool(re.match(r'\d+:\s*$', ln))
+
+    def _is_program(ln: str) -> bool:
+        return bool(re.match(r'\s*program\b', ln))
+
+    def _is_toplevel_end(ln: str) -> bool:
+        """end; or end. at depth 0 (no leading spaces) — closes a procedure body."""
+        return bool(re.match(r'end[;.]', ln))
+
+    def _is_proc_func(ln: str) -> bool:
+        return bool(re.match(r'\s*(procedure|function)\b', ln))
+
+    out: list[str] = []
+
+    for i, line in enumerate(lines):
+        # Look ahead: first non-blank line after current position
+        j = i + 1
+        while j < len(lines) and not lines[j].strip():
+            j += 1
+        next_content = lines[j] if j < len(lines) else ''
+
+        if line.strip() == '':
+            prev = out[-1] if out else ''
+            keep = True
+            if prev and _is_begin(prev):
+                keep = False          # blank immediately after begin
+            elif prev and _is_goto_label(prev):
+                keep = False          # blank immediately after goto label
+            elif next_content and _is_end_or_until(next_content):
+                keep = False          # blank immediately before end/until
+            elif next_content and _is_program(next_content):
+                keep = False          # blank before program declaration
+            if keep:
+                out.append(line)
+        else:
+            # Insert blank before procedure/function when it immediately follows end;
+            if _is_proc_func(line) and out and out[-1].strip() \
+                    and _is_toplevel_end(out[-1]):
+                out.append('')
+            out.append(line)
+
+    return out
 
 
 # ── Main reformat ─────────────────────────────────────────────────────────────
@@ -399,8 +517,8 @@ def reformat(src: str) -> str:
     # Apply indentation
     indented = indent_lines(split)
 
-    # Collapse runs of more than 2 blank lines to 1
-    out = []
+    # Collapse runs of more than 1 blank line to 1
+    out: list[str] = []
     blank = 0
     for ln in indented:
         if ln.strip() == '':
@@ -410,6 +528,9 @@ def reformat(src: str) -> str:
         else:
             blank = 0
             out.append(ln)
+
+    # Apply blank-line rules
+    out = cleanup_blanks(out)
 
     return '\n'.join(out) + '\n'
 
