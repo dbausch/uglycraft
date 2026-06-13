@@ -27,6 +27,7 @@ var
   Score: LongInt;
   Blocked: array[1..FieldW, 1..FieldH] of Boolean;
   Key, Direction: Char;
+  Laying: Boolean;
   F, TTY: Text;
   FirstName, LastName, S: String;
   Line: String[80];
@@ -547,7 +548,7 @@ begin
   WriteXY(2, 7, '[F4] = Neustart');
   WriteXY(2, 8, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
   WriteXY(2, 9, '[F2] = Die Geschichte von Ugli');
-  WriteXY(2, 10, '[Space] = Block an aktueller Position setzen');
+  WriteXY(2, 10, '[Space] = Blöcke legen umschalten (an/aus)');
   WriteXY(2, 11, '[F5] = Alle gesetzten Blöcke wieder entfernen');
   WriteXY(2, 12, '[F1] = Diese Hilfe');
   WriteXY(2, 15, '                  T A S T E   D R Ü C K E N');
@@ -858,6 +859,7 @@ begin
   Lives := 9;
   Level := 0;
   ItemNo := 9;
+  Laying := false;
 end;
 
 procedure PlayerCaught;
@@ -941,6 +943,8 @@ begin
 end;
 
 
+procedure PlaceBlock; forward;
+
 procedure HandleInput;
 begin
   if KeyPressed then
@@ -951,6 +955,7 @@ begin
         KeyPause: DoPause;
         KeySlower: SlowDown;
         KeyFaster: SpeedUp;
+        32: Laying := not Laying;
         61:
           begin
             if Score >= 5000 then
@@ -985,13 +990,14 @@ begin
     KeyUp: MoveUp(X, Y);
     KeyDown: MoveDown(X, Y);
   end; {case}
+  if Laying then PlaceBlock;
   TextColor(14);
   WriteXY(X, Y, '☺');
 end;
 
 procedure PlaceBlock;
 begin
-  if (BlocksRemaining > 0) and (Score >= 20) then
+  if (BlocksRemaining > 0) and (Score >= 20) and (not Blocked[X, Y]) then
     begin
       TextColor(4);
       WriteXY(X, Y, '█');
@@ -1108,7 +1114,6 @@ begin
       HandleInput;
       if KeyCode = 27 then goto 999;
       if KeyCode = 62 then goto 300;
-      if KeyCode = 32 then PlaceBlock;
       if KeyCode = 63 then RemoveBlocks;
       EnemyMove;
       if (X = EX) and (Y = EY) then
