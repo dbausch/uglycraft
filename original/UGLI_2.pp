@@ -232,15 +232,7 @@ end; {DrawBlocks}
 
 procedure AwardPoints;
 begin
-  if ItemNo = 2 then Score := Score + 100;
-  if ItemNo = 3 then Score := Score + 200;
-  if ItemNo = 4 then Score := Score + 300;
-  if ItemNo = 5 then Score := Score + 400;
-  if ItemNo = 6 then Score := Score + 500;
-  if ItemNo = 7 then Score := Score + 600;
-  if ItemNo = 8 then Score := Score + 700;
-  if ItemNo = 9 then Score := Score + 800;
-  if ItemNo = 10 then Score := Score + 900;
+  Score := Score + (ItemNo - 1) * 100;
   DrawScore;
 end;
 
