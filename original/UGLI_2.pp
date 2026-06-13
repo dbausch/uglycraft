@@ -581,16 +581,12 @@ begin
   Delay(1000);
 end;
 
-procedure BumpSound;
-begin
-  SoundBump;
-end; {BumpSound}
 
 procedure MoveDown(var X: Integer; var Y: Integer);
 var OldY: Integer;
 begin
   OldY := Y;
-  if Blocked[X, Y + 1] then BumpSound
+  if Blocked[X, Y + 1] then SoundBump
   else Y := Y + 1;
   if Y <> OldY then
     begin
@@ -607,7 +603,7 @@ procedure MoveLeft(var X: Integer; var Y: Integer);
 var OldX: Integer;
 begin
   OldX := X;
-  if Blocked[X - 1, Y] then BumpSound
+  if Blocked[X - 1, Y] then SoundBump
   else X := X - 1;
   if X <> OldX then
     begin
@@ -624,7 +620,7 @@ procedure MoveRight(var X: Integer; var Y: Integer);
 var OldX: Integer;
 begin
   OldX := X;
-  if Blocked[X + 1, Y] then BumpSound
+  if Blocked[X + 1, Y] then SoundBump
   else X := X + 1;
   if X <> OldX then
     begin
@@ -641,7 +637,7 @@ procedure MoveUp(var X: Integer; var Y: Integer);
 var OldY: Integer;
 begin
   OldY := Y;
-  if Blocked[X, Y - 1] then BumpSound
+  if Blocked[X, Y - 1] then SoundBump
   else Y := Y - 1;
   if Y <> OldY then
     begin
