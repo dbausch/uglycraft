@@ -2,7 +2,7 @@ unit DANISOFT;
 interface
 uses Crt, UOSSound;
 
-procedure Erkennung(S1, S2, S3, S4, S5, S6, S7, S8: String; Ver: String; Nr, User, Copyjahr: String);
+procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String; Release, User, CopyYear: String);
 
 implementation
 
@@ -19,19 +19,19 @@ begin
   UTF8Cols := Count;
 end;
 
-function Zentriert(S: String): String;
-var Laenge, Blanks, I: Integer;
-  BlankZone: String;
+function Center(S: String): String;
+var Cols, Blanks, I: Integer;
+  Padding: String;
 begin
-  Laenge := UTF8Cols(S);
-  Blanks := 39 - (Laenge div 2);
-  BlankZone := '';
-  for I := 1 to Blanks do BlankZone := BlankZone + ' ';
-  Zentriert := BlankZone + S;
+  Cols := UTF8Cols(S);
+  Blanks := 39 - (Cols div 2);
+  Padding := '';
+  for I := 1 to Blanks do Padding := Padding + ' ';
+  Center := Padding + S;
 end;
 
-procedure Erkennung(S1, S2, S3, S4, S5, S6, S7, S8: String; Ver: String;
-  Nr, User, Copyjahr: String);
+procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String;
+  Release, User, CopyYear: String);
 var I: Integer;
   TTY: Text;
 
@@ -72,7 +72,7 @@ begin
   Delay(200);
   WLn('');
   Delay(200);
-  WLn(Zentriert('* DANISOFT * PRÄSENTIERT *'));
+  WLn(Center('* DANISOFT * PRÄSENTIERT *'));
   Delay(200);
   WLn('');
   Delay(200);
@@ -80,21 +80,21 @@ begin
   TextColor(Red + Blink);
   TextBackground(7);
   Delay(200);
-  WLn(S1);
+  WLn(Logo1);
   Delay(200);
-  WLn(S2);
+  WLn(Logo2);
   Delay(200);
-  WLn(S3);
+  WLn(Logo3);
   Delay(200);
-  WLn(S4);
+  WLn(Logo4);
   Delay(200);
-  WLn(S5);
+  WLn(Logo5);
   Delay(200);
-  WLn(S6);
+  WLn(Logo6);
   Delay(200);
-  WLn(S7);
+  WLn(Logo7);
   Delay(200);
-  WLn(S8);
+  WLn(Logo8);
   Delay(200);
   WLn('');
   Delay(200);
@@ -102,28 +102,28 @@ begin
   TextBackground(7);
   WLn('');
   Delay(200);
-  WLn(Zentriert('Hallo, gleich geht''s los!'));
+  WLn(Center('Hallo, gleich geht''s los!'));
   Delay(200);
   WLn('');
   TextColor(Black);
   TextBackground(15);
   Delay(200);
-  WLn(Zentriert(User));
+  WLn(Center(User));
   Delay(200);
   WLn('');
   Delay(200);
-  WLn(Zentriert('Version: ' + Ver + '/' + Nr));
+  WLn(Center('Version: ' + Version + '/' + Release));
   Delay(200);
   WLn('');
   Delay(200);
-  WLn(Zentriert(Copyjahr));
+  WLn(Center(CopyYear));
   Delay(200);
   WLn('');
   Delay(200);
   WLn('');
   Delay(200);
   TextColor(4);
-  Write(Zentriert('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
+  Write(Center('Bitte die [Enter] bzw. [Return] - Taste Drücken'));
   WLn('');
   ReadLn;
   ClrScr;
