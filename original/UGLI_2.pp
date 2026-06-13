@@ -537,8 +537,8 @@ begin
   WriteXY(2, 7, '[F4] = Neustart');
   WriteXY(2, 8, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
   WriteXY(2, 9, '[F2] = Die Geschichte von Ugli');
-  WriteXY(2, 10, '[s] = Setzt an der Posision von dir einen Block (danach Richtungstaste drücken)');
-  WriteXY(2, 11, '[n] = alle gesetzeten Blöcke wieder entfernen');
+  WriteXY(2, 10, '[Space] = Block an aktueller Position setzen');
+  WriteXY(2, 11, '[F5] = Alle gesetzten Blöcke wieder entfernen');
   WriteXY(2, 12, '[F1] = Diese Hilfe');
   WriteXY(2, 15, '                  T A S T E   D R Ü C K E N');
   Key := GetKey;
@@ -924,20 +924,6 @@ begin
   until not Blocked[ItemX, ItemY];
 end;
 
-procedure CheatScreen;
-begin
-  ClrScr;
-  WriteLn('************* G E H E I M ************');
-  WriteLn;
-  WriteLn('Drückst du aber <F10> kommst du ein level weiter !!!');
-  WriteLn('Mit <s> kann man Steine Setzen !!!');
-  WriteLn('Mit <n> kann man alle gesetzten Steine entfernen !!!');
-  WriteLn;
-  WriteLn('  ↓,↑,', '→', ' oder ', '←', '   DRÜCKEN');
-  Key := GetKey;
-  DrawFrame;
-  DrawInner;
-end;
 
 procedure HandleInput;
 begin
@@ -1119,8 +1105,8 @@ begin
       HandleInput;
       if KeyCode = 27 then goto 999;
       if KeyCode = 62 then goto 300;
-      if KeyCode = 115 then PlaceBlock;
-      if KeyCode = 110 then RemoveBlocks;
+      if KeyCode = 32 then PlaceBlock;
+      if KeyCode = 63 then RemoveBlocks;
       EnemyMove;
       if (X = EX) and (Y = EY) then
         begin
