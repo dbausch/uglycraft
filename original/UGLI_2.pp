@@ -998,14 +998,16 @@ end;
 
 procedure PlaceBlock;
 begin
-  if (BlocksRemaining > 0) and (Score >= 20) and (not Blocked[X, Y]) then
+  if (BlocksRemaining = 0) or (Score < 20) then
+    Laying := false
+  else if not Blocked[X, Y] then
     begin
       TextColor(4);
       WriteXY(X, Y, '█');
       Blocked[X, Y] := true;
       BlockX := X;
       BlockY := Y;
-      if Score > 0 then Score := Score - 20;
+      Score := Score - 20;
       BlocksRemaining := BlocksRemaining - 1;
       DrawBlocks;
       DrawScore;
