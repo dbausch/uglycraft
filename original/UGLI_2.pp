@@ -530,7 +530,7 @@ begin
   ClrScr;
   WriteXY(2, 1, '                  HILFE VON UGLI');
   WriteXY(2, 2, '[p] = Pause (1 Pause Weniger)');
-  WriteXY(2, 3, 'Bewegungs-Tasten: ◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
+  WriteXY(2, 3, 'Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben');
   WriteXY(2, 4, '[Esc] = Abbruch');
   WriteXY(2, 5, '[Ende] = Langsamer');
   WriteXY(2, 6, '[Pos1] = Schneller');
@@ -647,7 +647,7 @@ end; {MoveUp}
 procedure DrawKeys;
 begin
   TextColor(11);
-  WriteXY(1, 21, '◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
+  WriteXY(1, 21, '← = links  ↓ = unten  → = rechts  ↑ = oben');
   DrawHLine(1, 80, 22, '─');
   WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart    ');
   DrawHLine(1, 80, 24, '─');
