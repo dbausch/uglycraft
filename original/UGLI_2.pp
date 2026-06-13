@@ -485,7 +485,7 @@ begin
       Blocked[15, I] := true;
       Blocked[65, I] := true;
     end;
-  for I := 5 to 75 do
+  for I := 6 to 74 do
     Blocked[I, 10] := true;
   for I := 12 to 16 do
     begin
