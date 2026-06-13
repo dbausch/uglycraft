@@ -212,7 +212,7 @@ var S: String;
 begin
   TextBackground(LightRed);
   TextColor(15);
-  Str(Lives, S);
+  Str(Lives:2, S);
   WriteXY(3, 20, 'LEBEN ' + S);
   TextBackground(0);
 end; {DrawLives}
