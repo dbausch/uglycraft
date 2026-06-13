@@ -5,31 +5,31 @@ label 100, 300, 999, 998, 1, 997;
 
 const
   User = 'Public Domain';
-  Vers = '2.1';
-  Nr = '0042';
-  MaXX = 80;
-  MaxY = 20;
-  CurR = 77;
-  CurL = 75;
-  CurU = 80;
-  CurO = 72;
-  Unbr = 112;
-  Lans = 79;
-  Kauf = 32;
-  Sped = 71;
-  Name = 'UGLI.HSC';
-  Copy = 'Released under the terms of the GNU GPLv3';
+  Version = '2.1';
+  Release = '0042';
+  FieldW = 80;
+  FieldH = 20;
+  KeyRight = 77;
+  KeyLeft = 75;
+  KeyDown = 80;
+  KeyUp = 72;
+  KeyPause = 112;
+  KeySlower = 79;
+  KeyBuY = 32;
+  KeyFaster = 71;
+  HighScoreFileName = 'UGLI.HSC';
+  License = 'Released under the terms of the GNU GPLv3';
 
 var
-  Steine, Langs, OP, Pausen, Timeslot, TI, I, J, Zahl, Level, Leben,
-  VX, VY, SX, SY, LocX, LocY, DX, DY, X, Y, XX, YY, EscState: Integer;
-  Punkte: LongInt;
-  Sper: array[1..MaXX, 1..MaxY] of Boolean;
-  T: Char;
+  BlocksRemaining, MoveDelay, Code, PausesRemaining, EnemyTick, KeyCode, I, J, ItemNo, Level, Lives,
+  SaveX, SaveY, BlockX, BlockY, ItemX, ItemY, DX, DY, X, Y, EX, EY, EscState: Integer;
+  Score: LongInt;
+  Blocked: array[1..FieldW, 1..FieldH] of Boolean;
+  Key: Char;
   F, TTY: Text;
-  IZ, A, S: String;
-  Zeile: String[80];
-  Schutz: Boolean;
+  FirstName, LastName, S: String;
+  Line: String[80];
+  Shield: Boolean;
 
 procedure MyCursorOn;
 begin
@@ -86,7 +86,7 @@ begin
     WriteXY(I, Y, Ch);
 end;
 
-procedure ReStone;
+procedure DrawInner;
 var
   I, J: Integer;
   C: String;
@@ -96,7 +96,7 @@ begin
     begin
       for J := 2 to 19 do
         begin
-          if Sper[I, J] then
+          if Blocked[I, J] then
             C := '█'
           else
             C := ' ';
@@ -105,25 +105,25 @@ begin
     end;
 end;
 
-procedure Abfrage;
+procedure HighScoreEntry;
 begin
   ClrScr;
   WriteLn;
   WriteLn('VORNAME ');
   MyCursorOn;
-  GotoXY(9, 2); ReadLn(IZ);
+  GotoXY(9, 2); ReadLn(FirstName);
   WriteLn('NAME ');
-  GotoXY(6, 3); ReadLn(A);
+  GotoXY(6, 3); ReadLn(LastName);
   MyCursorOff;
-  Str(Punkte * Leben, S); WriteXY(1, 4, 'Punkte ' + S);
-  Assign(F, Name);
+  Str(Score * Lives, S); WriteXY(1, 4, 'Punkte ' + S);
+  Assign(F, HighScoreFileName);
 
   Append(F);
 
   if IOResult = 0
   then
     begin
-      WriteLn(F, IZ, ' ', A, '    ', Punkte * Leben);
+      WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
       Close(F);
       WriteLn;
     end
@@ -136,14 +136,14 @@ begin
         end
       else
         begin
-          WriteLn(F, IZ, ' ', A, '    ', Punkte * Leben);
+          WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
           Close(F);
           WriteLn;
         end;
     end;
   ReadLn;
   ClrScr;
-  Assign(F, Name);
+  Assign(F, HighScoreFileName);
 
   Reset(F);
 
@@ -152,8 +152,8 @@ begin
     begin
       while not Eof(F) do
         begin
-          ReadLn(F, Zeile);
-          WriteLn(Zeile);
+          ReadLn(F, Line);
+          WriteLn(Line);
         end;
       Close(F);
     end
@@ -168,8 +168,8 @@ begin
         begin
           while not Eof(F) do
             begin
-              ReadLn(F, Zeile);
-              WriteLn(Zeile);
+              ReadLn(F, Line);
+              WriteLn(Line);
             end;
           Close(F);
         end;
@@ -179,14 +179,9 @@ begin
   ReadLn;
 end;
 
-procedure Cls;
+procedure ShowIntro;
 begin
-  ClrScr;
-end;
-
-procedure Verwirrung;
-begin
-  Erkennung(
+  Intro(
     '                  **        **    **********   **           **                 ',
     '                  **        **   **        **  **           **                 ',
     '                  **        **   **        **  **           **                 ',
@@ -195,169 +190,169 @@ begin
     '                  **        **   **        **  **           **                 ',
     '                  **        **   **        **  **           **                 ',
     '                   **********     **********   **********   **                 ',
-    Vers, Nr, User, Copy);
+    Version, Release, User, License);
 end;
 
-procedure PunkteZaehlen;
+procedure AwardPoints;
 begin
-  if Zahl = 2 then Punkte := Punkte + 100;
-  if Zahl = 3 then Punkte := Punkte + 200;
-  if Zahl = 4 then Punkte := Punkte + 300;
-  if Zahl = 5 then Punkte := Punkte + 400;
-  if Zahl = 6 then Punkte := Punkte + 500;
-  if Zahl = 7 then Punkte := Punkte + 600;
-  if Zahl = 8 then Punkte := Punkte + 700;
-  if Zahl = 9 then Punkte := Punkte + 800;
-  if Zahl = 10 then Punkte := Punkte + 900;
+  if ItemNo = 2 then Score := Score + 100;
+  if ItemNo = 3 then Score := Score + 200;
+  if ItemNo = 4 then Score := Score + 300;
+  if ItemNo = 5 then Score := Score + 400;
+  if ItemNo = 6 then Score := Score + 500;
+  if ItemNo = 7 then Score := Score + 600;
+  if ItemNo = 8 then Score := Score + 700;
+  if ItemNo = 9 then Score := Score + 800;
+  if ItemNo = 10 then Score := Score + 900;
   TextBackground(Red);
   TextColor(15);
-  WriteXY(3, 1, 'PUNKTE '); Write(Punkte);
+  WriteXY(3, 1, 'PUNKTE '); Write(Score);
   TextBackground(0);
 end;
 
-procedure InitL1;
+procedure InitLevel1;
 begin
   X := 40;
   Y := 10;
-  T := Chr(CurR);
-end; {InitL1}
+  Key := Chr(KeyRight);
+end; {InitLevel1}
 
-procedure InitL2;
+procedure InitLevel2;
 var
   I: Integer;
 begin
   for I := 18 to 62 do
     begin
-      Sper[I, 10] := true;
+      Blocked[I, 10] := true;
     end;
 
   X := 40;
   Y := 5;
-  T := Chr(CurR);;
-end; {InitL2}
+  Key := Chr(KeyRight);;
+end; {InitLevel2}
 
-procedure InitL3;
+procedure InitLevel3;
 var
   I: Integer;
 begin
   for I := 5 to 15 do
     begin
-      Sper[20, I] := true;
-      Sper[60, I] := true;
+      Blocked[20, I] := true;
+      Blocked[60, I] := true;
     end;
   for I := 20 to 60 do
     begin
-      Sper[I, 10] := true;
+      Blocked[I, 10] := true;
     end;
-  Sper[39, 10] := false;
-  Sper[40, 10] := false;
-  Sper[41, 10] := false;
+  Blocked[39, 10] := false;
+  Blocked[40, 10] := false;
+  Blocked[41, 10] := false;
 
   X := 40;
   Y := 9;
-  T := Chr(CurO);
-end; {InitL3}
+  Key := Chr(KeyUp);
+end; {InitLevel3}
 
-procedure InitL4;
+procedure InitLevel4;
 var
   I: Integer;
 begin
   for I := 4 to 8 do
     begin
-      Sper[15, I] := true;
-      Sper[65, I] := true;
+      Blocked[15, I] := true;
+      Blocked[65, I] := true;
     end;
   for I := 5 to 75 do
-    Sper[I, 10] := true;
+    Blocked[I, 10] := true;
   for I := 12 to 16 do
     begin
-      Sper[15, I] := true;
-      Sper[65, I] := true;
+      Blocked[15, I] := true;
+      Blocked[65, I] := true;
     end;
-  Sper[39, 10] := false;
-  Sper[40, 10] := false;
-  Sper[41, 10] := false;
+  Blocked[39, 10] := false;
+  Blocked[40, 10] := false;
+  Blocked[41, 10] := false;
 
   X := 40;
   Y := 9;
-  T := Chr(CurR);
-end; {InitL4}
+  Key := Chr(KeyRight);
+end; {InitLevel4}
 
-procedure InitL5;
+procedure InitLevel5;
 var
   I: Integer;
 begin
   for I := 5 to 15 do
     begin
-      Sper[20, I] := true;
-      Sper[60, I] := true;
+      Blocked[20, I] := true;
+      Blocked[60, I] := true;
     end;
   for I := 22 to 58 do
     begin
-      Sper[I, 7] := true;
-      Sper[I, 13] := true;
+      Blocked[I, 7] := true;
+      Blocked[I, 13] := true;
     end;
   for I := 20 to 60 do
     begin
-      Sper[I, 10] := false;
+      Blocked[I, 10] := false;
     end;
 
   X := 40;
   Y := 10;
-  T := Chr(CurO);
-end; {InitL5}
+  Key := Chr(KeyUp);
+end; {InitLevel5}
 
-procedure InitL6;
+procedure InitLevel6;
 var
   I: Integer;
 begin
   for I := 2 to 8 do
     begin
-      Sper[10, I] := true;
-      Sper[20, I] := true;
-      Sper[30, I] := true;
-      Sper[40, I] := true;
-      Sper[50, I] := true;
-      Sper[60, I] := true;
-      Sper[70, I] := true;
+      Blocked[10, I] := true;
+      Blocked[20, I] := true;
+      Blocked[30, I] := true;
+      Blocked[40, I] := true;
+      Blocked[50, I] := true;
+      Blocked[60, I] := true;
+      Blocked[70, I] := true;
     end;
   for I := 12 to 19 do
     begin
-      Sper[10, I] := true;
-      Sper[20, I] := true;
-      Sper[30, I] := true;
-      Sper[40, I] := true;
-      Sper[50, I] := true;
-      Sper[60, I] := true;
-      Sper[70, I] := true;
+      Blocked[10, I] := true;
+      Blocked[20, I] := true;
+      Blocked[30, I] := true;
+      Blocked[40, I] := true;
+      Blocked[50, I] := true;
+      Blocked[60, I] := true;
+      Blocked[70, I] := true;
     end;
   for I := 5 to 15 do
     begin
-      Sper[15, I] := true;
-      Sper[25, I] := true;
-      Sper[35, I] := true;
-      Sper[45, I] := true;
-      Sper[55, I] := true;
-      Sper[65, I] := true;
+      Blocked[15, I] := true;
+      Blocked[25, I] := true;
+      Blocked[35, I] := true;
+      Blocked[45, I] := true;
+      Blocked[55, I] := true;
+      Blocked[65, I] := true;
     end;
   for I := 6 to 74 do
     begin
-      Sper[I, 10] := true;
-      Sper[I, 9] := false;
-      Sper[I, 11] := false;
+      Blocked[I, 10] := true;
+      Blocked[I, 9] := false;
+      Blocked[I, 11] := false;
     end;
-  Sper[38, 10] := false;
-  Sper[39, 10] := false;
-  Sper[40, 10] := false;
-  Sper[41, 10] := false;
-  Sper[42, 10] := false;
+  Blocked[38, 10] := false;
+  Blocked[39, 10] := false;
+  Blocked[40, 10] := false;
+  Blocked[41, 10] := false;
+  Blocked[42, 10] := false;
 
   X := 75;
   Y := 5;
-  T := Chr(CurU);
-end; {InitL6}
+  Key := Chr(KeyDown);
+end; {InitLevel6}
 
-procedure InitL7;
+procedure InitLevel7;
 var
   I, J: Integer;
 begin
@@ -365,99 +360,99 @@ begin
   for I := 3 to 17 do
     begin
       Inc(J);
-      Sper[5 + J, I] := true;
-      Sper[33 + J, I] := true;
-      Sper[60 + J, I] := true;
+      Blocked[5 + J, I] := true;
+      Blocked[33 + J, I] := true;
+      Blocked[60 + J, I] := true;
     end;
   J := 16;
   for I := 3 to 17 do
     begin
       Dec(J);
-      Sper[5 + J, I] := true;
-      Sper[33 + J, I] := true;
-      Sper[60 + J, I] := true;
+      Blocked[5 + J, I] := true;
+      Blocked[33 + J, I] := true;
+      Blocked[60 + J, I] := true;
     end;
   for J := 9 to 11 do
     for I := 2 to 79 do
-      Sper[I, J] := false;
+      Blocked[I, J] := false;
   for I := 6 to 74 do
-    Sper[I, 10] := true;
+    Blocked[I, 10] := true;
   for I := 54 to 56 do
-    Sper[I, 10] := false;
+    Blocked[I, 10] := false;
   for I := 26 to 28 do
-    Sper[I, 10] := false;
+    Blocked[I, 10] := false;
 
   X := 75;
   Y := 10;
-  T := Chr(CurR);
-end; {InitL7}
+  Key := Chr(KeyRight);
+end; {InitLevel7}
 
-procedure InitL8;
+procedure InitLevel8;
 var
   I: Integer;
 begin
   for I := 2 to 15 do
     begin
-      Sper[10, I] := true;
-      Sper[30, I] := true;
-      Sper[50, I] := true;
-      Sper[70, I] := true;
+      Blocked[10, I] := true;
+      Blocked[30, I] := true;
+      Blocked[50, I] := true;
+      Blocked[70, I] := true;
     end;
   for I := 5 to 19 do
     begin
-      Sper[20, I] := true;
-      Sper[40, I] := true;
-      Sper[60, I] := true;
+      Blocked[20, I] := true;
+      Blocked[40, I] := true;
+      Blocked[60, I] := true;
     end;
 
   X := 75;
   Y := 5;
-  T := Chr(CurU);
-end; {InitL8}
+  Key := Chr(KeyDown);
+end; {InitLevel8}
 
-procedure InitL9;
+procedure InitLevel9;
 var I: Integer;
 begin
   for I := 5 to 15 do
     begin
-      Sper[20, I] := true;
-      Sper[60, I] := true;
-      Sper[39, I] := true;
-      Sper[41, I] := true;
+      Blocked[20, I] := true;
+      Blocked[60, I] := true;
+      Blocked[39, I] := true;
+      Blocked[41, I] := true;
     end;
   for I := 21 to 38 do
-    Sper[I, 5] := true;
+    Blocked[I, 5] := true;
   for I := 42 to 59 do
-    Sper[I, 5] := true;
+    Blocked[I, 5] := true;
   for I := 22 to 37 do
-    Sper[I, 15] := true;
+    Blocked[I, 15] := true;
   for I := 43 to 58 do
-    Sper[I, 15] := true;
+    Blocked[I, 15] := true;
 
   X := 40;
   Y := 10;
-  T := Chr(CurO);
+  Key := Chr(KeyUp);
 end;
 
-procedure InitL(L: Integer);
+procedure InitLevel(L: Integer);
 begin
   case L of
-    1: InitL1;
-    2: InitL2;
-    3: InitL3;
-    4: InitL4;
-    5: InitL5;
-    6: InitL6;
-    7: InitL7;
-    8: InitL8;
-    9: InitL9;
+    1: InitLevel1;
+    2: InitLevel2;
+    3: InitLevel3;
+    4: InitLevel4;
+    5: InitLevel5;
+    6: InitLevel6;
+    7: InitLevel7;
+    8: InitLevel8;
+    9: InitLevel9;
   end; {case}
-  ReStone;
-end; {InitL}
+  DrawInner;
+end; {InitLevel}
 
-procedure Wertsachen;
+procedure ShowItemDescriptions;
 begin
-  Cls;
+  ClrScr;
   WriteLn;
   WriteLn(' L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E ');
   WriteLn;
@@ -494,7 +489,7 @@ begin
     end
   else if (EscState = 2) and (Raw = #27) then
     begin
-      EscState := 0; Raw := Chr(Lans);
+      EscState := 0; Raw := Chr(KeySlower);
     end
   else if (EscState = 1) and (Raw = '[') then
     begin
@@ -511,12 +506,12 @@ begin
   GetKey := Raw;
 end;
 
-procedure Hilfe;
+procedure ShowHelp;
 begin
-  VX := X;
-  VY := Y;
+  SaveX := X;
+  SaveY := Y;
   TextColor(13);
-  Cls;
+  ClrScr;
   WriteXY(2, 1, '                  HILFE VON UGLI');
   WriteXY(2, 2, '[p] = Pause (1 Pause Weniger)');
   WriteXY(2, 3, 'Bewegungs-Tasten: ◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
@@ -532,12 +527,12 @@ begin
   WriteXY(2, 13, 'Achtung:  wenn irgend eine andere Taste gedrückt wird rast Ugli auf dich und du');
   WriteXY(2, 14, 'bist verloren');
   WriteXY(2, 17, '                  T A S T E   D R Ü C K E N');
-  T := GetKey;
-  X := VX;
-  Y := VY;
+  Key := GetKey;
+  X := SaveX;
+  Y := SaveY;
 end;
 
-procedure LevelNeu;
+procedure LevelTransition;
 begin
   begin
     repeat
@@ -550,26 +545,26 @@ begin
       WriteXY(27, 11, ' T A S T E   D R Ü C K E N ');
       Delay(1000);
     until KeyPressed;
-    T := GetKey;
+    Key := GetKey;
     WriteXY(27, 8, '                           ');
     WriteXY(27, 9, '                           ');
     WriteXY(27, 10, '                           ');
     WriteXY(27, 11, '                           ');
   end;
-  InitL(Level);
+  InitLevel(Level);
   Delay(1000);
 end;
 
-procedure Brumm;
+procedure BumpSound;
 begin
   SoundBrumm;
-end; {Brumm}
+end; {BumpSound}
 
-procedure Unten(var X: Integer; var Y: Integer);
+procedure MoveDown(var X: Integer; var Y: Integer);
 var OldY: Integer;
 begin
   OldY := Y;
-  if Sper[X, Y + 1] then Brumm
+  if Blocked[X, Y + 1] then BumpSound
   else Y := Y + 1;
   if Y <> OldY then
     begin
@@ -579,14 +574,14 @@ begin
     end;
   GotoXY(1, 1);
   TextColor(4);
-  WriteXY(SX, SY, '█');
-end; {Unten}
+  WriteXY(BlockX, BlockY, '█');
+end; {MoveDown}
 
-procedure Links(var X: Integer; var Y: Integer);
+procedure MoveLeft(var X: Integer; var Y: Integer);
 var OldX: Integer;
 begin
   OldX := X;
-  if Sper[X - 1, Y] then Brumm
+  if Blocked[X - 1, Y] then BumpSound
   else X := X - 1;
   if X <> OldX then
     begin
@@ -596,14 +591,14 @@ begin
     end;
   GotoXY(1, 1);
   TextColor(4);
-  WriteXY(SX, SY, '█');
-end; {Links}
+  WriteXY(BlockX, BlockY, '█');
+end; {MoveLeft}
 
-procedure Rechts(var X: Integer; var Y: Integer);
+procedure MoveRight(var X: Integer; var Y: Integer);
 var OldX: Integer;
 begin
   OldX := X;
-  if Sper[X + 1, Y] then Brumm
+  if Blocked[X + 1, Y] then BumpSound
   else X := X + 1;
   if X <> OldX then
     begin
@@ -613,14 +608,14 @@ begin
     end;
   GotoXY(1, 1);
   TextColor(4);
-  WriteXY(SX, SY, '█');
-end; {Rechts}
+  WriteXY(BlockX, BlockY, '█');
+end; {MoveRight}
 
-procedure Oben(var X: Integer; var Y: Integer);
+procedure MoveUp(var X: Integer; var Y: Integer);
 var OldY: Integer;
 begin
   OldY := Y;
-  if Sper[X, Y - 1] then Brumm
+  if Blocked[X, Y - 1] then BumpSound
   else Y := Y - 1;
   if Y <> OldY then
     begin
@@ -630,18 +625,18 @@ begin
     end;
   GotoXY(1, 1);
   TextColor(4);
-  WriteXY(SX, SY, '█');
-end; {Oben}
+  WriteXY(BlockX, BlockY, '█');
+end; {MoveUp}
 
-procedure Rahmen;
+procedure DrawFrame;
 var I, J: Integer;
 begin
   TextColor(4);
-  for I := 1 to MaXX do
+  for I := 1 to FieldW do
     begin
-      for J := 1 to MaxY do
+      for J := 1 to FieldH do
         begin
-          Sper[I, J] := false;
+          Blocked[I, J] := false;
         end; {for J}
     end; {for I}
 
@@ -652,8 +647,8 @@ begin
       WriteXY(I, 1, '█');
       TextColor(4);
       WriteXY(I, 20, '█');
-      Sper[I, 1] := true;
-      Sper[I, 20] := true;
+      Blocked[I, 1] := true;
+      Blocked[I, 20] := true;
     end; {for}
   for I := 2 to 19 do
     begin
@@ -661,12 +656,12 @@ begin
       WriteXY(1, I, '█');
       TextColor(4);
       WriteXY(80, I, '█');
-      Sper[1, I] := true;
-      Sper[80, I] := true;
+      Blocked[1, I] := true;
+      Blocked[80, I] := true;
     end; {for}
   WriteLevel;
   TextBackground(0);
-  InitL(Level);
+  InitLevel(Level);
 
   TextColor(11);
   WriteXY(1, 21, '◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
@@ -674,71 +669,71 @@ begin
   WriteXY(1, 23, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Pausen zeigen  <F4> = Neustart ');
   DrawHLine(1, 80, 24, '─');
   WriteXY(1, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
-end; {Rahmen}
+end; {DrawFrame}
 
-procedure UGLI2;
+procedure EnemyMove;
 var
-  OldXX, OldYY: Integer;
-  TryX: Boolean;
-  Tryn: Integer;
+  OldEX, OldEY: Integer;
+  TryHoriz: Boolean;
+  Attempt: Integer;
 begin
-  if Timeslot = 0 then
+  if EnemyTick = 0 then
     begin
-      OldXX := XX;
-      OldYY := YY;
-      DX := X - XX;
-      DY := Y - YY;
-      TryX := Abs(DX) > Abs(DY);
-      for Tryn := 1 to 2 do
+      OldEX := EX;
+      OldEY := EY;
+      DX := X - EX;
+      DY := Y - EY;
+      TryHoriz := Abs(DX) > Abs(DY);
+      for Attempt := 1 to 2 do
         begin
-          if TryX then
+          if TryHoriz then
             begin
-              if (DX > 0) and (Sper[XX + 1, YY] = false) then
+              if (DX > 0) and (Blocked[EX + 1, EY] = false) then
                 begin
-                  XX := XX + 1;
+                  EX := EX + 1;
                   break;
                 end;
-              if (DX < 0) and (Sper[XX - 1, YY] = false) then
+              if (DX < 0) and (Blocked[EX - 1, EY] = false) then
                 begin
-                  XX := XX - 1;
+                  EX := EX - 1;
                   break;
                 end;
             end
           else
             begin
-              if (DY > 0) and (Sper[XX, YY + 1] = false) then
+              if (DY > 0) and (Blocked[EX, EY + 1] = false) then
                 begin
-                  YY := YY + 1;
+                  EY := EY + 1;
                   break;
                 end;
-              if (DY < 0) and (Sper[XX, YY - 1] = false) then
+              if (DY < 0) and (Blocked[EX, EY - 1] = false) then
                 begin
-                  YY := YY - 1;
+                  EY := EY - 1;
                   break;
                 end;
             end;
-          TryX := not TryX;
+          TryHoriz := not TryHoriz;
         end;
-      if (XX <> OldXX) or (YY <> OldYY) then
-        WriteXY(OldXX, OldYY, ' ');
+      if (EX <> OldEX) or (EY <> OldEY) then
+        WriteXY(OldEX, OldEY, ' ');
       TextColor(6);
-      WriteXY(XX, YY, '☻');
+      WriteXY(EX, EY, '☻');
     end;
-end; {UGLI2}
+end; {EnemyMove}
 
-procedure Untbr;
+procedure DoPause;
 label 200;
 begin
-  if Pausen = 0 then goto 200;
-  Pausen := Pausen - 1;
+  if PausesRemaining = 0 then goto 200;
+  PausesRemaining := PausesRemaining - 1;
   Delay(5000);
 200:
 end;
 
-procedure Geschichte;
+procedure ShowStorY;
 begin
   TextColor(13);
-  Cls;
+  ClrScr;
   WriteXY(3, 1, '                Geschichte von UGLI');
   WriteXY(3, 3, 'Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.');
   WriteXY(3, 4, 'Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle');
@@ -746,52 +741,52 @@ begin
   WriteXY(3, 6, 'Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze');
   WriteXY(3, 7, 'zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.');
   WriteXY(3, 9, '                 T A S T E   D R Ü C K E N');
-  T := GetKey;
+  Key := GetKey;
 end;
 
-procedure Langsam;
+procedure SlowDown;
 begin
   Delay(50);
-  Langs := Langs + 1;
+  MoveDelay := MoveDelay + 1;
   WriteXY(3, 5, '        T A S T E   D R Ü C K E N');
-  T := GetKey;
+  Key := GetKey;
   WriteXY(3, 5, '                                   ');
-  VX := X;
-  VY := Y;
+  SaveX := X;
+  SaveY := Y;
   TextColor(Red);
   for J := 1 to 80 do
     begin
-      if Sper[J, 5] = true then WriteXY(J, 5, '█') else WriteXY(J, 5, ' ');
+      if Blocked[J, 5] = true then WriteXY(J, 5, '█') else WriteXY(J, 5, ' ');
     end;
-  X := VX;
-  Y := VY;
+  X := SaveX;
+  Y := SaveY;
 end;
 
-procedure Schnell;
+procedure SpeedUp;
 begin
   Delay(50);
-  if Langs > 0 then
+  if MoveDelay > 0 then
     begin
-      Langs := Langs - 1;
+      MoveDelay := MoveDelay - 1;
       WriteXY(3, 5, '        T A S T E   D R Ü C K E N');
-      T := GetKey;
+      Key := GetKey;
       TextColor(Red);
       for J := 1 to 80 do
         begin
-          if Sper[J, 5] = true then WriteXY(J, 5, '█') else WriteXY(J, 5, ' ');
+          if Blocked[J, 5] = true then WriteXY(J, 5, '█') else WriteXY(J, 5, ' ');
         end;
     end;
-  if Langs = 0 then
+  if MoveDelay = 0 then
     begin
       WriteXY(3, 3, '                Schneller geht''s nicht');
       WriteXY(3, 5, '        T A S T E   D R Ü C K E N');
-      T := GetKey;
+      Key := GetKey;
       TextColor(Red);
       for I := 3 to 5 do
         begin
           for J := 1 to 80 do
             begin
-              if Sper[J, I] = true then WriteXY(J, I, '█') else WriteXY(J, I, ' ');
+              if Blocked[J, I] = true then WriteXY(J, I, '█') else WriteXY(J, I, ' ');
             end;
         end;
     end;
@@ -799,27 +794,27 @@ end;
 
 procedure GameOver;
 begin
-  WriteXY(XX, YY, ' ');
+  WriteXY(EX, EY, ' ');
   WriteXY(X, Y, ' ');
-  WriteXY(LocX, LocY, ' ');
+  WriteXY(ItemX, ItemY, ' ');
   DrawHLine(28, 49, 2, '█');
   WriteXY(28, 3, '██ G A M E  O V E R ██');
   DrawHLine(28, 49, 4, '█');
   SoundGameOver;
 end;
 
-procedure PausenZeigen;
+procedure ShowPauses;
 begin
-  Str(Pausen, S); WriteXY(65, 1, 'PAUSEN ' + S);
+  Str(PausesRemaining, S); WriteXY(65, 1, 'PAUSEN ' + S);
   WriteXY(21, 9, 'T A S T E   D R Ü C K E N');
-  T := GetKey;
+  Key := GetKey;
   TextColor(4);
   WriteXY(21, 9, '                           ');
   DrawHLine(65, 79, 1, '█');
-  ReStone;
+  DrawInner;
 end;
 
-procedure Gewonnen;
+procedure WinScreen;
 begin
   TextColor(12 + Blink);
   DrawHLine(30, 56, 8, '█');
@@ -833,139 +828,139 @@ begin
   TextColor(Random(255));
   TextAttr := Random(255);
   TextBackground(1);
-  Cls;
-  while KeyPressed do T := GetKey;
-  T := #0;
+  ClrScr;
+  while KeyPressed do Key := GetKey;
+  Key := #0;
   repeat
     begin
       TextAttr := Random(255);
       if KeyPressed then
         begin
-          T := GetKey;
-          OP := Ord(T);
+          Key := GetKey;
+          Code := Ord(Key);
         end;
       Write('*');
       Delay(10);
     end;
-  until OP > 0;
+  until Code > 0;
   TextBackground(Black);
   TextColor(9);
-  Abfrage;
-  Cls;
+  HighScoreEntry;
+  ClrScr;
 end;
 
-procedure Def;
+procedure Init;
 begin
   Randomize;
-  Verwirrung;
-  Wertsachen;
+  ShowIntro;
+  ShowItemDescriptions;
   TextBackground(0);
   TextColor(4);
-  Cls;
-  Langs := 100;
-  Pausen := 20;
-  SX := 1;
-  SY := 1;
+  ClrScr;
+  MoveDelay := 100;
+  PausesRemaining := 20;
+  BlockX := 1;
+  BlockY := 1;
 
-  XX := 5;
-  YY := 10;
+  EX := 5;
+  EY := 10;
   X := 40;
   Y := 10;
-  Steine := 2000;
-  Punkte := 0;
-  Leben := 9;
+  BlocksRemaining := 2000;
+  Score := 0;
+  Lives := 9;
   Level := 0;
-  Zahl := 9;
+  ItemNo := 9;
 end;
 
-procedure Fressen;
+procedure PlayerCaught;
 begin
-  if Schutz = false then
+  if Shield = false then
     begin
-      Rahmen;
+      DrawFrame;
       SoundCaught;
-      Punkte := Punkte - Zahl * 1000;
-      if Punkte < 0 then Punkte := 0;
-      Zahl := 1;
-      Leben := Leben - 1;
-      SX := 1;
-      SY := 1;
+      Score := Score - ItemNo * 1000;
+      if Score < 0 then Score := 0;
+      ItemNo := 1;
+      Lives := Lives - 1;
+      BlockX := 1;
+      BlockY := 1;
     end
   else
-    Schutz := false;
+    Shield := false;
 end;
 
-procedure ZahlenSetzung;
+procedure DrawItem;
 begin
   TextColor(2);
-  if Zahl = 1 then
+  if ItemNo = 1 then
     begin
       TextBackground(Black);
       TextColor(Brown);
-      WriteXY(LocX, LocY, '|');
+      WriteXY(ItemX, ItemY, '|');
     end;
-  if Zahl = 2 then
+  if ItemNo = 2 then
     begin
       TextBackground(Black);
       TextColor(LightBlue);
-      WriteXY(LocX, LocY, '☼');
+      WriteXY(ItemX, ItemY, '☼');
     end;
-  if Zahl = 3 then
+  if ItemNo = 3 then
     begin
       TextColor(LightRed);
       TextBackground(Black);
-      WriteXY(LocX, LocY, ':');
+      WriteXY(ItemX, ItemY, ':');
     end;
-  if Zahl = 4 then
+  if ItemNo = 4 then
     begin
       TextBackground(Black);
       TextColor(LightBlue);
-      WriteXY(LocX, LocY, '*');
+      WriteXY(ItemX, ItemY, '*');
     end;
-  if Zahl = 5 then
+  if ItemNo = 5 then
     begin
       TextColor(Yellow);
-      WriteXY(LocX, LocY, '=');
+      WriteXY(ItemX, ItemY, '=');
     end;
-  if Zahl = 6 then
+  if ItemNo = 6 then
     begin
       TextColor(LightGray);
-      WriteXY(LocX, LocY, '≡');
+      WriteXY(ItemX, ItemY, '≡');
     end;
-  if Zahl = 7 then
+  if ItemNo = 7 then
     begin
       TextColor(Cyan);
-      WriteXY(LocX, LocY, 'Γ');
+      WriteXY(ItemX, ItemY, 'Γ');
     end;
-  if Zahl = 8 then
+  if ItemNo = 8 then
     begin
       TextColor(Yellow);
-      WriteXY(LocX, LocY, 'Φ');
+      WriteXY(ItemX, ItemY, 'Φ');
     end;
-  if Zahl = 9 then
+  if ItemNo = 9 then
     begin
       TextColor(LightGreen);
-      WriteXY(LocX, LocY, '♦');
+      WriteXY(ItemX, ItemY, '♦');
     end;
-  if (Zahl = 9) and (Level = 9) then
+  if (ItemNo = 9) and (Level = 9) then
     begin
       TextColor(Yellow);
-      WriteXY(LocX, LocY, '⌂');
+      WriteXY(ItemX, ItemY, '⌂');
     end;
   TextBackground(Black);
 end;
 
-procedure ZufalsPos;
+procedure RandomPos;
 begin
   repeat
-    LocX := Round((Random * 77) + 2); {Zufalls-Zahlen-X-Pos}
-    LocY := Round((Random * 17) + 2); {Zufalls-Zahlen-Y-Pos}
-  until not Sper[LocX, LocY];
+    ItemX := Round((Random * 77) + 2); {Zufalls-Zahlen-X-Pos}
+    ItemY := Round((Random * 17) + 2); {Zufalls-Zahlen-Y-Pos}
+  until not Blocked[ItemX, ItemY];
 end;
 
-procedure GeheimTricks;
+procedure CheatScreen;
 begin
-  Cls;
+  ClrScr;
   WriteLn('************* G E H E I M ************');
   WriteLn;
   WriteLn('Drückst du aber <F10> kommst du ein level weiter !!!');
@@ -973,8 +968,8 @@ begin
   WriteLn('Mit <n> kann man alle gesetzten Steine entfernen !!!');
   WriteLn;
   WriteLn('  ↓,↑,', '→', ' oder ', '←', '   DRÜCKEN');
-  T := GetKey;
-  ReStone;
+  Key := GetKey;
+  DrawInner;
   TextColor(11);
   WriteXY(1, 21, '◄─ = links  ↓ = unten  ─► = rechts  ↑ = oben');
   DrawHLine(1, 80, 22, '─');
@@ -983,111 +978,111 @@ begin
   WriteXY(1, 25, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende     ');
 end;
 
-procedure Kaufen;
+procedure ShopMenu;
 begin
   Window(2, 2, 79, 19);
   TextBackground(0);
   ClrScr;
   WriteLn('1 )    Schutzschild (Währt einen angrif ab, dann ist es kaputt)  Kostet  1000');
   WriteLn('2 ♥    Leben        (Macht ein leben mehr)                       Kostet  5000');
-  T := GetKey;
+  Key := GetKey;
   Window(1, 1, 80, 25);
-  ReStone;
+  DrawInner;
 end;
 
-procedure Taste;
+procedure HandleInput;
 begin
   if KeyPressed then
-    T := GetKey;
-  Timeslot := (Timeslot + 1) mod 2;
+    Key := GetKey;
+  EnemyTick := (EnemyTick + 1) mod 2;
   GotoXY(1, 1);
-  TI := Ord(T);
-  case TI of
-    CurR: Rechts(X, Y);
-    CurL: Links(X, Y);
-    CurO: Oben(X, Y);
-    CurU: Unten(X, Y);
-    Unbr: Untbr;
-    Lans: Langsam;
-    Sped: Schnell;
-    Kauf: Kaufen;
+  KeyCode := Ord(Key);
+  case KeyCode of
+    KeyRight: MoveRight(X, Y);
+    KeyLeft: MoveLeft(X, Y);
+    KeyUp: MoveUp(X, Y);
+    KeyDown: MoveDown(X, Y);
+    KeyPause: DoPause;
+    KeySlower: SlowDown;
+    KeyFaster: SpeedUp;
+    KeyBuY: ShopMenu;
     49:
       begin
-        if Punkte >= 1000 then
+        if Score >= 1000 then
           begin
-            if Schutz = true then
+            if Shield = true then
               WriteXY(2, 2, 'Du hast schon ein Schutzschild.')
             else
               begin
-                Schutz := true;
-                Punkte := Punkte - 1000;
+                Shield := true;
+                Score := Score - 1000;
               end;
           end;
         WriteXY(35, 2, '↑,↓,← oder ← Drücken');
-        T := GetKey;
-        ReStone;
+        Key := GetKey;
+        DrawInner;
       end;
     50:
       begin
-        if Punkte >= 5000 then
+        if Score >= 5000 then
           begin
-            Leben := Leben + 1;
-            Punkte := Punkte - 5000;
+            Lives := Lives + 1;
+            Score := Score - 5000;
           end;
         WriteXY(2, 2, '↑,↓,← oder ← Drücken');
-        T := GetKey;
-        ReStone;
+        Key := GetKey;
+        DrawInner;
       end;
   end; {case}
-  if TI = 59 then
+  if KeyCode = 59 then
     begin
       TextColor(6);
-      Hilfe;
-      ReStone;
+      ShowHelp;
+      DrawInner;
     end;
-  if TI = 60 then
+  if KeyCode = 60 then
     begin
-      Geschichte;
-      ReStone;
+      ShowStorY;
+      DrawInner;
     end;
-  if TI = 61 then
+  if KeyCode = 61 then
     begin
-      PausenZeigen;
+      ShowPauses;
     end;
   TextColor(14);
   WriteXY(X, Y, '☺');
 end;
 
-procedure SteineSetzen;
+procedure PlaceBlock;
 begin
-  Steine := Steine - 1;
-  if (Steine > 0) and (Punkte >= 20) then
+  BlocksRemaining := BlocksRemaining - 1;
+  if (BlocksRemaining > 0) and (Score >= 20) then
     begin
       TextColor(4);
       WriteXY(X, Y, '█');
-      if Punkte > 0 then Punkte := Punkte - 20;
-      Sper[X, Y] := true;
-      SX := X;
-      SY := Y;
+      if Score > 0 then Score := Score - 20;
+      Blocked[X, Y] := true;
+      BlockX := X;
+      BlockY := Y;
       WriteXY(21, 9, 'T A S T E    D R Ü C K E N');
-      Str(Steine: 4, S); WriteXY(21, 10, 'Noch vorhandene Steine: ' + S);
-      T := GetKey;
+      Str(BlocksRemaining: 4, S); WriteXY(21, 10, 'Noch vorhandene Steine: ' + S);
+      Key := GetKey;
       WriteXY(21, 10, '                            ');
       WriteXY(21, 9, '                            ');
-      ReStone;
-      X := SX;
-      Y := SY;
+      DrawInner;
+      X := BlockX;
+      Y := BlockY;
     end
   else
     begin
-      if Steine = 0 then WriteXY(21, 9, 'Keine Steine mehr da!');
-      if Punkte < 20 then WriteXY(21, 10, 'Nicht genug Punkte!');
-      T := GetKey;
-      ReStone;
+      if BlocksRemaining = 0 then WriteXY(21, 9, 'Keine Steine mehr da!');
+      if Score < 20 then WriteXY(21, 10, 'Nicht genug Punkte!');
+      Key := GetKey;
+      DrawInner;
     end;
 end;
 
-procedure SteineNehmen;
+procedure RemoveBlocks;
 begin
   WriteXY(3, 3, '╔═══════════════════════════════════╗');
   WriteXY(3, 4, '║   S T E I N E  ═══  N E H M E N   ║');
@@ -1095,39 +1090,39 @@ begin
   WriteXY(3, 6, '║Wirklich Alle Steine entfernen(J/N)║');
   WriteXY(3, 7, '║                                   ║');
   WriteXY(3, 8, '╚═══════════════════════════════════╝');
-  GotoXY(7, 7); T := UpCase(GetKey);
-  ReStone;
-  VX := X;
-  VY := Y;
-  if Punkte >= 20 then
+  GotoXY(7, 7); Key := UpCase(GetKey);
+  DrawInner;
+  SaveX := X;
+  SaveY := Y;
+  if Score >= 20 then
     begin
-      case T of
+      case Key of
         'J':
           begin
             for I := 1 to 80 do
               for J := 1 to 25 do
                 begin
-                  Sper[I, J] := false;
+                  Blocked[I, J] := false;
                 end;
             TextColor(4);
             TextBackground(0);
-            InitL(Level);
-            SX := 1;
-            SY := 1;
+            InitLevel(Level);
+            BlockX := 1;
+            BlockY := 1;
           end;
       end;
     end;
-  if Punkte > 0 then Punkte := Punkte - 20;
+  if Score > 0 then Score := Score - 20;
   WriteXY(3, 9, 'TASTE DRÜCKEN');
-  T := GetKey;
+  Key := GetKey;
   for I := 1 to 80 do
     begin
       TextColor(4);
       WriteXY(I, 1, '█');
       TextColor(4);
       WriteXY(I, 20, '█');
-      Sper[I, 1] := true;
-      Sper[I, 20] := true;
+      Blocked[I, 1] := true;
+      Blocked[I, 20] := true;
     end; {for}
   for I := 2 to 19 do
     begin
@@ -1135,15 +1130,15 @@ begin
       WriteXY(1, I, '█');
       TextColor(4);
       WriteXY(80, I, '█');
-      Sper[1, I] := true;
-      Sper[80, I] := true;
+      Blocked[1, I] := true;
+      Blocked[80, I] := true;
     end; {for}
   WriteLevel;
   TextBackground(0);
-  ReStone;
-  X := VX;
-  Y := VY;
-  A := '';
+  DrawInner;
+  X := SaveX;
+  Y := SaveY;
+  LastName := '';
 end;
 
 begin
@@ -1152,72 +1147,72 @@ begin
   MyCursorOff;
   repeat
 1:
-    Def;
+    Init;
 300:
     Level := 0;
-    Zahl := 9;
-    Leben := 9;
-    Schutz := false;
+    ItemNo := 9;
+    Lives := 9;
+    Shield := false;
 100:
-    Timeslot := 0;
-    Zahl := Zahl + 1;
-    PunkteZaehlen;
-    if Zahl = 10 then
+    EnemyTick := 0;
+    ItemNo := ItemNo + 1;
+    AwardPoints;
+    if ItemNo = 10 then
       begin
-        Zahl := 1; {Zahl Zurückstellen}
+        ItemNo := 1; {Zahl Zurückstellen}
         Level := Level + 1; {Levelzahl + 1}
-        SX := 1;
-        SY := 1;
+        BlockX := 1;
+        BlockY := 1;
         if Level = 1 then {Anfangs-Punkte}
           begin
-            Punkte := 0;
+            Score := 0;
           end;
-        XX := 5; {X-Pos Gegner}
-        YY := 10; {Y-Pos Gegner}
+        EX := 5; {X-Pos Gegner}
+        EY := 10; {Y-Pos Gegner}
         if Level = 10 then {Abfrage: Wenn Level = 10 dann Gewonnen}
           begin
-            Gewonnen;
+            WinScreen;
             goto 997; {Goto Ende}
           end;
-        Rahmen;
-        Leben := Leben + 1; {Leben + 1}
-        LevelNeu; {LevelNeu}
+        DrawFrame;
+        Lives := Lives + 1; {Leben + 1}
+        LevelTransition; {LevelNeu}
         TextBackground(Red); TextColor(15);
-        Str(Punkte, S); WriteXY(3, 1, 'PUNKTE ' + S);
+        Str(Score, S); WriteXY(3, 1, 'PUNKTE ' + S);
         TextBackground(0);
-      end; {if Zahl = 10}
+      end; {if ItemNo = 10}
 
-    ZufalsPos;
+    RandomPos;
 
     repeat
-      Delay(Langs);
-      ZahlenSetzung;
+      Delay(MoveDelay);
+      DrawItem;
       TextColor(4);
-      Taste;
-      if TI = 27 then goto 999;
-      if TI = 62 then goto 300;
-      if TI = 115 then SteineSetzen;
-      if TI = 110 then SteineNehmen;
-      UGLI2;
-      if (X = XX) and (Y = YY) then
+      HandleInput;
+      if KeyCode = 27 then goto 999;
+      if KeyCode = 62 then goto 300;
+      if KeyCode = 115 then PlaceBlock;
+      if KeyCode = 110 then RemoveBlocks;
+      EnemyMove;
+      if (X = EX) and (Y = EY) then
         begin
-          Fressen; ReStone;
+          PlayerCaught; DrawInner;
         end;
       TextBackground(LightRed);
       TextColor(15);
-      Str(Leben, S); WriteXY(6, 20, 'LEBEN ' + S);
+      Str(Lives, S); WriteXY(6, 20, 'LEBEN ' + S);
       TextBackground(0);
-      if Leben = 0 then
+      if Lives = 0 then
         begin
           goto 998;
         end;
 
-      if (LocX = X) and (LocY = Y) then
+      if (ItemX = X) and (ItemY = Y) then
         begin
           SoundPickup;
           goto 100;
         end;
-    until TI = 27;
+    until KeyCode = 27;
 998:
     GameOver;
 997:
@@ -1227,16 +1222,16 @@ begin
     DrawHLine(25, 51, 11, '█');
     repeat
       GotoXY(30, 10);
-      T := UpCase(GetKey);
-      case T of
+      Key := UpCase(GetKey);
+      case Key of
         'J': goto 300;
         'N': goto 999;
       end;
     until I = 3000;
-  until TI = 27;
+  until KeyCode = 27;
 
 999:
-  Cls;
+  ClrScr;
   Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
   MyCursorOn;
   Close(TTY);
