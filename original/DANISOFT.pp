@@ -2,7 +2,10 @@ unit DANISOFT;
 interface
 uses Crt, UOSSound;
 
-procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String; Release, User, CopyYear: String);
+function UTF8Cols(S: String): Integer;
+function Center(S: String): String;
+procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String;
+  Release, User, CopyYear: String);
 
 implementation
 

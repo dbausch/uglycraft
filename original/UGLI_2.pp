@@ -78,16 +78,6 @@ begin
   GotoXY(C, Row); { sync CRT's position tracker }
 end;
 
-function Center(S: String): String;
-var Pad, I: Integer; R: String;
-begin
-  Pad := (FieldW - Length(S)) div 2;
-  if Pad < 0 then Pad := 0;
-  R := '';
-  for I := 1 to Pad do R := R + ' ';
-  Center := R + S;
-end;
-
 procedure WriteLevel;
 var S: String;
 begin
