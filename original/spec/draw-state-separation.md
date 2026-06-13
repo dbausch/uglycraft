@@ -2,16 +2,16 @@
 
 ## Status
 
-- ✗ `InitBorder` procedure added; called from `Init` once at program start
-- ✗ `DrawBorder` purely visual — no `Blocked` assignments; includes HUD counter calls
-- ✗ `WriteLevel` renamed to `DrawLevel`
-- ✗ `DrawInner` removed from `InitLevel`
-- ✗ `Redraw` simplified: `ClrScr` + `DrawBorder` + `DrawKeys` + `DrawInner`
-- ✗ `DrawFrame` renamed to `PrepareLevel`; order fixed: `InitLevel` before `Redraw`
-- ✗ `LevelTransition` drops redundant `InitLevel` call; adds `DrawInner` to clear splash
-- ✗ Redundant `DrawInner` after `Redraw` in help/story handlers removed
-- ✗ Redundant `DrawInner` after `PrepareLevel` in `PlayerCaught` removed
-- ✗ `RemoveBlocks` clears interior `Blocked` only (border cells are permanent)
+- ✓ `InitBorder` procedure added; called from `Init` once at program start
+- ✓ `DrawBorder` purely visual — no `Blocked` assignments; includes HUD counter calls
+- ✓ `WriteLevel` renamed to `DrawLevel`
+- ✓ `DrawInner` removed from `InitLevel`
+- ✓ `Redraw` simplified: `ClrScr` + `DrawBorder` + `DrawKeys` + `DrawInner`
+- ✓ `DrawFrame` renamed to `PrepareLevel`; order fixed: `InitLevel` before `Redraw`
+- ✓ `LevelTransition` drops redundant `InitLevel` call; adds `DrawInner` to clear splash
+- ✓ Redundant `DrawInner` after `Redraw` in help/story handlers removed
+- ✓ Redundant `DrawInner` after `PrepareLevel` in `PlayerCaught` removed
+- ✓ `RemoveBlocks` clears interior `Blocked` only (border cells are permanent)
 
 ---
 
@@ -197,9 +197,9 @@ end;
 
 ## Done when
 
-- ✗ `poe build-original` compiles with no errors or warnings
-- ✗ `poe run-original`: level walls appear correctly after the level-transition splash is dismissed
-- ✗ Help (F1) and story (F2) screens return to the correct game state without position or wall reset
-- ✗ After `RemoveBlocks` (F5), the border is intact and level walls are correctly restored
-- ✗ No `Blocked` assignments remain in `DrawBorder` (grep confirms)
-- ✗ `InitLevel` contains no `Draw` or `DrawInner` calls (grep confirms)
+- ✓ `poe build-original` compiles with no errors or warnings
+- ✓ `poe run-original`: level walls appear correctly after the level-transition splash is dismissed
+- ✓ Help (F1) and story (F2) screens return to the correct game state without position or wall reset
+- ✓ After `RemoveBlocks` (F5), the border is intact and level walls are correctly restored
+- ✓ No `Blocked` assignments remain in `DrawBorder` (grep confirms)
+- ✓ `InitLevel` contains no `Draw` or `DrawInner` calls (grep confirms)

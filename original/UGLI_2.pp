@@ -483,7 +483,6 @@ begin
     9: InitLevel9;
   end; {case}
   Direction := Key;
-  DrawInner;
 end; {InitLevel}
 
 procedure ShowItemDescriptions;
@@ -590,8 +589,8 @@ begin
     if Key in [Chr(KeyRight), Chr(KeyLeft), Chr(KeyUp), Chr(KeyDown)] then
       UserDir := Key;
   end;
-  InitLevel(Level);
   if UserDir <> #0 then Direction := UserDir;
+  DrawInner;
   Delay(1000);
 end;
 
@@ -676,6 +675,21 @@ begin
   Draw(2, 25, Fg, Bg, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
 end; {DrawKeys}
 
+procedure InitBorder;
+var I: Integer;
+begin
+  for I := 1 to FieldW do
+    begin
+      Blocked[I, 1] := true;
+      Blocked[I, FieldH] := true;
+    end;
+  for I := 2 to FieldH - 1 do
+    begin
+      Blocked[1, I] := true;
+      Blocked[FieldW, I] := true;
+    end;
+end;
+
 procedure DrawBorder;
 const
   Fg = WallFg;
@@ -686,16 +700,17 @@ begin
     begin
       Draw(I, 1, Fg, Bg, '█');
       Draw(I, FieldH, Fg, Bg, '█');
-      Blocked[I, 1] := true;
-      Blocked[I, FieldH] := true;
     end;
   for I := 2 to FieldH - 1 do
     begin
       Draw(1, I, Fg, Bg, '█');
       Draw(FieldW, I, Fg, Bg, '█');
-      Blocked[1, I] := true;
-      Blocked[FieldW, I] := true;
     end;
+  DrawLevel;
+  DrawScore;
+  DrawLives;
+  DrawPauses;
+  DrawBlocks;
 end; {DrawBorder}
 
 procedure Redraw;
@@ -703,23 +718,19 @@ begin
   TextBackground(FieldBg);
   ClrScr;
   DrawBorder;
-  DrawLevel;
-  DrawScore;
-  DrawLives;
-  DrawPauses;
-  DrawBlocks;
   DrawKeys;
+  DrawInner;
 end; {Redraw}
 
-procedure DrawFrame;
+procedure PrepareLevel;
 var I, J: Integer;
 begin
-  for I := 1 to FieldW do
-    for J := 1 to FieldH do
+  for I := 2 to FieldW - 1 do
+    for J := 2 to FieldH - 1 do
       Blocked[I, J] := false;
-  Redraw;
   InitLevel(Level);
-end; {DrawFrame}
+  Redraw;
+end; {PrepareLevel}
 
 procedure EnemyMove;
 var
@@ -856,6 +867,7 @@ begin
   PausesRemaining := 20;
   BlocksRemaining := 2000;
   Laying := false;
+  InitBorder;
 end;
 
 procedure PlayerCaught;
@@ -867,8 +879,7 @@ begin
   Lives := Lives - 1;
   BlockX := 1;
   BlockY := 1;
-  DrawFrame;
-  DrawInner;
+  PrepareLevel;
 end;
 
 procedure DrawItem;
@@ -933,13 +944,11 @@ begin
           begin
             ShowHelp;
             Redraw;
-            DrawInner;
           end;
         KeyF2:
           begin
             ShowStory;
             Redraw;
-            DrawInner;
           end;
       end; {case}
     end;
@@ -988,8 +997,8 @@ begin
   if (Key = 'J') and (Score >= 20) then
     begin
       SaveX := X; SaveY := Y;
-      for I := 1 to FieldW do
-        for J := 1 to FieldH do
+      for I := 2 to FieldW - 1 do
+        for J := 2 to FieldH - 1 do
           Blocked[I, J] := false;
       InitLevel(Level);
       DrawBorder;
@@ -1047,7 +1056,7 @@ NextItem:
           WinScreen;
           goto PlayAgain;
         end;
-      DrawFrame;
+      PrepareLevel;
       if Level > 1 then Lives := Lives + 1;
       DrawLives;
       LevelTransition;
