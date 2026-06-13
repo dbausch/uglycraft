@@ -1192,7 +1192,7 @@ begin
         end;
       TextBackground(LightRed);
       TextColor(15);
-      Str(Lives, S); WriteXY(6, 20, 'LEBEN ' + S);
+      Str(Lives, S); WriteXY(3, 20, 'LEBEN ' + S);
       TextBackground(0);
       if Lives = 0 then
         begin
