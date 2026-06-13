@@ -1140,14 +1140,14 @@ PlayAgain:
     WriteXY(25, 9, '██ NOCHMAL SPIELEN (J/N) ██');
     WriteXY(25, 10, '██                       ██');
     DrawHLine(25, 51, 11, '█');
+    GotoXY(30, 10);
     repeat
-      GotoXY(30, 10);
       Key := UpCase(GetKey);
       case Key of
         'J': goto NewGame;
         'N': goto CleanUp;
       end;
-    until I = 3000;
+    until false;
   until KeyCode = KeyEscape;
 CleanUp:
   ClrScr;
