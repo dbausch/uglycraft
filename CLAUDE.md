@@ -39,7 +39,7 @@ License texts live in `LICENSES/` and are copied into each build by the poe task
 
 This repo contains two things:
 
-1. **The original game** — UGLI (version 2, 1996), a DOS text-mode game written in Turbo Pascal 7 by Daniel Bausch. Source files: `UGLI_2.pp`, `DANISOFT.pp`, plus `UOSSound.pp` (FPC/Linux sound via UOS + PortAudio). See [`original/CLAUDE.md`](original/CLAUDE.md) for a full analysis of the original code, data structures, and mechanics.
+1. **The original game** — UGLI (version 2, 1996), a DOS text-mode game written in Turbo Pascal 7 by Daniel Bausch. Source files: `UGLI_2.pp`, plus `UOSSound.pp` (FPC/Linux sound via UOS + PortAudio). See [`original/CLAUDE.md`](original/CLAUDE.md) for a full analysis of the original code, data structures, and mechanics.
 
 2. **UGLYCRAFT** — a new Python/pygame spiritual remake of UGLI, written from scratch. This is the active project.
 

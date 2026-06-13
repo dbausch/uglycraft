@@ -16,13 +16,6 @@ There are no tests, no lint tools, and no CI setup.
 
 ## File structure
 
-### `DANISOFT.pp` (unit `DANISOFT`) — animated splash screen
-
-- `UTF8Cols(S)`: counts display columns in a UTF-8 string (skips continuation bytes)
-- `Center(S)`: pads `S` with leading spaces to centre it on an 80-column line
-- `Intro`: scrolling colour/sound intro that displays an ASCII art logo (8 lines) with version/copyright info
-- Depends on: `Crt`, `UOSSound`
-
 ### `UOSSound.pp` (unit `UOSSound`) — FPC/Linux sound
 
 - Wraps UOS + PortAudio to provide `Sound(Hz)`, `NoSound`, `Ton(Hz, Ms)`
@@ -32,7 +25,7 @@ There are no tests, no lint tools, and no CI setup.
 
 ### `UGLI_2.pp` (program `UGLI_2`) — the game itself
 
-Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
+Uses `CThreads`, `CRT`, `DOS`, `UOSSound`.
 
 ## Key data structures (`UGLI_2.pp`)
 
@@ -48,7 +41,10 @@ Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 | `X`, `Y` | Integer | Player position (1-indexed, column × row) |
 | `BlockX`, `BlockY` | Integer | Position of the last player-placed block; redrawn by movement functions |
 | `EX`, `EY` | Integer | Enemy position |
-| `Direction` | Char | Last direction key pressed; player keeps moving in this direction each tick |
+| `Direction` | TDirection | Last direction key pressed; player keeps moving in this direction each tick |
+| `StartX`, `StartY` | Integer | Player start position for the current level (set by `InitLevelN`, applied by `PrepareLevel`) |
+| `StartEX`, `StartEY` | Integer | Enemy start position for the current level |
+| `StartDir` | TDirection | Starting direction for the current level |
 | `Laying` | Boolean | When `true`, a block is placed at the player's position every tick (Space toggles) |
 
 ## Key constants (`UGLI_2.pp`)
@@ -69,9 +65,9 @@ Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 
 **`DrawBorder`**: Draws the `█` border and marks border cells in `Blocked`.
 
-**`DrawFrame`**: Full level reset — clears `Blocked`, clears screen, calls `DrawBorder`, draws all counters, calls `InitLevel(Level)`, draws key help bar. Use only at genuine level-start time.
+**`PrepareLevel`**: Full level reset — clears interior `Blocked` cells, calls `InitLevel(Level)` (sets walls and `Start*` defaults), copies `Start*` to live `X/Y/EX/EY/Direction`, then calls `Redraw`. Called at genuine level-start time and when the player is caught.
 
-**`Redraw`**: Lightweight screen repaint — same visuals as `DrawFrame` but does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
+**`Redraw`**: Lightweight screen repaint — `ClrScr`, `DrawBorder`, `DrawKeys`, `DrawInner`. Does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
 
 **`DrawScore` / `DrawLives` / `DrawPauses` / `DrawBlocks`**: Draw individual HUD counters; all called from `DrawFrame` and `Redraw`, and also called individually when only one counter changes.
 
@@ -91,7 +87,7 @@ Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 
 **`PlaceBlock`**: Places a `█` at the player's current position if not already blocked; costs 20 pts. Auto-disables `Laying` if points or block budget run out.
 
-**`RemoveBlocks`**: Modal dialog (J/N). On J: clears all `Blocked`, calls `InitLevel`, redraws border, restores player position and resets `BlockX`/`BlockY`. Always deducts 20 pts.
+**`RemoveBlocks`**: Modal dialog (J/N). On J: clears interior `Blocked`, calls `InitLevel` (rebuilds level walls only — live position, direction, and enemy are untouched), redraws border, resets `BlockX`/`BlockY`. No point cost.
 
 **`DrawItem` / `RandomPos`**: Place current treasure at a random non-blocked position.
 
@@ -102,17 +98,16 @@ Uses `CThreads`, `CRT`, `DOS`, `DANISOFT`, `UOSSound`.
 Uses named `goto` labels:
 
 ```
-label GameLoop, NewGame, NextItem, PlayAgain, OnGameOver, CleanUp;
+label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 ...
-GameLoop: { outer repeat — calls Init }
-NewGame:  { reset Level=0, Lives=10, ItemNo=9 }
-NextItem: { increment ItemNo; if 10: advance level, DrawFrame, LevelTransition }
-          { repeat: Delay, DrawItem, HandleInput, EnemyMove, collision checks }
-          {   treasure collected → goto NextItem }
-          {   lives = 0 → goto OnGameOver }
-          { until Escape }
+NewGame:    { Level := 1; Score := 0; Lives := 10; ItemNo := 1; PrepareLevel; LevelTransition }
+StartLevel: { EnemyTick := 0; RandomPos }
+            { repeat: Delay, DrawItem, HandleInput, EnemyMove, collision checks }
+            {   treasure collected → ItemX := 0; goto StartLevel }
+            {   lives = 0 → goto OnGameOver }
+            { until Escape }
 OnGameOver: { calls GameOver }
-PlayAgain:  { "NOCHMAL SPIELEN (J/N)" prompt }
+PlayAgain:  { AskPlayAgain dialog }
             {   J → goto NewGame;  N → goto CleanUp }
 CleanUp:  { ClrScr, reset terminal, exit }
 ```
