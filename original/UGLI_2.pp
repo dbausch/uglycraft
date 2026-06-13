@@ -1044,64 +1044,64 @@ begin
   MyCursorOff;
   Init;
 NewGame:
-    Level := 0;
-    ItemNo := 9;
-    Lives := 10;
+  Level := 0;
+  ItemNo := 9;
+  Lives := 10;
 NextItem:
-    EnemyTick := 0;
-    ItemNo := ItemNo + 1;
-    AwardPoints;
-    if ItemNo = 10 then
-      begin
-        ItemNo := 1;
-        Level := Level + 1;
-        BlockX := 1;
-        BlockY := 1;
-        if Level = 1 then
-          begin
-            Score := 0;
-          end;
-        EX := 5; {Enemy X}
-        EY := 10; {Enemy Y}
-        if Level = 10 then
-          begin
-            WinScreen;
-            goto PlayAgain;
-          end;
-        DrawFrame;
-        if Level > 1 then Lives := Lives + 1;
-        DrawLives;
-        LevelTransition;
-      end; {if ItemNo = 10}
-    RandomPos;
-    repeat
-      Delay(MoveDelay);
-      DrawItem;
-      TextColor(4);
-      HandleInput;
-      if KeyCode = KeyEscape then goto CleanUp;
-      if KeyCode = KeyF4 then goto NewGame;
-      if KeyCode = KeyF5 then RemoveBlocks;
-      EnemyMove;
-      if (X = EX) and (Y = EY) then
+  EnemyTick := 0;
+  ItemNo := ItemNo + 1;
+  AwardPoints;
+  if ItemNo = 10 then
+    begin
+      ItemNo := 1;
+      Level := Level + 1;
+      BlockX := 1;
+      BlockY := 1;
+      if Level = 1 then
         begin
-          PlayerCaught; DrawInner;
+          Score := 0;
         end;
+      EX := 5; {Enemy X}
+      EY := 10; {Enemy Y}
+      if Level = 10 then
+        begin
+          WinScreen;
+          goto PlayAgain;
+        end;
+      DrawFrame;
+      if Level > 1 then Lives := Lives + 1;
       DrawLives;
-      if Lives = 0 then
-        begin
-          goto OnGameOver;
-        end;
-      if (ItemX = X) and (ItemY = Y) then
-        begin
-          SoundPickup;
-          goto NextItem;
-        end;
-    until KeyCode = KeyEscape;
+      LevelTransition;
+    end; {if ItemNo = 10}
+  RandomPos;
+  repeat
+    Delay(MoveDelay);
+    DrawItem;
+    TextColor(4);
+    HandleInput;
+    if KeyCode = KeyEscape then goto CleanUp;
+    if KeyCode = KeyF4 then goto NewGame;
+    if KeyCode = KeyF5 then RemoveBlocks;
+    EnemyMove;
+    if (X = EX) and (Y = EY) then
+      begin
+        PlayerCaught; DrawInner;
+      end;
+    DrawLives;
+    if Lives = 0 then
+      begin
+        goto OnGameOver;
+      end;
+    if (ItemX = X) and (ItemY = Y) then
+      begin
+        SoundPickup;
+        goto NextItem;
+      end;
+  until KeyCode = KeyEscape;
 OnGameOver:
-    GameOver;
+  GameOver;
 PlayAgain:
-    if AskPlayAgain then goto NewGame else goto CleanUp;
+  if AskPlayAgain then goto NewGame else goto CleanUp;
 CleanUp:
   ClrScr;
   Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
