@@ -1,6 +1,6 @@
 program UGLI_2;
 
-uses CThreads, CRT, DOS, DANISOFT, UOSSound;
+uses CThreads, CRT, DOS, UOSSound;
 
 label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
@@ -37,10 +37,12 @@ const
   HelpFg    = Magenta;   { help-screen and story-screen text }
   SplashFg  = White;     { level-transition splash text }
   DialogFg  = White;     { modal dialog text (AskPlayAgain, RemoveBlocks) }
-  WinFg     = LightRed;  { win-screen text (with Blink) }
+  WinFg     = LightRed;  { win-screen text }
+  YesKey    : set of Byte = [Ord('J'), Ord('j')];
+  NoKey     : set of Byte = [Ord('N'), Ord('n')];
 
 var
-  BlocksRemaining, MoveDelay, Code, PausesRemaining, EnemyTick, KeyCode, I, J,
+  BlocksRemaining, MoveDelay, PausesRemaining, EnemyTick, KeyCode, I, J,
   ItemNo, Level, Lives, SaveX, SaveY, BlockX, BlockY, ItemX, ItemY, DX, DY, X,
   Y, EX, EY, EscState: Integer;
   Score: LongInt;
@@ -59,6 +61,30 @@ end;
 procedure MyCursorOff;
 begin
   Write(TTY, #27'[?25l');
+end;
+
+function UTF8Cols(S: String): Integer;
+var I, Count: Integer;
+  B: Byte;
+begin
+  Count := 0;
+  for I := 1 to Length(S) do
+    begin
+      B := Ord(S[I]);
+      if (B < $80) or (B >= $C0) then Inc(Count);
+    end;
+  UTF8Cols := Count;
+end;
+
+function Center(S: String): String;
+var Cols, Blanks, I: Integer;
+  Padding: String;
+begin
+  Cols := UTF8Cols(S);
+  Blanks := 39 - (Cols div 2);
+  Padding := '';
+  for I := 1 to Blanks do Padding := Padding + ' ';
+  Center := Padding + S;
 end;
 
 procedure Draw(Col, Row, Fg, Bg: Integer; S: String);
@@ -90,21 +116,178 @@ begin
   GotoXY(C, Row); { sync CRT's position tracker }
 end;
 
-procedure DrawLevel;
-const
-  Fg = CounterFg;
-  Bg = CounterBg;
-var S: String;
-begin
-  Str(Level, S);
-  Draw(36, 1, Fg, Bg, 'LEVEL ' + S);
-end;
-
 procedure DrawHLine(X1, X2, Y, Fg, Bg: Integer; Ch: String);
 var I: Integer;
 begin
   for I := X1 to X2 do
     Draw(I, Y, Fg, Bg, Ch);
+end;
+
+function GetKey: Char;
+var Raw: Char;
+begin
+  Raw := ReadKey;
+  if Raw = #0 then
+    begin
+      EscState := 0;
+      if KeyPressed then Raw := ReadKey else Raw := #0;
+    end
+  else if (EscState = 2) and (Raw = #27) then
+    begin
+      EscState := 0; Raw := Chr(KeySlower);
+    end
+  else if (EscState = 1) and (Raw = '[') then
+    begin
+      EscState := 2; Raw := #0;
+    end
+  else
+    begin
+      EscState := 0;
+      if Raw = 'F' then
+        begin
+          EscState := 1; Raw := #0;
+        end;
+    end;
+  GetKey := Raw;
+end;
+
+function WaitKey: Integer;
+var K: Char;
+begin
+  repeat
+    K := GetKey;
+  until not KeyPressed;
+  WaitKey := Ord(K);
+end;
+
+procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String;
+  Release, User, CopyYear: String);
+var I: Integer;
+  ITTY: Text;
+
+procedure WLn(S: String);
+begin
+  if S = '' then Write(' ') else Write(S); { at least one char forces FPC to emit SGR }
+  Write(ITTY, #27'[K'); Flush(ITTY);
+  WriteLn;
+  Write(ITTY, #27'[K'); Flush(ITTY);
+end;
+
+begin
+  Assign(ITTY, '/dev/tty');
+  ReWrite(ITTY);
+  Write(#27'[1;25r'); { confine scrolling to rows 1-25 }
+  for I := 0 to 7 do
+    begin
+      TextBackground(I);
+      ClrScr;
+      Ton(I * 150, 300);
+      Delay(20);
+    end;
+  Delay(100);
+  TextColor(Black);
+  TextBackground(0);
+  GotoXY(1, 1);
+  TextColor(15);
+  for I := 1 to 25 do
+    begin
+      Delay(200);
+      GotoXY(1, I);
+      ClrEol;
+      Write('                        |                            |');
+    end;
+  TextColor(0);
+  TextBackground(7);
+  GotoXY(1, 25);
+  Delay(200);
+  WLn('');
+  Delay(200);
+  WLn(Center('* DANISOFT * PRÄSENTIERT *'));
+  Delay(200);
+  WLn('');
+  Delay(200);
+  WLn('');
+  TextColor(Red + Blink);
+  TextBackground(7);
+  Delay(200);
+  WLn(Logo1);
+  Delay(200);
+  WLn(Logo2);
+  Delay(200);
+  WLn(Logo3);
+  Delay(200);
+  WLn(Logo4);
+  Delay(200);
+  WLn(Logo5);
+  Delay(200);
+  WLn(Logo6);
+  Delay(200);
+  WLn(Logo7);
+  Delay(200);
+  WLn(Logo8);
+  Delay(200);
+  WLn('');
+  Delay(200);
+  TextColor(Black + Blink);
+  TextBackground(7);
+  WLn('');
+  Delay(200);
+  WLn(Center('Hallo, gleich geht''s los!'));
+  Delay(200);
+  WLn('');
+  TextColor(Black);
+  TextBackground(15);
+  Delay(200);
+  WLn(Center(User));
+  Delay(200);
+  WLn('');
+  Delay(200);
+  WLn(Center('Version: ' + Version + '/' + Release));
+  Delay(200);
+  WLn('');
+  Delay(200);
+  WLn(Center(CopyYear));
+  Delay(200);
+  WLn('');
+  Delay(200);
+  WLn('');
+  Delay(200);
+  TextColor(4);
+  Write(Center('T A S T E   D R Ü C K E N'));
+  WLn('');
+  WaitKey;
+  ClrScr;
+  for I := 40 to 50 do
+    begin
+      Ton(I, 150);
+    end;
+  TextColor(Black);
+  Write(#27'[r'); { reset scroll region to full screen }
+  Close(ITTY);
+end;
+
+procedure DrawItem;
+begin
+  if ItemNo = 1 then
+    Draw(ItemX, ItemY, Brown, FieldBg, '|');
+  if ItemNo = 2 then
+    Draw(ItemX, ItemY, LightBlue, FieldBg, '☼');
+  if ItemNo = 3 then
+    Draw(ItemX, ItemY, LightRed, FieldBg, ':');
+  if ItemNo = 4 then
+    Draw(ItemX, ItemY, LightBlue, FieldBg, '*');
+  if ItemNo = 5 then
+    Draw(ItemX, ItemY, Yellow, FieldBg, '=');
+  if ItemNo = 6 then
+    Draw(ItemX, ItemY, LightGray, FieldBg, '≡');
+  if ItemNo = 7 then
+    Draw(ItemX, ItemY, Cyan, FieldBg, 'Γ');
+  if ItemNo = 8 then
+    Draw(ItemX, ItemY, Yellow, FieldBg, 'Φ');
+  if ItemNo = 9 then
+    Draw(ItemX, ItemY, LightGreen, FieldBg, '♦');
+  if (ItemNo = 9) and (Level = 9) then
+    Draw(ItemX, ItemY, Yellow, FieldBg, '⌂');
 end;
 
 procedure DrawInner;
@@ -119,92 +302,22 @@ begin
         Draw(I, J, Fg, Bg, '█')
       else
         Draw(I, J, Fg, Bg, ' ');
+  if X >= 2 then
+    Draw(X, Y, PlayerFg, FieldBg, '☺');
+  if EX >= 2 then
+    Draw(EX, EY, EnemyFg, FieldBg, '☻');
+  if ItemX >= 2 then
+    DrawItem;
 end;
 
-procedure HighScoreEntry;
+procedure DrawLevel;
+const
+  Fg = CounterFg;
+  Bg = CounterBg;
+var S: String;
 begin
-  TextColor(LightBlue);
-  TextBackground(Black);
-  ClrScr;
-  WriteLn;
-  WriteLn('VORNAME ');
-  MyCursorOn;
-  GotoXY(9, 2); ReadLn(FirstName);
-  WriteLn('NAME ');
-  GotoXY(6, 3); ReadLn(LastName);
-  MyCursorOff;
-  Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, 'Punkte ' + S);
-  Assign(F, HighScoreFileName);
-  Append(F);
-  if IOResult = 0
-  then
-    begin
-      WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
-      Close(F);
-      WriteLn;
-    end
-  else
-    begin
-      ReWrite(F);
-      if IOResult <> 0 then
-        begin
-          WriteLn('Datei UGLI.HSC konnte nicht erzeugt werden.');
-        end
-      else
-        begin
-          WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
-          Close(F);
-          WriteLn;
-        end;
-    end;
-  ReadLn;
-  ClrScr;
-  Assign(F, HighScoreFileName);
-  Reset(F);
-  if IOResult = 0
-  then
-    begin
-      while not Eof(F) do
-        begin
-          ReadLn(F, Line);
-          WriteLn(Line);
-        end;
-      Close(F);
-    end
-  else
-    begin
-      ReWrite(F);
-      if IOResult <> 0 then
-        begin
-          WriteLn('Datei ' + HighScoreFileName + ' konnte nicht erzeugt werden.');
-        end
-      else
-        begin
-          while not Eof(F) do
-            begin
-              ReadLn(F, Line);
-              WriteLn(Line);
-            end;
-          Close(F);
-        end;
-    end;
-  GotoXY(1, 25);
-  Write('Bitte [Return]-Taste drücken...');
-  ReadLn;
-end;
-
-procedure ShowIntro;
-begin
-  Intro(
-    '                  **        **    **********   **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                  **        **   **            **           **                 ',
-    '                  **        **   **     *****  **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                   **********     **********   **********   **                 ',
-    Version, Release, User, License);
+  Str(Level, S);
+  Draw(36, 1, Fg, Bg, 'LEVEL ' + S);
 end;
 
 procedure DrawScore;
@@ -244,7 +357,7 @@ const
 var S: String;
 begin
   Str(BlocksRemaining:4, S);
-  Draw(68, 20, Fg, Bg, 'STEINE ' + S);
+  Draw(68, 20, Fg, Bg, 'BLÖCKE ' + S);
 end;
 
 procedure AwardPoints;
@@ -252,6 +365,65 @@ begin
   Score := Score + ItemNo * 100;
   DrawScore;
 end;
+
+procedure DrawKeys;
+const
+  Fg = KeyHelpFg;
+  Bg = FieldBg;
+begin
+  Draw(2, 21, Fg, Bg, '← = links  ↓ = unten  → = rechts  ↑ = oben');
+  DrawHLine(1, 80, 22, Fg, Bg, '─');
+  Draw(2, 23, Fg, Bg, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart');
+  DrawHLine(1, 80, 24, Fg, Bg, '─');
+  Draw(2, 25, Fg, Bg, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
+end; {DrawKeys}
+
+procedure InitBorder;
+var I: Integer;
+begin
+  for I := 1 to FieldW do
+    begin
+      Blocked[I, 1] := true;
+      Blocked[I, FieldH] := true;
+    end;
+  for I := 2 to FieldH - 1 do
+    begin
+      Blocked[1, I] := true;
+      Blocked[FieldW, I] := true;
+    end;
+end;
+
+procedure DrawBorder;
+const
+  Fg = WallFg;
+  Bg = FieldBg;
+var I: Integer;
+begin
+  for I := 1 to FieldW do
+    begin
+      Draw(I, 1, Fg, Bg, '█');
+      Draw(I, FieldH, Fg, Bg, '█');
+    end;
+  for I := 2 to FieldH - 1 do
+    begin
+      Draw(1, I, Fg, Bg, '█');
+      Draw(FieldW, I, Fg, Bg, '█');
+    end;
+  DrawLevel;
+  DrawScore;
+  DrawLives;
+  DrawPauses;
+  DrawBlocks;
+end; {DrawBorder}
+
+procedure Redraw;
+begin
+  TextBackground(FieldBg);
+  ClrScr;
+  DrawBorder;
+  DrawKeys;
+  DrawInner;
+end; {Redraw}
 
 procedure InitLevel1;
 begin
@@ -503,115 +675,15 @@ begin
   Direction := Key;
 end; {InitLevel}
 
-procedure ShowItemDescriptions;
+procedure PrepareLevel;
+var I, J: Integer;
 begin
-  ClrScr;
-  WriteLn;
-  WriteLn(' L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E ');
-  WriteLn;
-  WriteLn('    | Seil ');
-  WriteLn('    ☼ grosser glänzender Diamant ');
-  WriteLn('    : kleine Edelsteiene ');
-  WriteLn('    * kleiner glänzender Diamant ');
-  WriteLn('    = Goldbarren ');
-  WriteLn('    ≡ Silberbarren ');
-  WriteLn('    Γ Brunnen ');
-  WriteLn('    Φ Lampe ');
-  WriteLn('    ♦ grosser Edelstein ');
-  WriteLn('    ⌂ Krone ');
-  WriteLn;
-  GotoXY(1, 15);
-  WriteLn('   S P I E L A N L E I T U N G   ');
-  WriteLn;
-  WriteLn('Du drückst jetzt die Return-Taste(Enter), dann drückst du eine der ');
-  WriteLn('Richtungstasten danach musst du mit den Richtungstasten die oben gezeigten ');
-  WriteLn('Dinge einsammeln.       (Die Krone kommt ganz zum Schluss.)');
-  WriteLn('Während des Spiels kann man mit <F1> die anderen Tasten die zum bedienen ');
-  WriteLn('des Spiels nachlesen.');
-  ReadLn;
-end;
-
-function GetKey: Char;
-var Raw: Char;
-begin
-  Raw := ReadKey;
-  if Raw = #0 then
-    begin
-      EscState := 0;
-      if KeyPressed then Raw := ReadKey else Raw := #0;
-    end
-  else if (EscState = 2) and (Raw = #27) then
-    begin
-      EscState := 0; Raw := Chr(KeySlower);
-    end
-  else if (EscState = 1) and (Raw = '[') then
-    begin
-      EscState := 2; Raw := #0;
-    end
-  else
-    begin
-      EscState := 0;
-      if Raw = 'F' then
-        begin
-          EscState := 1; Raw := #0;
-        end;
-    end;
-  GetKey := Raw;
-end;
-
-procedure ShowHelp;
-const
-  Fg = HelpFg;
-  Bg = FieldBg;
-begin
-  SaveX := X;
-  SaveY := Y;
-  ClrScr;
-  Draw(2, 1, Fg, Bg, '                  HILFE VON UGLI');
-  Draw(2, 2, Fg, Bg, '[p] = Pause (1 Pause Weniger)');
-  Draw(2, 3, Fg, Bg, 'Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben');
-  Draw(2, 4, Fg, Bg, '[Esc] = Abbruch');
-  Draw(2, 5, Fg, Bg, '[Ende] = Langsamer');
-  Draw(2, 6, Fg, Bg, '[Pos1] = Schneller');
-  Draw(2, 7, Fg, Bg, '[F4] = Neustart');
-  Draw(2, 8, Fg, Bg, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
-  Draw(2, 9, Fg, Bg, '[F2] = Die Geschichte von Ugli');
-  Draw(2, 10, Fg, Bg, '[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)');
-  Draw(2, 11, Fg, Bg, '[F5] = Alle gesetzten Blöcke wieder entfernen');
-  Draw(2, 12, Fg, Bg, '[F1] = Diese Hilfe');
-  Draw(2, 15, Fg, Bg, '                  T A S T E   D R Ü C K E N');
-  Key := GetKey;
-  X := SaveX;
-  Y := SaveY;
-end;
-
-procedure LevelTransition;
-const
-  Fg = SplashFg;
-  Bg = FieldBg;
-var UserDir: Char;
-begin
-  UserDir := #0;
-  begin
-    repeat
-      DrawHLine(27, 53, 8, Fg, Bg, '█');
-      Draw(27, 9, Fg, Bg, '█');
-      Str(Level, S);
-      Draw(28, 9, Fg, Bg, ' L E V E L   ' + S + '           ');
-      Draw(53, 9, Fg, Bg, '█');
-      DrawHLine(27, 53, 10, Fg, Bg, '█');
-      Draw(27, 11, Fg, Bg, ' T A S T E   D R Ü C K E N ');
-      Delay(1000);
-    until KeyPressed;
-    Key := GetKey;
-    if Key in [Chr(KeyRight), Chr(KeyLeft), Chr(KeyUp), Chr(KeyDown)] then
-      UserDir := Key;
-  end;
-  if UserDir <> #0 then Direction := UserDir;
-  DrawInner;
-  Delay(1000);
-end;
-
+  for I := 2 to FieldW - 1 do
+    for J := 2 to FieldH - 1 do
+      Blocked[I, J] := false;
+  InitLevel(Level);
+  Redraw;
+end; {PrepareLevel}
 
 procedure MoveDown(var X: Integer; var Y: Integer);
 const
@@ -681,75 +753,6 @@ begin
   Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveUp}
 
-procedure DrawKeys;
-const
-  Fg = KeyHelpFg;
-  Bg = FieldBg;
-begin
-  Draw(2, 21, Fg, Bg, '← = links  ↓ = unten  → = rechts  ↑ = oben');
-  DrawHLine(1, 80, 22, Fg, Bg, '─');
-  Draw(2, 23, Fg, Bg, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart');
-  DrawHLine(1, 80, 24, Fg, Bg, '─');
-  Draw(2, 25, Fg, Bg, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
-end; {DrawKeys}
-
-procedure InitBorder;
-var I: Integer;
-begin
-  for I := 1 to FieldW do
-    begin
-      Blocked[I, 1] := true;
-      Blocked[I, FieldH] := true;
-    end;
-  for I := 2 to FieldH - 1 do
-    begin
-      Blocked[1, I] := true;
-      Blocked[FieldW, I] := true;
-    end;
-end;
-
-procedure DrawBorder;
-const
-  Fg = WallFg;
-  Bg = FieldBg;
-var I: Integer;
-begin
-  for I := 1 to FieldW do
-    begin
-      Draw(I, 1, Fg, Bg, '█');
-      Draw(I, FieldH, Fg, Bg, '█');
-    end;
-  for I := 2 to FieldH - 1 do
-    begin
-      Draw(1, I, Fg, Bg, '█');
-      Draw(FieldW, I, Fg, Bg, '█');
-    end;
-  DrawLevel;
-  DrawScore;
-  DrawLives;
-  DrawPauses;
-  DrawBlocks;
-end; {DrawBorder}
-
-procedure Redraw;
-begin
-  TextBackground(FieldBg);
-  ClrScr;
-  DrawBorder;
-  DrawKeys;
-  DrawInner;
-end; {Redraw}
-
-procedure PrepareLevel;
-var I, J: Integer;
-begin
-  for I := 2 to FieldW - 1 do
-    for J := 2 to FieldH - 1 do
-      Blocked[I, J] := false;
-  InitLevel(Level);
-  Redraw;
-end; {PrepareLevel}
-
 procedure EnemyMove;
 var
   OldEX, OldEY: Integer;
@@ -809,6 +812,59 @@ begin
     end;
 end;
 
+procedure SlowDown;
+begin
+  MoveDelay := MoveDelay + 1;
+end;
+
+procedure SpeedUp;
+begin
+  if MoveDelay > 0 then MoveDelay := MoveDelay - 1;
+end;
+
+procedure PlaceBlock;
+begin
+  if (BlocksRemaining = 0) or (Score < 20) then
+    Laying := false
+  else if not Blocked[X, Y] then
+    begin
+      Draw(X, Y, WallFg, FieldBg, '█');
+      Blocked[X, Y] := true;
+      BlockX := X;
+      BlockY := Y;
+      Score := Score - 20;
+      BlocksRemaining := BlocksRemaining - 1;
+      DrawBlocks;
+      DrawScore;
+    end;
+end;
+
+procedure ShowHelp;
+const
+  Fg = HelpFg;
+  Bg = FieldBg;
+begin
+  SaveX := X;
+  SaveY := Y;
+  ClrScr;
+  Draw(2, 1, Fg, Bg, '                  HILFE VON UGLI');
+  Draw(2, 2, Fg, Bg, '[p] = Pause (1 Pause Weniger)');
+  Draw(2, 3, Fg, Bg, 'Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben');
+  Draw(2, 4, Fg, Bg, '[Esc] = Abbruch');
+  Draw(2, 5, Fg, Bg, '[Ende] = Langsamer');
+  Draw(2, 6, Fg, Bg, '[Pos1] = Schneller');
+  Draw(2, 7, Fg, Bg, '[F4] = Neustart');
+  Draw(2, 8, Fg, Bg, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
+  Draw(2, 9, Fg, Bg, '[F2] = Die Geschichte von Ugli');
+  Draw(2, 10, Fg, Bg, '[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)');
+  Draw(2, 11, Fg, Bg, '[F5] = Alle gesetzten Blöcke wieder entfernen');
+  Draw(2, 12, Fg, Bg, '[F1] = Diese Hilfe');
+  Draw(2, 15, Fg, Bg, '                  T A S T E   D R Ü C K E N');
+  WaitKey;
+  X := SaveX;
+  Y := SaveY;
+end;
+
 procedure ShowStory;
 const
   Fg = HelpFg;
@@ -822,138 +878,55 @@ begin
   Draw(1, 6, Fg, Bg, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
   Draw(1, 7, Fg, Bg, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
   Draw(1, 9, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
-  Key := GetKey;
+  WaitKey;
 end;
 
-procedure SlowDown;
+function Dialog(Title: String; Prompt: String): Integer;
+const
+  Fg = DialogFg;
+  Bg = FieldBg;
+var
+  W, X1, X2, Y1, BoxH, TW, PW, Pad: Integer;
+  Buf: String;
 begin
-  MoveDelay := MoveDelay + 1;
-end;
-
-procedure SpeedUp;
-begin
-  if MoveDelay > 0 then MoveDelay := MoveDelay - 1;
-end;
-
-procedure GameOver;
-begin
-  Draw(EX, EY, FieldBg, FieldBg, ' ');
-  Draw(X, Y, FieldBg, FieldBg, ' ');
-  Draw(ItemX, ItemY, FieldBg, FieldBg, ' ');
-  DrawHLine(28, 49, 2, SplashFg, FieldBg, '█');
-  Draw(28, 3, SplashFg, FieldBg, '██ G A M E  O V E R ██');
-  DrawHLine(28, 49, 4, SplashFg, FieldBg, '█');
-  SoundGameOver;
-end;
-
-procedure WinScreen;
-begin
-  DrawHLine(30, 56, 8, WinFg + Blink, FieldBg, '█');
-  Draw(30, 9, WinFg + Blink, FieldBg, '██    G E W O N N E N    ██');
-  DrawHLine(30, 56, 10, WinFg + Blink, FieldBg, '█');
-  Draw(30, 11, SplashFg, FieldBg, ' T A S T E   D R Ü C K E N ');
-  Delay(1000);
-  SoundWon;
-  TextAttr := Random(255);
-  ClrScr;
-  while KeyPressed do Key := GetKey;
-  Key := #0;
-  repeat
+  TW := UTF8Cols(Title);
+  PW := UTF8Cols(Prompt);
+  if TW > PW then W := TW + 4 else W := PW + 4;
+  if W < 27 then W := 27;
+  X1 := (FieldW - W) div 2 + 1;
+  X2 := X1 + W - 1;
+  if Prompt = '' then BoxH := 3 else BoxH := 4;
+  Y1 := (FieldH - BoxH) div 2 + 1;
+  DrawHLine(X1, X2, Y1, Fg, Bg, '█');
+  Draw(X1, Y1 + 1, Fg, Bg, '█');
+  Pad := (W - 2 - TW) div 2;
+  Buf := '';
+  for I := 1 to Pad do Buf := Buf + ' ';
+  Buf := Buf + Title;
+  while UTF8Cols(Buf) < W - 2 do Buf := Buf + ' ';
+  Draw(X1 + 1, Y1 + 1, Fg, Bg, Buf);
+  Draw(X2, Y1 + 1, Fg, Bg, '█');
+  DrawHLine(X1, X2, Y1 + 2, Fg, Bg, '█');
+  if Prompt <> '' then
     begin
-      TextAttr := Random(255);
-      if KeyPressed then
-        begin
-          Key := GetKey;
-          Code := Ord(Key);
-        end;
-      Write('*');
-      Delay(10);
+      Pad := (W - PW) div 2;
+      Buf := '';
+      for I := 1 to Pad do Buf := Buf + ' ';
+      Buf := Buf + Prompt;
+      Draw(X1, Y1 + 3, Fg, Bg, Buf);
     end;
-  until Code > 0;
-  HighScoreEntry;
-  ClrScr;
+  Dialog := WaitKey;
+  DrawInner;
 end;
 
-procedure Init;
+procedure LevelTransition;
 begin
-  Randomize;
-  ShowIntro;
-  ShowItemDescriptions;
-  TextBackground(FieldBg);
-  ClrScr;
-  MoveDelay := 100;
-  PausesRemaining := 20;
-  BlocksRemaining := 2000;
-  Laying := false;
-  InitBorder;
+  Str(Level, S);
+  KeyCode := Dialog('L E V E L   ' + S, 'T A S T E   D R Ü C K E N');
+  if KeyCode in [KeyRight, KeyLeft, KeyUp, KeyDown] then
+    Direction := Chr(KeyCode);
+  Delay(1000);
 end;
-
-procedure PlayerCaught;
-begin
-  SoundCaught;
-  Score := Score - ItemNo * 1000;
-  if Score < 0 then Score := 0;
-  ItemNo := 1;
-  Lives := Lives - 1;
-  BlockX := 1;
-  BlockY := 1;
-  PrepareLevel;
-end;
-
-procedure LevelComplete;
-begin
-  Lives := Lives + 1;
-  ItemNo := 1;
-  BlockX := 1;
-  BlockY := 1;
-  PrepareLevel;
-  LevelTransition;
-end;
-
-function IsPlayerCaught: Boolean;
-begin
-  IsPlayerCaught := (X = EX) and (Y = EY);
-end;
-
-function IsItemPickedUp: Boolean;
-begin
-  IsItemPickedUp := (ItemX = X) and (ItemY = Y);
-end;
-
-procedure DrawItem;
-begin
-  if ItemNo = 1 then
-    Draw(ItemX, ItemY, Brown, FieldBg, '|');
-  if ItemNo = 2 then
-    Draw(ItemX, ItemY, LightBlue, FieldBg, '☼');
-  if ItemNo = 3 then
-    Draw(ItemX, ItemY, LightRed, FieldBg, ':');
-  if ItemNo = 4 then
-    Draw(ItemX, ItemY, LightBlue, FieldBg, '*');
-  if ItemNo = 5 then
-    Draw(ItemX, ItemY, Yellow, FieldBg, '=');
-  if ItemNo = 6 then
-    Draw(ItemX, ItemY, LightGray, FieldBg, '≡');
-  if ItemNo = 7 then
-    Draw(ItemX, ItemY, Cyan, FieldBg, 'Γ');
-  if ItemNo = 8 then
-    Draw(ItemX, ItemY, Yellow, FieldBg, 'Φ');
-  if ItemNo = 9 then
-    Draw(ItemX, ItemY, LightGreen, FieldBg, '♦');
-  if (ItemNo = 9) and (Level = 9) then
-    Draw(ItemX, ItemY, Yellow, FieldBg, '⌂');
-end;
-
-procedure RandomPos;
-begin
-  repeat
-    ItemX := Round((Random * 77) + 2);
-    ItemY := Round((Random * 17) + 2);
-  until not Blocked[ItemX, ItemY];
-end;
-
-
-procedure PlaceBlock; forward;
 
 procedure HandleInput;
 begin
@@ -1002,37 +975,190 @@ begin
   Draw(X, Y, PlayerFg, FieldBg, '☺');
 end;
 
-procedure PlaceBlock;
+procedure HighScoreEntry;
 begin
-  if (BlocksRemaining = 0) or (Score < 20) then
-    Laying := false
-  else if not Blocked[X, Y] then
+  TextColor(LightBlue);
+  TextBackground(Black);
+  ClrScr;
+  WriteLn;
+  WriteLn('VORNAME ');
+  MyCursorOn;
+  GotoXY(9, 2); ReadLn(FirstName);
+  WriteLn('NAME ');
+  GotoXY(6, 3); ReadLn(LastName);
+  MyCursorOff;
+  Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, 'Punkte ' + S);
+  Assign(F, HighScoreFileName);
+  Append(F);
+  if IOResult = 0
+  then
     begin
-      Draw(X, Y, WallFg, FieldBg, '█');
-      Blocked[X, Y] := true;
-      BlockX := X;
-      BlockY := Y;
-      Score := Score - 20;
-      BlocksRemaining := BlocksRemaining - 1;
-      DrawBlocks;
-      DrawScore;
+      WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
+      Close(F);
+      WriteLn;
+    end
+  else
+    begin
+      ReWrite(F);
+      if IOResult <> 0 then
+        begin
+          WriteLn('Datei UGLI.HSC konnte nicht erzeugt werden.');
+        end
+      else
+        begin
+          WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
+          Close(F);
+          WriteLn;
+        end;
     end;
+  WaitKey;
+  ClrScr;
+  Assign(F, HighScoreFileName);
+  Reset(F);
+  if IOResult = 0
+  then
+    begin
+      while not Eof(F) do
+        begin
+          ReadLn(F, Line);
+          WriteLn(Line);
+        end;
+      Close(F);
+    end
+  else
+    begin
+      ReWrite(F);
+      if IOResult <> 0 then
+        begin
+          WriteLn('Datei ' + HighScoreFileName + ' konnte nicht erzeugt werden.');
+        end
+      else
+        begin
+          while not Eof(F) do
+            begin
+              ReadLn(F, Line);
+              WriteLn(Line);
+            end;
+          Close(F);
+        end;
+    end;
+  GotoXY(1, 25);
+  Write('T A S T E   D R Ü C K E N');
+  WaitKey;
+end;
+
+procedure ShowItemDescriptions;
+begin
+  ClrScr;
+  WriteLn;
+  WriteLn(' L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E ');
+  WriteLn;
+  WriteLn('    | Seil ');
+  WriteLn('    ☼ grosser glänzender Diamant ');
+  WriteLn('    : kleine Edelsteiene ');
+  WriteLn('    * kleiner glänzender Diamant ');
+  WriteLn('    = Goldbarren ');
+  WriteLn('    ≡ Silberbarren ');
+  WriteLn('    Γ Brunnen ');
+  WriteLn('    Φ Lampe ');
+  WriteLn('    ♦ grosser Edelstein ');
+  WriteLn('    ⌂ Krone ');
+  WriteLn;
+  GotoXY(1, 15);
+  WriteLn('   S P I E L A N L E I T U N G   ');
+  WriteLn;
+  WriteLn('Du drückst jetzt eine Taste, dann drückst du eine der ');
+  WriteLn('Richtungstasten danach musst du mit den Richtungstasten die oben gezeigten ');
+  WriteLn('Dinge einsammeln.       (Die Krone kommt ganz zum Schluss.)');
+  WriteLn('Während des Spiels kann man mit <F1> die anderen Tasten die zum bedienen ');
+  WriteLn('des Spiels nachlesen.');
+  WaitKey;
+end;
+
+procedure GameOver;
+begin
+  SoundGameOver;
+  Dialog('G A M E  O V E R', '');
+end;
+
+procedure WinScreen;
+begin
+  Dialog('G E W O N N E N', 'T A S T E   D R Ü C K E N');
+  SoundWon;
+  HighScoreEntry;
+  ClrScr;
+end;
+
+procedure Init;
+begin
+  Randomize;
+  Intro(
+    '                  **        **    **********   **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                  **        **   **            **           **                 ',
+    '                  **        **   **     *****  **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                  **        **   **        **  **           **                 ',
+    '                   **********     **********   **********   **                 ',
+    Version, Release, User, License);
+  ShowItemDescriptions;
+  TextBackground(FieldBg);
+  ClrScr;
+  MoveDelay := 100;
+  PausesRemaining := 20;
+  BlocksRemaining := 2000;
+  Laying := false;
+  InitBorder;
+end;
+
+procedure PlayerCaught;
+begin
+  SoundCaught;
+  Score := Score - ItemNo * 1000;
+  if Score < 0 then Score := 0;
+  ItemNo := 1;
+  Lives := Lives - 1;
+  BlockX := 1;
+  BlockY := 1;
+  PrepareLevel;
+end;
+
+procedure LevelComplete;
+begin
+  Lives := Lives + 1;
+  ItemNo := 1;
+  BlockX := 1;
+  BlockY := 1;
+  PrepareLevel;
+  LevelTransition;
+end;
+
+function IsPlayerCaught: Boolean;
+begin
+  IsPlayerCaught := (X = EX) and (Y = EY);
+end;
+
+function IsItemPickedUp: Boolean;
+begin
+  IsItemPickedUp := (ItemX = X) and (ItemY = Y);
+end;
+
+procedure RandomPos;
+begin
+  repeat
+    ItemX := Round((Random * 77) + 2);
+    ItemY := Round((Random * 17) + 2);
+  until not Blocked[ItemX, ItemY];
 end;
 
 procedure RemoveBlocks;
-const
-  Fg = DialogFg;
-  Bg = FieldBg;
+var Code: Integer;
 begin
-  Draw(3, 3, Fg, Bg, '╔═══════════════════════════════════╗');
-  Draw(3, 4, Fg, Bg, '║   S T E I N E  ═══  N E H M E N   ║');
-  Draw(3, 5, Fg, Bg, '╟───────────────────────────────────╢');
-  Draw(3, 6, Fg, Bg, '║Wirklich Alle Steine entfernen(J/N)║');
-  Draw(3, 7, Fg, Bg, '║                                   ║');
-  Draw(3, 8, Fg, Bg, '╚═══════════════════════════════════╝');
-  GotoXY(7, 7);
-  Key := UpCase(GetKey);
-  if (Key = 'J') and (Score >= 20) then
+  repeat
+    Code := Dialog('B L Ö C K E   E N T F E R N E N', 'J / N');
+  until (Byte(Code) in YesKey) or (Byte(Code) in NoKey);
+  if Byte(Code) in YesKey then
     begin
       SaveX := X; SaveY := Y;
       for I := 2 to FieldW - 1 do
@@ -1043,25 +1169,16 @@ begin
       X := SaveX; Y := SaveY;
       BlockX := 1; BlockY := 1;
     end;
-  if Score > 0 then Score := Score - 20;
   DrawInner;
 end;
 
 function AskPlayAgain: Boolean;
-const
-  Fg = DialogFg;
-  Bg = FieldBg;
-var Answer: Char;
+var Code: Integer;
 begin
-  DrawHLine(25, 51, 8, Fg, Bg, '█');
-  Draw(25, 9, Fg, Bg, '██ NOCHMAL SPIELEN (J/N) ██');
-  Draw(25, 10, Fg, Bg, '██                       ██');
-  DrawHLine(25, 51, 11, Fg, Bg, '█');
-  GotoXY(30, 10);
   repeat
-    Answer := UpCase(GetKey);
-  until Answer in ['J', 'N'];
-  AskPlayAgain := Answer = 'J';
+    Code := Dialog('N O C H M A L  S P I E L E N', 'J / N');
+  until (Byte(Code) in YesKey) or (Byte(Code) in NoKey);
+  AskPlayAgain := Byte(Code) in YesKey;
 end;
 
 begin
@@ -1076,6 +1193,7 @@ NewGame:
   ItemNo := 1;
   BlockX := 1;
   BlockY := 1;
+  ItemX := 0;
   PrepareLevel;
   LevelTransition;
 StartLevel:
@@ -1099,6 +1217,7 @@ StartLevel:
         SoundPickup;
         AwardPoints;
         ItemNo := ItemNo + 1;
+        ItemX := 0;
         if ItemNo = 10 then
           begin
             Level := Level + 1;
