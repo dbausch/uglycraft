@@ -1201,6 +1201,7 @@ var
   W, X1, X2, Y1, BoxH, TW, PW, Pad: Integer;
   Buf: String;
 begin
+  BufDesaturate;
   TW := UTF8Cols(Title);
   PW := UTF8Cols(Prompt);
   if TW > PW then W := TW + 4 else W := PW + 4;
@@ -1227,8 +1228,10 @@ begin
       Buf := Buf + Prompt;
       Draw(X1, Y1 + 3, Fg, Bg, Buf);
     end;
+  BufFlush;
   Dialog := WaitKey;
   DrawInner;
+  BufFlush;
 end;
 
 function KeyToDir(Code: Integer): TDirection;
@@ -1411,6 +1414,7 @@ begin
   Dialog(sYouWon, sPressKey);
   SoundWon;
   HighScoreEntry;
+  BufFill(FieldBg, FieldBg, ' ');
   ClrScr;
 end;
 
