@@ -46,23 +46,22 @@ const
 type
   TDirection = (DirRight, DirLeft, DirDown, DirUp);
   TItemData = record
-    Ch:   String[4];   { UTF-8 character (max 3 bytes) }
-    Name: String[40];  { German treasure name }
-    Fg:   Integer;     { foreground color during gameplay }
+    Ch: String[4];   { UTF-8 character (max 3 bytes) }
+    Fg: Integer;     { foreground color during gameplay }
   end;
 
 const
   Items : array[1..ItemCount] of TItemData = (
-    (Ch: '|'; Name: 'Seil';                       Fg: Brown),
-    (Ch: '☼'; Name: 'grosser glänzender Diamant';  Fg: LightBlue),
-    (Ch: ':'; Name: 'kleine Edelsteine';            Fg: LightRed),
-    (Ch: '*'; Name: 'kleiner glänzender Diamant';   Fg: LightBlue),
-    (Ch: '='; Name: 'Goldbarren';                   Fg: Yellow),
-    (Ch: '≡'; Name: 'Silberbarren';                 Fg: LightGray),
-    (Ch: 'Γ'; Name: 'Brunnen';                      Fg: Cyan),
-    (Ch: 'Φ'; Name: 'Lampe';                        Fg: Yellow),
-    (Ch: '♦'; Name: 'grosser Edelstein';            Fg: LightGreen),
-    (Ch: '⌂'; Name: 'Krone';                        Fg: Yellow)
+    (Ch: '|'; Fg: Brown),
+    (Ch: '☼'; Fg: LightBlue),
+    (Ch: ':'; Fg: LightRed),
+    (Ch: '*'; Fg: LightBlue),
+    (Ch: '='; Fg: Yellow),
+    (Ch: '≡'; Fg: LightGray),
+    (Ch: 'Γ'; Fg: Cyan),
+    (Ch: 'Φ'; Fg: Yellow),
+    (Ch: '♦'; Fg: LightGreen),
+    (Ch: '⌂'; Fg: Yellow)
   );
 
 var
@@ -475,6 +474,45 @@ begin
     end;
 end;
 
+function GetItemName(I: Integer): String;
+begin
+  case I of
+    1:  GetItemName := sItemName1;
+    2:  GetItemName := sItemName2;
+    3:  GetItemName := sItemName3;
+    4:  GetItemName := sItemName4;
+    5:  GetItemName := sItemName5;
+    6:  GetItemName := sItemName6;
+    7:  GetItemName := sItemName7;
+    8:  GetItemName := sItemName8;
+    9:  GetItemName := sItemName9;
+    10: GetItemName := sItemName10;
+  end;
+end;
+
+procedure DrawItemName;
+const
+  Fg = CounterFg;
+  Bg = CounterBg;
+  ZoneStart = 12;
+  ZoneEnd   = 66;
+  ZoneW     = ZoneEnd - ZoneStart + 1;  { = 55 }
+var
+  Idx, NameW, Pad, I: Integer;
+  Name, Padded: String;
+begin
+  Idx := ItemNo;
+  if (ItemNo = 9) and (Level = 9) then Idx := 10;
+  Name := GetItemName(Idx);
+  NameW := UTF8Cols(Name);
+  Pad := (ZoneW - NameW) div 2;
+  Padded := '';
+  for I := 1 to Pad do Padded := Padded + ' ';
+  Padded := Padded + Name;
+  while UTF8Cols(Padded) < ZoneW do Padded := Padded + ' ';
+  Draw(ZoneStart, FieldH, Fg, Bg, Padded);
+end;
+
 procedure DrawBorder;
 const
   Fg = WallFg;
@@ -496,6 +534,7 @@ begin
   DrawLives;
   DrawPauses;
   DrawBlocks;
+  DrawItemName;
 end; {DrawBorder}
 
 procedure Redraw;
@@ -1159,12 +1198,12 @@ begin
   MaxW := 0;
   for I := 1 to ItemCount do
     begin
-      ItemW := UTF8Cols(Items[I].Ch) + 2 + UTF8Cols(Items[I].Name);
+      ItemW := UTF8Cols(Items[I].Ch) + 2 + UTF8Cols(GetItemName(I));
       if ItemW > MaxW then MaxW := ItemW;
     end;
   Col := (FieldW - MaxW) div 2 + 1;
   for I := 1 to ItemCount do
-    Draw(Col, 3 + I, Fg, Bg, Items[I].Ch + '  ' + Items[I].Name);
+    Draw(Col, 3 + I, Fg, Bg, Items[I].Ch + '  ' + GetItemName(I));
   Draw(1, 16, Fg, Bg, Center(sItemInstTitle));
   Draw(5, 18, Fg, Bg, sItemInst1);
   Draw(5, 19, Fg, Bg, sItemInst2);
@@ -1317,6 +1356,7 @@ StartLevel:
         AwardPoints;
         ItemNo := ItemNo + 1;
         ItemX := 0;
+        DrawItemName;
         if ItemNo = 10 then
           begin
             Level := Level + 1;
