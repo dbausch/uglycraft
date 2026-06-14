@@ -535,7 +535,7 @@ begin
     end;
   Sleep(100);
   Write(ITTY, #27'[0;30;40m'#27'[1;1H');   { Black on Black, home }
-  SetFg(15);                                 { White fg }
+  SetFg(7);                                 { Light gray fg }
   for I := 1 to 25 do
     begin
       Sleep(200);
@@ -581,7 +581,7 @@ begin
   WLn(Center(sIntroWelcome));
   Sleep(200);
   WLn('');
-  Write(ITTY, #27'[0;30;107m'); { Black fg, bright-white bg, blink off }
+  Write(ITTY, #27'[0;30;47m'); { Black fg, bright-white bg, blink off }
   Flush(ITTY);
   Sleep(200);
   WLn(Center(User));
