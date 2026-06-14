@@ -1183,8 +1183,7 @@ begin
     end;
   BufFlush;
   Dialog := WaitKey;
-  DrawInner;
-  BufFlush;
+  Redraw;
 end;
 
 function KeyToDir(Code: Integer): TDirection;
