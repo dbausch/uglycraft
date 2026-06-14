@@ -12,7 +12,7 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 - **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files and `ANSI-87.conf` from GitHub on first run, then compiles with `fpc -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
-Run `poe test-original` to build and execute the fpcunit test suite (35 tests, exits 0 on all-pass).
+Run `poe test-original` to build and execute the fpcunit test suite (84 tests, exits 0 on all-pass).
 
 ## File structure
 
@@ -32,7 +32,7 @@ Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `UOSSound`.
 
 ### `UGLI_2_Test.pp` (program `UGLI_2_Test`) — fpcunit test suite
 
-35 unit tests across five classes (string utilities, screen buffer, level init, drawing, game logic). Build and run with `poe test-original`.
+84 unit tests across nine classes (string utilities, screen buffer, level init, drawing, game logic, enemy AI, player movement, block placement, player-caught state). Build and run with `poe test-original`.
 
 ### `translations/` — runtime locale files
 
