@@ -25,6 +25,68 @@ Build and deploy are separate steps — deploy tasks only call butler, never bui
 Windows build requires Wine installed via the system package manager; `poe setup-windows` handles the rest.
 Version is read from the latest git tag automatically.
 
+## Development workflow
+
+Every non-trivial change follows this sequence. Skipping a step requires an
+explicit justification in the commit message.
+
+### 1 — Plan
+
+Clarify scope and approach before touching any file. For architectural
+decisions use plan mode; for smaller changes a short conversation is enough.
+The plan's output is a committed spec file — not uncommitted notes.
+
+### 2 — Spec
+
+Write a spec file (`original/spec/<topic>.md` for Pascal work; an inline
+comment block for Python work where a separate file would be disproportionate).
+Every spec must contain:
+- A **status checklist** at the top — one line per deliverable, `✓` / `✗`.
+- A **"Done when:"** section at the bottom listing the acceptance criteria.
+
+Commit the spec alone, before any implementation code.
+
+### 3 — Tests (`original/` Pascal work only)
+
+Add tests to `UGLI_2_Test.pp` that cover the required behaviour.
+Run `poe test-original` and confirm the new tests are **red**.
+Implement until the suite is **green** (`poe test-original` exits 0).
+A task is not complete while a test it introduced is still failing.
+
+For Python/UGLYCRAFT work there is no automated suite; describe the manual
+verification steps in the spec instead.
+
+### 4 — Implement
+
+Write the code. Keep commits on topic — one logical concern per commit
+(see global CLAUDE.md commit-discipline rules).
+
+### 5 — Gates (Pascal / `original/` work)
+
+Both must pass before the work is called done:
+
+```
+poe build-original   # zero compiler errors
+poe test-original    # all tests pass, exit 0
+```
+
+### 6 — Maintain living documents
+
+After every substantive commit to `original/`:
+
+| Document | What to update |
+|---|---|
+| `original/CHANGELOG.md` | Add entries to `[Unreleased]`; merge into existing category headings |
+| `original/CLAUDE.md` | Update if data structures, procedures, file layout, or `uses` clause changed |
+| Spec checklist | Mark items `✓` only after the user confirms the behaviour works |
+
+After a release (new git tag + `poe deploy`):
+
+| Document | What to update |
+|---|---|
+| `CLAUDE.md` (this file) | Bump **Current version** |
+| `original/CHANGELOG.md` | Close `[Unreleased]` into a versioned section |
+
 ## Licensing
 
 UGLYCRAFT is GPLv3. Distributables also bundle pygame (LGPL 2.1) and numpy (BSD 3-Clause).
