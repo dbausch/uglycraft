@@ -11,6 +11,8 @@ const
   Release = '0042';
   FieldW = 80;
   FieldH = 20;
+  ScreenW = FieldW;   { terminal width — buffer covers full 80-column line }
+  ScreenH = 25;       { terminal height — game field (20) + key-help bar (5) }
   KeyRight = 77;
   KeyLeft = 75;
   KeyDown = 80;
@@ -49,6 +51,12 @@ type
     Ch: String[4];   { UTF-8 character (max 3 bytes) }
     Fg: Integer;     { foreground color during gameplay }
   end;
+  TScreenCell = record
+    Ch: String[4];   { one UTF-8 character stored in the off-screen buffer }
+    Fg: Byte;
+    Bg: Byte;
+  end;
+  TScreenBuffer = array[1..ScreenW, 1..ScreenH] of TScreenCell;
 
 const
   Items : array[1..ItemCount] of TItemData = (
@@ -73,6 +81,9 @@ var
   Key: Char;
   Direction, StartDir: TDirection;
   Laying: Boolean;
+  Screen          : TScreenBuffer;
+  Dirty           : array[1..ScreenW, 1..ScreenH] of Boolean;
+  BufFlushEnabled : Boolean = true;
   F, TTY: Text;
   FirstName, LastName, S: String;
   Line: String[80];
@@ -164,6 +175,75 @@ begin
   Flush(TTY);
   TextBackground(Bg);                { keep FPC CRT colour tracker in sync }
   GotoXY(1, 1);
+end;
+
+procedure BufPutCell(Col, Row: Integer; Fg, Bg: Byte; const Ch: String);
+begin
+  if (Col < 1) or (Col > ScreenW) or (Row < 1) or (Row > ScreenH) then Exit;
+  if (Screen[Col, Row].Ch = Ch) and (Screen[Col, Row].Fg = Fg)
+      and (Screen[Col, Row].Bg = Bg) then Exit;
+  Screen[Col, Row].Ch := Ch;
+  Screen[Col, Row].Fg := Fg;
+  Screen[Col, Row].Bg := Bg;
+  Dirty[Col, Row] := true;
+end;
+
+procedure BufFill(Fg, Bg: Integer; const Ch: String);
+var Col, Row: Integer;
+begin
+  for Col := 1 to ScreenW do
+    for Row := 1 to ScreenH do
+      BufPutCell(Col, Row, Fg, Bg, Ch);
+end;
+
+procedure BufFlush;
+var Col, Row, LastFg, LastBg: Integer;
+begin
+  if not BufFlushEnabled then
+    begin
+      for Col := 1 to ScreenW do
+        for Row := 1 to ScreenH do
+          Dirty[Col, Row] := false;
+      Exit;
+    end;
+  Write(TTY, #27'[?7l');   { disable autowrap for the flush }
+  LastFg := -1;
+  LastBg := -1;
+  for Row := 1 to ScreenH do
+    for Col := 1 to ScreenW do
+      if Dirty[Col, Row] then
+        begin
+          if (Screen[Col, Row].Fg <> LastFg) or (Screen[Col, Row].Bg <> LastBg) then
+            begin
+              TextColor(Screen[Col, Row].Fg);
+              TextBackground(Screen[Col, Row].Bg);
+              LastFg := Screen[Col, Row].Fg;
+              LastBg := Screen[Col, Row].Bg;
+            end;
+          Write(TTY, #27'[', Row, ';', Col, 'H');
+          Write(TTY, Screen[Col, Row].Ch);
+          Dirty[Col, Row] := false;
+        end;
+  Write(TTY, #27'[?7h');   { re-enable autowrap }
+  Flush(TTY);
+  GotoXY(1, 1);             { sync FPC CRT position tracker }
+end;
+
+procedure BufDesaturate;
+var Col, Row: Integer;
+begin
+  for Col := 1 to ScreenW do
+    for Row := 1 to ScreenH do
+      begin
+        Screen[Col, Row].Fg := LightGray;
+        Screen[Col, Row].Bg := Black;
+        Dirty[Col, Row] := true;
+      end;
+end;
+
+procedure BufCopy(var Dst: TScreenBuffer);
+begin
+  Dst := Screen;
 end;
 
 function UTF8Cols(S: String): Integer;
