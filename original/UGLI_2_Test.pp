@@ -63,6 +63,83 @@ const
 {$I UGLI_2_Core.inc}
 
 { ------------------------------------------------------------------ }
+{ Key queue — inject predetermined keystrokes into WaitKey-based     }
+{ procedures without opening a real TTY.                             }
+{ ------------------------------------------------------------------ }
+const KeyQueueSize = 32;
+
+var
+  KeyQueue  : array[0..KeyQueueSize - 1] of Integer;
+  KeyQueueH : Integer = 0;
+  KeyQueueT : Integer = 0;
+  KeyCapture: TScreenBuffer;  { screen buffer snapped at WaitKey time }
+
+procedure ClearKeyQueue;
+begin
+  KeyQueueH := 0;
+  KeyQueueT := 0;
+end;
+
+procedure EnqueueKey(K: Integer);
+begin
+  KeyQueue[KeyQueueT] := K;
+  KeyQueueT := (KeyQueueT + 1) mod KeyQueueSize;
+end;
+
+{ Dequeue the next key; 'N' (exits any Yes/No loop) when queue empty. }
+function DequeueKey: Integer;
+begin
+  if KeyQueueH <> KeyQueueT then
+    begin
+      DequeueKey := KeyQueue[KeyQueueH];
+      KeyQueueH  := (KeyQueueH + 1) mod KeyQueueSize;
+    end
+  else
+    DequeueKey := Ord('N');
+end;
+
+{ Like DequeueKey but also snapshots Screen into KeyCapture first. }
+function CapturingDequeueKey: Integer;
+begin
+  BufCopy(KeyCapture);
+  CapturingDequeueKey := DequeueKey;
+end;
+
+{ Shared setup for any test class that needs KeyProviderFunc. }
+procedure KeyTestSetUp;
+begin
+  BufFlushEnabled    := false;
+  FillChar(Screen,  SizeOf(Screen),  0);
+  FillChar(Dirty,   SizeOf(Dirty),   0);
+  FillChar(Blocked, SizeOf(Blocked), 0);
+  InitBorder;
+  Level            := 1;
+  Score            := 0;
+  Lives            := 3;
+  ItemNo           := 1;
+  MoveDelay        := 100;
+  PausesRemaining  := 20;
+  BlocksRemaining  := 2000;
+  X := 40; Y := 10;
+  EX := 5;  EY := 10;
+  ItemX := 0; ItemY := 0;  { 0 → DrawInner skips item sprite }
+  BlockX := 1; BlockY := 1;
+  EnemyTick        := 0;
+  Direction        := DirRight;
+  { Build YesKey / NoKey from the English defaults; Init is not called. }
+  YesKey := [Ord('Y'), Ord('y')];
+  NoKey  := [Ord('N'), Ord('n')];
+  ClearKeyQueue;
+  KeyProviderFunc := @DequeueKey;
+end;
+
+procedure KeyTestTearDown;
+begin
+  KeyProviderFunc := nil;
+  ClearKeyQueue;
+end;
+
+{ ------------------------------------------------------------------ }
 { TStringTests — pure functions, no global state needed              }
 { ------------------------------------------------------------------ }
 
@@ -1048,6 +1125,328 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
+{ TDialogTests — Dialog rendering, return value, and Redraw         }
+{ ------------------------------------------------------------------ }
+{
+  Dialog('Hello', '') geometry:
+    TW=5, W=max(9,4,27)=27, X1=(80-27)/2+1=27, X2=53
+    BoxH=3 (no prompt), Y1=(20-3)/2+1=9
+    Title pad=(27-2-5)/2=10 → Draw(28,10,...) → 'H' at col 38
+  Dialog('Test','Yes') geometry:
+    TW=4, PW=3, W=27, BoxH=4, Y1=9
+    Prompt pad=(27-3)/2=12 → Draw(27,12,...) → 'Y' at col 39
+}
+
+type
+  TDialogTests = class(TTestCase)
+  protected
+    procedure SetUp;    override;
+    procedure TearDown; override;
+  published
+    procedure TestDialog_ReturnsKey;
+    procedure TestDialog_RedrawsAfter;
+    procedure TestDialog_TitleCaptured;
+    procedure TestDialog_PromptCaptured;
+    procedure TestDialog_MinWidth27;
+    procedure TestDialog_NoPromptNoTextBelow;
+    procedure TestDialog_WithPromptTextBelow;
+    procedure TestGameOver_RedrawsAfter;
+  end;
+
+procedure TDialogTests.SetUp;
+begin
+  KeyTestSetUp;
+end;
+
+procedure TDialogTests.TearDown;
+begin
+  KeyTestTearDown;
+end;
+
+procedure TDialogTests.TestDialog_ReturnsKey;
+begin
+  EnqueueKey(Ord('x'));
+  AssertEquals(Ord('x'), Dialog('Title', ''));
+end;
+
+procedure TDialogTests.TestDialog_RedrawsAfter;
+begin
+  { Dialog calls Redraw after WaitKey; DrawBorder draws '█' at (1,1). }
+  EnqueueKey(Ord('n'));
+  Dialog('Test', '');
+  AssertEquals('█', Screen[1, 1].Ch);
+end;
+
+procedure TDialogTests.TestDialog_TitleCaptured;
+begin
+  { 'Hello' (5 chars), W=27, X1=27, Y1=9, Draw at (28,10).
+    10 leading spaces → 'H' lands at col 38. }
+  KeyProviderFunc := @CapturingDequeueKey;
+  EnqueueKey(Ord('x'));
+  Dialog('Hello', '');
+  AssertEquals('H', KeyCapture[38, 10].Ch);
+end;
+
+procedure TDialogTests.TestDialog_PromptCaptured;
+begin
+  { 'Test'(4)+'Yes'(3), W=27, BoxH=4, Y1=9.
+    Prompt pad=(27-3)/2=12 → Draw(27,12,...) → 'Y' at col 27+12=39. }
+  KeyProviderFunc := @CapturingDequeueKey;
+  EnqueueKey(Ord('x'));
+  Dialog('Test', 'Yes');
+  AssertEquals('Y', KeyCapture[39, 12].Ch);
+end;
+
+procedure TDialogTests.TestDialog_MinWidth27;
+begin
+  { Short title 'Hi' (2 chars): W enforced to 27. X1=27, X2=53.
+    Top border at row Y1=9 must span cols 27..53. }
+  KeyProviderFunc := @CapturingDequeueKey;
+  EnqueueKey(Ord('x'));
+  Dialog('Hi', '');
+  AssertEquals('█', KeyCapture[27, 9].Ch);   { left edge of top border }
+  AssertEquals('█', KeyCapture[53, 9].Ch);   { right edge }
+end;
+
+procedure TDialogTests.TestDialog_NoPromptNoTextBelow;
+begin
+  { BoxH=3: bottom border at Y1+2=11; row Y1+3=12 must be untouched. }
+  KeyProviderFunc := @CapturingDequeueKey;
+  EnqueueKey(Ord('x'));
+  Dialog('Hi', '');
+  AssertEquals('█', KeyCapture[27, 11].Ch);   { bottom border present }
+  AssertEquals('',  KeyCapture[27, 12].Ch);   { nothing below the box }
+end;
+
+procedure TDialogTests.TestDialog_WithPromptTextBelow;
+begin
+  { 'Prompt' (6 chars), W=27, pad=(27-6)/2=10 → 'P' at X1+10=37, row 12. }
+  KeyProviderFunc := @CapturingDequeueKey;
+  EnqueueKey(Ord('x'));
+  Dialog('X', 'Prompt');
+  AssertEquals('P', KeyCapture[37, 12].Ch);
+end;
+
+procedure TDialogTests.TestGameOver_RedrawsAfter;
+begin
+  { GameOver → Dialog → Redraw; border cell (1,1) should be '█'. }
+  EnqueueKey(Ord('n'));
+  GameOver;
+  AssertEquals('█', Screen[1, 1].Ch);
+end;
+
+{ ------------------------------------------------------------------ }
+{ TScreenOverlayTests — ShowHelp and ShowStory buffer content        }
+{ ------------------------------------------------------------------ }
+{
+  Center('UGLI HELP')  [9 chars]: pad=(80-9)/2=35 → 'U' at col 36, row 2.
+  Center(sPressKey)    [25 chars]: pad=(80-25)/2=27 → 'P' at col 28, row 24.
+  Center('The Story of UGLI') [18 chars]: pad=(80-18)/2=31 → 'T' at col 32.
+  ShowStory Col=(80-72)/2+1=5; first word 'A' drawn at (5,4).
+  Neither ShowHelp nor ShowStory calls Redraw internally — Screen still
+  has their content when they return to the test.
+}
+
+type
+  TScreenOverlayTests = class(TTestCase)
+  protected
+    procedure SetUp;    override;
+    procedure TearDown; override;
+  published
+    procedure TestShowHelp_RestoresXY;
+    procedure TestShowHelp_TitleInBuffer;
+    procedure TestShowHelp_KeyHintInBuffer;
+    procedure TestShowStory_TitleInBuffer;
+    procedure TestShowStory_DrawsParagraph;
+  end;
+
+procedure TScreenOverlayTests.SetUp;
+begin
+  KeyTestSetUp;
+end;
+
+procedure TScreenOverlayTests.TearDown;
+begin
+  KeyTestTearDown;
+end;
+
+procedure TScreenOverlayTests.TestShowHelp_RestoresXY;
+var OldX, OldY: Integer;
+begin
+  OldX := X; OldY := Y;
+  EnqueueKey(Ord('x'));
+  ShowHelp;
+  AssertEquals(OldX, X);
+  AssertEquals(OldY, Y);
+end;
+
+procedure TScreenOverlayTests.TestShowHelp_TitleInBuffer;
+begin
+  { Center('UGLI HELP'): 35 spaces + 'UGLI HELP'.  Draw(1,2,...) → 'U' at col 36. }
+  EnqueueKey(Ord('x'));
+  ShowHelp;
+  AssertEquals('U', Screen[36, 2].Ch);
+end;
+
+procedure TScreenOverlayTests.TestShowHelp_KeyHintInBuffer;
+begin
+  { Center(sPressKey) [25 chars]: 27 spaces → 'P' at col 28, row 24. }
+  EnqueueKey(Ord('x'));
+  ShowHelp;
+  AssertEquals('P', Screen[28, 24].Ch);
+end;
+
+procedure TScreenOverlayTests.TestShowStory_TitleInBuffer;
+begin
+  { Center('The Story of UGLI') [18 chars]: 31 spaces → 'T' at col 32, row 2. }
+  EnqueueKey(Ord('x'));
+  ShowStory;
+  AssertEquals('T', Screen[32, 2].Ch);
+end;
+
+procedure TScreenOverlayTests.TestShowStory_DrawsParagraph;
+begin
+  { Story paragraph at Col=5, Row=4.  First visible char is 'A' (from 'A king...'). }
+  EnqueueKey(Ord('x'));
+  ShowStory;
+  AssertEquals('A', Screen[5, 4].Ch);
+end;
+
+{ ------------------------------------------------------------------ }
+{ TGameFlowTests — LevelTransition, LevelComplete, AskPlayAgain,    }
+{                  RemoveBlocks, KeyToDir                            }
+{ ------------------------------------------------------------------ }
+
+type
+  TGameFlowTests = class(TTestCase)
+  protected
+    procedure SetUp;    override;
+    procedure TearDown; override;
+  published
+    procedure TestKeyToDir_Right;
+    procedure TestKeyToDir_Left;
+    procedure TestKeyToDir_Up;
+    procedure TestKeyToDir_Down;
+    procedure TestLevelTransition_SetsDirectionOnRight;
+    procedure TestLevelTransition_SetsDirectionOnLeft;
+    procedure TestLevelTransition_KeepsDirectionOnOtherKey;
+    procedure TestLevelComplete_IncreasesLives;
+    procedure TestLevelComplete_ResetsItemNo;
+    procedure TestLevelComplete_ResetsBlockXY;
+    procedure TestAskPlayAgain_YesReturnsTrue;
+    procedure TestAskPlayAgain_NoReturnsFalse;
+    procedure TestRemoveBlocks_Yes_ClearsInterior;
+    procedure TestRemoveBlocks_No_KeepsBlocked;
+  end;
+
+procedure TGameFlowTests.SetUp;
+begin
+  KeyTestSetUp;
+end;
+
+procedure TGameFlowTests.TearDown;
+begin
+  KeyTestTearDown;
+end;
+
+procedure TGameFlowTests.TestKeyToDir_Right;
+begin
+  AssertEquals(Integer(DirRight), Integer(KeyToDir(KeyRight)));
+end;
+
+procedure TGameFlowTests.TestKeyToDir_Left;
+begin
+  AssertEquals(Integer(DirLeft), Integer(KeyToDir(KeyLeft)));
+end;
+
+procedure TGameFlowTests.TestKeyToDir_Up;
+begin
+  AssertEquals(Integer(DirUp), Integer(KeyToDir(KeyUp)));
+end;
+
+procedure TGameFlowTests.TestKeyToDir_Down;
+begin
+  AssertEquals(Integer(DirDown), Integer(KeyToDir(KeyDown)));
+end;
+
+procedure TGameFlowTests.TestLevelTransition_SetsDirectionOnRight;
+begin
+  EnqueueKey(KeyRight);
+  LevelTransition;
+  AssertEquals(Integer(DirRight), Integer(Direction));
+end;
+
+procedure TGameFlowTests.TestLevelTransition_SetsDirectionOnLeft;
+begin
+  EnqueueKey(KeyLeft);
+  LevelTransition;
+  AssertEquals(Integer(DirLeft), Integer(Direction));
+end;
+
+procedure TGameFlowTests.TestLevelTransition_KeepsDirectionOnOtherKey;
+begin
+  Direction := DirDown;
+  EnqueueKey(Ord('x'));  { not an arrow key }
+  LevelTransition;
+  AssertEquals(Integer(DirDown), Integer(Direction));
+end;
+
+procedure TGameFlowTests.TestLevelComplete_IncreasesLives;
+begin
+  Lives := 3;
+  EnqueueKey(Ord('x'));  { consumed by LevelTransition's Dialog }
+  LevelComplete;
+  AssertEquals(4, Lives);
+end;
+
+procedure TGameFlowTests.TestLevelComplete_ResetsItemNo;
+begin
+  ItemNo := 5;
+  EnqueueKey(Ord('x'));
+  LevelComplete;
+  AssertEquals(1, ItemNo);
+end;
+
+procedure TGameFlowTests.TestLevelComplete_ResetsBlockXY;
+begin
+  BlockX := 30; BlockY := 15;
+  EnqueueKey(Ord('x'));
+  LevelComplete;
+  AssertEquals(1, BlockX);
+  AssertEquals(1, BlockY);
+end;
+
+procedure TGameFlowTests.TestAskPlayAgain_YesReturnsTrue;
+begin
+  EnqueueKey(Ord('Y'));
+  AssertTrue(AskPlayAgain);
+end;
+
+procedure TGameFlowTests.TestAskPlayAgain_NoReturnsFalse;
+begin
+  EnqueueKey(Ord('N'));
+  AssertFalse(AskPlayAgain);
+end;
+
+procedure TGameFlowTests.TestRemoveBlocks_Yes_ClearsInterior;
+begin
+  { Place a "user" block at an interior cell. }
+  Blocked[20, 10] := true;
+  EnqueueKey(Ord('Y'));
+  RemoveBlocks;
+  { Level 1 has no interior walls, so RemoveBlocks + InitLevel(1) must clear it. }
+  AssertFalse(Blocked[20, 10]);
+end;
+
+procedure TGameFlowTests.TestRemoveBlocks_No_KeepsBlocked;
+begin
+  Blocked[20, 10] := true;
+  EnqueueKey(Ord('N'));
+  RemoveBlocks;
+  AssertTrue(Blocked[20, 10]);
+end;
+
+{ ------------------------------------------------------------------ }
 { Main                                                               }
 { ------------------------------------------------------------------ }
 
@@ -1065,6 +1464,9 @@ begin
   RegisterTest(TMovementTests);
   RegisterTest(TPlaceBlockTests);
   RegisterTest(TPlayerStateTests);
+  RegisterTest(TDialogTests);
+  RegisterTest(TScreenOverlayTests);
+  RegisterTest(TGameFlowTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
   Runner.Run;
