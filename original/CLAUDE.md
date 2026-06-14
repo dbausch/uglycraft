@@ -42,6 +42,18 @@ Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `UOSSound`.
   add a new language; `Init` detects the system locale via `GetLanguageIDs` and
   loads the matching `.mo` with `TranslateResourceStrings`
 
+## Knowledge base
+
+`original/kb/` contains reference files loaded on demand.
+
+| File | Contents |
+|---|---|
+| `original/kb/level-layouts.md` | Wall coordinates and start positions for all 9 levels |
+| `original/kb/game-mechanics.md` | Scoring, lives, speed/timing, item sequence, block/pause systems |
+| `original/kb/display-system.md` | Screen buffer, ANSI colour encoding, SGR sequences, GetKey VT100 parser |
+| `original/kb/crt-removal.md` | Why CRT was removed, what replaced each CRT call, colour mapping |
+| `original/kb/i18n.md` | Translated strings, YesKey/NoKey system, adding a language |
+
 ## Code style
 
 All Pascal source follows `STYLE.md`. Key rules:
