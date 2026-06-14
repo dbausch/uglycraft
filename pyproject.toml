@@ -80,6 +80,10 @@ shell = """
   cd original && fpc -Fuuos UGLI_2.pp
 """
 
+[tool.poe.tasks.test-original]
+help  = "Build and run UGLI_2 unit tests"
+shell = "cd original && fpc -Fuuos -oUGLI_2_Test UGLI_2_Test.pp && ./UGLI_2_Test --all --format=plainnotiming"
+
 [tool.poe.tasks.clean]
 help  = "Remove build artifacts"
 shell = """
