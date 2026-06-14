@@ -150,7 +150,11 @@ begin
 end;
 
 procedure BufFlush;
-var Col, Row, LastFg, LastBg: Integer;
+{ CRT index → ANSI colour digit: same mapping as FPC CRT's AnsiTbl='04261537' }
+const
+  AnsiClr: array[0..7] of Byte = (0, 4, 2, 6, 1, 5, 3, 7);
+var
+  Col, Row, LastFg, LastBg, FgCode, BgCode: Integer;
 begin
   if not BufFlushEnabled then
     begin
@@ -168,8 +172,12 @@ begin
         begin
           if (Screen[Col, Row].Fg <> LastFg) or (Screen[Col, Row].Bg <> LastBg) then
             begin
-              TextColor(Screen[Col, Row].Fg);
-              TextBackground(Screen[Col, Row].Bg);
+              if Screen[Col, Row].Fg < 8 then
+                FgCode := 30 + AnsiClr[Screen[Col, Row].Fg]
+              else
+                FgCode := 90 + AnsiClr[Screen[Col, Row].Fg - 8];
+              BgCode := 40 + AnsiClr[Screen[Col, Row].Bg];
+              Write(TTY, #27'[0;', FgCode, ';', BgCode, 'm');
               LastFg := Screen[Col, Row].Fg;
               LastBg := Screen[Col, Row].Bg;
             end;
