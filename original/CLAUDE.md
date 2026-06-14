@@ -42,6 +42,19 @@ Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `UOSSound`.
   add a new language; `Init` detects the system locale via `GetLanguageIDs` and
   loads the matching `.mo` with `TranslateResourceStrings`
 
+## Code style
+
+All Pascal source follows `STYLE.md`. Key rules:
+
+- **Keywords** lowercase: `begin`, `end`, `if`, `then`, `else`, `for`, `do`, `while`, …
+- **Types** PascalCase: `String`, `Integer`, `Boolean`, `LongInt`, …
+- **User identifiers** English, PascalCase: `DrawBorder`, `BlocksRemaining`, `EnemyMove`
+- **Two-letter abbreviations** ALL CAPS: `DX`, `DY`, `EX`, `EY`, `TTY`
+- **2-space indentation**; `begin`/`end` always on their own lines
+- No blank line immediately after `begin` or before `end`/`until`
+
+**Never add `CRT` to `uses`.** CRT emits SGR 1 (bold) for bright foreground colours instead of the correct 90–97 high-intensity codes, which renders incorrectly on modern terminals. All colour constants (0–15 + `Blink=$80`) are defined locally; terminal output goes through the off-screen buffer (`BufPutCell` / `BufFlush`) and direct ANSI escape sequences.
+
 ## Key data structures (`UGLI_2.pp`)
 
 | Identifier | Type | Meaning |

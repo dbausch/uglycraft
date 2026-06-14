@@ -105,6 +105,16 @@ This repo contains two things:
 
 2. **UGLYCRAFT** — a new Python/pygame spiritual remake of UGLI, written from scratch. This is the active project.
 
+## System prerequisites
+
+| Tool | Required for |
+|---|---|
+| `fpc` (Free Pascal) | `poe build-original`, `poe test-original` |
+| `curl` | `poe build-original` (fetches UOS source + `ANSI-87.conf` on first run) |
+| `libportaudio.so.2` | `poe run-original` (runtime sound; fails silently if absent) |
+| `wine` | `poe setup-windows`, `poe build-windows` |
+| `butler` (itch.io) | all `poe deploy*` tasks |
+
 ## Running UGLYCRAFT
 
 ```bash
