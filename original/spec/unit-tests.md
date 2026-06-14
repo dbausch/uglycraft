@@ -2,14 +2,14 @@
 
 ## Status
 
-- ✗ `original/spec/unit-tests.md` — this spec committed
-- ✗ `UGLI_2_Core.inc` extracted; `UGLI_2.pp` slimmed; `poe build-original` unchanged
-- ✗ `UGLI_2_Test.pp` written; `poe test-original` poe task added
-- ✗ `TStringTests` — 10 tests pass (UTF8Cols, Center, WordWrap, Justify)
-- ✗ `TBufferTests` — 7 tests pass (BufPutCell, BufFill, BufDesaturate, BufFlush)
-- ✗ `TLevelTests` — 5 tests pass (InitBorder, InitLevel1/2, start positions)
-- ✗ `TDrawTests` — 5 tests pass (Draw ASCII/UTF-8, DrawHLine, DrawParagraph)
-- ✗ `TGameLogicTests` — 8 tests pass (AwardPoints, IsPlayerCaught, IsItemPickedUp, GetItemName)
+- ✓ `original/spec/unit-tests.md` — this spec committed
+- ✓ `UGLI_2_Core.inc` extracted; `UGLI_2.pp` slimmed; `poe build-original` unchanged
+- ✓ `UGLI_2_Test.pp` written; `poe test-original` poe task added
+- ✓ `TStringTests` — 10 tests pass (UTF8Cols, Center, WordWrap, Justify)
+- ✓ `TBufferTests` — 7 tests pass (BufPutCell, BufFill, BufDesaturate, BufFlush)
+- ✓ `TLevelTests` — 5 tests pass (InitBorder, InitLevel1/2, start positions)
+- ✓ `TDrawTests` — 5 tests pass (Draw ASCII/UTF-8, DrawHLine, DrawParagraph)
+- ✓ `TGameLogicTests` — 8 tests pass (AwardPoints, IsPlayerCaught, IsItemPickedUp, GetItemName)
 
 ---
 
@@ -169,8 +169,8 @@ shell = "cd original && fpc -Fuuos UGLI_2_Test.pp -o UGLI_2_Test && ./UGLI_2_Tes
 
 ## Done when
 
-- ✗ `poe build-original` succeeds with the slimmed `UGLI_2.pp` + include — _commit 2_
-- ✗ `poe test-original` compiles and exits 0 — _commit 3_
-- ✗ All 5 test case classes run — _commit 3_
-- ✗ All 35 individual tests pass — _commit 3_
-- ✗ `BufFlushEnabled := false` prevents terminal writes during the test run — _commit 3_
+- ✓ `poe build-original` succeeds with the slimmed `UGLI_2.pp` + include
+- ✓ `poe test-original` compiles and exits 0
+- ✓ All 5 test case classes run
+- ✓ All 35 individual tests pass
+- ✓ `BufFlushEnabled := false` prevents terminal writes during the test run

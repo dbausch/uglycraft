@@ -1,7 +1,7 @@
 {$H+}
 program UGLI_2;
 
-uses CThreads, CRT, DOS, BaseUnix, SysUtils, gettext, UOSSound;
+uses CThreads, DOS, BaseUnix, SysUtils, termio, gettext, UOSSound;
 
 label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
@@ -29,6 +29,24 @@ const
   KeyF5 = 63;
   HighScoreFileName = 'UGLI.HSC';
   License = 'Released under the terms of the GNU GPLv3';
+  { Color constants (replaces CRT unit definitions) }
+  Black        = 0;
+  Blue         = 1;
+  Green        = 2;
+  Cyan         = 3;
+  Red          = 4;
+  Magenta      = 5;
+  Brown        = 6;
+  LightGray    = 7;
+  DarkGray     = 8;
+  LightBlue    = 9;
+  LightGreen   = 10;
+  LightCyan    = 11;
+  LightRed     = 12;
+  LightMagenta = 13;
+  Yellow       = 14;
+  White        = 15;
+  Blink        = $80;
   { Foreground / background color roles }
   WallFg    = Red;       { border and interior wall blocks █ }
   PlayerFg  = Yellow;    { player smiley ☺ }
@@ -47,10 +65,21 @@ const
 
 {$I UGLI_2_Core.inc}
 
+var
+  Tio: Termios;
+
 begin
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
   MyCursorOff;
+  TTYFd := fpOpen('/dev/tty', O_RDONLY);
+  tcgetattr(TTYFd, SavedTio);
+  Tio := SavedTio;
+  Tio.c_lflag := Tio.c_lflag and not (ICANON or ECHO or ISIG);
+  Tio.c_cc[VMIN]  := 1;
+  Tio.c_cc[VTIME] := 0;
+  tcsetattr(TTYFd, TCSANOW, Tio);
+  RawTio := Tio;
   Init;
 NewGame:
   Level := 1;
@@ -66,7 +95,7 @@ StartLevel:
   EnemyTick := 0;
   RandomPos;
   repeat
-    Delay(MoveDelay);
+    Sleep(MoveDelay);
     DrawItem;
     HandleInput;
     if KeyCode = KeyEscape then goto CleanUp;
@@ -104,8 +133,10 @@ OnGameOver:
 PlayAgain:
   if AskPlayAgain then goto NewGame else goto CleanUp;
 CleanUp:
+  tcsetattr(TTYFd, TCSANOW, SavedTio);
+  fpClose(TTYFd);
   Write(TTY, #27'[0m'); Flush(TTY);
-  ClrScr;
+  Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
   MyCursorOn;
   Close(TTY);
 end.

@@ -1,8 +1,7 @@
 {$mode objfpc}{$H+}
 program UGLI_2_Test;
 
-uses CThreads, CRT, DOS, BaseUnix, SysUtils, gettext, UOSSound,
-     termio,
+uses CThreads, DOS, BaseUnix, SysUtils, termio, gettext, UOSSound,
      fpcunit, testregistry, consoletestrunner;
 
 const
@@ -29,6 +28,23 @@ const
   KeyF5 = 63;
   HighScoreFileName = 'UGLI.HSC';
   License = 'Released under the terms of the GNU GPLv3';
+  Black        = 0;
+  Blue         = 1;
+  Green        = 2;
+  Cyan         = 3;
+  Red          = 4;
+  Magenta      = 5;
+  Brown        = 6;
+  LightGray    = 7;
+  DarkGray     = 8;
+  LightBlue    = 9;
+  LightGreen   = 10;
+  LightCyan    = 11;
+  LightRed     = 12;
+  LightMagenta = 13;
+  Yellow       = 14;
+  White        = 15;
+  Blink        = $80;
   WallFg    = Red;
   PlayerFg  = Yellow;
   EnemyFg   = Brown;
@@ -438,13 +454,8 @@ end;
 
 var
   Runner: TTestRunner;
-  Tio: Termios;
 
 begin
-  { CRT's init clears ONLCR; restore it so WriteLn output starts at column 1 }
-  tcgetattr(1, Tio);
-  Tio.c_oflag := Tio.c_oflag or (OPOST or ONLCR);
-  tcsetattr(1, TCSANOW, Tio);
   BufFlushEnabled := false;
   RegisterTest(TStringTests);
   RegisterTest(TBufferTests);

@@ -28,7 +28,7 @@ const
 var
   BlocksRemaining, MoveDelay, PausesRemaining, EnemyTick, KeyCode, I, J,
   ItemNo, Level, Lives, SaveX, SaveY, BlockX, BlockY, ItemX, ItemY, DX, DY, X,
-  Y, EX, EY, EscState, StartX, StartY, StartEX, StartEY: Integer;
+  Y, EX, EY, StartX, StartY, StartEX, StartEY: Integer;
   Score: LongInt;
   Blocked: array[1..FieldW, 1..FieldH] of Boolean;
   Key: Char;
@@ -41,6 +41,8 @@ var
   FirstName, LastName, S: String;
   Line: String[80];
   YesKey, NoKey: set of Byte;
+  TTYFd           : Integer;   { /dev/tty fd for raw key reads }
+  SavedTio, RawTio: Termios;   { saved normal and raw terminal states }
 
 resourcestring
   { Item names — parallel to Items[1..10] }
@@ -117,17 +119,12 @@ begin
   Write(TTY, #27'[?25l');
 end;
 
-{ Fill the entire terminal window (including cells outside the 80x25 game
-  area) with Bg, then home the cursor. Use instead of TextBackground+ClrScr
-  whenever a background-colour transition must cover large terminal windows. }
 procedure FillScreen(Bg: Integer);
+const AnsiClr: array[0..7] of Byte = (0, 4, 2, 6, 1, 5, 3, 7);
 begin
-  Write(TTY, #27'[', 40 + Bg, 'm'); { set background via ANSI 40–47 }
-  Write(TTY, #27'[2J');              { clear whole terminal with that colour }
-  Write(TTY, #27'[H');               { home cursor }
+  Write(TTY, #27'[', 40 + AnsiClr[Bg and 7], 'm');
+  Write(TTY, #27'[2J'#27'[H');
   Flush(TTY);
-  TextBackground(Bg);                { keep FPC CRT colour tracker in sync }
-  GotoXY(1, 1);
 end;
 
 procedure BufPutCell(Col, Row: Integer; Fg, Bg: Byte; const Ch: String);
@@ -187,7 +184,6 @@ begin
         end;
   Write(TTY, #27'[?7h');
   Flush(TTY);
-  GotoXY(1, 1);
 end;
 
 procedure BufDesaturate;
@@ -369,146 +365,249 @@ begin
   DrawParagraph := N;
 end;
 
-function GetKey: Char;
-var Raw: Char;
+function HasTTYByte: Boolean;
+const
+  FIONREAD = $541B;
+var N: Integer;
 begin
-  Raw := ReadKey;
-  if Raw = #0 then
+  N := 0;
+  fpIoctl(TTYFd, FIONREAD, @N);
+  HasTTYByte := N > 0;
+end;
+
+{ Read one key press from /dev/tty; parse VT100 escape sequences and return
+  the corresponding scan code (same values as the old CRT-based scan codes). }
+function GetKey: Char;
+var B, B2, B3, B4: Byte;
+
+  function ReadB: Byte;
+  var V: Byte;
+  begin
+    V := 0;
+    fpRead(TTYFd, V, 1);
+    ReadB := V;
+  end;
+
+begin
+  B := ReadB;
+  if B <> 27 then
     begin
-      EscState := 0;
-      if KeyPressed then Raw := ReadKey else Raw := #0;
+      GetKey := Chr(B);
+      Exit;
+    end;
+  { ESC — start of a terminal escape sequence }
+  if not HasTTYByte then
+    begin
+      GetKey := Chr(KeyEscape);
+      Exit;
+    end;
+  B2 := ReadB;
+  if B2 = Ord('[') then
+    begin
+      if not HasTTYByte then begin GetKey := Chr(KeyEscape); Exit; end;
+      B3 := ReadB;
+      case B3 of
+        Ord('A'): begin GetKey := Chr(KeyUp);     Exit; end;
+        Ord('B'): begin GetKey := Chr(KeyDown);   Exit; end;
+        Ord('C'): begin GetKey := Chr(KeyRight);  Exit; end;
+        Ord('D'): begin GetKey := Chr(KeyLeft);   Exit; end;
+        Ord('H'): begin GetKey := Chr(KeyFaster); Exit; end;
+        Ord('F'): begin GetKey := Chr(KeySlower); Exit; end;
+        Ord('['):  { Linux console: ESC [ [ X for F1–F5 }
+          begin
+            if HasTTYByte then
+              begin
+                B4 := ReadB;
+                case B4 of
+                  Ord('A'): begin GetKey := Chr(KeyF1); Exit; end;
+                  Ord('B'): begin GetKey := Chr(KeyF2); Exit; end;
+                  Ord('C'): begin GetKey := Chr(KeyF3); Exit; end;
+                  Ord('D'): begin GetKey := Chr(KeyF4); Exit; end;
+                  Ord('E'): begin GetKey := Chr(KeyF5); Exit; end;
+                else
+                  GetKey := Chr(B4);
+                end;
+              end
+            else
+              GetKey := Chr(B3);
+            Exit;
+          end;
+      else
+        { Numeric sequence: ESC [ N ~ (e.g. ESC[11~ = F1) }
+        if (B3 >= Ord('0')) and (B3 <= Ord('9')) then
+          begin
+            B4 := B3 - Ord('0');  { accumulate first digit }
+            while HasTTYByte do
+              begin
+                B3 := ReadB;
+                if B3 = Ord('~') then Break;
+                if (B3 >= Ord('0')) and (B3 <= Ord('9')) then
+                  B4 := B4 * 10 + (B3 - Ord('0'));
+              end;
+            case B4 of
+              1:  GetKey := Chr(KeyFaster); { Home }
+              4:  GetKey := Chr(KeySlower); { End  }
+              11: GetKey := Chr(KeyF1);
+              12: GetKey := Chr(KeyF2);
+              13: GetKey := Chr(KeyF3);
+              14: GetKey := Chr(KeyF4);
+              15: GetKey := Chr(KeyF5);
+            else
+              GetKey := #0;
+            end;
+            Exit;
+          end;
+        GetKey := Chr(B3);
+      end;
     end
-  else if (EscState = 2) and (Raw = #27) then
+  else if B2 = Ord('O') then
     begin
-      EscState := 0; Raw := Chr(KeySlower);
-    end
-  else if (EscState = 1) and (Raw = '[') then
-    begin
-      EscState := 2; Raw := #0;
+      { ESC O X for F1–F4 and Home/End on some terminals }
+      if not HasTTYByte then begin GetKey := Chr(KeyEscape); Exit; end;
+      B3 := ReadB;
+      case B3 of
+        Ord('P'): begin GetKey := Chr(KeyF1);     Exit; end;
+        Ord('Q'): begin GetKey := Chr(KeyF2);     Exit; end;
+        Ord('R'): begin GetKey := Chr(KeyF3);     Exit; end;
+        Ord('S'): begin GetKey := Chr(KeyF4);     Exit; end;
+        Ord('H'): begin GetKey := Chr(KeyFaster); Exit; end;
+        Ord('F'): begin GetKey := Chr(KeySlower); Exit; end;
+      else
+        GetKey := Chr(B3);
+      end;
     end
   else
-    begin
-      EscState := 0;
-      if Raw = 'F' then
-        begin
-          EscState := 1; Raw := #0;
-        end;
-    end;
-  GetKey := Raw;
+    GetKey := Chr(B2);
 end;
 
 function WaitKey: Integer;
-var K: Char;
 begin
-  repeat
-    K := GetKey;
-  until not KeyPressed;
-  WaitKey := Ord(K);
+  WaitKey := Ord(GetKey);
 end;
 
 procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String;
   Release, User, CopyYear: String);
+{ CRT index → ANSI colour digit: same mapping as FPC CRT AnsiTbl='04261537' }
+const AnsiClr: array[0..7] of Byte = (0, 4, 2, 6, 1, 5, 3, 7);
 var I: Integer;
   ITTY: Text;
 
+{ Emit a foreground color SGR code to ITTY (Fg 0-15). }
+procedure SetFg(Fg: Integer);
+var Code: Integer;
+begin
+  if (Fg and $7F) >= 8 then
+    Code := 90 + AnsiClr[(Fg and $7F) - 8]
+  else
+    Code := 30 + AnsiClr[Fg and 7];
+  if (Fg and Blink) <> 0 then
+    Write(ITTY, #27'[5;', Code, 'm')
+  else
+    Write(ITTY, #27'[', Code, 'm');
+end;
+
+{ Emit a background color SGR code to ITTY (Bg 0-7). }
+procedure SetBg(Bg: Integer);
+begin
+  Write(ITTY, #27'[', 40 + AnsiClr[Bg and 7], 'm');
+end;
+
+{ Write S with erase-to-EOL and advance to the next line. }
 procedure WLn(S: String);
 begin
-  if S = '' then Write(' ') else Write(S); { at least one char forces FPC to emit SGR }
-  Write(ITTY, #27'[K'); Flush(ITTY);
-  WriteLn;
-  Write(ITTY, #27'[K'); Flush(ITTY);
+  if S = '' then Write(ITTY, ' ') else Write(ITTY, S);
+  Write(ITTY, #27'[K'#13#10#27'[K');
+  Flush(ITTY);
 end;
 
 begin
   Assign(ITTY, '/dev/tty');
   ReWrite(ITTY);
-  Write(#27'[1;25r'); { confine scrolling to rows 1-25 }
+  Write(ITTY, #27'[1;25r'); { confine scrolling to rows 1-25 }
+  Flush(ITTY);
   for I := 0 to 7 do
     begin
-      TextBackground(I);
-      ClrScr;
+      SetBg(I);
+      Write(ITTY, #27'[2J'#27'[H');
+      Flush(ITTY);
       Ton(I * 150, 300);
-      Delay(20);
+      Sleep(20);
     end;
-  Delay(100);
-  TextColor(Black);
-  TextBackground(0);
-  GotoXY(1, 1);
-  TextColor(15);
+  Sleep(100);
+  Write(ITTY, #27'[0;30;40m'#27'[1;1H');   { Black on Black, home }
+  SetFg(15);                                 { White fg }
   for I := 1 to 25 do
     begin
-      Delay(200);
-      GotoXY(1, I);
-      ClrEol;
-      Write('                        |                            |');
+      Sleep(200);
+      Write(ITTY, #27'[', I, ';1H'#27'[K');
+      Write(ITTY, '                        |                            |');
+      Flush(ITTY);
     end;
-  TextColor(0);
-  TextBackground(7);
-  GotoXY(1, 25);
-  Delay(200);
+  Write(ITTY, #27'[0;30;47m'#27'[25;1H');  { Black fg, LightGray bg, row 25 }
+  Flush(ITTY);
+  Sleep(200);
   WLn('');
-  Delay(200);
+  Sleep(200);
   WLn(Center(sIntroBrand));
-  Delay(200);
+  Sleep(200);
   WLn('');
-  Delay(200);
+  Sleep(200);
   WLn('');
-  TextColor(Red + Blink);
-  TextBackground(7);
-  Delay(200);
+  Write(ITTY, #27'[0;47m'); SetFg(Red + Blink); { blink red on LightGray }
+  Flush(ITTY);
+  Sleep(200);
   WLn(Logo1);
-  Delay(200);
+  Sleep(200);
   WLn(Logo2);
-  Delay(200);
+  Sleep(200);
   WLn(Logo3);
-  Delay(200);
+  Sleep(200);
   WLn(Logo4);
-  Delay(200);
+  Sleep(200);
   WLn(Logo5);
-  Delay(200);
+  Sleep(200);
   WLn(Logo6);
-  Delay(200);
+  Sleep(200);
   WLn(Logo7);
-  Delay(200);
+  Sleep(200);
   WLn(Logo8);
-  Delay(200);
+  Sleep(200);
   WLn('');
-  Delay(200);
-  TextColor(Black + Blink);
-  TextBackground(7);
+  Sleep(200);
+  Write(ITTY, #27'[0;47m'); SetFg(Black + Blink); { blink black on LightGray }
+  Flush(ITTY);
   WLn('');
-  Delay(200);
+  Sleep(200);
   WLn(Center(sIntroWelcome));
-  Delay(200);
+  Sleep(200);
   WLn('');
-  TextColor(Black);
-  TextBackground(15);
-  Delay(200);
+  Write(ITTY, #27'[0;30;107m'); { Black fg, bright-white bg, blink off }
+  Flush(ITTY);
+  Sleep(200);
   WLn(Center(User));
-  Delay(200);
+  Sleep(200);
   WLn('');
-  Delay(200);
+  Sleep(200);
   WLn(Center('Version: ' + Version + '/' + Release));
-  Delay(200);
+  Sleep(200);
   WLn('');
-  Delay(200);
+  Sleep(200);
   WLn(Center(CopyYear));
-  Delay(200);
+  Sleep(200);
   WLn('');
-  Delay(200);
+  Sleep(200);
   WLn('');
-  Delay(200);
-  TextColor(4);
-  Write(Center(sPressKey));
+  Sleep(200);
+  SetFg(Red);
+  Flush(ITTY);
+  Write(ITTY, Center(sPressKey));
   WLn('');
   WaitKey;
-  ClrScr;
+  Write(ITTY, #27'[2J'#27'[H');
   for I := 40 to 50 do
-    begin
-      Ton(I, 150);
-    end;
-  TextColor(Black);
-  Write(#27'[r'); { reset scroll region to full screen }
+    Ton(I, 150);
+  Write(ITTY, #27'[r'); { reset scroll region }
+  Flush(ITTY);
   Close(ITTY);
 end;
 
@@ -970,7 +1069,6 @@ begin
       Draw(X, OldY, Bg, Bg, ' ');
       Draw(X, Y, PlayerFg, Bg, '☺');
     end;
-  GotoXY(1, 1);
   Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveDown}
 
@@ -987,7 +1085,6 @@ begin
       Draw(OldX, Y, Bg, Bg, ' ');
       Draw(X, Y, PlayerFg, Bg, '☺');
     end;
-  GotoXY(1, 1);
   Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveLeft}
 
@@ -1004,7 +1101,6 @@ begin
       Draw(OldX, Y, Bg, Bg, ' ');
       Draw(X, Y, PlayerFg, Bg, '☺');
     end;
-  GotoXY(1, 1);
   Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveRight}
 
@@ -1021,7 +1117,6 @@ begin
       Draw(X, OldY, Bg, Bg, ' ');
       Draw(X, Y, PlayerFg, Bg, '☺');
     end;
-  GotoXY(1, 1);
   Draw(BlockX, BlockY, WallFg, Bg, '█');
 end; {MoveUp}
 
@@ -1081,7 +1176,7 @@ begin
       PausesRemaining := PausesRemaining - 1;
       DrawPauses;
       BufFlush;
-      Delay(5000);
+      Sleep(5000);
     end;
 end;
 
@@ -1220,13 +1315,13 @@ begin
   KeyCode := Dialog(sLevelPrefix + S, sPressKey);
   if KeyCode in [KeyRight, KeyLeft, KeyUp, KeyDown] then
     Direction := KeyToDir(KeyCode);
-  Delay(1000);
+  Sleep(1000);
 end;
 
 procedure HandleInput;
 begin
   KeyCode := 0;
-  if KeyPressed then
+  if HasTTYByte then
     begin
       Key := GetKey;
       KeyCode := Ord(Key);
@@ -1259,7 +1354,6 @@ begin
       end; {case}
     end;
   EnemyTick := (EnemyTick + 1) mod 2;
-  GotoXY(1, 1);
   MovePlayer;
   if Laying then PlaceBlock;
   Draw(X, Y, PlayerFg, FieldBg, '☺');
@@ -1267,15 +1361,18 @@ end;
 
 procedure HighScoreEntry;
 begin
-  TextColor(LightBlue);
-  TextBackground(Black);
-  ClrScr;
+  { Restore cooked mode so ReadLn works }
+  tcsetattr(TTYFd, TCSANOW, SavedTio);
+  MyCursorOn;
+  { LightBlue on Black }
+  Write(TTY, #27'[0;94;40m'#27'[2J'#27'[H'); Flush(TTY);
   WriteLn;
   WriteLn(sFirstName);
-  MyCursorOn;
-  GotoXY(UTF8Cols(sFirstName) + 1, 2); ReadLn(FirstName);
+  Write(TTY, #27'[2;', UTF8Cols(sFirstName) + 1, 'H'); Flush(TTY);
+  ReadLn(FirstName);
   WriteLn(sLastName);
-  GotoXY(UTF8Cols(sLastName) + 1, 3); ReadLn(LastName);
+  Write(TTY, #27'[3;', UTF8Cols(sLastName) + 1, 'H'); Flush(TTY);
+  ReadLn(LastName);
   MyCursorOff;
   Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, sScoreEntry + S);
   Assign(F, HighScoreFileName);
@@ -1302,7 +1399,7 @@ begin
         end;
     end;
   WaitKey;
-  ClrScr;
+  Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
   Assign(F, HighScoreFileName);
   Reset(F);
   if IOResult = 0
@@ -1332,8 +1429,10 @@ begin
           Close(F);
         end;
     end;
-  GotoXY(1, 25);
+  Write(TTY, #27'[25;1H'); Flush(TTY);
   Write(sPressKey);
+  { Re-enable raw mode before returning to game }
+  tcsetattr(TTYFd, TCSANOW, RawTio);
   WaitKey;
 end;
 
@@ -1375,7 +1474,7 @@ begin
   SoundWon;
   HighScoreEntry;
   BufFill(FieldBg, FieldBg, ' ');
-  ClrScr;
+  Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
 end;
 
 { Look up an environment variable; returns '' if unset. }
