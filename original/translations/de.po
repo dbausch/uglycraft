@@ -136,25 +136,9 @@ msgstr "[F1] = Diese Hilfe"
 msgid "The Story of UGLI"
 msgstr "Geschichte von UGLI"
 
-#: ugli_2:sstoryline1
-msgid "A king has locked you in his castle."
-msgstr "Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden."
-
-#: ugli_2:sstoryline2
-msgid "With the words: \"I will not set you free until you have"
-msgstr "Mit  den  Worten: \"Ich lasse  Dich  erst wieder frei, wenn Du alle"
-
-#: ugli_2:sstoryline3
-msgid "found all of my treasures,\" he slammed the door shut."
-msgstr "meine  Schätze  wieder  gefunden  hast\", knallte  er  die  Tür zu."
-
-#: ugli_2:sstoryline4
-msgid "There is nothing left for you to do but collect his treasures."
-msgstr "Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze"
-
-#: ugli_2:sstoryline5
-msgid "So you start running immediately to collect them all."
-msgstr "zu holen. Du rennst also sofort los, um alle Schätze einzusammeln."
+#: ugli_2:sstorytext
+msgid "A king has locked you in his castle. With the words: \"I will not set you free until you have found all of my treasures,\" he slammed the door shut. There is nothing left for you to do but collect his treasures. So you start running immediately to collect them all."
+msgstr "Du bist von einem König in eine Burg eingeschlossen worden. Mit den Worten: \"Ich lasse Dich erst wieder frei, wenn Du alle meine Schätze wieder gefunden hast\", knallte er die Tür zu. Da bleibt Dir wohl nichts anderes mehr übrig, als seine Schätze zu holen. Du rennst also sofort los, um alle Schätze einzusammeln."
 
 #: ugli_2:sitemlisttitle
 msgid "T R E A S U R E S   T O   C O L L E C T"
@@ -164,21 +148,9 @@ msgstr "L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E"
 msgid "H O W   T O   P L A Y"
 msgstr "S P I E L A N L E I T U N G"
 
-#: ugli_2:siteminst1
-msgid "Press a key, then press one of the arrow keys."
-msgstr "Du drückst jetzt eine Taste, dann drückst du eine der Richtungstasten"
-
-#: ugli_2:siteminst2
-msgid "Use the arrow keys to collect the treasures shown above."
-msgstr "danach musst du mit den Richtungstasten die oben gezeigten Dinge"
-
-#: ugli_2:siteminst3
-msgid "(The crown comes last.) During the game, press <F1> to see"
-msgstr "einsammeln. (Die Krone kommt ganz zum Schluss.) Während des Spiels kann"
-
-#: ugli_2:siteminst4
-msgid "the other keys available during play."
-msgstr "man mit <F1> die anderen Tasten die zum bedienen des Spiels nachlesen."
+#: ugli_2:siteminsttext
+msgid "Press a key, then press one of the arrow keys. Use the arrow keys to collect the treasures shown above. (The crown comes last.) During the game, press <F1> to see the other keys available during play."
+msgstr "Du drückst jetzt eine Taste, dann drückst du eine der Richtungstasten. Danach musst du mit den Richtungstasten die oben gezeigten Dinge einsammeln. (Die Krone kommt ganz zum Schluss.) Während des Spiels kann man mit <F1> die anderen Tasten nachlesen, die zum Bedienen des Spiels zur Verfügung stehen."
 
 #: ugli_2:spresskey
 msgid "P R E S S   A   K E Y"

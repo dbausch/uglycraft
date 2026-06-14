@@ -130,24 +130,8 @@ msgstr ""
 msgid "The Story of UGLI"
 msgstr ""
 
-#: ugli_2:sstoryline1
-msgid "A king has locked you in his castle."
-msgstr ""
-
-#: ugli_2:sstoryline2
-msgid "With the words: \"I will not set you free until you have"
-msgstr ""
-
-#: ugli_2:sstoryline3
-msgid "found all of my treasures,\" he slammed the door shut."
-msgstr ""
-
-#: ugli_2:sstoryline4
-msgid "There is nothing left for you to do but collect his treasures."
-msgstr ""
-
-#: ugli_2:sstoryline5
-msgid "So you start running immediately to collect them all."
+#: ugli_2:sstorytext
+msgid "A king has locked you in his castle. With the words: \"I will not set you free until you have found all of my treasures,\" he slammed the door shut. There is nothing left for you to do but collect his treasures. So you start running immediately to collect them all."
 msgstr ""
 
 #: ugli_2:sitemlisttitle
@@ -158,20 +142,8 @@ msgstr ""
 msgid "H O W   T O   P L A Y"
 msgstr ""
 
-#: ugli_2:siteminst1
-msgid "Press a key, then press one of the arrow keys."
-msgstr ""
-
-#: ugli_2:siteminst2
-msgid "Use the arrow keys to collect the treasures shown above."
-msgstr ""
-
-#: ugli_2:siteminst3
-msgid "(The crown comes last.) During the game, press <F1> to see"
-msgstr ""
-
-#: ugli_2:siteminst4
-msgid "the other keys available during play."
+#: ugli_2:siteminsttext
+msgid "Press a key, then press one of the arrow keys. Use the arrow keys to collect the treasures shown above. (The crown comes last.) During the game, press <F1> to see the other keys available during play."
 msgstr ""
 
 #: ugli_2:spresskey

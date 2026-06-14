@@ -118,20 +118,13 @@ resourcestring
   sHelpSpace  = '[Space] = Toggle block placement (on/off, costs 20 pts each)';
   sHelpF5     = '[F5] = Remove all placed blocks';
   sHelpF1     = '[F1] = This help screen';
-  { Story screen (ShowStory) }
+  { Story screen (ShowStory) — one paragraph; wrapped + justified at display time }
   sStoryTitle = 'The Story of UGLI';
-  sStoryLine1 = 'A king has locked you in his castle.';
-  sStoryLine2 = 'With the words: "I will not set you free until you have';
-  sStoryLine3 = 'found all of my treasures," he slammed the door shut.';
-  sStoryLine4 = 'There is nothing left for you to do but collect his treasures.';
-  sStoryLine5 = 'So you start running immediately to collect them all.';
-  { Item descriptions screen (ShowItemDescriptions) }
+  sStoryText  = 'A king has locked you in his castle. With the words: "I will not set you free until you have found all of my treasures," he slammed the door shut. There is nothing left for you to do but collect his treasures. So you start running immediately to collect them all.';
+  { Item descriptions screen (ShowItemDescriptions) — one paragraph; wrapped at display time }
   sItemListTitle = 'T R E A S U R E S   T O   C O L L E C T';
   sItemInstTitle = 'H O W   T O   P L A Y';
-  sItemInst1 = 'Press a key, then press one of the arrow keys.';
-  sItemInst2 = 'Use the arrow keys to collect the treasures shown above.';
-  sItemInst3 = '(The crown comes last.) During the game, press <F1> to see';
-  sItemInst4 = 'the other keys available during play.';
+  sItemInstText  = 'Press a key, then press one of the arrow keys. Use the arrow keys to collect the treasures shown above. (The crown comes last.) During the game, press <F1> to see the other keys available during play.';
   { Shared prompt used in intro, help, story, item list, HS entry, win screen }
   sPressKey = 'P R E S S   A   K E Y';
   { Dialog titles and prompts }
@@ -182,6 +175,98 @@ begin
   Padding := '';
   for I := 1 to Blanks do Padding := Padding + ' ';
   Center := Padding + S;
+end;
+
+const WrapWidth = 72;
+
+{ Word-wrap S into Lines[0..N-1], each at most WrapWidth display columns.
+  Breaks only on spaces; Lines must have room for at least 12 entries. }
+procedure WordWrap(const S: String; var Lines: array of String; var N: Integer);
+var
+  I, LineStart: Integer;
+  LastBreak: Integer;   { byte index of last space seen }
+  LineW: Integer;       { display cols of current candidate line }
+begin
+  N := 0;
+  I := 1;
+  while (I <= Length(S)) and (S[I] = ' ') do Inc(I);
+  LineStart := I;
+  LastBreak := 0;
+  while I <= Length(S) do
+    begin
+      if S[I] = ' ' then LastBreak := I;
+      LineW := UTF8Cols(Copy(S, LineStart, I - LineStart + 1));
+      if LineW > WrapWidth then
+        begin
+          if LastBreak > LineStart then
+            begin
+              Lines[N] := Copy(S, LineStart, LastBreak - LineStart);
+              Inc(N);
+              I := LastBreak + 1;
+              while (I <= Length(S)) and (S[I] = ' ') do Inc(I);
+              LineStart := I;
+              LastBreak := 0;
+            end
+          else
+            begin
+              { single word wider than WrapWidth: force break before current char }
+              Lines[N] := Copy(S, LineStart, I - LineStart);
+              Inc(N);
+              LineStart := I;
+              LastBreak := 0;
+            end;
+        end
+      else
+        Inc(I);
+    end;
+  if LineStart <= Length(S) then
+    begin
+      Lines[N] := Copy(S, LineStart, Length(S) - LineStart + 1);
+      Inc(N);
+    end;
+end;
+
+{ Return S stretched to exactly WrapWidth display cols by distributing
+  extra spaces evenly between words (left gaps get the remainder first).
+  Returns S unchanged if it has fewer than 2 words or is already wide enough. }
+function Justify(const S: String): String;
+var
+  Words: array[0..99] of String;
+  WCount, TotalW, Gaps, Extra, Base, Gap, I, K: Integer;
+  R: String;
+  P, Q: Integer;
+begin
+  WCount := 0;
+  P := 1;
+  while P <= Length(S) do
+    begin
+      while (P <= Length(S)) and (S[P] = ' ') do Inc(P);
+      if P > Length(S) then Break;
+      Q := P;
+      while (Q <= Length(S)) and (S[Q] <> ' ') do Inc(Q);
+      Words[WCount] := Copy(S, P, Q - P);
+      Inc(WCount);
+      P := Q;
+    end;
+  if WCount < 2 then
+    begin
+      Justify := S;
+      Exit;
+    end;
+  TotalW := 0;
+  for I := 0 to WCount - 1 do TotalW := TotalW + UTF8Cols(Words[I]);
+  Gaps  := WCount - 1;
+  Extra := WrapWidth - TotalW;
+  R := Words[0];
+  for I := 0 to Gaps - 1 do
+    begin
+      Base := Extra div Gaps;
+      if I < (Extra mod Gaps) then Inc(Base);
+      Gap := 1 + Base;  { at least one space }
+      for K := 1 to Gap do R := R + ' ';
+      R := R + Words[I + 1];
+    end;
+  Justify := R;
 end;
 
 procedure Draw(Col, Row, Fg, Bg: Integer; S: String);
@@ -990,16 +1075,25 @@ end;
 
 procedure ShowStory;
 const
-  Fg = HelpFg;
-  Bg = FieldBg;
+  Fg  = HelpFg;
+  Bg  = FieldBg;
+  Col = (FieldW - WrapWidth) div 2 + 1;  { left col of the justified block }
+var
+  Lines: array[0..11] of String;
+  N, Row, I: Integer;
 begin
   ClrScr;
   Draw(1, 2, Fg, Bg, Center(sStoryTitle));
-  Draw(1, 4, Fg, Bg, Center(sStoryLine1));
-  Draw(1, 5, Fg, Bg, Center(sStoryLine2));
-  Draw(1, 6, Fg, Bg, Center(sStoryLine3));
-  Draw(1, 7, Fg, Bg, Center(sStoryLine4));
-  Draw(1, 8, Fg, Bg, Center(sStoryLine5));
+  WordWrap(sStoryText, Lines, N);
+  Row := 4;
+  for I := 0 to N - 1 do
+    begin
+      if I < N - 1 then
+        Draw(Col, Row, Fg, Bg, Justify(Lines[I]))
+      else
+        Draw(Col, Row, Fg, Bg, Lines[I]);  { last line: no justification }
+      Inc(Row);
+    end;
   Draw(1, 24, Fg, Bg, Center(sPressKey));
   WaitKey;
 end;
@@ -1190,7 +1284,9 @@ const
   Fg = ItemDescFg;
   Bg = ItemDescBg;
 var
-  I, Col, MaxW, ItemW: Integer;
+  I, Col, MaxW, ItemW, Row: Integer;
+  Lines: array[0..11] of String;
+  N: Integer;
 begin
   TextBackground(Bg);
   ClrScr;
@@ -1205,10 +1301,13 @@ begin
   for I := 1 to ItemCount do
     Draw(Col, 3 + I, Fg, Bg, Items[I].Ch + '  ' + GetItemName(I));
   Draw(1, 16, Fg, Bg, Center(sItemInstTitle));
-  Draw(5, 18, Fg, Bg, sItemInst1);
-  Draw(5, 19, Fg, Bg, sItemInst2);
-  Draw(5, 20, Fg, Bg, sItemInst3);
-  Draw(5, 21, Fg, Bg, sItemInst4);
+  WordWrap(sItemInstText, Lines, N);
+  Row := 18;
+  for I := 0 to N - 1 do
+    begin
+      Draw(5, Row, Fg, Bg, Lines[I]);
+      Inc(Row);
+    end;
   Draw(1, 24, Fg, Bg, Center(sPressKey));
   WaitKey;
 end;
