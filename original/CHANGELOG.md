@@ -37,13 +37,35 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 - `ShowHelp`: key entries reformatted as `[Key]   Description` (aligned
   columns, no `=` separator) and reordered logically: movement, block, pause,
-  quit, F1–F5, then speed keys.
+  quit, F1–F5, then speed keys. Key-binding lines indented to column 5 for a
+  left margin (was column 2, flush with the border).
 - `ShowStory` and the instructions section of `ShowItemDescriptions`: long
   hard-coded multi-line text replaced with single `resourcestring` values
   rendered by `DrawParagraph`, which word-wraps and fully justifies the text
   at 72 display columns. The last line of each paragraph is left-aligned, not
   justified.
 - "PRESS A KEY" prompt renamed to "PRESS ANY KEY".
+- Off-screen screen buffer (`TScreenBuffer`, `TScreenCell`, dirty-cell array):
+  all drawing procedures write through `BufPutCell` / `BufFill` into an
+  in-memory buffer; `BufFlush` emits only changed cells to TTY via direct SGR
+  sequences using the correct CRT→ANSI index mapping (`'04261537'`). A single
+  `BufFlush` fires at the end of each game tick; overlay screens (`ShowHelp`,
+  `ShowStory`, `Dialog`, …) flush when they have finished composing.
+- `BufDesaturate` dims the screen behind dialog boxes: non-white foregrounds
+  become `LightGray`; non-black backgrounds become `LightGray`, leaving
+  `White`-on-`Black` HUD text fully readable through the overlay.
+- `Dialog` calls `Redraw` on dismiss to restore the complete game screen;
+  previously only `DrawInner` was redrawn, leaving the dimmed border visible.
+- `FillScreen(Bg)` fills the whole terminal window (not just the 80×25 buffer)
+  with a background color before switching to a full-screen view; fixes
+  leftover content visible on terminals wider than 80 columns.
+- Intro: line-drawing animation step uses `LightGray` (color 7) for the stripe
+  characters; the previously used `White` (color 15) was visually too bright.
+  Info-text background uses `LightGray` (SGR 47) rather than bright-white
+  (SGR 107), keeping colors within the standard 8-color background range.
+- `poe run-original` loads the ANSI-87 kitty theme (`-c original/ANSI-87.conf`)
+  so the game window opens with the original VGA 16-color palette instead of
+  any user theme.
 
 ### Code quality
 
@@ -63,6 +85,42 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   by display column, not byte length.
 - `Justify(S, Width): String` — distributes extra spaces evenly across
   word gaps to produce a full-width line.
+- `UGLI_2_Core.inc` extracted: all type, const, var, resourcestring
+  declarations and procedures moved into a shared include file. `UGLI_2.pp`
+  is reduced to header, uses, label, const, `{$I UGLI_2_Core.inc}`, and the
+  main block.
+- CRT unit removed; replaced throughout with direct `termio`/ANSI terminal
+  control:
+  - Color constants 0–15 and `Blink = $80` defined in the program's `const`
+    block.
+  - Terminal set to raw mode at startup via `tcgetattr`/`tcsetattr`; restored
+    at exit. `HighScoreEntry` temporarily switches to cooked mode for `ReadLn`
+    and restores raw mode before returning.
+  - `GetKey` rewritten as a VT100 escape-sequence parser that reads directly
+    from a `/dev/tty` file descriptor via `fpRead`; arrow keys, F1–F5, Home,
+    and End are decoded from ESC sequences (CSI and SS3 forms, Linux console
+    `ESC[[X`, and xterm `ESC[N~` variants).
+  - `KeyPressed` replaced by `HasTTYByte`, which uses `fpIoctl(FIONREAD)` for
+    a non-consuming availability check.
+  - `Delay` replaced by `Sleep` (SysUtils).
+  - `TextColor`, `TextBackground`, `GotoXY`, `ClrScr`, and `ClrEol` replaced
+    by SGR, cursor-position, and erase ANSI sequences written directly to TTY
+    or ITTY.
+
+### Testing
+
+- fpcunit test suite (`UGLI_2_Test.pp`): 35 unit tests across five classes —
+  `TStringTests` (UTF8Cols, Center, WordWrap, Justify), `TBufferTests`
+  (BufPutCell, BufFill, BufDesaturate, BufFlush), `TLevelTests` (InitBorder,
+  InitLevel1–2, start positions 1–9), `TDrawTests` (Draw ASCII/UTF-8,
+  DrawHLine, DrawParagraph), `TGameLogicTests` (AwardPoints, IsPlayerCaught,
+  IsItemPickedUp, GetItemName). The test program includes `UGLI_2_Core.inc`
+  directly and sets `BufFlushEnabled := false` so no terminal output occurs.
+- `poe test-original` task: compiles `UGLI_2_Test.pp` and runs all tests;
+  exits 0 on all-pass.
+- `poe build-original` now also fetches `original/ANSI-87.conf` from the
+  kovidgoyal/kitty-themes repository alongside the UOS audio sources (cached
+  after first run; excluded from version control).
 
 ---
 
