@@ -2,6 +2,7 @@
 program UGLI_2_Test;
 
 uses CThreads, CRT, DOS, BaseUnix, SysUtils, gettext, UOSSound,
+     termio,
      fpcunit, testregistry, consoletestrunner;
 
 const
@@ -431,8 +432,13 @@ end;
 
 var
   Runner: TTestRunner;
+  Tio: Termios;
 
 begin
+  { CRT's init clears ONLCR; restore it so WriteLn output starts at column 1 }
+  tcgetattr(1, Tio);
+  Tio.c_oflag := Tio.c_oflag or (OPOST or ONLCR);
+  tcsetattr(1, TCSANOW, Tio);
   BufFlushEnabled := false;
   RegisterTest(TStringTests);
   RegisterTest(TBufferTests);
