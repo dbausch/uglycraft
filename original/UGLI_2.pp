@@ -1,7 +1,7 @@
 {$H+}
 program UGLI_2;
 
-uses CThreads, CRT, DOS, UOSSound;
+uses CThreads, CRT, DOS, SysUtils, gettext, UOSSound;
 
 label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
@@ -1228,9 +1228,14 @@ begin
 end;
 
 procedure Init;
+var Lang, FallbackLang: String;
 begin
-  YesKey := [Ord('Y'), Ord('y')];
-  NoKey  := [Ord('N'), Ord('n')];
+  GetLanguageIDs(Lang, FallbackLang);
+  if Length(Lang) >= 2 then SetLength(Lang, 2);
+  if FileExists('translations/' + Lang + '.mo') then
+    TranslateResourceStrings('translations/' + Lang + '.mo');
+  YesKey := [Ord(UpCase(sYesChar[1])), Ord(LowerCase(sYesChar)[1])];
+  NoKey  := [Ord(UpCase(sNoChar[1])),  Ord(LowerCase(sNoChar)[1])];
   Randomize;
   Intro(
     '                  **        **    **********   **           **                 ',
