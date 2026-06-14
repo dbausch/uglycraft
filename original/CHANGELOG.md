@@ -5,6 +5,67 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ---
 
+## [Unreleased]
+
+### Internationalisation
+
+- All user-visible strings declared as `resourcestring` constants with English
+  defaults. Source language changed from German to English; German is now the
+  first translation rather than the hard-coded default.
+- Runtime locale detection via `GetLanguageIDs` (FPC `gettext` unit).
+  `LoadTranslation` probes three locations in priority order: `translations/`
+  next to the binary (bundled standalone install), system directories from
+  `$XDG_DATA_DIRS` (default `/usr/local/share:/usr/share`) using the FHS path
+  `locale/<lang>/LC_MESSAGES/UGLI_2.mo`, and the user directory from
+  `$XDG_DATA_HOME` (default `~/.local/share`) using the same FHS path. Falls
+  back to English if no matching `.mo` is found.
+- German translation provided as `translations/de.po` (source) and `de.mo`
+  (compiled binary). The compiled `.mo` ships alongside the game binary.
+- `poe make-pot` task regenerates `translations/UGLI_2.pot` from the compiled
+  resource string table (`rstconv -i UGLI_2.rsj`).
+- Deploy task updated to include `translations/*.mo` in the Linux distribution.
+- `TItemData.Name` field removed — FPC `resourcestring` values cannot
+  initialise typed constant fields. `GetItemName(I: Integer): String` returns
+  the translated item name via a `case` statement. `DrawItemName` procedure
+  draws the current item's name centered in the bottom border safe zone (cols
+  12–66); called after each pickup and after `Redraw`.
+- `YesKey` / `NoKey` moved from typed constants to `var` declarations and built
+  from `sYesChar` / `sNoChar` resourcestrings after the translation is loaded,
+  so the accepted yes/no key characters track the active language.
+
+### Display
+
+- `ShowHelp`: key entries reformatted as `[Key]   Description` (aligned
+  columns, no `=` separator) and reordered logically: movement, block, pause,
+  quit, F1–F5, then speed keys.
+- `ShowStory` and the instructions section of `ShowItemDescriptions`: long
+  hard-coded multi-line text replaced with single `resourcestring` values
+  rendered by `DrawParagraph`, which word-wraps and fully justifies the text
+  at 72 display columns. The last line of each paragraph is left-aligned, not
+  justified.
+- "PRESS A KEY" prompt renamed to "PRESS ANY KEY".
+
+### Code quality
+
+- Drop `-Mtp` (Turbo Pascal compatibility mode). An audit found no TP-specific
+  syntax in use. `{$H+}` added at the top of `UGLI_2.pp` to make
+  `String = AnsiString` explicit without relying on the active mode.
+  `Draw`'s local character variable corrected from `String` to `String[4]`
+  (exposed by the mode change).
+- `uses` clause extended with `BaseUnix` (for `fpgetenv` used by the XDG
+  directory lookup) and `gettext`.
+- `DrawParagraph(Text, Col, Row, Width, Fg, Bg): Integer` — wraps a string to
+  `Width` display columns using `WordWrap`, fully justifies each line except
+  the last using `Justify`, draws them with `Draw`, and returns the number of
+  lines written.
+- `WordWrap(S, Width, Lines, N)` — greedy UTF-8-aware word wrapper; uses
+  `UTF8Cols` for display-width measurement so multi-byte characters are counted
+  by display column, not byte length.
+- `Justify(S, Width): String` — distributes extra spaces evenly across
+  word gaps to produce a full-width line.
+
+---
+
 ## 2.3
 
 ### Bug fixes
