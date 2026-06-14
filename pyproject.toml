@@ -77,7 +77,7 @@ shell = """
   for f in uos.pas uos_flat.pas uos_portaudio.pas; do
     [ -f original/uos/$f ] || curl -fsSL "$UOS_BASE/$f" -o original/uos/$f
   done
-  cd original && fpc -Mtp -Fuuos UGLI_2.pp
+  cd original && fpc -Fuuos UGLI_2.pp
 """
 
 [tool.poe.tasks.clean]

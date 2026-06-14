@@ -1,3 +1,4 @@
+{$H+}
 program UGLI_2;
 
 uses CThreads, CRT, DOS, UOSSound;
@@ -114,7 +115,7 @@ begin
 end;
 
 procedure Draw(Col, Row, Fg, Bg: Integer; S: String);
-var I, C, N: Integer; Ch: String;
+var I, C, N: Integer; Ch: String[4];
 begin
   TextColor(Fg);
   TextBackground(Bg);
