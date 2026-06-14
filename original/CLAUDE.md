@@ -134,46 +134,9 @@ PlayAgain:  { AskPlayAgain dialog }
 CleanUp:  { restore terminal, ANSI clear screen, exit }
 ```
 
-## Treasure types (ItemNo 1–10)
+## Sound
 
-`ItemNo` 10 (Crown) appears only on level 9 as a replacement for item 9.
-
-| ItemNo | Name (English) | Name (German) | Points |
-|---|---|---|---|
-| 1 | Rope | Seil | 0 |
-| 2 | Large Sparkling Diamond | grosser glänzender Diamant | 100 |
-| 3 | Small Gems | kleine Edelsteine | 200 |
-| 4 | Small Sparkling Diamond | kleiner glänzender Diamant | 300 |
-| 5 | Gold Bar | Goldbarren | 400 |
-| 6 | Silver Bar | Silberbarren | 500 |
-| 7 | Well | Brunnen | 600 |
-| 8 | Lamp | Lampe | 700 |
-| 9 | Large Gem | grosser Edelstein | 800 |
-| 10 | Crown | Krone | 800 |
-
-Points formula: `(ItemNo − 1) × 100` (Crown same as Large Gem).
-
-## Level structure (original 80×20 grid)
-
-Levels are defined by the `InitLevel1`–`InitLevel9` procedures via `Blocked[x,y] := true` assignments. The field is 80 columns × 20 rows (1-indexed), bordered by `█` drawn by `DrawBorder`.
-
-| Level | Theme |
-|---|---|
-| 1 | Open field — no interior walls |
-| 2 | Single horizontal wall across middle |
-| 3 | H-shape (two verticals connected by horizontal) |
-| 4 | Short pillars + horizontal bar with gap |
-| 5 | Cage (rectangular enclosure with small openings) |
-| 6 | Grid of pillars (regularly spaced) |
-| 7 | X-shapes / diagonal-feeling arrangements |
-| 8 | Alternating tall vertical walls (slalom) |
-| 9 | Divided chambers (multiple walled rooms) |
-
-## Sound design
-
-**Original DOS**: All sound via PC speaker. Frequencies played directly via port $42/$43.
-
-**FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `UOSSound.pp`, a wrapper around UOS + PortAudio. It exposes `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` plus named effect procedures: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
+`UOSSound.pp` wraps UOS + PortAudio. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
 
 
 ## Internationalisation (i18n)
@@ -184,19 +147,3 @@ All user-visible strings are declared as `resourcestring` (English defaults). FP
 
 To add a language: compile the game (generates `UGLI_2.rsj`), run `poe make-pot` to refresh `translations/UGLI_2.pot`, copy it to `translations/<lang>.po`, fill in `msgstr` values, compile with `msgfmt translations/<lang>.po -o translations/<lang>.mo`, and copy the `.mo` alongside the binary.
 
-## How UGLYCRAFT maps from the original
-
-| Original | UGLYCRAFT |
-|---|---|
-| 80×20 text grid (1-indexed) | 30×16 tile grid (0-indexed, border at edges) |
-| Column mapping | `col_new ≈ round((col_orig−1)/79 × 29)` |
-| Row mapping | `row_new ≈ round((row_orig−1)/19 × 15)` |
-| 9 levels | 10 levels (level 10 adds boss) |
-| 1 enemy (greedy chase) | 1–3 enemies (greedy) + BFS boss on level 10 |
-| Limited pauses (`PausesRemaining`) | Unlimited pause (P key) |
-| Block budget (`BlocksRemaining`) | Wall-break credits (earn by breaking walls) |
-| Text characters for sprites | Procedurally drawn pixel-art sprites |
-| PC speaker sound | pygame.mixer (not yet implemented) |
-| UGLI.HSC file | uglycraft.hsc (same concept) |
-
-The remake is a loose spiritual remake — same genre and feel, not an exact port.
