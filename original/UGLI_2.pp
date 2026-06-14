@@ -42,8 +42,6 @@ const
   ItemDescFg = Black;      { item-descriptions screen foreground }
   ItemDescBg = LightGray;  { item-descriptions screen background }
   ItemCount  = 10;
-  YesKey    : set of Byte = [Ord('J'), Ord('j')];
-  NoKey     : set of Byte = [Ord('N'), Ord('n')];
 
 type
   TDirection = (DirRight, DirLeft, DirDown, DirUp);
@@ -79,6 +77,79 @@ var
   F, TTY: Text;
   FirstName, LastName, S: String;
   Line: String[80];
+  YesKey, NoKey: set of Byte;
+
+resourcestring
+  { Item names — parallel to Items[1..10] }
+  sItemName1  = 'Rope';
+  sItemName2  = 'Large Sparkling Diamond';
+  sItemName3  = 'Small Gems';
+  sItemName4  = 'Small Sparkling Diamond';
+  sItemName5  = 'Gold Bar';
+  sItemName6  = 'Silver Bar';
+  sItemName7  = 'Well';
+  sItemName8  = 'Lamp';
+  sItemName9  = 'Large Gem';
+  sItemName10 = 'Crown';
+  { Yes/No key characters — single uppercase letter each.
+    YesKey/NoKey sets are built from these at startup (see Init).
+    Translators: keep sYesNo consistent with these two values. }
+  sYesChar = 'Y';
+  sNoChar  = 'N';
+  { HUD counter labels (trailing space before the number) }
+  sLabelLevel  = 'LEVEL ';
+  sLabelScore  = 'SCORE ';
+  sLabelLives  = 'LIVES ';
+  sLabelPauses = 'PAUSES ';
+  sLabelBlocks = 'BLOCKS ';
+  { Key help bar — 3 lines at rows 21, 23, 25 }
+  sKeys1 = '← = left  ↓ = down  → = right  ↑ = up';
+  sKeys2 = '<F1> = Help  <F2> = Story of UGLI  <F3> = Buy life  <F4> = Restart';
+  sKeys3 = '<P> = Pause  <End> = Slower  <Home> = Faster  <Esc> = Quit';
+  { Help screen (ShowHelp) }
+  sHelpTitle  = 'UGLI HELP';
+  sHelpP      = '[P] = Pause (uses 1 pause)';
+  sHelpArrows = 'Arrow keys: ← = left  ↓ = down  → = right  ↑ = up';
+  sHelpEsc    = '[Esc] = Quit';
+  sHelpEnd    = '[End] = Slower';
+  sHelpHome   = '[Home] = Faster';
+  sHelpF4     = '[F4] = Restart';
+  sHelpF3     = '[F3] = Buy a life (costs 5000 points)';
+  sHelpF2     = '[F2] = The story of UGLI';
+  sHelpSpace  = '[Space] = Toggle block placement (on/off, costs 20 pts each)';
+  sHelpF5     = '[F5] = Remove all placed blocks';
+  sHelpF1     = '[F1] = This help screen';
+  { Story screen (ShowStory) }
+  sStoryTitle = 'The Story of UGLI';
+  sStoryLine1 = 'A king has locked you in his castle.';
+  sStoryLine2 = 'With the words: "I will not set you free until you have';
+  sStoryLine3 = 'found all of my treasures," he slammed the door shut.';
+  sStoryLine4 = 'There is nothing left for you to do but collect his treasures.';
+  sStoryLine5 = 'So you start running immediately to collect them all.';
+  { Item descriptions screen (ShowItemDescriptions) }
+  sItemListTitle = 'T R E A S U R E S   T O   C O L L E C T';
+  sItemInstTitle = 'H O W   T O   P L A Y';
+  sItemInst1 = 'Press a key, then press one of the arrow keys.';
+  sItemInst2 = 'Use the arrow keys to collect the treasures shown above.';
+  sItemInst3 = '(The crown comes last.) During the game, press <F1> to see';
+  sItemInst4 = 'the other keys available during play.';
+  { Shared prompt used in intro, help, story, item list, HS entry, win screen }
+  sPressKey = 'P R E S S   A   K E Y';
+  { Dialog titles and prompts }
+  sLevelPrefix  = 'L E V E L  ';   { level number appended at runtime }
+  sGameOver     = 'G A M E   O V E R';
+  sYouWon       = 'Y O U   W O N';
+  sRemoveBlocks = 'R E M O V E   B L O C K S';
+  sPlayAgain    = 'P L A Y   A G A I N ?';
+  sYesNo        = 'Y / N';         { must match sYesChar / sNoChar }
+  { High score entry (HighScoreEntry) }
+  sFirstName   = 'FIRST NAME ';
+  sLastName    = 'LAST NAME ';
+  sScoreEntry  = 'Score ';
+  sHSFileError = 'Could not create high score file.';
+  { Intro (hard-coded inside Intro procedure body) }
+  sIntroBrand   = '* DANISOFT * PRESENTS *';
+  sIntroWelcome = 'Hello, get ready to play!';
 
 procedure MyCursorOn;
 begin
@@ -229,7 +300,7 @@ begin
   Delay(200);
   WLn('');
   Delay(200);
-  WLn(Center('* DANISOFT * PRÄSENTIERT *'));
+  WLn(Center(sIntroBrand));
   Delay(200);
   WLn('');
   Delay(200);
@@ -259,7 +330,7 @@ begin
   TextBackground(7);
   WLn('');
   Delay(200);
-  WLn(Center('Hallo, gleich geht''s los!'));
+  WLn(Center(sIntroWelcome));
   Delay(200);
   WLn('');
   TextColor(Black);
@@ -280,7 +351,7 @@ begin
   WLn('');
   Delay(200);
   TextColor(4);
-  Write(Center('T A S T E   D R Ü C K E N'));
+  Write(Center(sPressKey));
   WLn('');
   WaitKey;
   ClrScr;
@@ -328,7 +399,7 @@ const
 var S: String;
 begin
   Str(Level, S);
-  Draw(36, 1, Fg, Bg, 'LEVEL ' + S);
+  Draw(36, 1, Fg, Bg, sLabelLevel + S);
 end;
 
 procedure DrawScore;
@@ -338,7 +409,7 @@ const
 var S: String;
 begin
   Str(Score:5, S);
-  Draw(3, 1, Fg, Bg, 'PUNKTE ' + S);
+  Draw(3, 1, Fg, Bg, sLabelScore + S);
 end;
 
 procedure DrawLives;
@@ -348,7 +419,7 @@ const
 var S: String;
 begin
   Str(Lives:2, S);
-  Draw(3, 20, Fg, Bg, 'LEBEN ' + S);
+  Draw(3, 20, Fg, Bg, sLabelLives + S);
 end;
 
 procedure DrawPauses;
@@ -358,7 +429,7 @@ const
 var S: String;
 begin
   Str(PausesRemaining:2, S);
-  Draw(70, 1, Fg, Bg, 'PAUSEN ' + S);
+  Draw(70, 1, Fg, Bg, sLabelPauses + S);
 end;
 
 procedure DrawBlocks;
@@ -368,7 +439,7 @@ const
 var S: String;
 begin
   Str(BlocksRemaining:4, S);
-  Draw(68, 20, Fg, Bg, 'BLÖCKE ' + S);
+  Draw(68, 20, Fg, Bg, sLabelBlocks + S);
 end;
 
 procedure AwardPoints;
@@ -382,11 +453,11 @@ const
   Fg = KeyHelpFg;
   Bg = FieldBg;
 begin
-  Draw(2, 21, Fg, Bg, '← = links  ↓ = unten  → = rechts  ↑ = oben');
+  Draw(2, 21, Fg, Bg, sKeys1);
   DrawHLine(1, 80, 22, Fg, Bg, '─');
-  Draw(2, 23, Fg, Bg, '<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart');
+  Draw(2, 23, Fg, Bg, sKeys2);
   DrawHLine(1, 80, 24, Fg, Bg, '─');
-  Draw(2, 25, Fg, Bg, '<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende');
+  Draw(2, 25, Fg, Bg, sKeys3);
 end; {DrawKeys}
 
 procedure InitBorder;
@@ -860,19 +931,19 @@ begin
   SaveX := X;
   SaveY := Y;
   ClrScr;
-  Draw(1, 2, Fg, Bg, Center('HILFE VON UGLI'));
-  Draw(2, 4, Fg, Bg, '[p] = Pause (1 Pause Weniger)');
-  Draw(2, 5, Fg, Bg, 'Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben');
-  Draw(2, 6, Fg, Bg, '[Esc] = Abbruch');
-  Draw(2, 7, Fg, Bg, '[Ende] = Langsamer');
-  Draw(2, 8, Fg, Bg, '[Pos1] = Schneller');
-  Draw(2, 9, Fg, Bg, '[F4] = Neustart');
-  Draw(2, 10, Fg, Bg, '[F3] = Leben kaufen (Kostet 5000 Punkte)');
-  Draw(2, 11, Fg, Bg, '[F2] = Die Geschichte von Ugli');
-  Draw(2, 12, Fg, Bg, '[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)');
-  Draw(2, 13, Fg, Bg, '[F5] = Alle gesetzten Blöcke wieder entfernen');
-  Draw(2, 14, Fg, Bg, '[F1] = Diese Hilfe');
-  Draw(1, 24, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
+  Draw(1, 2, Fg, Bg, Center(sHelpTitle));
+  Draw(2, 4, Fg, Bg, sHelpP);
+  Draw(2, 5, Fg, Bg, sHelpArrows);
+  Draw(2, 6, Fg, Bg, sHelpEsc);
+  Draw(2, 7, Fg, Bg, sHelpEnd);
+  Draw(2, 8, Fg, Bg, sHelpHome);
+  Draw(2, 9, Fg, Bg, sHelpF4);
+  Draw(2, 10, Fg, Bg, sHelpF3);
+  Draw(2, 11, Fg, Bg, sHelpF2);
+  Draw(2, 12, Fg, Bg, sHelpSpace);
+  Draw(2, 13, Fg, Bg, sHelpF5);
+  Draw(2, 14, Fg, Bg, sHelpF1);
+  Draw(1, 24, Fg, Bg, Center(sPressKey));
   WaitKey;
   X := SaveX;
   Y := SaveY;
@@ -884,13 +955,13 @@ const
   Bg = FieldBg;
 begin
   ClrScr;
-  Draw(1, 2, Fg, Bg, Center('Geschichte von UGLI'));
-  Draw(1, 4, Fg, Bg, Center('Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden.'));
-  Draw(1, 5, Fg, Bg, Center('Mit  den  Worten: "Ich lasse  Dich  erst wieder frei, wenn Du alle'));
-  Draw(1, 6, Fg, Bg, Center('meine  Schätze  wieder  gefunden  hast", knallte  er  die  Tür zu.'));
-  Draw(1, 7, Fg, Bg, Center('Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze'));
-  Draw(1, 8, Fg, Bg, Center('zu holen. Du rennst also sofort los, um alle Schätze einzusammeln.'));
-  Draw(1, 24, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
+  Draw(1, 2, Fg, Bg, Center(sStoryTitle));
+  Draw(1, 4, Fg, Bg, Center(sStoryLine1));
+  Draw(1, 5, Fg, Bg, Center(sStoryLine2));
+  Draw(1, 6, Fg, Bg, Center(sStoryLine3));
+  Draw(1, 7, Fg, Bg, Center(sStoryLine4));
+  Draw(1, 8, Fg, Bg, Center(sStoryLine5));
+  Draw(1, 24, Fg, Bg, Center(sPressKey));
   WaitKey;
 end;
 
@@ -955,7 +1026,7 @@ end;
 procedure LevelTransition;
 begin
   Str(Level, S);
-  KeyCode := Dialog('L E V E L   ' + S, 'T A S T E   D R Ü C K E N');
+  KeyCode := Dialog(sLevelPrefix + S, sPressKey);
   if KeyCode in [KeyRight, KeyLeft, KeyUp, KeyDown] then
     Direction := KeyToDir(KeyCode);
   Delay(1000);
@@ -1009,13 +1080,13 @@ begin
   TextBackground(Black);
   ClrScr;
   WriteLn;
-  WriteLn('VORNAME ');
+  WriteLn(sFirstName);
   MyCursorOn;
-  GotoXY(9, 2); ReadLn(FirstName);
-  WriteLn('NAME ');
-  GotoXY(6, 3); ReadLn(LastName);
+  GotoXY(UTF8Cols(sFirstName) + 1, 2); ReadLn(FirstName);
+  WriteLn(sLastName);
+  GotoXY(UTF8Cols(sLastName) + 1, 3); ReadLn(LastName);
   MyCursorOff;
-  Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, 'Punkte ' + S);
+  Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, sScoreEntry + S);
   Assign(F, HighScoreFileName);
   Append(F);
   if IOResult = 0
@@ -1030,7 +1101,7 @@ begin
       ReWrite(F);
       if IOResult <> 0 then
         begin
-          WriteLn('Datei UGLI.HSC konnte nicht erzeugt werden.');
+          WriteLn(sHSFileError);
         end
       else
         begin
@@ -1058,7 +1129,7 @@ begin
       ReWrite(F);
       if IOResult <> 0 then
         begin
-          WriteLn('Datei ' + HighScoreFileName + ' konnte nicht erzeugt werden.');
+          WriteLn(sHSFileError);
         end
       else
         begin
@@ -1071,7 +1142,7 @@ begin
         end;
     end;
   GotoXY(1, 25);
-  Write('T A S T E   D R Ü C K E N');
+  Write(sPressKey);
   WaitKey;
 end;
 
@@ -1084,7 +1155,7 @@ var
 begin
   TextBackground(Bg);
   ClrScr;
-  Draw(1, 2, Fg, Bg, Center('L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E'));
+  Draw(1, 2, Fg, Bg, Center(sItemListTitle));
   MaxW := 0;
   for I := 1 to ItemCount do
     begin
@@ -1094,24 +1165,24 @@ begin
   Col := (FieldW - MaxW) div 2 + 1;
   for I := 1 to ItemCount do
     Draw(Col, 3 + I, Fg, Bg, Items[I].Ch + '  ' + Items[I].Name);
-  Draw(1, 16, Fg, Bg, Center('S P I E L A N L E I T U N G'));
-  Draw(5, 18, Fg, Bg, 'Du drückst jetzt eine Taste, dann drückst du eine der Richtungstasten');
-  Draw(5, 19, Fg, Bg, 'danach musst du mit den Richtungstasten die oben gezeigten Dinge');
-  Draw(5, 20, Fg, Bg, 'einsammeln. (Die Krone kommt ganz zum Schluss.) Während des Spiels kann');
-  Draw(5, 21, Fg, Bg, 'man mit <F1> die anderen Tasten die zum bedienen des Spiels nachlesen.');
-  Draw(1, 24, Fg, Bg, Center('T A S T E   D R Ü C K E N'));
+  Draw(1, 16, Fg, Bg, Center(sItemInstTitle));
+  Draw(5, 18, Fg, Bg, sItemInst1);
+  Draw(5, 19, Fg, Bg, sItemInst2);
+  Draw(5, 20, Fg, Bg, sItemInst3);
+  Draw(5, 21, Fg, Bg, sItemInst4);
+  Draw(1, 24, Fg, Bg, Center(sPressKey));
   WaitKey;
 end;
 
 procedure GameOver;
 begin
   SoundGameOver;
-  Dialog('G A M E  O V E R', '');
+  Dialog(sGameOver, '');
 end;
 
 procedure WinScreen;
 begin
-  Dialog('G E W O N N E N', 'T A S T E   D R Ü C K E N');
+  Dialog(sYouWon, sPressKey);
   SoundWon;
   HighScoreEntry;
   ClrScr;
@@ -1119,6 +1190,8 @@ end;
 
 procedure Init;
 begin
+  YesKey := [Ord('Y'), Ord('y')];
+  NoKey  := [Ord('N'), Ord('n')];
   Randomize;
   Intro(
     '                  **        **    **********   **           **                 ',
@@ -1184,7 +1257,7 @@ procedure RemoveBlocks;
 var Code: Integer;
 begin
   repeat
-    Code := Dialog('B L Ö C K E   E N T F E R N E N', 'J / N');
+    Code := Dialog(sRemoveBlocks, sYesNo);
   until (Byte(Code) in YesKey) or (Byte(Code) in NoKey);
   if Byte(Code) in YesKey then
     begin
@@ -1202,7 +1275,7 @@ function AskPlayAgain: Boolean;
 var Code: Integer;
 begin
   repeat
-    Code := Dialog('N O C H M A L  S P I E L E N', 'J / N');
+    Code := Dialog(sPlayAgain, sYesNo);
   until (Byte(Code) in YesKey) or (Byte(Code) in NoKey);
   AskPlayAgain := Byte(Code) in YesKey;
 end;
