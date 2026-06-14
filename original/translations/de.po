@@ -88,49 +88,49 @@ msgstr "<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende"
 msgid "UGLI HELP"
 msgstr "HILFE VON UGLI"
 
-#: ugli_2:shelpp
-msgid "[P] = Pause (uses 1 pause)"
-msgstr "[p] = Pause (1 Pause Weniger)"
-
 #: ugli_2:shelparrows
-msgid "Arrow keys: \342\206\220 = left  \342\206\223 = down  \342\206\222 = right  \342\206\221 = up"
-msgstr "Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben"
-
-#: ugli_2:shelpesc
-msgid "[Esc] = Quit"
-msgstr "[Esc] = Abbruch"
-
-#: ugli_2:shelpend
-msgid "[End] = Slower"
-msgstr "[Ende] = Langsamer"
-
-#: ugli_2:shelphome
-msgid "[Home] = Faster"
-msgstr "[Pos1] = Schneller"
-
-#: ugli_2:shelpf4
-msgid "[F4] = Restart"
-msgstr "[F4] = Neustart"
-
-#: ugli_2:shelpf3
-msgid "[F3] = Buy a life (costs 5000 points)"
-msgstr "[F3] = Leben kaufen (Kostet 5000 Punkte)"
-
-#: ugli_2:shelpf2
-msgid "[F2] = The story of UGLI"
-msgstr "[F2] = Die Geschichte von Ugli"
+msgid "[←/↓/→/↑]   Change direction"
+msgstr "[←/↓/→/↑]   Richtung ändern"
 
 #: ugli_2:shelpspace
-msgid "[Space] = Toggle block placement (on/off, costs 20 pts each)"
-msgstr "[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)"
+msgid "[Space]     Toggle block placement (on/off, costs 20 pts each)"
+msgstr "[Space]     Blöcke legen umschalten (an/aus, kostet je 20 Punkte)"
 
-#: ugli_2:shelpf5
-msgid "[F5] = Remove all placed blocks"
-msgstr "[F5] = Alle gesetzten Blöcke wieder entfernen"
+#: ugli_2:shelpp
+msgid "[P]         Pause a short while (uses 1 pause)"
+msgstr "[P]         Kurz pausieren (1 Pause weniger)"
+
+#: ugli_2:shelpesc
+msgid "[Esc]       Quit"
+msgstr "[Esc]       Abbruch"
 
 #: ugli_2:shelpf1
-msgid "[F1] = This help screen"
-msgstr "[F1] = Diese Hilfe"
+msgid "[F1]        This help screen"
+msgstr "[F1]        Diese Hilfe"
+
+#: ugli_2:shelpf2
+msgid "[F2]        The story of UGLI"
+msgstr "[F2]        Die Geschichte von UGLI"
+
+#: ugli_2:shelpf3
+msgid "[F3]        Buy a life (costs 5000 points)"
+msgstr "[F3]        Leben kaufen (kostet 5000 Punkte)"
+
+#: ugli_2:shelpf4
+msgid "[F4]        Restart"
+msgstr "[F4]        Neustart"
+
+#: ugli_2:shelpf5
+msgid "[F5]        Remove all placed blocks"
+msgstr "[F5]        Alle gesetzten Blöcke entfernen"
+
+#: ugli_2:shelpend
+msgid "[End]       Slower"
+msgstr "[Ende]      Langsamer"
+
+#: ugli_2:shelphome
+msgid "[Home]      Faster"
+msgstr "[Pos1]      Schneller"
 
 #: ugli_2:sstorytitle
 msgid "The Story of UGLI"

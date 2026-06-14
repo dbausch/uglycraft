@@ -82,48 +82,48 @@ msgstr ""
 msgid "UGLI HELP"
 msgstr ""
 
-#: ugli_2:shelpp
-msgid "[P] = Pause (uses 1 pause)"
-msgstr ""
-
 #: ugli_2:shelparrows
-msgid "Arrow keys: \342\206\220 = left  \342\206\223 = down  \342\206\222 = right  \342\206\221 = up"
-msgstr ""
-
-#: ugli_2:shelpesc
-msgid "[Esc] = Quit"
-msgstr ""
-
-#: ugli_2:shelpend
-msgid "[End] = Slower"
-msgstr ""
-
-#: ugli_2:shelphome
-msgid "[Home] = Faster"
-msgstr ""
-
-#: ugli_2:shelpf4
-msgid "[F4] = Restart"
-msgstr ""
-
-#: ugli_2:shelpf3
-msgid "[F3] = Buy a life (costs 5000 points)"
-msgstr ""
-
-#: ugli_2:shelpf2
-msgid "[F2] = The story of UGLI"
+msgid "[\342\206\220/\342\206\223/\342\206\222/\342\206\221]   Change direction"
 msgstr ""
 
 #: ugli_2:shelpspace
-msgid "[Space] = Toggle block placement (on/off, costs 20 pts each)"
+msgid "[Space]     Toggle block placement (on/off, costs 20 pts each)"
 msgstr ""
 
-#: ugli_2:shelpf5
-msgid "[F5] = Remove all placed blocks"
+#: ugli_2:shelpp
+msgid "[P]         Pause a short while (uses 1 pause)"
+msgstr ""
+
+#: ugli_2:shelpesc
+msgid "[Esc]       Quit"
 msgstr ""
 
 #: ugli_2:shelpf1
-msgid "[F1] = This help screen"
+msgid "[F1]        This help screen"
+msgstr ""
+
+#: ugli_2:shelpf2
+msgid "[F2]        The story of UGLI"
+msgstr ""
+
+#: ugli_2:shelpf3
+msgid "[F3]        Buy a life (costs 5000 points)"
+msgstr ""
+
+#: ugli_2:shelpf4
+msgid "[F4]        Restart"
+msgstr ""
+
+#: ugli_2:shelpf5
+msgid "[F5]        Remove all placed blocks"
+msgstr ""
+
+#: ugli_2:shelpend
+msgid "[End]       Slower"
+msgstr ""
+
+#: ugli_2:shelphome
+msgid "[Home]      Faster"
 msgstr ""
 
 #: ugli_2:sstorytitle
