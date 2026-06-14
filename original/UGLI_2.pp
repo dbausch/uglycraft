@@ -256,7 +256,7 @@ begin
   TotalW := 0;
   for I := 0 to WCount - 1 do TotalW := TotalW + UTF8Cols(Words[I]);
   Gaps  := WCount - 1;
-  Extra := WrapWidth - TotalW;
+  Extra := WrapWidth - TotalW - Gaps;  { spaces beyond the 1-per-gap minimum }
   R := Words[0];
   for I := 0 to Gaps - 1 do
     begin
