@@ -159,7 +159,7 @@ begin
           Dirty[Col, Row] := false;
       Exit;
     end;
-  Write(TTY, #27'[?7l');   { disable autowrap for the flush }
+  Write(TTY, #27'[?7l');
   LastFg := -1;
   LastBg := -1;
   for Row := 1 to ScreenH do
@@ -177,9 +177,9 @@ begin
           Write(TTY, Screen[Col, Row].Ch);
           Dirty[Col, Row] := false;
         end;
-  Write(TTY, #27'[?7h');   { re-enable autowrap }
+  Write(TTY, #27'[?7h');
   Flush(TTY);
-  GotoXY(1, 1);             { sync FPC CRT position tracker }
+  GotoXY(1, 1);
 end;
 
 procedure BufDesaturate;
