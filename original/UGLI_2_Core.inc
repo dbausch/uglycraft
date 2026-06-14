@@ -188,8 +188,8 @@ begin
   for Col := 1 to ScreenW do
     for Row := 1 to ScreenH do
       begin
-        Screen[Col, Row].Fg := LightGray;
-        Screen[Col, Row].Bg := Black;
+        if Screen[Col, Row].Fg <> White then Screen[Col, Row].Fg := LightGray;
+        if Screen[Col, Row].Bg <> Black  then Screen[Col, Row].Bg := LightGray;
         Dirty[Col, Row] := true;
       end;
 end;

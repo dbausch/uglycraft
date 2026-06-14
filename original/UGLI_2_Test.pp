@@ -195,10 +195,16 @@ end;
 
 procedure TBufferTests.TestBufDesaturate_Gray;
 begin
-  BufFill(Red, Red, 'X');
+  { Black bg: Fg dims, Bg stays Black }
+  BufFill(Red, Black, 'X');
   BufDesaturate;
   AssertEquals(LightGray, Integer(Screen[4, 7].Fg));
   AssertEquals(Black, Integer(Screen[4, 7].Bg));
+  { Non-black bg: Bg becomes LightGray; White Fg stays White }
+  BufFill(White, Red, 'X');
+  BufDesaturate;
+  AssertEquals(White, Integer(Screen[4, 7].Fg));
+  AssertEquals(LightGray, Integer(Screen[4, 7].Bg));
   AssertTrue(Dirty[4, 7]);
 end;
 
