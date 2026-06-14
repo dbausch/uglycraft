@@ -9,10 +9,10 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 ## Building (if you ever want to)
 
 - **Turbo Pascal 7** (original): Open `UGLI_2.pp` in the TP7 IDE or run `tpc UGLI_2.pp`
-- **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files from GitHub on first run, then compiles with `fpc -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
+- **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files and `ANSI-87.conf` from GitHub on first run, then compiles with `fpc -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
-There are no tests, no lint tools, and no CI setup.
+Run `poe test-original` to build and execute the fpcunit test suite (35 tests, exits 0 on all-pass).
 
 ## File structure
 
@@ -20,12 +20,19 @@ There are no tests, no lint tools, and no CI setup.
 
 - Wraps UOS + PortAudio to provide `Sound(Hz)`, `NoSound`, `Ton(Hz, Ms)`
 - Named effects: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`
-- Listed last in `uses` to shadow the empty CRT sound stubs on Linux
 - UOS source fetched from GitHub at build time; requires `libportaudio.so.2` at runtime
+
+### `UGLI_2_Core.inc` — shared include file
+
+All type/const/var/resourcestring declarations and all procedures. Included by both the game program and the test program via `{$I UGLI_2_Core.inc}`.
 
 ### `UGLI_2.pp` (program `UGLI_2`) — the game itself
 
-Uses `CThreads`, `CRT`, `DOS`, `SysUtils`, `gettext`, `UOSSound`.
+Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `UOSSound`.
+
+### `UGLI_2_Test.pp` (program `UGLI_2_Test`) — fpcunit test suite
+
+35 unit tests across five classes (string utilities, screen buffer, level init, drawing, game logic). Build and run with `poe test-original`.
 
 ### `translations/` — runtime locale files
 
@@ -54,6 +61,9 @@ Uses `CThreads`, `CRT`, `DOS`, `SysUtils`, `gettext`, `UOSSound`.
 | `StartEX`, `StartEY` | Integer | Enemy start position for the current level |
 | `StartDir` | TDirection | Starting direction for the current level |
 | `Laying` | Boolean | When `true`, a block is placed at the player's position every tick (Space toggles) |
+| `Screen[1..80, 1..25]` | `TScreenBuffer` | Off-screen cell buffer; each `TScreenCell` holds `Ch: String[4]`, `Fg: Byte`, `Bg: Byte` |
+| `Dirty[1..80, 1..25]` | `Boolean` array | Marks cells changed since the last `BufFlush` |
+| `BufFlushEnabled` | Boolean | When `false`, `BufFlush` clears dirty flags without writing to TTY (used by test suite) |
 
 ## Key constants (`UGLI_2.pp`)
 
@@ -79,7 +89,7 @@ Uses `CThreads`, `CRT`, `DOS`, `SysUtils`, `gettext`, `UOSSound`.
 
 **`PrepareLevel`**: Full level reset — clears interior `Blocked` cells, calls `InitLevel(Level)` (sets walls and `Start*` defaults), copies `Start*` to live `X/Y/EX/EY/Direction`, then calls `Redraw`. Called at genuine level-start time and when the player is caught.
 
-**`Redraw`**: Lightweight screen repaint — `ClrScr`, `DrawBorder`, `DrawKeys`, `DrawInner`. Does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
+**`Redraw`**: Lightweight screen repaint — `BufFill` (clear buffer), `DrawBorder`, `DrawKeys`, `DrawInner`, `BufFlush`. Does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
 
 **`DrawScore` / `DrawLives` / `DrawPauses` / `DrawBlocks`**: Draw individual HUD counters; all called from `DrawBorder` (via `Redraw`) and also called individually when only one counter changes.
 
@@ -114,14 +124,14 @@ label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 ...
 NewGame:    { Level := 1; Score := 0; Lives := 10; ItemNo := 1; PrepareLevel; LevelTransition }
 StartLevel: { EnemyTick := 0; RandomPos }
-            { repeat: Delay, DrawItem, HandleInput, EnemyMove, collision checks }
+            { repeat: Sleep(MoveDelay), DrawItem, HandleInput, EnemyMove, collision checks }
             {   treasure collected → ItemX := 0; goto StartLevel }
             {   lives = 0 → goto OnGameOver }
             { until Escape }
 OnGameOver: { calls GameOver }
 PlayAgain:  { AskPlayAgain dialog }
             {   Y → goto NewGame;  N → goto CleanUp  (J/N in German) }
-CleanUp:  { ClrScr, reset terminal, exit }
+CleanUp:  { restore terminal, ANSI clear screen, exit }
 ```
 
 ## Treasure types (ItemNo 1–10)
@@ -163,7 +173,7 @@ Levels are defined by the `InitLevel1`–`InitLevel9` procedures via `Blocked[x,
 
 **Original DOS**: All sound via PC speaker. Frequencies played directly via port $42/$43.
 
-**FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `UOSSound.pp`, a wrapper around UOS + PortAudio. It exposes the same `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as CRT (listed last in `uses` so it shadows the empty CRT stubs), plus named effect procedures: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
+**FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `UOSSound.pp`, a wrapper around UOS + PortAudio. It exposes `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` plus named effect procedures: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
 
 
 ## Internationalisation (i18n)
