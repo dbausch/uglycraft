@@ -150,7 +150,7 @@ end;
 `ClrScr` and the stray `TextBackground(FieldBg)` call before it are removed. The buffer
 fill + single flush replaces the clear-then-draw-cell-by-cell pattern that caused flicker.
 
-### `ShowHelp`, `ShowStory`, `ShowItemDescriptions`
+### `ShowHelp`, `ShowStory`
 
 ```pascal
 { before }
@@ -167,6 +167,24 @@ WaitKey;
 
 `ClrScr` replaced by `BufFill`. `BufFlush` inserted immediately before `WaitKey` so the
 completed overlay is rendered atomically.
+
+### `ShowItemDescriptions`
+
+This screen uses `ItemDescBg = LightGray` as background, not `FieldBg`. On large terminal
+windows the area outside the 80×25 game grid is visible; `BufFill` only covers the 80×25
+buffer and cannot paint outside it.
+
+`ShowItemDescriptions` therefore calls `FillScreen(ItemDescBg)` — a dedicated procedure
+that emits the ANSI background SGR and `ESC[2J` directly to TTY, filling the entire
+terminal window — before any `Draw` calls. `FillScreen` also syncs the FPC CRT colour
+tracker (`TextBackground` + `GotoXY`).
+
+After `WaitKey`, `Init` calls `FillScreen(FieldBg)` to transition the terminal background
+back to black before `Redraw` takes over.
+
+With the buffer: `FillScreen` calls remain as-is (they are not replaced by `BufFill`).
+Add `BufFill(ItemDescBg, ItemDescBg, ' ')` after `FillScreen(ItemDescBg)` to reset the
+buffer state, then `BufFlush` before `WaitKey`.
 
 ### `Dialog`
 
@@ -192,6 +210,19 @@ file display. These use FPC CRT I/O rather than `Draw`. This procedure is exclud
 this change: it operates in a distinct "text input" mode outside the game render loop.
 `ClrScr` inside `HighScoreEntry` is acceptable because the game does not return to play
 after it.
+
+### `CleanUp` (program exit)
+
+```pascal
+Write(TTY, #27'[0m'); Flush(TTY);  { reset attributes first }
+ClrScr;                              { clear with terminal default colours }
+MyCursorOn;
+Close(TTY);
+```
+
+Attributes are reset before `ClrScr` so the clear fills with the terminal's default
+background rather than whatever colour was last active. `ClrScr` here is intentional and
+is not replaced by `BufFill` or `BufFlush`.
 
 ### `Intro`
 

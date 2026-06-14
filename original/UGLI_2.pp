@@ -153,6 +153,19 @@ begin
   Write(TTY, #27'[?25l');
 end;
 
+{ Fill the entire terminal window (including cells outside the 80x25 game
+  area) with Bg, then home the cursor. Use instead of TextBackground+ClrScr
+  whenever a background-colour transition must cover large terminal windows. }
+procedure FillScreen(Bg: Integer);
+begin
+  Write(TTY, #27'[', 40 + Bg, 'm'); { set background via ANSI 40–47 }
+  Write(TTY, #27'[2J');              { clear whole terminal with that colour }
+  Write(TTY, #27'[H');               { home cursor }
+  Flush(TTY);
+  TextBackground(Bg);                { keep FPC CRT colour tracker in sync }
+  GotoXY(1, 1);
+end;
+
 function UTF8Cols(S: String): Integer;
 var I, Count: Integer;
   B: Byte;
@@ -1294,8 +1307,7 @@ const
 var
   I, Col, MaxW, ItemW: Integer;
 begin
-  TextBackground(Bg);
-  ClrScr;
+  FillScreen(Bg);
   Draw(1, 2, Fg, Bg, Center(sItemListTitle));
   MaxW := 0;
   for I := 1 to ItemCount do
@@ -1388,8 +1400,7 @@ begin
     '                   **********     **********   **********   **                 ',
     Version, Release, User, License);
   ShowItemDescriptions;
-  TextBackground(FieldBg);
-  ClrScr;
+  FillScreen(FieldBg);
   MoveDelay := 100;
   PausesRemaining := 20;
   BlocksRemaining := 2000;
@@ -1520,8 +1531,8 @@ OnGameOver:
 PlayAgain:
   if AskPlayAgain then goto NewGame else goto CleanUp;
 CleanUp:
+  Write(TTY, #27'[0m'); Flush(TTY);
   ClrScr;
-  Write(TTY, #27'[0m'); Flush(TTY); { reset all attributes before exit }
   MyCursorOn;
   Close(TTY);
 end.
