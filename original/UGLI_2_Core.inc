@@ -37,6 +37,8 @@ var
   Screen          : TScreenBuffer;
   Dirty           : array[1..ScreenW, 1..ScreenH] of Boolean;
   BufFlushEnabled : Boolean = true;
+  { When non-nil, WaitKey calls this instead of GetKey — set in tests. }
+  KeyProviderFunc : function: Integer = nil;
   F, TTY: Text;
   FirstName, LastName, S: String;
   Line: String[80];
@@ -482,7 +484,10 @@ end;
 
 function WaitKey: Integer;
 begin
-  WaitKey := Ord(GetKey);
+  if Assigned(KeyProviderFunc) then
+    WaitKey := KeyProviderFunc()
+  else
+    WaitKey := Ord(GetKey);
 end;
 
 procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String;
