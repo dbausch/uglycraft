@@ -147,7 +147,7 @@ msgid "Press a key, then press one of the arrow keys. Use the arrow keys to coll
 msgstr ""
 
 #: ugli_2:spresskey
-msgid "P R E S S   A   K E Y"
+msgid "P R E S S   A N Y   K E Y"
 msgstr ""
 
 #: ugli_2:slevelprefix

@@ -153,7 +153,7 @@ msgid "Press a key, then press one of the arrow keys. Use the arrow keys to coll
 msgstr "Du drückst jetzt eine Taste, dann drückst du eine der Richtungstasten. Danach musst du mit den Richtungstasten die oben gezeigten Dinge einsammeln. (Die Krone kommt ganz zum Schluss.) Während des Spiels kann man mit <F1> die anderen Tasten nachlesen, die zum Bedienen des Spiels zur Verfügung stehen."
 
 #: ugli_2:spresskey
-msgid "P R E S S   A   K E Y"
+msgid "P R E S S   A N Y   K E Y"
 msgstr "T A S T E   D R Ü C K E N"
 
 #: ugli_2:slevelprefix
