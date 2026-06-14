@@ -27,7 +27,8 @@ shell = """
   if [ -n "${TERMINAL}" ]; then
     ${TERMINAL} original/UGLI_2
   else
-    kitty -o font_family="Liberation Mono" -o font_size=16 \
+    kitty -c original/ANSI-87.conf \
+          -o font_family="Liberation Mono" -o font_size=16 \
           -o remember_window_size=false \
           -o initial_window_height=25c -o initial_window_width=80c \
           original/UGLI_2
@@ -77,6 +78,9 @@ shell = """
   for f in uos.pas uos_flat.pas uos_portaudio.pas; do
     [ -f original/uos/$f ] || curl -fsSL "$UOS_BASE/$f" -o original/uos/$f
   done
+  [ -f original/ANSI-87.conf ] || curl -fsSL \
+    "https://raw.githubusercontent.com/kovidgoyal/kitty-themes/master/themes/ANSI-87.conf" \
+    -o original/ANSI-87.conf
   cd original && fpc -Fuuos UGLI_2.pp
 """
 

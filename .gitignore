@@ -13,6 +13,7 @@ build/
 original/*.o
 original/*.ppu
 original/UGLI_2
+original/ANSI-87.conf
 
 # Runtime data
 uglycraft.hsc
