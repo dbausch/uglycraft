@@ -105,6 +105,21 @@ This repo contains two things:
 
 2. **UGLYCRAFT** — a new Python/pygame spiritual remake of UGLI, written from scratch. This is the active project.
 
+## Knowledge base
+
+`kb/` contains reference files loaded on demand — not always in context.
+Use them when working on a topic that needs deeper background.
+
+| File | Contents |
+|---|---|
+| `kb/uglycraft-mechanics.md` | Scoring, lives, shield, speed formula, state machine, boss behaviour |
+| `kb/uglycraft-levels.md` | Wall layouts and enemy start positions for all 10 levels |
+| `kb/uglycraft-display.md` | Integer scaling, HUD layout, sprite construction notes |
+| `kb/uglycraft-sound.md` | Sound generation, music keys, trigger map, fallback behaviour |
+| `kb/findings.md` | Bugs, quirks, and key differences between Pascal original and Python remake |
+
+`original/kb/` covers the Pascal source — see `original/CLAUDE.md`.
+
 ## System prerequisites
 
 | Tool | Required for |
