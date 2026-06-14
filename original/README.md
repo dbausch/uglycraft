@@ -12,7 +12,7 @@ significant code quality work.  See `CHANGELOG.md` for the full record.
 
 ```bash
 # from the repo root
-poe build-original   # fetches UOS audio sources, then: cd original && fpc -Mtp -Fuuos UGLI_2.pp
+poe build-original   # fetches UOS audio sources, then: cd original && fpc -Fuuos UGLI_2.pp
 ./original/UGLI_2
 ```
 
@@ -224,3 +224,50 @@ code quality work followed:
   walls without disturbing any live game state.
 
 See `CHANGELOG.md` for the complete list of fixes and changes per version.
+
+### 14. Internationalisation (i18n) — FPC `resourcestring` + `gettext`
+
+All user-visible text was hard-coded German.  To make the game playable by
+non-German speakers, string extraction and runtime translation support were
+added using FPC's built-in mechanism.
+
+**Source language change to English.** Every German string literal in the
+source was replaced with a `resourcestring` constant whose default value is
+English.  German is now the first `.mo` translation rather than the hard-coded
+default.  Users whose system locale is unrecognised see English.
+
+**Drop `-Mtp`.** The code had been compiled with `-Mtp` (Turbo Pascal
+compatibility mode) since the initial port.  An audit found no TP-specific
+dependencies: no typed constants are reassigned at runtime, no TP-only syntax
+is used.  The flag was removed; `{$H+}` was added at the top of the file to
+make `String = AnsiString` explicit instead of relying on the active mode.
+
+**`TItemData.Name` removed.** FPC `resourcestring` values cannot appear in
+typed constant initialisers, so the `Name: String[40]` field was removed from
+`TItemData`.  A `GetItemName(I: Integer): String` function returns the
+appropriate resourcestring via a `case` statement.
+
+**`DrawItemName` procedure.** Draws the current item's name centred in the
+safe zone of the bottom border row (cols 12–66, between the LIVES counter on
+the left and BLOCKS counter on the right), padding with spaces to erase any
+previously longer name.  Called from `DrawBorder` and from the main-loop
+pickup handler.
+
+**Runtime locale detection.** At startup, `Init` calls `GetLanguageIDs` (from
+the FPC `gettext` unit) to detect the system locale, then looks for
+`translations/<lang>.mo` next to the binary.  If found, it calls
+`TranslateResourceStrings` to patch all resourcestring values with the
+translated text.  `YesKey` and `NoKey` are then built from the `sYesChar` and
+`sNoChar` resourcestrings so the yes/no key characters track the translation.
+
+**Translation files.** `original/translations/` contains:
+
+- `UGLI_2.pot` — PO template generated with `rstconv -i UGLI_2.rsj`
+  (regenerate with `poe make-pot` after rebuilding)
+- `de.po` — German translation (fill `msgstr` values, then `msgfmt` to compile)
+- `de.mo` — compiled German translation; shipped alongside the binary by
+  `poe deploy-original-linux`
+
+To add a new language: copy `UGLI_2.pot` to `<lang>.po`, fill in the
+`msgstr` values, compile with `msgfmt <lang>.po -o <lang>.mo`, copy the `.mo`
+file to the `translations/` directory next to the binary.

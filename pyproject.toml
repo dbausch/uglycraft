@@ -89,11 +89,16 @@ shell = """
   rm -f original/uos/*.o original/uos/*.ppu
 """
 
+[tool.poe.tasks.make-pot]
+help = "Regenerate PO template from compiled resourcestrings"
+cmd  = "rstconv -i original/UGLI_2.rsj -o original/translations/UGLI_2.pot"
+
 [tool.poe.tasks.deploy-original-linux]
 help  = "Push the FPC Linux port of UGLI 2 to itch.io"
 shell = """
-  mkdir -p dist/original-linux
+  mkdir -p dist/original-linux/translations
   cp original/UGLI_2 dist/original-linux/
+  cp original/translations/*.mo dist/original-linux/translations/
   VERSION=$(grep -oP "(?<=Version = ')[^']+" original/UGLI_2.pp)
   butler push dist/original-linux dbausch/uglycraft:original-linux \
     --userversion "$VERSION"

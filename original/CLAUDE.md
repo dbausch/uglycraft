@@ -9,7 +9,7 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 ## Building (if you ever want to)
 
 - **Turbo Pascal 7** (original): Open `UGLI_2.pp` in the TP7 IDE or run `tpc UGLI_2.pp`
-- **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files from GitHub on first run, then compiles with `fpc -Mtp -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
+- **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files from GitHub on first run, then compiles with `fpc -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
 There are no tests, no lint tools, and no CI setup.
@@ -25,7 +25,15 @@ There are no tests, no lint tools, and no CI setup.
 
 ### `UGLI_2.pp` (program `UGLI_2`) — the game itself
 
-Uses `CThreads`, `CRT`, `DOS`, `UOSSound`.
+Uses `CThreads`, `CRT`, `DOS`, `SysUtils`, `gettext`, `UOSSound`.
+
+### `translations/` — runtime locale files
+
+- `UGLI_2.pot` — PO template; regenerate with `poe make-pot` after rebuilding
+- `de.po` / `de.mo` — German translation (source + compiled binary)
+- Place `<lang>.mo` next to the binary (in a `translations/` subdirectory) to
+  add a new language; `Init` detects the system locale via `GetLanguageIDs` and
+  loads the matching `.mo` with `TranslateResourceStrings`
 
 ## Key data structures (`UGLI_2.pp`)
 
@@ -63,13 +71,17 @@ Uses `CThreads`, `CRT`, `DOS`, `UOSSound`.
 
 **`InitLevel1`–`InitLevel9`**: Set player start position/direction and populate `Blocked` for level walls. Called via the `InitLevel(N)` dispatcher.
 
-**`DrawBorder`**: Draws the `█` border and marks border cells in `Blocked`.
+**`DrawBorder`**: Draws the `█` border, marks border cells in `Blocked`, then calls `DrawLevel`, `DrawScore`, `DrawLives`, `DrawPauses`, `DrawBlocks`, and `DrawItemName`.
+
+**`DrawItemName`**: Draws the current item's name centred in the safe zone of the bottom border row (cols 12–66, ZoneW=55), padding with spaces to erase any previously longer name. Called from `DrawBorder` and from the main-loop pickup handler.
+
+**`GetItemName(I)`**: Returns the `resourcestring` name for item index `I` (1–10) via a `case` statement.
 
 **`PrepareLevel`**: Full level reset — clears interior `Blocked` cells, calls `InitLevel(Level)` (sets walls and `Start*` defaults), copies `Start*` to live `X/Y/EX/EY/Direction`, then calls `Redraw`. Called at genuine level-start time and when the player is caught.
 
 **`Redraw`**: Lightweight screen repaint — `ClrScr`, `DrawBorder`, `DrawKeys`, `DrawInner`. Does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
 
-**`DrawScore` / `DrawLives` / `DrawPauses` / `DrawBlocks`**: Draw individual HUD counters; all called from `DrawFrame` and `Redraw`, and also called individually when only one counter changes.
+**`DrawScore` / `DrawLives` / `DrawPauses` / `DrawBlocks`**: Draw individual HUD counters; all called from `DrawBorder` (via `Redraw`) and also called individually when only one counter changes.
 
 **`EnemyMove`** (enemy AI): Greedy chase. Each `EnemyTick`, computes `DX = EX - X`, `DY = EY - Y`. If `|DX| ≥ |DY|`, tries to move horizontally toward player first; falls back to vertical if blocked. Vice versa otherwise. No pathfinding — can get stuck behind walls.
 
@@ -87,7 +99,7 @@ Uses `CThreads`, `CRT`, `DOS`, `UOSSound`.
 
 **`PlaceBlock`**: Places a `█` at the player's current position if not already blocked; costs 20 pts. Auto-disables `Laying` if points or block budget run out.
 
-**`RemoveBlocks`**: Modal dialog (J/N). On J: clears interior `Blocked`, calls `InitLevel` (rebuilds level walls only — live position, direction, and enemy are untouched), redraws border, resets `BlockX`/`BlockY`. No point cost.
+**`RemoveBlocks`**: Modal dialog (Y/N in English; J/N in German). On yes: clears interior `Blocked`, calls `InitLevel` (rebuilds level walls only — live position, direction, and enemy are untouched), redraws border, resets `BlockX`/`BlockY`. No point cost.
 
 **`DrawItem` / `RandomPos`**: Place current treasure at a random non-blocked position.
 
@@ -108,25 +120,28 @@ StartLevel: { EnemyTick := 0; RandomPos }
             { until Escape }
 OnGameOver: { calls GameOver }
 PlayAgain:  { AskPlayAgain dialog }
-            {   J → goto NewGame;  N → goto CleanUp }
+            {   Y → goto NewGame;  N → goto CleanUp  (J/N in German) }
 CleanUp:  { ClrScr, reset terminal, exit }
 ```
 
-## Treasure types (ItemNo 1–9)
+## Treasure types (ItemNo 1–10)
 
-| ItemNo | Name (German) | Points |
-|---|---|---|
-| 1 | Seil (Rope) | 0 |
-| 2 | Großer Diamant (Big Diamond) | 100 |
-| 3 | Kleine Edelsteine (Small Gems) | 200 |
-| 4 | Kleiner Diamant (Small Diamond) | 300 |
-| 5 | Goldbarren (Gold Bar) | 400 |
-| 6 | Silberbarren (Silver Bar) | 500 |
-| 7 | Brunnen (Well) | 600 |
-| 8 | Lampe (Lamp) | 700 |
-| 9 | Großer Edelstein (Big Gem) | 800 |
+`ItemNo` 10 (Crown) appears only on level 9 as a replacement for item 9.
 
-Points formula: `(ItemNo − 1) × 100`.
+| ItemNo | Name (English) | Name (German) | Points |
+|---|---|---|---|
+| 1 | Rope | Seil | 0 |
+| 2 | Large Sparkling Diamond | grosser glänzender Diamant | 100 |
+| 3 | Small Gems | kleine Edelsteine | 200 |
+| 4 | Small Sparkling Diamond | kleiner glänzender Diamant | 300 |
+| 5 | Gold Bar | Goldbarren | 400 |
+| 6 | Silver Bar | Silberbarren | 500 |
+| 7 | Well | Brunnen | 600 |
+| 8 | Lamp | Lampe | 700 |
+| 9 | Large Gem | grosser Edelstein | 800 |
+| 10 | Crown | Krone | 800 |
+
+Points formula: `(ItemNo − 1) × 100` (Crown same as Large Gem).
 
 ## Level structure (original 80×20 grid)
 
@@ -150,6 +165,14 @@ Levels are defined by the `InitLevel1`–`InitLevel9` procedures via `Blocked[x,
 
 **FPC/Linux port**: PC speaker is not accessible on Linux. Sound is instead provided by `UOSSound.pp`, a wrapper around UOS + PortAudio. It exposes the same `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as CRT (listed last in `uses` so it shadows the empty CRT stubs), plus named effect procedures: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
 
+
+## Internationalisation (i18n)
+
+All user-visible strings are declared as `resourcestring` (English defaults). FPC extracts them to `UGLI_2.rsj` at compile time. At runtime, `Init` calls `GetLanguageIDs` to detect the two-letter locale code and loads `translations/<lang>.mo` with `TranslateResourceStrings` if the file exists. `YesKey` and `NoKey` (sets of byte) are built from `sYesChar`/`sNoChar` resourcestrings after translation so the yes/no key characters track the loaded language.
+
+`GetItemName(I)` is the sole access point for translated item names — `TItemData` no longer has a `Name` field. `DrawItemName` centres the current item name in the bottom border safe zone (cols 12–66).
+
+To add a language: compile the game (generates `UGLI_2.rsj`), run `poe make-pot` to refresh `translations/UGLI_2.pot`, copy it to `translations/<lang>.po`, fill in `msgstr` values, compile with `msgfmt translations/<lang>.po -o translations/<lang>.mo`, and copy the `.mo` alongside the binary.
 
 ## How UGLYCRAFT maps from the original
 

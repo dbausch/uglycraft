@@ -1,0 +1,233 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+
+#: ugli_2:sitemname1
+msgid "Rope"
+msgstr "Seil"
+
+#: ugli_2:sitemname2
+msgid "Large Sparkling Diamond"
+msgstr "grosser glänzender Diamant"
+
+#: ugli_2:sitemname3
+msgid "Small Gems"
+msgstr "kleine Edelsteine"
+
+#: ugli_2:sitemname4
+msgid "Small Sparkling Diamond"
+msgstr "kleiner glänzender Diamant"
+
+#: ugli_2:sitemname5
+msgid "Gold Bar"
+msgstr "Goldbarren"
+
+#: ugli_2:sitemname6
+msgid "Silver Bar"
+msgstr "Silberbarren"
+
+#: ugli_2:sitemname7
+msgid "Well"
+msgstr "Brunnen"
+
+#: ugli_2:sitemname8
+msgid "Lamp"
+msgstr "Lampe"
+
+#: ugli_2:sitemname9
+msgid "Large Gem"
+msgstr "grosser Edelstein"
+
+#: ugli_2:sitemname10
+msgid "Crown"
+msgstr "Krone"
+
+#: ugli_2:syeschar
+msgid "Y"
+msgstr "J"
+
+#: ugli_2:snochar
+msgid "N"
+msgstr "N"
+
+#: ugli_2:slabellevel
+msgid "LEVEL "
+msgstr "LEVEL "
+
+#: ugli_2:slabelscore
+msgid "SCORE "
+msgstr "PUNKTE "
+
+#: ugli_2:slabellives
+msgid "LIVES "
+msgstr "LEBEN "
+
+#: ugli_2:slabelpauses
+msgid "PAUSES "
+msgstr "PAUSEN "
+
+#: ugli_2:slabelblocks
+msgid "BLOCKS "
+msgstr "BLÖCKE "
+
+#: ugli_2:skeys1
+msgid "\342\206\220 = left  \342\206\223 = down  \342\206\222 = right  \342\206\221 = up"
+msgstr "← = links  ↓ = unten  → = rechts  ↑ = oben"
+
+#: ugli_2:skeys2
+msgid "<F1> = Help  <F2> = Story of UGLI  <F3> = Buy life  <F4> = Restart"
+msgstr "<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart"
+
+#: ugli_2:skeys3
+msgid "<P> = Pause  <End> = Slower  <Home> = Faster  <Esc> = Quit"
+msgstr "<P> = Pause  <Ende> = Langsamer  <Pos1> = Schneller  <Esc> = Ende"
+
+#: ugli_2:shelptitle
+msgid "UGLI HELP"
+msgstr "HILFE VON UGLI"
+
+#: ugli_2:shelpp
+msgid "[P] = Pause (uses 1 pause)"
+msgstr "[p] = Pause (1 Pause Weniger)"
+
+#: ugli_2:shelparrows
+msgid "Arrow keys: \342\206\220 = left  \342\206\223 = down  \342\206\222 = right  \342\206\221 = up"
+msgstr "Bewegungs-Tasten: ← = links  ↓ = unten  → = rechts  ↑ = oben"
+
+#: ugli_2:shelpesc
+msgid "[Esc] = Quit"
+msgstr "[Esc] = Abbruch"
+
+#: ugli_2:shelpend
+msgid "[End] = Slower"
+msgstr "[Ende] = Langsamer"
+
+#: ugli_2:shelphome
+msgid "[Home] = Faster"
+msgstr "[Pos1] = Schneller"
+
+#: ugli_2:shelpf4
+msgid "[F4] = Restart"
+msgstr "[F4] = Neustart"
+
+#: ugli_2:shelpf3
+msgid "[F3] = Buy a life (costs 5000 points)"
+msgstr "[F3] = Leben kaufen (Kostet 5000 Punkte)"
+
+#: ugli_2:shelpf2
+msgid "[F2] = The story of UGLI"
+msgstr "[F2] = Die Geschichte von Ugli"
+
+#: ugli_2:shelpspace
+msgid "[Space] = Toggle block placement (on/off, costs 20 pts each)"
+msgstr "[Space] = Blöcke legen umschalten (an/aus, kostet je 20 Punkte)"
+
+#: ugli_2:shelpf5
+msgid "[F5] = Remove all placed blocks"
+msgstr "[F5] = Alle gesetzten Blöcke wieder entfernen"
+
+#: ugli_2:shelpf1
+msgid "[F1] = This help screen"
+msgstr "[F1] = Diese Hilfe"
+
+#: ugli_2:sstorytitle
+msgid "The Story of UGLI"
+msgstr "Geschichte von UGLI"
+
+#: ugli_2:sstoryline1
+msgid "A king has locked you in his castle."
+msgstr "Du  bist  von  einem  König  in  eine  Burg eingeschlossen worden."
+
+#: ugli_2:sstoryline2
+msgid "With the words: \"I will not set you free until you have"
+msgstr "Mit  den  Worten: \"Ich lasse  Dich  erst wieder frei, wenn Du alle"
+
+#: ugli_2:sstoryline3
+msgid "found all of my treasures,\" he slammed the door shut."
+msgstr "meine  Schätze  wieder  gefunden  hast\", knallte  er  die  Tür zu."
+
+#: ugli_2:sstoryline4
+msgid "There is nothing left for you to do but collect his treasures."
+msgstr "Da  bleibt Dir wohl  nichts anderes  mehr übrig, als seine Schätze"
+
+#: ugli_2:sstoryline5
+msgid "So you start running immediately to collect them all."
+msgstr "zu holen. Du rennst also sofort los, um alle Schätze einzusammeln."
+
+#: ugli_2:sitemlisttitle
+msgid "T R E A S U R E S   T O   C O L L E C T"
+msgstr "L I S T E   D E R   E I N Z U S A M M E L N D E N   S C H Ä T Z E"
+
+#: ugli_2:siteminsttitle
+msgid "H O W   T O   P L A Y"
+msgstr "S P I E L A N L E I T U N G"
+
+#: ugli_2:siteminst1
+msgid "Press a key, then press one of the arrow keys."
+msgstr "Du drückst jetzt eine Taste, dann drückst du eine der Richtungstasten"
+
+#: ugli_2:siteminst2
+msgid "Use the arrow keys to collect the treasures shown above."
+msgstr "danach musst du mit den Richtungstasten die oben gezeigten Dinge"
+
+#: ugli_2:siteminst3
+msgid "(The crown comes last.) During the game, press <F1> to see"
+msgstr "einsammeln. (Die Krone kommt ganz zum Schluss.) Während des Spiels kann"
+
+#: ugli_2:siteminst4
+msgid "the other keys available during play."
+msgstr "man mit <F1> die anderen Tasten die zum bedienen des Spiels nachlesen."
+
+#: ugli_2:spresskey
+msgid "P R E S S   A   K E Y"
+msgstr "T A S T E   D R Ü C K E N"
+
+#: ugli_2:slevelprefix
+msgid "L E V E L  "
+msgstr "L E V E L  "
+
+#: ugli_2:sgameover
+msgid "G A M E   O V E R"
+msgstr "G A M E   O V E R"
+
+#: ugli_2:syouwon
+msgid "Y O U   W O N"
+msgstr "G E W O N N E N"
+
+#: ugli_2:sremoveblocks
+msgid "R E M O V E   B L O C K S"
+msgstr "B L Ö C K E   E N T F E R N E N"
+
+#: ugli_2:splayagain
+msgid "P L A Y   A G A I N ?"
+msgstr "N O C H M A L  S P I E L E N"
+
+#: ugli_2:syesno
+msgid "Y / N"
+msgstr "J / N"
+
+#: ugli_2:sfirstname
+msgid "FIRST NAME "
+msgstr "VORNAME "
+
+#: ugli_2:slastname
+msgid "LAST NAME "
+msgstr "NAME "
+
+#: ugli_2:sscoreentry
+msgid "Score "
+msgstr "Punkte "
+
+#: ugli_2:shsfileerror
+msgid "Could not create high score file."
+msgstr "Datei UGLI.HSC konnte nicht erzeugt werden."
+
+#: ugli_2:sintrobrand
+msgid "* DANISOFT * PRESENTS *"
+msgstr "* DANISOFT * PRÄSENTIERT *"
+
+#: ugli_2:sintrowelcome
+msgid "Hello, get ready to play!"
+msgstr "Hallo, gleich geht's los!"
