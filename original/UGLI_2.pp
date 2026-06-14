@@ -1605,6 +1605,7 @@ StartLevel:
           end;
         goto StartLevel;
       end;
+    BufFlush;
   until KeyCode = KeyEscape;
 OnGameOver:
   GameOver;
