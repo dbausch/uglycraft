@@ -364,9 +364,6 @@ end;
 procedure Draw(Col, Row, Fg, Bg: Integer; S: String);
 var I, C, N: Integer; Ch: String[4];
 begin
-  TextColor(Fg);
-  TextBackground(Bg);
-  Write(TTY, #27'[?7l'); { disable autowrap for the duration }
   C := Col;
   I := 1;
   while I <= Length(S) do
@@ -378,16 +375,10 @@ begin
       if N >= 1 then Ch[1] := S[I];
       if N >= 2 then Ch[2] := S[I + 1];
       if N >= 3 then Ch[3] := S[I + 2];
-      Write(TTY, #27'[1;1H'); { poison }
-      Write(TTY, #27'[', Row, ';', C, 'H'); { real position }
-      Write(TTY, Ch);
+      BufPutCell(C, Row, Fg, Bg, Ch);
       Inc(I, N);
       Inc(C);
     end;
-  Write(TTY, #27'[?7h'); { re-enable autowrap }
-  Flush(TTY);
-  GotoXY(1, 1);
-  GotoXY(C, Row); { sync CRT's position tracker }
 end;
 
 procedure DrawHLine(X1, X2, Y, Fg, Bg: Integer; Ch: String);
@@ -736,11 +727,11 @@ end; {DrawBorder}
 
 procedure Redraw;
 begin
-  TextBackground(FieldBg);
-  ClrScr;
+  BufFill(FieldBg, FieldBg, ' ');
   DrawBorder;
   DrawKeys;
   DrawInner;
+  BufFlush;
 end; {Redraw}
 
 procedure InitLevel1;
@@ -1128,6 +1119,7 @@ begin
     begin
       PausesRemaining := PausesRemaining - 1;
       DrawPauses;
+      BufFlush;
       Delay(5000);
     end;
 end;
@@ -1166,7 +1158,7 @@ const
 begin
   SaveX := X;
   SaveY := Y;
-  ClrScr;
+  BufFill(FieldBg, FieldBg, ' ');
   Draw(1, 2, Fg, Bg, Center(sHelpTitle));
   Draw(2, 4, Fg, Bg, sHelpArrows);
   Draw(2, 5, Fg, Bg, sHelpSpace);
@@ -1180,6 +1172,7 @@ begin
   Draw(2, 13, Fg, Bg, sHelpEnd);
   Draw(2, 14, Fg, Bg, sHelpHome);
   Draw(1, 24, Fg, Bg, Center(sPressKey));
+  BufFlush;
   WaitKey;
   X := SaveX;
   Y := SaveY;
@@ -1192,10 +1185,11 @@ const
   TextW = 72;
   Col   = (FieldW - TextW) div 2 + 1;
 begin
-  ClrScr;
+  BufFill(FieldBg, FieldBg, ' ');
   Draw(1, 2, Fg, Bg, Center(sStoryTitle));
   DrawParagraph(sStoryText, Col, 4, TextW, Fg, Bg);
   Draw(1, 24, Fg, Bg, Center(sPressKey));
+  BufFlush;
   WaitKey;
 end;
 
@@ -1388,6 +1382,7 @@ var
   I, Col, MaxW, ItemW: Integer;
 begin
   FillScreen(Bg);
+  BufFill(Bg, Bg, ' ');
   Draw(1, 2, Fg, Bg, Center(sItemListTitle));
   MaxW := 0;
   for I := 1 to ItemCount do
@@ -1401,6 +1396,7 @@ begin
   Draw(1, 16, Fg, Bg, Center(sItemInstTitle));
   DrawParagraph(sItemInstText, 5, 18, 72, Fg, Bg);
   Draw(1, 24, Fg, Bg, Center(sPressKey));
+  BufFlush;
   WaitKey;
 end;
 
