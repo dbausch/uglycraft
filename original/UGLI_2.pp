@@ -1,7 +1,7 @@
 {$H+}
 program UGLI_2;
 
-uses CThreads, CRT, DOS, SysUtils, gettext, UOSSound;
+uses CThreads, CRT, DOS, BaseUnix, SysUtils, gettext, UOSSound;
 
 label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
@@ -1227,13 +1227,54 @@ begin
   ClrScr;
 end;
 
-procedure Init;
-var Lang, FallbackLang: String;
+{ Look up an environment variable; returns '' if unset. }
+function GetEnvVar(const Name: String): String;
+var P: PAnsiChar;
 begin
-  GetLanguageIDs(Lang, FallbackLang);
-  if Length(Lang) >= 2 then SetLength(Lang, 2);
-  if FileExists('translations/' + Lang + '.mo') then
-    TranslateResourceStrings('translations/' + Lang + '.mo');
+  P := fpgetenv(PAnsiChar(Name));
+  if P = nil then GetEnvVar := '' else GetEnvVar := P;
+end;
+
+{ Load locale .mo, probing in priority order (later wins):
+    1. <ExeDir>translations/%s.mo                           — bundled alongside binary
+    2. <XDG_DATA_DIRS dir>/locale/%s/LC_MESSAGES/UGLI_2.mo — system install
+    3. <XDG_DATA_HOME>/locale/%s/LC_MESSAGES/UGLI_2.mo     — user install
+  TranslateResourceStrings performs its own fileexists check internally and
+  silently ignores missing files, so each call is a no-op when absent. }
+procedure LoadTranslation;
+var
+  ExeDir, DataDirs, DataHome, Dir: String;
+  I, J: Integer;
+begin
+  ExeDir := ParamStr(0);
+  I := Length(ExeDir);
+  while (I > 0) and (ExeDir[I] <> '/') do Dec(I);
+  SetLength(ExeDir, I);
+
+  TranslateResourceStrings(ExeDir + 'translations/%s.mo');
+
+  DataDirs := GetEnvVar('XDG_DATA_DIRS');
+  if DataDirs = '' then DataDirs := '/usr/local/share:/usr/share';
+  I := 1;
+  while I <= Length(DataDirs) do
+    begin
+      J := I;
+      while (J <= Length(DataDirs)) and (DataDirs[J] <> ':') do Inc(J);
+      Dir := Copy(DataDirs, I, J - I);
+      if Dir <> '' then
+        TranslateResourceStrings(Dir + '/locale/%s/LC_MESSAGES/UGLI_2.mo');
+      I := J + 1;
+    end;
+
+  DataHome := GetEnvVar('XDG_DATA_HOME');
+  if DataHome = '' then DataHome := GetEnvVar('HOME') + '/.local/share';
+  if DataHome <> '' then
+    TranslateResourceStrings(DataHome + '/locale/%s/LC_MESSAGES/UGLI_2.mo');
+end;
+
+procedure Init;
+begin
+  LoadTranslation;
   YesKey := [Ord(UpCase(sYesChar[1])), Ord(LowerCase(sYesChar)[1])];
   NoKey  := [Ord(UpCase(sNoChar[1])),  Ord(LowerCase(sNoChar)[1])];
   Randomize;
