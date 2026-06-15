@@ -107,17 +107,37 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
     by SGR, cursor-position, and erase ANSI sequences written directly to TTY
     or ITTY.
 
+### Performance
+
+- `BufFlush` rewritten as the V2b algorithm: all terminal output is batched
+  into a single 64 KB byte buffer and emitted via one `fpWrite` syscall,
+  eliminating per-cell kernel round-trips. The cursor-position sequence
+  `ESC[r;cH` is also skipped when the cursor is already naturally adjacent
+  (same row, next column). Benchmark results (30 reps, Liberation Mono 16pt,
+  kitty): full screen 8 460 µs → 74 µs (×114); border update 862 µs → 19 µs
+  (×45); 50 random cells 203 µs → 16 µs (×13). `RawTTYFd` (write-only fd for
+  `fpWrite`) is now opened alongside `TTYFd` in the main block and closed at
+  CleanUp. WBuf infrastructure (`WBuf`, `WBufPos`, `WB`, `WBCh`, `WBInt`,
+  `WBFlush`) added to `UGLI_2_Core.inc`.
+- `UGLI_2_BufFlush_Variants.inc` added: alternative flush implementations
+  (V2 consec-skip, V3 row-span, V2b/V3b single-write variants) used by the
+  performance benchmark and correctness tests.
+
 ### Testing
 
-- fpcunit test suite (`UGLI_2_Test.pp`): 35 unit tests across five classes —
-  `TStringTests` (UTF8Cols, Center, WordWrap, Justify), `TBufferTests`
-  (BufPutCell, BufFill, BufDesaturate, BufFlush), `TLevelTests` (InitBorder,
-  InitLevel1–2, start positions 1–9), `TDrawTests` (Draw ASCII/UTF-8,
-  DrawHLine, DrawParagraph), `TGameLogicTests` (AwardPoints, IsPlayerCaught,
-  IsItemPickedUp, GetItemName). The test program includes `UGLI_2_Core.inc`
-  directly and sets `BufFlushEnabled := false` so no terminal output occurs.
+- fpcunit test suite (`UGLI_2_Test.pp`): 119 unit tests across twelve classes
+  covering string utilities, screen buffer, level init, drawing, game logic,
+  enemy AI, player movement, block placement, player-caught state, dialog
+  rendering, screen overlays, game-flow transitions, and BufFlush output
+  correctness (`TBufFlushOutputTests` — TTY and raw-fd output captured to a
+  temp file). `BufFlushEnabled := false` suppresses terminal output in all
+  non-flush tests.
 - `poe test-original` task: compiles `UGLI_2_Test.pp` and runs all tests;
   exits 0 on all-pass.
+- `poe bench-original` task: compiles and runs `UGLI_2_BufFlush_Bench.pp` in
+  a new 80-column kitty terminal for interactive visual correctness checks;
+  timing results (3 scenarios × 5 variants) are written to a temp file and
+  printed to the poe output stream after the window closes.
 - `poe build-original` now also fetches `original/ANSI-87.conf` from the
   kovidgoyal/kitty-themes repository alongside the UOS audio sources (cached
   after first run; excluded from version control).

@@ -89,6 +89,10 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `Screen[1..80, 1..25]` | `TScreenBuffer` | Off-screen cell buffer; each `TScreenCell` holds `Ch: String[4]`, `Fg: Byte`, `Bg: Byte` |
 | `Dirty[1..80, 1..25]` | `Boolean` array | Marks cells changed since the last `BufFlush` |
 | `BufFlushEnabled` | Boolean | When `false`, `BufFlush` clears dirty flags without writing to TTY (used by test suite) |
+| `TTYFd` | cint | Read-only `/dev/tty` file descriptor (raw key input via `fpRead`) |
+| `RawTTYFd` | cint | Write-only `/dev/tty` file descriptor (single-write terminal output via `fpWrite` in `BufFlush`) |
+| `WBuf[0..65535]` | `array of Byte` | Output byte buffer for `BufFlush`; filled by `WB`/`WBCh`/`WBInt`, flushed by `WBFlush` |
+| `WBufPos` | Integer | Current write position in `WBuf` |
 
 ## Key constants (`UGLI_2.pp`)
 
@@ -113,6 +117,8 @@ All Pascal source follows `STYLE.md`. Key rules:
 **`GetItemName(I)`**: Returns the `resourcestring` name for item index `I` (1–10) via a `case` statement.
 
 **`PrepareLevel`**: Full level reset — clears interior `Blocked` cells, calls `InitLevel(Level)` (sets walls and `Start*` defaults), copies `Start*` to live `X/Y/EX/EY/Direction`, then calls `Redraw`. Called at genuine level-start time and when the player is caught.
+
+**`BufFlush`**: Emits all dirty cells to the terminal via a single `fpWrite` syscall (V2b algorithm). Batches `ESC[?7l`, per-cell SGR and content, and `ESC[?7h` into `WBuf`, then calls `WBFlush`. Skips `ESC[r;cH` cursor-position when the cursor is already at the next adjacent cell (same row, next column). If `BufFlushEnabled = false`, clears dirty flags and returns immediately without writing to the terminal (used by the test suite). Always called after composing a complete frame; partial updates go through `BufPutCell` / `BufFill` first.
 
 **`Redraw`**: Lightweight screen repaint — `BufFill` (clear buffer), `DrawBorder`, `DrawKeys`, `DrawInner`, `BufFlush`. Does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
 
