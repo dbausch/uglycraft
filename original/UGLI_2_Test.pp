@@ -61,6 +61,7 @@ const
   ItemCount  = 10;
 
 {$I UGLI_2_Core.inc}
+{$I UGLI_2_BufFlush_Variants.inc}
 
 { ------------------------------------------------------------------ }
 { Key queue — inject predetermined keystrokes into WaitKey-based     }
@@ -1447,6 +1448,159 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
+{ TBufFlushOutputTests — verify each flush variant writes correct    }
+{ bytes; TTY / RawTTYFd are redirected to a temp file.              }
+{ ------------------------------------------------------------------ }
+
+const TmpFlushPath = '/tmp/ugli_flush_test.tmp';
+
+function ReadTmpFlushFile: AnsiString;
+var F: File of Byte; B: Byte;
+begin
+  Result := '';
+  Assign(F, TmpFlushPath);
+  Reset(F);
+  while not Eof(F) do
+    begin Read(F, B); Result := Result + Chr(B); end;
+  Close(F);
+end;
+
+function CaptureTextFlush(Proc: TFlushProc): AnsiString;
+begin
+  Assign(TTY, TmpFlushPath); ReWrite(TTY);
+  BufFlushEnabled := true;
+  Proc();
+  BufFlushEnabled := false;
+  Close(TTY);
+  Result := ReadTmpFlushFile;
+end;
+
+function CaptureRawFlush(Proc: TFlushProc): AnsiString;
+begin
+  RawTTYFd := fpOpen(TmpFlushPath, O_WRONLY or O_CREAT or O_TRUNC, 438);
+  BufFlushEnabled := true;
+  Proc();
+  BufFlushEnabled := false;
+  fpClose(RawTTYFd);
+  RawTTYFd := -1;
+  Result := ReadTmpFlushFile;
+end;
+
+type
+  TBufFlushOutputTests = class(TTestCase)
+  protected
+    procedure SetUp; override;
+    procedure TearDown; override;
+    procedure ResetScene;
+  published
+    procedure TestBufFlush_HasLineWrapBrackets;
+    procedure TestBufFlush_ContainsCellChar;
+    procedure TestBufFlush_ClearsDirty;
+    procedure TestBufFlush_SameBytesAsV2b;
+    procedure TestV3_SingleCell_ContainsCellChar;
+    procedure TestV2b_SameBytesAsV2;
+    procedure TestV3b_SameBytesAsV3;
+    procedure TestV2_TwoAdjacentCells_SkipsSecondCursorPos;
+  end;
+
+procedure TBufFlushOutputTests.ResetScene;
+begin
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty, SizeOf(Dirty), 0);
+  BufPutCell(5, 3, White, Black, 'A');
+end;
+
+procedure TBufFlushOutputTests.SetUp;
+begin
+  ResetScene;
+end;
+
+procedure TBufFlushOutputTests.TearDown;
+begin
+  BufFlushEnabled := false;
+end;
+
+{ BufFlush: ESC[?7l ... content ... ESC[?7h }
+procedure TBufFlushOutputTests.TestBufFlush_HasLineWrapBrackets;
+var S: AnsiString;
+begin
+  S := CaptureRawFlush(@BufFlush);
+  AssertTrue('starts with ESC[?7l', Copy(S, 1, 5) = #27'[?7l');
+  AssertTrue('ends with ESC[?7h',   Copy(S, Length(S) - 4, 5) = #27'[?7h');
+end;
+
+{ BufFlush: output contains cursor-position and cell character. }
+procedure TBufFlushOutputTests.TestBufFlush_ContainsCellChar;
+var S: AnsiString;
+begin
+  S := CaptureRawFlush(@BufFlush);
+  AssertTrue('contains cursor pos ESC[3;5H', Pos(#27'[3;5H', S) > 0);
+  AssertTrue('contains cell char A',          Pos('A', S) > 0);
+end;
+
+{ BufFlush: all dirty flags cleared after flush. }
+procedure TBufFlushOutputTests.TestBufFlush_ClearsDirty;
+begin
+  CaptureRawFlush(@BufFlush);
+  AssertFalse('Dirty[5,3] cleared after flush', Dirty[5, 3]);
+end;
+
+{ BufFlush must produce exactly the same bytes as V2b. }
+procedure TBufFlushOutputTests.TestBufFlush_SameBytesAsV2b;
+var BFOut, V2bOut: AnsiString;
+begin
+  BFOut := CaptureRawFlush(@BufFlush);
+  ResetScene;
+  V2bOut := CaptureRawFlush(@BufFlushV2b);
+  AssertEquals(BFOut, V2bOut);
+end;
+
+{ V3 uses a different cursor-first order but must still contain the char. }
+procedure TBufFlushOutputTests.TestV3_SingleCell_ContainsCellChar;
+var S: AnsiString;
+begin
+  S := CaptureTextFlush(@BufFlushV3);
+  AssertTrue('V3 contains cursor pos ESC[3;5H', Pos(#27'[3;5H', S) > 0);
+  AssertTrue('V3 contains cell char A',          Pos('A', S) > 0);
+end;
+
+{ V2b (single-write) must produce exactly the same bytes as V2. }
+procedure TBufFlushOutputTests.TestV2b_SameBytesAsV2;
+var V2Out, V2bOut: AnsiString;
+begin
+  V2Out := CaptureTextFlush(@BufFlushV2);
+  ResetScene;
+  V2bOut := CaptureRawFlush(@BufFlushV2b);
+  AssertEquals(V2Out, V2bOut);
+end;
+
+{ V3b (single-write) must produce exactly the same bytes as V3. }
+procedure TBufFlushOutputTests.TestV3b_SameBytesAsV3;
+var V3Out, V3bOut: AnsiString;
+begin
+  V3Out := CaptureTextFlush(@BufFlushV3);
+  ResetScene;
+  V3bOut := CaptureRawFlush(@BufFlushV3b);
+  AssertEquals(V3Out, V3bOut);
+end;
+
+{ BufFlush and V2 both skip the cursor-position sequence for the second of
+  two adjacent cells (consec-skip behaviour). }
+procedure TBufFlushOutputTests.TestV2_TwoAdjacentCells_SkipsSecondCursorPos;
+var BFOut, V2Out: AnsiString;
+begin
+  BufPutCell(6, 3, White, Black, 'B');
+  BFOut := CaptureRawFlush(@BufFlush);
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty, SizeOf(Dirty), 0);
+  BufPutCell(5, 3, White, Black, 'A');
+  BufPutCell(6, 3, White, Black, 'B');
+  V2Out := CaptureTextFlush(@BufFlushV2);
+  AssertTrue('BufFlush omits cursor pos for col 6', Pos(#27'[3;6H', BFOut) = 0);
+  AssertTrue('V2 omits cursor pos for col 6',       Pos(#27'[3;6H', V2Out) = 0);
+end;
+
+{ ------------------------------------------------------------------ }
 { Main                                                               }
 { ------------------------------------------------------------------ }
 
@@ -1467,6 +1621,7 @@ begin
   RegisterTest(TDialogTests);
   RegisterTest(TScreenOverlayTests);
   RegisterTest(TGameFlowTests);
+  RegisterTest(TBufFlushOutputTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
   Runner.Run;
