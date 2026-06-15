@@ -88,6 +88,10 @@ shell = """
 help  = "Build and run UGLI_2 unit tests"
 shell = "cd original && fpc -Fuuos -oUGLI_2_Test UGLI_2_Test.pp && ./UGLI_2_Test --all --format=plainnotiming"
 
+[tool.poe.tasks.bench-original]
+help  = "Build and run BufFlush benchmark (shows timing + visual correctness test)"
+shell = "cd original && fpc -Fuuos -oUGLI_2_Bench UGLI_2_Bench.pp && ./UGLI_2_Bench"
+
 [tool.poe.tasks.clean]
 help  = "Remove build artifacts"
 shell = """
