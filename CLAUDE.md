@@ -41,7 +41,8 @@ The plan's output is a committed spec file — not uncommitted notes.
 Write a spec file (`original/spec/<topic>.md` for Pascal work; an inline
 comment block for Python work where a separate file would be disproportionate).
 Every spec must contain:
-- A **status checklist** at the top — one line per deliverable, `✓` / `✗`.
+- A **status checklist** at the top — one line per deliverable, using GFM
+  syntax: `- [ ]` (not yet done) / `- [x]` (confirmed working).
 - A **"Done when:"** section at the bottom listing the acceptance criteria.
 
 Commit the spec alone, before any implementation code.
@@ -78,7 +79,7 @@ After every substantive commit to `original/`:
 |---|---|
 | `original/CHANGELOG.md` | Add entries to `[Unreleased]`; merge into existing category headings |
 | `original/CLAUDE.md` | Update if data structures, procedures, file layout, or `uses` clause changed |
-| Spec checklist | Mark items `✓` only after the user confirms the behaviour works |
+| Spec checklist | Mark items `- [x]` only after the user confirms the behaviour works |
 
 After a release (new git tag + `poe deploy`):
 
