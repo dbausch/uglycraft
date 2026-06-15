@@ -2,12 +2,12 @@
 
 ## Status
 
-- ✗ WBuf infrastructure moved from Variants.inc into Core.inc
-- ✗ `BufFlush` in Core.inc replaced with V2b algorithm
-- ✗ `UGLI_2.pp` opens `RawTTYFd` on startup, closes it at CleanUp
-- ✗ `TBufFlushOutputTests` updated to use `CaptureRawFlush(@BufFlush)`
-- ✗ `poe build-original` passes
-- ✗ `poe test-original` passes (119 tests)
+- ✓ WBuf infrastructure moved from Variants.inc into Core.inc
+- ✓ `BufFlush` in Core.inc replaced with V2b algorithm
+- ✓ `UGLI_2.pp` opens `RawTTYFd` on startup, closes it at CleanUp
+- ✓ `TBufFlushOutputTests` updated to use `CaptureRawFlush(@BufFlush)`
+- ✓ `poe build-original` passes
+- ✓ `poe test-original` passes (119 tests)
 
 ---
 
@@ -118,6 +118,6 @@ Rename / update:
 
 ## Done when
 
-- ✗ `poe build-original` succeeds with zero errors (commit: ___)
-- ✗ `poe test-original` exits 0, all 119 tests pass (commit: ___)
-- ✗ `poe run-original` plays normally at the new flush speed (manual check)
+- ✓ `poe build-original` succeeds with zero errors (commit: 82b563d)
+- ✓ `poe test-original` exits 0, all 119 tests pass (commit: 82b563d)
+- ✓ `poe run-original` plays normally at the new flush speed (manual check)
