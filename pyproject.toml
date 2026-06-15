@@ -88,6 +88,10 @@ shell = """
 help  = "Build and run UGLI_2 unit tests"
 shell = "cd original && fpc -Fuuos -oUGLI_2_Test UGLI_2_Test.pp && ./UGLI_2_Test --all --format=plainnotiming"
 
+[tool.poe.tasks.build-replay]
+help  = "Build the WBFlush replay debugging utility (UGLI_2_Replay)"
+shell = "cd original && fpc -Fuuos -oUGLI_2_Replay UGLI_2_Replay.pp"
+
 [tool.poe.tasks.bench-original]
 help  = "Build and run BufFlush benchmark (opens 80-column terminal for visual test; timing results print here after window closes)"
 shell = """
