@@ -89,8 +89,21 @@ help  = "Build and run UGLI_2 unit tests"
 shell = "cd original && fpc -Fuuos -oUGLI_2_Test UGLI_2_Test.pp && ./UGLI_2_Test --all --format=plainnotiming"
 
 [tool.poe.tasks.bench-original]
-help  = "Build and run BufFlush benchmark (shows timing + visual correctness test)"
-shell = "cd original && fpc -Fuuos -oUGLI_2_Bench UGLI_2_Bench.pp && ./UGLI_2_Bench"
+help  = "Build and run BufFlush benchmark (opens 80-column terminal for visual test; timing results print here after window closes)"
+shell = """
+  (cd original && fpc -Fuuos -oUGLI_2_Bench UGLI_2_Bench.pp) || exit 1
+  TMP=$(mktemp)
+  if [ -n "${TERMINAL}" ]; then
+    ${TERMINAL} original/UGLI_2_Bench --output "$TMP"
+  else
+    kitty -o font_family="Liberation Mono" -o font_size=16 \
+          -o remember_window_size=false \
+          -o initial_window_height=25c -o initial_window_width=80c \
+          original/UGLI_2_Bench --output "$TMP"
+  fi
+  cat "$TMP"
+  rm -f "$TMP"
+"""
 
 [tool.poe.tasks.clean]
 help  = "Remove build artifacts"

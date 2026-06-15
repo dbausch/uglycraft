@@ -37,6 +37,7 @@ const
   ItemCount  = 10;
 
 {$I UGLI_2_Core.inc}
+{$I UGLI_2_BufFlush_Variants.inc}
 
 { ------------------------------------------------------------------ }
 { Timing                                                             }
@@ -50,111 +51,26 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
-{ V2: skip ESC[r;cH when cursor is already at the next cell         }
-{ ------------------------------------------------------------------ }
-
-procedure BufFlushV2;
-const AnsiClr: array[0..7] of Byte = (0, 4, 2, 6, 1, 5, 3, 7);
-var Col, Row, LastFg, LastBg, FgCode, BgCode, LastCol, LastRow: Integer;
-begin
-  if not BufFlushEnabled then
-    begin
-      for Col := 1 to ScreenW do
-        for Row := 1 to ScreenH do
-          Dirty[Col, Row] := false;
-      Exit;
-    end;
-  Write(TTY, #27'[?7l');
-  LastFg := -1; LastBg := -1; LastCol := -1; LastRow := -1;
-  for Row := 1 to ScreenH do
-    for Col := 1 to ScreenW do
-      if Dirty[Col, Row] then
-        begin
-          if (Screen[Col, Row].Fg <> LastFg) or (Screen[Col, Row].Bg <> LastBg) then
-            begin
-              if Screen[Col, Row].Fg < 8 then
-                FgCode := 30 + AnsiClr[Screen[Col, Row].Fg]
-              else
-                FgCode := 90 + AnsiClr[Screen[Col, Row].Fg - 8];
-              BgCode := 40 + AnsiClr[Screen[Col, Row].Bg and 7];
-              Write(TTY, #27'[0;', FgCode, ';', BgCode, 'm');
-              LastFg := Screen[Col, Row].Fg;
-              LastBg := Screen[Col, Row].Bg;
-            end;
-          if (Col <> LastCol + 1) or (Row <> LastRow) then
-            Write(TTY, #27'[', Row, ';', Col, 'H');
-          Write(TTY, Screen[Col, Row].Ch);
-          LastCol := Col;
-          LastRow := Row;
-          Dirty[Col, Row] := false;
-        end;
-  Write(TTY, #27'[?7h');
-  Flush(TTY);
-end;
-
-{ ------------------------------------------------------------------ }
-{ V3: per row, position once at first dirty cell, write span        }
-{ Clean cells inside the span are still correct — Screen always     }
-{ holds the current display state.                                   }
-{ ------------------------------------------------------------------ }
-
-procedure BufFlushV3;
-const AnsiClr: array[0..7] of Byte = (0, 4, 2, 6, 1, 5, 3, 7);
-var Col, Row, LastFg, LastBg, FgCode, BgCode, First, Last: Integer;
-begin
-  if not BufFlushEnabled then
-    begin
-      for Col := 1 to ScreenW do
-        for Row := 1 to ScreenH do
-          Dirty[Col, Row] := false;
-      Exit;
-    end;
-  Write(TTY, #27'[?7l');
-  LastFg := -1; LastBg := -1;
-  for Row := 1 to ScreenH do
-    begin
-      First := 0; Last := 0;
-      for Col := 1 to ScreenW do
-        if Dirty[Col, Row] then
-          begin
-            if First = 0 then First := Col;
-            Last := Col;
-          end;
-      if First = 0 then Continue;
-      Write(TTY, #27'[', Row, ';', First, 'H');
-      for Col := First to Last do
-        begin
-          if (Screen[Col, Row].Fg <> LastFg) or (Screen[Col, Row].Bg <> LastBg) then
-            begin
-              if Screen[Col, Row].Fg < 8 then
-                FgCode := 30 + AnsiClr[Screen[Col, Row].Fg]
-              else
-                FgCode := 90 + AnsiClr[Screen[Col, Row].Fg - 8];
-              BgCode := 40 + AnsiClr[Screen[Col, Row].Bg and 7];
-              Write(TTY, #27'[0;', FgCode, ';', BgCode, 'm');
-              LastFg := Screen[Col, Row].Fg;
-              LastBg := Screen[Col, Row].Bg;
-            end;
-          Write(TTY, Screen[Col, Row].Ch);
-          Dirty[Col, Row] := false;
-        end;
-    end;
-  Write(TTY, #27'[?7h');
-  Flush(TTY);
-end;
-
-{ ------------------------------------------------------------------ }
 { Scenario helpers                                                    }
 { ------------------------------------------------------------------ }
 
 procedure FillTestPattern;
 { Representative game screen: border, HUD, player, enemy, walls,
   and a row of item chars covering 1-byte, 2-byte, and 3-byte UTF-8. }
-var Col: Integer;
+var Col, Row: Integer;
 begin
   FillChar(Screen,  SizeOf(Screen),  0);
   FillChar(Dirty,   SizeOf(Dirty),   0);
   FillChar(Blocked, SizeOf(Blocked), 0);
+  { Pre-fill every cell with a space so span-write variants never emit
+    zero bytes for an undrawn cell and cause cursor-position drift. }
+  for Col := 1 to ScreenW do
+    for Row := 1 to ScreenH do
+      begin
+        Screen[Col, Row].Ch := ' ';
+        Screen[Col, Row].Fg := FieldBg;
+        Screen[Col, Row].Bg := FieldBg;
+      end;
   Level := 3; Score := 12345; Lives := 7; ItemNo := 3;
   PausesRemaining := 18; BlocksRemaining := 1980;
   InitBorder;
@@ -227,8 +143,7 @@ end;
 const Warmup = 5; Reps = 30;
 
 type
-  TFlushProc = procedure;
-  TResult    = record Avg, Best, Worst: Int64; end;
+  TResult = record Avg, Best, Worst: Int64; end;
 
 function RunBench(FlushProc: TFlushProc): TResult;
 var Index: Integer; T0, T1, Total: Int64;
@@ -251,26 +166,79 @@ end;
 { Results storage — printed after exiting alternate screen. }
 type TScenario = record
   Name: String[40];
-  R1, R2, R3: TResult;
+  R1, R2, R3, R4, R5: TResult;
 end;
 
 const NumScenarios = 3;
 var
   Scenarios: array[1..NumScenarios] of TScenario;
-  BenchS: Integer;  { loop variable for printing results }
 
-procedure PrintResult(const VName: String; const R: TResult);
+procedure PrintResult(var F: Text; const VName: String; const R: TResult);
 begin
-  WriteLn(Format('  %-24s  avg=%5d  min=%5d  max=%5d  us',
+  WriteLn(F, Format('  %-24s  avg=%5d  min=%5d  max=%5d  us',
     [VName, R.Avg, R.Best, R.Worst]));
+end;
+
+procedure PrintTimingResults(var F: Text);
+var S: Integer;
+begin
+  WriteLn(F);
+  WriteLn(F, 'UGLI_2_Bench  —  BufFlush variants  (', Reps, ' reps, times in microseconds)');
+  WriteLn(F, '  TTY output goes to kernel buffer; Flush() blocks until buffer drained.');
+  WriteLn(F);
+  WriteLn(F, '  Variants:');
+  WriteLn(F, '    V1   current: ESC[r;cH before every dirty cell; Write+Flush');
+  WriteLn(F, '    V2   consec-skip: omit ESC[r;cH when cursor already adjacent');
+  WriteLn(F, '    V3   row-span: one ESC[r;cH per row at first dirty col; write span');
+  WriteLn(F, '    V2b  consec-skip + single fpWrite syscall');
+  WriteLn(F, '    V3b  row-span + single fpWrite syscall');
+  WriteLn(F);
+  for S := 1 to NumScenarios do
+    begin
+      WriteLn(F, Scenarios[S].Name);
+      PrintResult(F, 'V1  (per-cell, current)', Scenarios[S].R1);
+      PrintResult(F, 'V2  (consec-skip)',        Scenarios[S].R2);
+      PrintResult(F, 'V3  (row-span)',            Scenarios[S].R3);
+      PrintResult(F, 'V2b (consec-skip+1write)', Scenarios[S].R4);
+      PrintResult(F, 'V3b (row-span+1write)',     Scenarios[S].R5);
+      WriteLn(F);
+    end;
+end;
+
+{ Show a full-screen render of FlushProc; wait for Enter before continuing. }
+procedure ShowVisual(FlushProc: TFlushProc; const VName, VDesc, Prompt: String);
+begin
+  Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
+  MarkAllDirty;
+  FlushProc();
+  { Reset SGR before caption so the last cell's colour doesn't bleed. }
+  Write(TTY, #27'[0m'#27'[17;1H'#27'[0;97;40m');
+  Write(TTY, ' Variant: ', VName, '  (', VDesc, ')                   ');
+  Write(TTY, #27'[18;1H');
+  Write(TTY, ' Row 14: | : * = (1-byte)  Γ Φ (2-byte)  ≡ ♦ ⌂ ☼ ☺ (3-byte)   ');
+  Write(TTY, #27'[19;1H');
+  Write(TTY, ' Verify: border intact, colours correct, chars at right columns. ');
+  Write(TTY, #27'[20;1H');
+  Write(TTY, ' ', Prompt, '                                                        ');
+  Write(TTY, #27'[?25h');
+  Flush(TTY);
+  ReadLn;
+  Write(TTY, #27'[?25l');
+  Flush(TTY);
 end;
 
 { ------------------------------------------------------------------ }
 { Main                                                               }
 { ------------------------------------------------------------------ }
+var OutPath: String; OutFile: Text;
 begin
+  OutPath := '';
+  if (ParamCount >= 2) and (ParamStr(1) = '--output') then
+    OutPath := ParamStr(2);
+
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
+  RawTTYFd := fpOpen('/dev/tty', O_WRONLY);
   BufFlushEnabled := true;
 
   { Enter alternate screen — renders don't touch the main scrollback. }
@@ -285,6 +253,8 @@ begin
   Scenarios[1].R1 := RunBench(@BufFlush);
   Scenarios[1].R2 := RunBench(@BufFlushV2);
   Scenarios[1].R3 := RunBench(@BufFlushV3);
+  Scenarios[1].R4 := RunBench(@BufFlushV2b);
+  Scenarios[1].R5 := RunBench(@BufFlushV3b);
 
   { --- Scenario 2: border only ---------------------------------------- }
   Scenarios[2].Name := 'Border only (~197 dirty)';
@@ -292,6 +262,8 @@ begin
   Scenarios[2].R1 := RunBench(@BufFlush);
   Scenarios[2].R2 := RunBench(@BufFlushV2);
   Scenarios[2].R3 := RunBench(@BufFlushV3);
+  Scenarios[2].R4 := RunBench(@BufFlushV2b);
+  Scenarios[2].R5 := RunBench(@BufFlushV3b);
 
   { --- Scenario 3: sparse --------------------------------------------- }
   Scenarios[3].Name := 'Sparse (50 random dirty)';
@@ -300,44 +272,29 @@ begin
   Scenarios[3].R1 := RunBench(@BufFlush);
   Scenarios[3].R2 := RunBench(@BufFlushV2);
   Scenarios[3].R3 := RunBench(@BufFlushV3);
+  Scenarios[3].R4 := RunBench(@BufFlushV2b);
+  Scenarios[3].R5 := RunBench(@BufFlushV3b);
 
-  { --- Visual correctness test ---------------------------------------- }
-  { Final clean render using V3 — user checks the display before we exit. }
-  Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
-  MarkAllDirty;
-  BufFlushV3;
-  { Caption at row 17 (safe below item row at 14) }
-  Write(TTY, #27'[17;1H'#27'[0;97;40m');
-  Write(TTY, ' Row 14: | : * = (1-byte)  Γ Φ (2-byte)  ≡ ♦ ⌂ ☼ ☺ (3-byte)   ');
-  Write(TTY, #27'[18;1H');
-  Write(TTY, ' Verify: border intact, colours correct, chars at right columns. ');
-  Write(TTY, #27'[19;1H');
-  Write(TTY, ' Press Enter to exit benchmark and see timing results.           ');
-  Write(TTY, #27'[?25h');
-  Flush(TTY);
-  ReadLn;
+  { --- Visual correctness test (one variant per screen) --------------- }
+  ShowVisual(@BufFlush,    'V1',  'per-cell ESC[r;cH + Write/Flush',     'Press Enter to see V2...');
+  ShowVisual(@BufFlushV2,  'V2',  'consec-skip: omit ESC[r;cH if adjacent', 'Press Enter to see V3...');
+  ShowVisual(@BufFlushV3,  'V3',  'row-span: position once per row',      'Press Enter to see V2b...');
+  ShowVisual(@BufFlushV2b, 'V2b', 'consec-skip + single fpWrite',         'Press Enter to see V3b...');
+  ShowVisual(@BufFlushV3b, 'V3b', 'row-span + single fpWrite',            'Press Enter to close window and see timing.');
 
   { Exit alternate screen — main buffer reappears. }
   Write(TTY, #27'[?1049l'#27'[?25l');
   Flush(TTY);
+  fpClose(RawTTYFd);
   Close(TTY);
 
-  { Print timing results to stdout (now on main screen / scrollback). }
-  WriteLn;
-  WriteLn('UGLI_2_Bench  —  BufFlush variants  (', Reps, ' reps, times in microseconds)');
-  WriteLn('  TTY output goes to kernel buffer; Flush() blocks until buffer drained.');
-  WriteLn;
-  WriteLn('  Variants:');
-  WriteLn('    V1  current: ESC[r;cH before every dirty cell');
-  WriteLn('    V2  consec-skip: omit ESC[r;cH when cursor already adjacent');
-  WriteLn('    V3  row-span: one ESC[r;cH per row at first dirty col; write span');
-  WriteLn;
-  for BenchS := 1 to NumScenarios do
+  { Print timing results to stdout and, if --output given, to a file. }
+  PrintTimingResults(Output);
+  if OutPath <> '' then
     begin
-      WriteLn(Scenarios[BenchS].Name);
-      PrintResult('V1 (per-cell, current)', Scenarios[BenchS].R1);
-      PrintResult('V2 (consec-skip)',        Scenarios[BenchS].R2);
-      PrintResult('V3 (row-span)',            Scenarios[BenchS].R3);
-      WriteLn;
+      Assign(OutFile, OutPath);
+      ReWrite(OutFile);
+      PrintTimingResults(OutFile);
+      Close(OutFile);
     end;
 end.
