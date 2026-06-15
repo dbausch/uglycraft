@@ -1501,6 +1501,9 @@ type
     procedure TestV2b_SameBytesAsV2;
     procedure TestV3b_SameBytesAsV3;
     procedure TestV2_TwoAdjacentCells_SkipsSecondCursorPos;
+    procedure TestBufFlush_NonConsecCellsEmitCursorPos;
+    procedure TestBufFlush_RowJumpEmitsCursorPos;
+    procedure TestBufFlush_HUDAfterInteriorEmitsCursorPos;
   end;
 
 procedure TBufFlushOutputTests.ResetScene;
@@ -1598,6 +1601,46 @@ begin
   V2Out := CaptureTextFlush(@BufFlushV2);
   AssertTrue('BufFlush omits cursor pos for col 6', Pos(#27'[3;6H', BFOut) = 0);
   AssertTrue('V2 omits cursor pos for col 6',       Pos(#27'[3;6H', V2Out) = 0);
+end;
+
+{ Gap cell between two dirty cells — cursor position must be emitted for
+  the second one even though it is only 2 cols away from the first. }
+procedure TBufFlushOutputTests.TestBufFlush_NonConsecCellsEmitCursorPos;
+var S: AnsiString;
+begin
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty, SizeOf(Dirty), 0);
+  BufPutCell(5, 3, White, Black, 'A');  { col 5 — first dirty }
+  BufPutCell(7, 3, White, Black, 'C');  { col 7 — non-adjacent (col 6 clean) }
+  S := CaptureRawFlush(@BufFlush);
+  AssertTrue('non-consec: cursor pos ESC[3;7H must be present', Pos(#27'[3;7H', S) > 0);
+end;
+
+{ Dirty cell at end of a row followed by dirty cell at start of the next
+  row — cursor position must always be emitted on the row change. }
+procedure TBufFlushOutputTests.TestBufFlush_RowJumpEmitsCursorPos;
+var S: AnsiString;
+begin
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty, SizeOf(Dirty), 0);
+  BufPutCell(80, 5, Red,   Black, 'X');  { last col of row 5 }
+  BufPutCell(1,  6, White, Black, 'Y');  { first col of row 6 }
+  S := CaptureRawFlush(@BufFlush);
+  AssertTrue('row-jump: cursor pos ESC[6;1H must be present', Pos(#27'[6;1H', S) > 0);
+end;
+
+{ Interior dirty cell (row 10) followed by HUD dirty cell (lives counter,
+  row 20) — cursor position must be emitted for the HUD cell. }
+procedure TBufFlushOutputTests.TestBufFlush_HUDAfterInteriorEmitsCursorPos;
+var S: AnsiString;
+begin
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty, SizeOf(Dirty), 0);
+  BufPutCell(40, 10, Red,   Black, 'W');  { interior cell }
+  BufPutCell(3,  20, White, Red,   'L');  { lives counter start }
+  S := CaptureRawFlush(@BufFlush);
+  AssertTrue('HUD after interior: cursor pos ESC[20;3H present', Pos(#27'[20;3H', S) > 0);
+  AssertTrue('HUD after interior: char L written', Pos('L', S) > 0);
 end;
 
 { ------------------------------------------------------------------ }
