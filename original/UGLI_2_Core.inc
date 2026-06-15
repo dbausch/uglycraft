@@ -45,6 +45,34 @@ var
   YesKey, NoKey: set of Byte;
   TTYFd           : Integer;   { /dev/tty fd for raw key reads }
   SavedTio, RawTio: Termios;   { saved normal and raw terminal states }
+  RawTTYFd        : cint = -1; { /dev/tty fd for single-write BufFlush }
+
+const MaxWBufSize = 65536;
+
+var
+  WBuf   : array[0..MaxWBufSize - 1] of Byte;
+  WBufPos: Integer = 0;
+
+procedure WB(const S: AnsiString);
+var I: Integer;
+begin
+  for I := 1 to Length(S) do
+    begin WBuf[WBufPos] := Byte(S[I]); Inc(WBufPos); end;
+end;
+
+procedure WBCh(const S: ShortString);
+var I: Integer;
+begin
+  for I := 1 to Length(S) do
+    begin WBuf[WBufPos] := Byte(S[I]); Inc(WBufPos); end;
+end;
+
+procedure WBInt(N: Integer);
+var S: String[12];
+begin Str(N, S); WBCh(S); end;
+
+procedure WBFlush;
+begin fpWrite(RawTTYFd, WBuf[0], WBufPos); WBufPos := 0; end;
 
 resourcestring
   { Item names — parallel to Items[1..10] }
@@ -153,7 +181,7 @@ procedure BufFlush;
 const
   AnsiClr: array[0..7] of Byte = (0, 4, 2, 6, 1, 5, 3, 7);
 var
-  Col, Row, LastFg, LastBg, FgCode, BgCode: Integer;
+  Col, Row, LastFg, LastBg, FgCode, BgCode, LastCol, LastRow: Integer;
 begin
   if not BufFlushEnabled then
     begin
@@ -162,9 +190,9 @@ begin
           Dirty[Col, Row] := false;
       Exit;
     end;
-  Write(TTY, #27'[?7l');
-  LastFg := -1;
-  LastBg := -1;
+  WBufPos := 0;
+  WB(#27'[?7l');
+  LastFg := -1; LastBg := -1; LastCol := -1; LastRow := -1;
   for Row := 1 to ScreenH do
     for Col := 1 to ScreenW do
       if Dirty[Col, Row] then
@@ -175,17 +203,20 @@ begin
                 FgCode := 30 + AnsiClr[Screen[Col, Row].Fg]
               else
                 FgCode := 90 + AnsiClr[Screen[Col, Row].Fg - 8];
-              BgCode := 40 + AnsiClr[Screen[Col, Row].Bg];
-              Write(TTY, #27'[0;', FgCode, ';', BgCode, 'm');
+              BgCode := 40 + AnsiClr[Screen[Col, Row].Bg and 7];
+              WB(#27'[0;'); WBInt(FgCode); WB(';'); WBInt(BgCode); WB('m');
               LastFg := Screen[Col, Row].Fg;
               LastBg := Screen[Col, Row].Bg;
             end;
-          Write(TTY, #27'[', Row, ';', Col, 'H');
-          Write(TTY, Screen[Col, Row].Ch);
+          if (Col <> LastCol + 1) or (Row <> LastRow) then
+            begin WB(#27'['); WBInt(Row); WB(';'); WBInt(Col); WB('H'); end;
+          WBCh(Screen[Col, Row].Ch);
+          LastCol := Col;
+          LastRow := Row;
           Dirty[Col, Row] := false;
         end;
-  Write(TTY, #27'[?7h');
-  Flush(TTY);
+  WB(#27'[?7h');
+  WBFlush;
 end;
 
 procedure BufDesaturate;

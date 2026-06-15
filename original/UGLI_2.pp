@@ -72,7 +72,8 @@ begin
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
   MyCursorOff;
-  TTYFd := fpOpen('/dev/tty', O_RDONLY);
+  TTYFd    := fpOpen('/dev/tty', O_RDONLY);
+  RawTTYFd := fpOpen('/dev/tty', O_WRONLY);
   tcgetattr(TTYFd, SavedTio);
   Tio := SavedTio;
   Tio.c_lflag := Tio.c_lflag and not (ICANON or ECHO or ISIG);
@@ -135,6 +136,7 @@ PlayAgain:
 CleanUp:
   tcsetattr(TTYFd, TCSANOW, SavedTio);
   fpClose(TTYFd);
+  fpClose(RawTTYFd);
   Write(TTY, #27'[0m'); Flush(TTY);
   Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
   MyCursorOn;
