@@ -120,4 +120,4 @@ Rename / update:
 
 - ✓ `poe build-original` succeeds with zero errors (commit: 82b563d)
 - ✓ `poe test-original` exits 0, all 119 tests pass (commit: 82b563d)
-- ✓ `poe run-original` plays normally at the new flush speed (manual check)
+- ✗ `poe run-original` plays normally at the new flush speed (manual check — must be confirmed explicitly by the user, not inferred from exit code)
