@@ -71,6 +71,11 @@ poe build-original   # zero compiler errors
 poe test-original    # all tests pass, exit 0
 ```
 
+Spec items labelled "manual check" or "user acceptance" may only be marked ✓
+after the user has **explicitly stated in a message** that the behaviour works
+correctly. An exit code of 0 or a process completing without error is not
+confirmation. Never infer acceptance from tooling output alone.
+
 ### 6 — Maintain living documents
 
 After every substantive commit to `original/`:
