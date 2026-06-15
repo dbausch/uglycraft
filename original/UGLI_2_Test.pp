@@ -26,6 +26,7 @@ const
   KeyF3 = 61;
   KeyF4 = 62;
   KeyF5 = 63;
+  KeyF6 = 64;
   HighScoreFileName = 'UGLI.HSC';
   License = 'Released under the terms of the GNU GPLv3';
   Black        = 0;

@@ -93,6 +93,7 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `RawTTYFd` | cint | Write-only `/dev/tty` file descriptor (single-write terminal output via `fpWrite` in `BufFlush`) |
 | `WBuf[0..65535]` | `array of Byte` | Output byte buffer for `BufFlush`; filled by `WB`/`WBCh`/`WBInt`, flushed by `WBFlush` |
 | `WBufPos` | Integer | Current write position in `WBuf` |
+| `DumpFd` | cint | When ≥ 0, `WBFlush` mirrors each write to this fd with a `0x00` sentinel; toggled by F6 via `ToggleDump`; closed at CleanUp |
 
 ## Key constants (`UGLI_2.pp`)
 
@@ -103,6 +104,7 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `KeyPause` / `KeySlower` / `KeyFaster` | 112 / 79 / 71 | P / End / Home |
 | `KeyEscape` / `KeySpace` | 27 / 32 | Escape / Space |
 | `KeyF1`–`KeyF5` | 59–63 | Function keys F1–F5 |
+| `KeyF6` | 64 | F6 — toggle WBFlush dump recording (`ESC[17~` in xterm/kitty) |
 | `BlocksRemaining` | init 2000 | Block-placement budget |
 | `HighScoreFileName` | `'UGLI.HSC'` | High score file path |
 

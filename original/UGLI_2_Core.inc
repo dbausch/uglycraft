@@ -52,6 +52,7 @@ const MaxWBufSize = 65536;
 var
   WBuf   : array[0..MaxWBufSize - 1] of Byte;
   WBufPos: Integer = 0;
+  DumpFd : cint    = -1;
 
 procedure WB(const S: AnsiString);
 var I: Integer;
@@ -72,7 +73,26 @@ var S: String[12];
 begin Str(N, S); WBCh(S); end;
 
 procedure WBFlush;
-begin fpWrite(RawTTYFd, WBuf[0], WBufPos); WBufPos := 0; end;
+var NullByte: Byte;
+begin
+  fpWrite(RawTTYFd, WBuf[0], WBufPos);
+  if DumpFd >= 0 then
+    begin
+      fpWrite(DumpFd, WBuf[0], WBufPos);
+      NullByte := 0;
+      fpWrite(DumpFd, NullByte, 1);
+    end;
+  WBufPos := 0;
+end;
+
+procedure ToggleDump;
+const DumpFileName = '/tmp/ugli_dump.bin';
+begin
+  if DumpFd >= 0 then
+    begin fpClose(DumpFd); DumpFd := -1; end
+  else
+    DumpFd := fpOpen(DumpFileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+end;
 
 resourcestring
   { Item names — parallel to Items[1..10] }
@@ -485,6 +505,7 @@ begin
               13: GetKey := Chr(KeyF3);
               14: GetKey := Chr(KeyF4);
               15: GetKey := Chr(KeyF5);
+              17: GetKey := Chr(KeyF6);
             else
               GetKey := #0;
             end;
@@ -1387,6 +1408,7 @@ begin
             ShowStory;
             Redraw;
           end;
+        KeyF6: ToggleDump;
       end; {case}
     end;
   EnemyTick := (EnemyTick + 1) mod 2;

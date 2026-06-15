@@ -27,6 +27,7 @@ const
   KeyF3 = 61;
   KeyF4 = 62;
   KeyF5 = 63;
+  KeyF6 = 64;
   HighScoreFileName = 'UGLI.HSC';
   License = 'Released under the terms of the GNU GPLv3';
   { Color constants (replaces CRT unit definitions) }
@@ -136,6 +137,7 @@ PlayAgain:
 CleanUp:
   tcsetattr(TTYFd, TCSANOW, SavedTio);
   fpClose(TTYFd);
+  if DumpFd >= 0 then fpClose(DumpFd);
   fpClose(RawTTYFd);
   Write(TTY, #27'[0m'); Flush(TTY);
   Write(TTY, #27'[2J'#27'[H'); Flush(TTY);

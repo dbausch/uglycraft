@@ -123,6 +123,20 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   (V2 consec-skip, V3 row-span, V2b/V3b single-write variants) used by the
   performance benchmark and correctness tests.
 
+### Debugging
+
+- `WBFlush` now mirrors each write to a dump file when `DumpFd ≥ 0`, appending
+  a `0x00` sentinel byte after each chunk.  Press **F6** in-game to toggle
+  recording on/off; dump is written to `/tmp/ugli_dump.bin` (truncated at start
+  of each recording).  The dump file enables offline bisection of rendering
+  artefacts independently of the game session.
+- `UGLI_2_Replay.pp` — standalone replay utility: reads a zero-byte-delimited
+  dump file and writes the first N chunks to stdout.
+  Usage: `./UGLI_2_Replay <dump_file> [n_writes]`
+- `GetKey` extended with `ESC[17~` → `KeyF6` (xterm/kitty F6 encoding in the
+  numeric-sequence case).  `KeyF6 = 64` added to the const block.
+- `poe build-replay` task: compiles `UGLI_2_Replay.pp`.
+
 ### Testing
 
 - fpcunit test suite (`UGLI_2_Test.pp`): 119 unit tests across twelve classes
