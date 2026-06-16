@@ -1653,7 +1653,7 @@ type
   published
     procedure TestHelpText_ContainsVersion;
     procedure TestHelpText_ContainsHelpFlag;
-    procedure TestHelpText_ContainsStderrLog;
+    procedure TestHelpText_ContainsLog;
     procedure TestHelpText_ContainsSkipIntro;
     procedure TestHelpText_ContainsLevel;
   end;
@@ -1671,9 +1671,9 @@ begin
   AssertTrue('help text contains -h',     Pos('-h',     S) > 0);
 end;
 
-procedure TCliHelpTests.TestHelpText_ContainsStderrLog;
+procedure TCliHelpTests.TestHelpText_ContainsLog;
 begin
-  AssertTrue('help text contains --stderr-log', Pos('--stderr-log', CLIHelpText) > 0);
+  AssertTrue('help text contains --log', Pos('--log', CLIHelpText) > 0);
 end;
 
 procedure TCliHelpTests.TestHelpText_ContainsSkipIntro;
@@ -1687,11 +1687,11 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
-{ TStderrSinkTests — verify InitStderrSink routes fd 2 correctly    }
+{ TLogTests — verify OpenLog routes fd 2 and Log() writes entries   }
 { ------------------------------------------------------------------ }
 
 type
-  TStderrSinkTests = class(TTestCase)
+  TLogTests = class(TTestCase)
   private
     FSavedErr: cint;
     FLogFile : string;
@@ -1699,19 +1699,26 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
-    procedure TestSink_NullSilences;
-    procedure TestSink_LogFileCaptures;
-    procedure TestSink_LogFileTruncates;
+    procedure TestLog_NullSilences;
+    procedure TestLog_FileCaptures;
+    procedure TestLog_FileTruncates;
+    procedure TestLog_Writes;
+    procedure TestLog_NoopWithoutFile;
   end;
 
-procedure TStderrSinkTests.SetUp;
+procedure TLogTests.SetUp;
 begin
   FSavedErr := fpDup(2);
-  FLogFile  := '/tmp/ugli_test_stderr.tmp';
+  FLogFile  := '/tmp/ugli_test_log.tmp';
 end;
 
-procedure TStderrSinkTests.TearDown;
+procedure TLogTests.TearDown;
 begin
+  if LogFd >= 0 then
+    begin
+      fpClose(LogFd);
+      LogFd := -1;
+    end;
   if FSavedErr >= 0 then
     begin
       fpDup2(FSavedErr, 2);
@@ -1721,29 +1728,29 @@ begin
   fpUnlink(PChar(FLogFile));
 end;
 
-procedure TStderrSinkTests.TestSink_NullSilences;
-{ Verify that fd 2 becomes a character device (/dev/null) after InitStderrSink(''). }
+procedure TLogTests.TestLog_NullSilences;
+{ Verify that fd 2 becomes a character device (/dev/null) after OpenLog(''). }
 const
   ModeTypeMask = $F000;   { S_IFMT }
   CharDevMode  = $2000;   { S_IFCHR }
 var St: Stat;
 begin
-  InitStderrSink('');
+  OpenLog('');
   AssertEquals('fstat on fd 2 succeeds', 0, fpFstat(2, St));
   AssertEquals('fd 2 is a character device',
     CharDevMode, St.st_mode and ModeTypeMask);
 end;
 
-procedure TStderrSinkTests.TestSink_LogFileCaptures;
+procedure TLogTests.TestLog_FileCaptures;
 { Verify that bytes written to fd 2 appear in the log file. }
-const TestStr = 'ugli-stderr-test';
+const TestStr = 'ugli-log-test';
 var
   Fd    : cint;
   Buf   : array[0..63] of Byte;
   N     : SizeInt;
   Actual: string;
 begin
-  InitStderrSink(FLogFile);
+  OpenLog(FLogFile);
   fpWrite(2, TestStr[1], Length(TestStr));
   Fd := fpOpen(FLogFile, O_RDONLY);
   AssertTrue('log file opened', Fd >= 0);
@@ -1754,9 +1761,8 @@ begin
   AssertEquals(TestStr, Actual);
 end;
 
-procedure TStderrSinkTests.TestSink_LogFileTruncates;
-{ Verify that a second call to InitStderrSink on the same path truncates
-  the file, so only the second batch of bytes is present. }
+procedure TLogTests.TestLog_FileTruncates;
+{ Verify that a second call to OpenLog on the same path truncates the file. }
 const First = 'ABCDE'; Second = 'XY';
 var
   Fd    : cint;
@@ -1764,9 +1770,9 @@ var
   N     : SizeInt;
   Actual: string;
 begin
-  InitStderrSink(FLogFile);
+  OpenLog(FLogFile);
   fpWrite(2, First[1], Length(First));
-  InitStderrSink(FLogFile);          { re-opens with O_TRUNC }
+  OpenLog(FLogFile);                  { re-opens with O_TRUNC }
   fpWrite(2, Second[1], Length(Second));
   Fd := fpOpen(FLogFile, O_RDONLY);
   AssertTrue('log file re-opened after truncate', Fd >= 0);
@@ -1775,6 +1781,36 @@ begin
   SetLength(Actual, N);
   if N > 0 then Move(Buf[0], Actual[1], N);
   AssertEquals('second write overwrites first', Second, Actual);
+end;
+
+procedure TLogTests.TestLog_Writes;
+{ Verify that Log() appends a timestamped line containing the message. }
+const Marker = 'hello-log-test';
+var
+  Fd    : cint;
+  Buf   : array[0..255] of Byte;
+  N     : SizeInt;
+  Actual: string;
+begin
+  OpenLog(FLogFile);
+  Log(Marker);
+  Fd := fpOpen(FLogFile, O_RDONLY);
+  AssertTrue('log file openable after Log()', Fd >= 0);
+  N := fpRead(Fd, Buf[0], SizeOf(Buf));
+  fpClose(Fd);
+  SetLength(Actual, N);
+  if N > 0 then Move(Buf[0], Actual[1], N);
+  AssertTrue('log contains marker text', Pos(Marker, Actual) > 0);
+  AssertTrue('log contains two-space separator before marker',
+    Pos('  ' + Marker, Actual) > 0);
+end;
+
+procedure TLogTests.TestLog_NoopWithoutFile;
+{ Verify that Log() is a no-op (no crash, LogFd stays -1) when no log file. }
+begin
+  OpenLog('');
+  Log('should not crash or write');
+  AssertEquals('LogFd is -1 when no log file', -1, LogFd);
 end;
 
 { ------------------------------------------------------------------ }
@@ -1800,7 +1836,7 @@ begin
   RegisterTest(TGameFlowTests);
   RegisterTest(TBufFlushOutputTests);
   RegisterTest(TCliHelpTests);
-  RegisterTest(TStderrSinkTests);
+  RegisterTest(TLogTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
   Runner.Run;

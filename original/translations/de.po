@@ -217,12 +217,12 @@ msgid "Show this help and exit."
 msgstr "Diese Hilfe anzeigen und beenden."
 
 #: ugli_2:sclilog1
-msgid "Route ALSA/PortAudio messages to <file> (default: /dev/null)."
-msgstr "ALSA/PortAudio-Meldungen in <Datei> schreiben (Standard: /dev/null)."
+msgid "Write a structured log (timestamp, version, flags, game events) to <file>."
+msgstr "Strukturiertes Protokoll (Zeitstempel, Version, Optionen, Spielereignisse) in <Datei> schreiben."
 
 #: ugli_2:sclilog2
-msgid "Useful when diagnosing sound hardware issues."
-msgstr "Nützlich zur Diagnose von Soundhardware-Problemen."
+msgid "Library diagnostic messages (ALSA/PortAudio) are also routed there."
+msgstr "Bibliotheks-Diagnosemeldungen (ALSA/PortAudio) werden ebenfalls dorthin geleitet."
 
 #: ugli_2:scliskipintro
 msgid "Skip the animated intro; still shows the item-descriptions screen."

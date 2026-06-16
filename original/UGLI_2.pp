@@ -72,7 +72,10 @@ var
 begin
   LoadTranslation;
   ParseCLI;
-  InitStderrSink(StderrLog);
+  OpenLog(LogFile);
+  Log('started UGLI 2 v' + Version + '/' + Release);
+  Log('flags: skip-intro=' + BoolToStr(SkipIntro, 'true', 'false')
+    + ' start-level=' + IntToStr(StartAtLevel));
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
   MyCursorOff;
@@ -86,6 +89,7 @@ begin
   tcsetattr(TTYFd, TCSANOW, Tio);
   RawTio := Tio;
   Init;
+  Log('sound: ' + SoundBackendName);
 NewGame:
   if StartAtLevel > 0 then Level := StartAtLevel else Level := 1;
   Score := 0;
@@ -94,6 +98,7 @@ NewGame:
   BlockX := 1;
   BlockY := 1;
   ItemX := 0;
+  Log('new game: level=' + IntToStr(Level));
   PrepareLevel;
   LevelTransition;
 StartLevel:
@@ -110,12 +115,17 @@ StartLevel:
     if IsPlayerCaught then
       begin
         PlayerCaught;
+        Log('caught at (' + IntToStr(EX) + ',' + IntToStr(EY) + ') lives='
+          + IntToStr(Lives));
         if Lives = 0 then goto OnGameOver;
       end;
     if IsItemPickedUp then
       begin
         SoundPickup;
         AwardPoints;
+        Log('item ' + IntToStr(ItemNo) + ': ' + GetItemName(ItemNo)
+          + ' at (' + IntToStr(X) + ',' + IntToStr(Y) + ') score='
+          + IntToStr(Score));
         ItemNo := ItemNo + 1;
         ItemX := 0;
         DrawItemName;
@@ -124,9 +134,11 @@ StartLevel:
             Level := Level + 1;
             if Level = 10 then
               begin
+                Log('won: score=' + IntToStr(Score));
                 WinScreen;
                 goto PlayAgain;
               end;
+            Log('level ' + IntToStr(Level - 1) + ' complete');
             LevelComplete;
           end;
         goto StartLevel;
@@ -134,13 +146,16 @@ StartLevel:
     BufFlush;
   until KeyCode = KeyEscape;
 OnGameOver:
+  Log('game over: score=' + IntToStr(Score));
   GameOver;
 PlayAgain:
   if AskPlayAgain then goto NewGame else goto CleanUp;
 CleanUp:
+  Log('exit');
   tcsetattr(TTYFd, TCSANOW, SavedTio);
   fpClose(TTYFd);
   if DumpFd >= 0 then fpClose(DumpFd);
+  if LogFd >= 0 then fpClose(LogFd);
   fpClose(RawTTYFd);
   Write(TTY, #27'[0m'); Flush(TTY);
   Write(TTY, #27'[2J'#27'[H'); Flush(TTY);

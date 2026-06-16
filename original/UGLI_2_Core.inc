@@ -55,24 +55,42 @@ var
   DumpFd: cint = -1;
   SkipIntro: Boolean = false;
   StartAtLevel: Integer = 0;  { 0 = not set via --level; 1-9 = explicit }
-  StderrLog: string = '';
+  LogFile: string = '';
+  LogFd  : cint   = -1;
 
-{ Route stderr (fd 2) to LogFile for the lifetime of the process.
-  Empty LogFile → /dev/null (silence). Non-empty → open/create/truncate
-  that path. Pass --stderr-log <file> on the command line to capture ALSA
-  and PortAudio diagnostics without corrupting the terminal display. }
-procedure InitStderrSink(const LogFile: string);
+{ Open the log file (or /dev/null when FileName='') and route stderr (fd 2)
+  there for the lifetime of the process.  When FileName is non-empty, keeps
+  the fd open in LogFd so Log() can write structured entries alongside any
+  ALSA/PortAudio noise that arrives on fd 2. }
+procedure OpenLog(const FileName: string);
 var Fd: cint;
 begin
-  if LogFile = '' then
+  if LogFd >= 0 then
+    begin
+      fpClose(LogFd);
+      LogFd := -1;
+    end;
+  if FileName = '' then
     Fd := fpOpen('/dev/null', O_WRONLY)
   else
-    Fd := fpOpen(LogFile, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+    Fd := fpOpen(FileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
   if Fd >= 0 then
     begin
       fpDup2(Fd, 2);
-      fpClose(Fd);
+      if FileName = '' then
+        fpClose(Fd)
+      else
+        LogFd := Fd;
     end;
+end;
+
+{ Write a timestamped log line to the log file.  No-op when LogFd < 0. }
+procedure Log(const Msg: string);
+var S: AnsiString;
+begin
+  if LogFd < 0 then Exit;
+  S := FormatDateTime('yyyy-mm-dd hh:nn:ss', Now) + '  ' + Msg + LineEnding;
+  fpWrite(LogFd, S[1], Length(S));
 end;
 
 procedure WB(const S: AnsiString);
@@ -183,8 +201,8 @@ resourcestring
   sCliUsage = 'Usage: UGLI_2 [options]';
   sCliOptions = 'Options:';
   sCliHelp = 'Show this help and exit.';
-  sCliLog1 = 'Route ALSA/PortAudio messages to <file> (default: /dev/null).';
-  sCliLog2 = 'Useful when diagnosing sound hardware issues.';
+  sCliLog1 = 'Write a structured log (timestamp, version, flags, game events) to <file>.';
+  sCliLog2 = 'Library diagnostic messages (ALSA/PortAudio) are also routed there.';
   sCliSkipIntro = 'Skip the animated intro; still shows the item-descriptions screen.';
   sCliLevel1 = 'Start directly at level N (1–9), skipping intro and item-descriptions screen.';
 
@@ -200,7 +218,7 @@ begin
     '      ' + sCliSkipIntro + LineEnding +
     '  --level <N>' + LineEnding +
     '      ' + sCliLevel1 + LineEnding +
-    '  --stderr-log <file>' + LineEnding +
+    '  -l, --log <file>' + LineEnding +
     '      ' + sCliLog1 + LineEnding +
     '      ' + sCliLog2 + LineEnding;
 end;
@@ -219,23 +237,23 @@ var
 begin
   Opts[0].SetOption('help', No_Argument, nil, 'h');
   Opts[1].SetOption('skip-intro', No_Argument, nil, 's');
-  Opts[2].SetOption('level', Required_Argument, nil, 'l');
-  Opts[3].SetOption('stderr-log', Required_Argument, nil, 'e');
+  Opts[2].SetOption('level', Required_Argument, nil, 'n');
+  Opts[3].SetOption('log', Required_Argument, nil, 'l');
   Opts[4].SetOption('', No_Argument, nil, #0);
   OptErr := false;
   repeat
-    C := GetLongOpts(':h', @Opts[0], LongIndex);
+    C := GetLongOpts(':hl:', @Opts[0], LongIndex);
     case C of
       'h': ShowCLIHelp;
       's': SkipIntro := true;
-      'l':
+      'n':
         begin
           StartAtLevel := StrToIntDef(OptArg, 1);
           if StartAtLevel < 1 then StartAtLevel := 1;
           if StartAtLevel > 9 then StartAtLevel := 9;
           SkipIntro := true;
         end;
-      'e': StderrLog := OptArg;
+      'l': LogFile := OptArg;
       '?', ':': ShowCLIHelp;
     end;
   until C = EndOfOptions;
