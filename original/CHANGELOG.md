@@ -125,6 +125,11 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ### Bug fixes
 
+- `HighScoreEntry`: removed a spurious `WaitKey` that appeared after writing
+  the player's score to `UGLI.HSC` and before clearing the screen to show the
+  high-score table.  The extra key press occurred while the screen still showed
+  only the name-entry prompt, giving no feedback to the player.  The procedure
+  already waits for a key at the end, after displaying the full score table.
 - Stderr (fd 2) is permanently routed to `/dev/null` at startup via
   `InitStderrSink` (in `UGLI_2_Core.inc`).  ALSA buffer-underrun warnings
   and other library diagnostic output previously landed as raw text at the

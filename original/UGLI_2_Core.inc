@@ -1507,7 +1507,6 @@ begin
           WriteLn;
         end;
     end;
-  WaitKey;
   Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
   Assign(F, HighScoreFileName);
   Reset(F);
