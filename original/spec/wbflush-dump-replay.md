@@ -7,6 +7,11 @@
 - [ ] `UGLI_2_Replay.pp` built with `poe build-replay`
 - [ ] `poe build-original` passes
 - [ ] `poe build-replay` passes
+- [ ] Dump file is unbounded — no size cap applied
+- [ ] `BufFlushForce` procedure emits every cell regardless of dirty bits
+- [ ] `ToggleDump` calls `BufFlushForce` on start so dump begins with a complete frame
+- [ ] Red `●` drawn at (80, 25) inside `BufFlush` whenever `DumpFd ≥ 0`
+- [ ] `--dump <file>` / `-d <file>` CLI option: sets dump path and starts recording immediately
 - [ ] Manual bisection workflow confirmed (user must confirm)
 
 ---
@@ -83,9 +88,94 @@ Add `KeyF6: ToggleDump` to the `HandleInput` case.
 
 Add `17: GetKey := Chr(KeyF6)` to the `ESC [ N ~` numeric case in `GetKey`.
 
+#### No size cap
+
+The dump file is opened and written without any artificial size limit.
+No rotation, no early close, no byte counter.  The file grows as long
+as recording is active.  (The OS imposes the only practical ceiling.)
+
+#### `BufFlushForce` (new procedure)
+
+Marks every cell in `Dirty` as `true`, then calls `BufFlush`.  The
+result is a complete frame emitted as a single `WBFlush` write.
+
+```pascal
+procedure BufFlushForce;
+var X, Y: Integer;
+begin
+  for Y := 1 to ScreenH do
+    for X := 1 to ScreenW do
+      Dirty[X, Y] := true;
+  BufFlush;
+end;
+```
+
+#### `ToggleDump` — full-frame emit on start
+
+When transitioning from closed → open, call `BufFlushForce` after
+opening `DumpFd`.  This ensures the recorded stream begins with a
+self-contained snapshot of the current screen; replaying from write 0
+always shows a coherent frame regardless of prior game state.
+
+```pascal
+procedure ToggleDump;
+const DumpFileName = '/tmp/ugli_dump.bin';
+begin
+  if DumpFd >= 0 then
+    begin fpClose(DumpFd); DumpFd := -1; end
+  else
+    begin
+      DumpFd := fpOpen(DumpFileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+      BufFlushForce;   { emit complete current frame as first dump write }
+    end;
+end;
+```
+
+#### Recording indicator in `BufFlush`
+
+At the start of `BufFlush`, when `DumpFd ≥ 0`, force cell (80, 25) to
+a red filled circle:
+
+```pascal
+if DumpFd >= 0 then
+  BufPutCell(ScreenW, ScreenH, Red, Black, '●');
+```
+
+This happens before the dirty-cell emit loop, so the indicator is
+always included in the frame whenever recording is active.  When
+recording stops, the next `BufFlush` no longer sets the cell; whatever
+the game last wrote to (80, 25) is emitted instead.
+
+`●` (U+25CF BLACK CIRCLE) is encoded as three UTF-8 bytes and occupies
+one terminal column.
+
 ### `UGLI_2.pp`
 
 Add `KeyF6 = 64` to the const block.
+
+Add `DumpFile: string = ''` to the `var` block.
+
+Add `'d'` short option and `'dump'` long option to `ParseCLI`:
+
+```pascal
+Opts[5].SetOption('dump', Required_Argument, nil, 'd');
+{ ShortOpts: ':hl:d:' }
+'d': DumpFile := OptArg;
+```
+
+After `Init` (and after `OpenLog` / terminal setup), if `DumpFile ≠ ''`,
+open it immediately and emit a full frame:
+
+```pascal
+if DumpFile <> '' then
+  begin
+    DumpFd := fpOpen(DumpFile, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+    BufFlushForce;
+  end;
+```
+
+`--dump` opens fresh (`O_TRUNC`) on each launch.  The file is
+unbounded; append across sessions is not supported.
 
 Add to `CleanUp` (before `fpClose(RawTTYFd)`):
 ```pascal
@@ -145,7 +235,10 @@ poe build-original && poe build-replay
 
 - [ ] `poe build-original` exits 0
 - [ ] `poe build-replay` exits 0
-- [ ] F6 during gameplay creates `/tmp/ugli_dump.bin` and populates it with
-      zero-byte-delimited writes; F6 again stops recording (confirmed by user)
+- [ ] F6 during gameplay: red `●` appears at bottom-right; `/tmp/ugli_dump.bin`
+      is created; first write in the file is a complete frame; F6 again removes
+      indicator and stops recording (confirmed by user)
 - [ ] `./UGLI_2_Replay /tmp/ugli_dump.bin 10` replays first 10 writes to
-      stdout correctly (confirmed by user)
+      stdout correctly; write 0 shows a full screen (confirmed by user)
+- [ ] `poe run-original --dump /tmp/ugli_dump.bin` starts recording immediately
+      on launch; red `●` visible from the first frame (confirmed by user)
