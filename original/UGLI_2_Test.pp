@@ -1645,6 +1645,36 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
+{ TCliHelpTests — verify CLIHelpText contains required content      }
+{ ------------------------------------------------------------------ }
+
+type
+  TCliHelpTests = class(TTestCase)
+  published
+    procedure TestHelpText_ContainsVersion;
+    procedure TestHelpText_ContainsHelpFlag;
+    procedure TestHelpText_ContainsStderrLog;
+  end;
+
+procedure TCliHelpTests.TestHelpText_ContainsVersion;
+begin
+  AssertTrue('help text contains version', Pos(Version, CLIHelpText) > 0);
+end;
+
+procedure TCliHelpTests.TestHelpText_ContainsHelpFlag;
+var S: string;
+begin
+  S := CLIHelpText;
+  AssertTrue('help text contains --help', Pos('--help', S) > 0);
+  AssertTrue('help text contains -h',     Pos('-h',     S) > 0);
+end;
+
+procedure TCliHelpTests.TestHelpText_ContainsStderrLog;
+begin
+  AssertTrue('help text contains --stderr-log', Pos('--stderr-log', CLIHelpText) > 0);
+end;
+
+{ ------------------------------------------------------------------ }
 { TStderrSinkTests — verify InitStderrSink routes fd 2 correctly    }
 { ------------------------------------------------------------------ }
 
@@ -1757,6 +1787,7 @@ begin
   RegisterTest(TScreenOverlayTests);
   RegisterTest(TGameFlowTests);
   RegisterTest(TBufFlushOutputTests);
+  RegisterTest(TCliHelpTests);
   RegisterTest(TStderrSinkTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
