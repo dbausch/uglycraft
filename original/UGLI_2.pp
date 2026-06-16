@@ -88,7 +88,6 @@ begin
           if StartAtLevel < 1 then StartAtLevel := 1;
           if StartAtLevel > 9 then StartAtLevel := 9;
           SkipIntro := true;
-          SkipItemDesc := true;
         end;
     end;
   InitStderrSink(StderrLog);
@@ -106,7 +105,7 @@ begin
   RawTio := Tio;
   Init;
 NewGame:
-  Level := StartAtLevel;
+  if StartAtLevel > 0 then Level := StartAtLevel else Level := 1;
   Score := 0;
   Lives := 10;
   ItemNo := 1;

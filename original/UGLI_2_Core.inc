@@ -54,8 +54,7 @@ var
   WBufPos: Integer = 0;
   DumpFd: cint = -1;
   SkipIntro: Boolean = false;
-  SkipItemDesc: Boolean = false;
-  StartAtLevel: Integer = 1;
+  StartAtLevel: Integer = 0;  { 0 = not set via --level; 1-9 = explicit }
 
 { Route stderr (fd 2) to LogFile for the lifetime of the process.
   Empty LogFile → /dev/null (silence). Non-empty → open/create/truncate
@@ -1648,7 +1647,7 @@ begin
       '                  **        **   **        **  **           **                 ',
       '                   **********     **********   **********   **                 ',
       Version, Release, User, License);
-  if not SkipItemDesc then
+  if StartAtLevel = 0 then
     ShowItemDescriptions;
   FillScreen(FieldBg);
   MoveDelay := 100;
