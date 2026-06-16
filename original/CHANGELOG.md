@@ -145,15 +145,20 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 - `--help` / `-h`: print usage and option descriptions, then exit.  Output
   is translated if a matching `.mo` file is found (German: `LC_ALL=de_DE.UTF-8
-  ./UGLI_2 --help`).
-- `--skip-intro`: skip the animated intro and item-descriptions screen; jump
-  straight to the game.
-- `--level <N>`: start at level N (1–9); implies `--skip-intro`.  F4 (restart)
-  returns to the specified level, not level 1.
+  ./UGLI_2 --help`).  When passed via `poe run-original`, kitty is not opened;
+  help is printed directly to the calling terminal.  Unknown options and
+  `--level` without an argument also trigger the help screen.
+- `--skip-intro`: skip the animated intro (the logo animation); the
+  item-descriptions screen is still shown and the game starts at level 1.
+- `--level <N>`: start directly at level N (1–9), skipping both the animated
+  intro and the item-descriptions screen.  F4 (restart) returns to level N,
+  not level 1.  `--skip-intro --level N` behaves the same as `--level N`.
 - `--stderr-log <file>`: route ALSA/PortAudio diagnostic messages to a file
   instead of silencing them (see Bug fixes below).
-- `poe run-original` now forwards arguments after `--` to the binary, e.g.
-  `poe run-original -- --level 5 --skip-intro`.
+- CLI parsing refactored to `ParseCLI` using FPC's `getopts` unit
+  (`GetLongOpts`); replaces the ad-hoc manual `ParamStr` loop.
+- `poe run-original` forwards extra arguments directly: `poe run-original
+  --level 5` (no `--` separator needed).  The `--` form also works.
 
 ### Debugging
 

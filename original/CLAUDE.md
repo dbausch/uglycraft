@@ -12,7 +12,7 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 - **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files and `ANSI-87.conf` from GitHub on first run, then compiles with `fpc -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
-Run `poe test-original` to build and execute the fpcunit test suite (111 tests, exits 0 on all-pass).
+Run `poe test-original` to build and execute the fpcunit test suite (130 tests, exits 0 on all-pass).
 
 ## File structure
 
@@ -28,11 +28,11 @@ All type/const/var/resourcestring declarations and all procedures. Included by b
 
 ### `UGLI_2.pp` (program `UGLI_2`) — the game itself
 
-Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `UOSSound`.
+Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `getopts`, `UOSSound`.
 
 ### `UGLI_2_Test.pp` (program `UGLI_2_Test`) — fpcunit test suite
 
-111 unit tests across twelve classes (string utilities, screen buffer, level init, drawing, game logic, enemy AI, player movement, block placement, player-caught state, dialog rendering, screen overlays, game-flow transitions). Build and run with `poe test-original`.
+130 unit tests across twelve classes (string utilities, screen buffer, level init, drawing, game logic, enemy AI, player movement, block placement, player-caught state, dialog rendering, screen overlays, game-flow transitions). Build and run with `poe test-original`.
 
 ### `translations/` — runtime locale files
 
@@ -97,6 +97,9 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `WBuf[0..65535]` | `array of Byte` | Output byte buffer for `BufFlush`; filled by `WB`/`WBCh`/`WBInt`, flushed by `WBFlush` |
 | `WBufPos` | Integer | Current write position in `WBuf` |
 | `DumpFd` | cint | When ≥ 0, `WBFlush` mirrors each write to this fd with a `0x00` sentinel; toggled by F6 via `ToggleDump`; closed at CleanUp |
+| `SkipIntro` | Boolean | Set by `--skip-intro` or `--level`; when `true`, `Init` skips the animated logo sequence |
+| `StartAtLevel` | Integer | Set by `--level N` (1–9); 0 means not set. When > 0, `Init` skips `ShowItemDescriptions`; `NewGame:` uses it as the initial level; F4 restarts at this level |
+| `StderrLog` | string | Set by `--stderr-log <path>`; passed to `InitStderrSink` which routes fd 2 to the file (empty → `/dev/null`) |
 
 ## Key constants (`UGLI_2.pp`)
 
@@ -112,6 +115,12 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `HighScoreFileName` | `'UGLI.HSC'` | High score file path |
 
 ## Key procedures
+
+**`InitStderrSink(LogFile: string)`**: Routes fd 2 (stderr) permanently to `/dev/null` (when `LogFile = ''`) or to the named file (truncated). Called once at startup before TTY or sound initialisation. Prevents ALSA/PortAudio diagnostic output from corrupting terminal rendering.
+
+**`ParseCLI`**: Parses command-line arguments using FPC's `getopts` unit (`GetLongOpts`). Handles `--help`/`-h` (calls `ShowCLIHelp`), `--skip-intro`, `--level N`, and `--stderr-log <file>`; sets the corresponding globals (`SkipIntro`, `StartAtLevel`, `StderrLog`). Unknown options and `--level` without an argument also call `ShowCLIHelp`. Called at the start of the main block, before `InitStderrSink`.
+
+**`ShowCLIHelp`**: Prints translated usage text to stdout and exits with code 0. Called by `ParseCLI` on `--help`/`-h` or on any parse error.
 
 **`InitLevel1`–`InitLevel9`**: Set player start position/direction and populate `Blocked` for level walls. Called via the `InitLevel(N)` dispatcher.
 

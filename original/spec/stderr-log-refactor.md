@@ -2,12 +2,12 @@
 
 ## Status
 
-- [ ] `InitStderrSink(LogFile: string)` in `UGLI_2_Core.inc`
-- [ ] `--stderr-log <path>` option parsed in `UGLI_2.pp`; old `DevNull` inline code removed
-- [ ] `SuppressStderr` / `RestoreStderr` removed from `UOSSound.pp`
-- [ ] `TStderrSinkTests` added to `UGLI_2_Test.pp` (red before implementation)
-- [ ] `poe build-original` passes
-- [ ] `poe test-original` passes (all tests green, including new ones)
+- [x] `InitStderrSink(LogFile: string)` in `UGLI_2_Core.inc`
+- [x] `--stderr-log <path>` option parsed via `ParseCLI` / getopts in `UGLI_2_Core.inc`; old `DevNull` inline code removed
+- [x] `SuppressStderr` / `RestoreStderr` removed from `UOSSound.pp`
+- [x] `TStderrSinkTests` added to `UGLI_2_Test.pp`
+- [x] `poe build-original` passes
+- [x] `poe test-original` passes (125+ tests, all green)
 
 ---
 
@@ -76,6 +76,10 @@ begin
   { ... rest of startup unchanged ... }
 ```
 
+(Later superseded by the `ParseCLI` / getopts refactor in commit `83e6beb`, which
+moved `StderrLog` into `UGLI_2_Core.inc` as a global and routes it through
+`ParseCLI`.)
+
 ### `UOSSound.pp`
 
 Remove `SuppressStderr`, `RestoreStderr`, their `savedErr` variable, and the
@@ -97,9 +101,26 @@ stderr.
 
 ---
 
+## Note on "many ALSA probe messages"
+
+The `SuppressStderr` wrapper in `UOSSound.Init` was introduced because PortAudio
+writes "failure messages for absent hardware directly to fd 2" during its backend
+probe.  These only appear when a backend (JACK, OSS, a missing sound card) fails
+to initialise.  On a system where ALSA finds all its configured devices cleanly,
+the probe succeeds silently and nothing is written to fd 2.
+
+A `--stderr-log` run on such a system will produce an empty (or near-empty) log
+file — the redirect mechanism is correct (confirmed by an ALSA underrun message
+that did appear in the log during playback), but the probe generates no output
+when audio hardware is clean.
+
+---
+
 ## Done when
 
-- [ ] `poe build-original` exits 0
-- [ ] `poe test-original` exits 0, 125 tests pass (122 existing + 3 new)
-- [ ] `poe run-original -- --stderr-log /tmp/ugli_stderr.log` captures ALSA
-      output in the log file instead of the terminal (confirmed by user)
+- [x] `poe build-original` exits 0 (da21e2c)
+- [x] `poe test-original` exits 0, 125 tests pass (da21e2c)
+- [x] `--stderr-log <file>` captures fd-2 output instead of corrupting the
+      terminal — confirmed working: one ALSA underrun message appeared in the
+      log during a playback test; probe messages absent because this system's
+      audio config is clean

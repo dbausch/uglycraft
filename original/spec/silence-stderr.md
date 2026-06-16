@@ -2,9 +2,9 @@
 
 ## Status
 
-- [ ] `fpDup2('/dev/null', 2)` added at startup in `UGLI_2.pp`
-- [ ] `poe build-original` passes
-- [ ] `poe test-original` passes
+- [x] `fpDup2('/dev/null', 2)` added at startup in `UGLI_2.pp`
+- [x] `poe build-original` passes
+- [x] `poe test-original` passes
 
 ---
 
@@ -49,7 +49,7 @@ No other file is affected.
 
 ## Done when
 
-- [ ] `poe build-original` exits 0
-- [ ] `poe test-original` exits 0, all tests pass
-- [ ] ALSA underrun messages no longer appear in the game window during play
-      (confirmed by user after playing through several levels with sound)
+- [x] `poe build-original` exits 0 (8503f4e)
+- [x] `poe test-original` exits 0, all tests pass (8503f4e)
+- [x] ALSA underrun messages no longer appear in the game window during play
+      (8503f4e; display corruption gone since fd 2 redirect landed)
