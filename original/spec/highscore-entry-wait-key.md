@@ -27,4 +27,4 @@ block and the `Write(TTY, #27'[2J'#27'[H');` screen-clear.
 ## Done when
 
 - [x] `HighScoreEntry` requires exactly one key press — at the end, after the
-  high-score table is displayed — not two. (Commit: TBD)
+  high-score table is displayed — not two. (Commit: 0d3772e)
