@@ -136,6 +136,14 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   handles fd 2 permanently before `Init` is ever called, the per-call
   suppression was redundant and has been removed.
 
+### Command-line interface
+
+- `--help` / `-h`: print usage and option descriptions, then exit.  Output
+  is translated if a matching `.mo` file is found (German: `LC_ALL=de_DE.UTF-8
+  ./UGLI_2 --help`).
+- `--stderr-log <file>`: route ALSA/PortAudio diagnostic messages to a file
+  instead of silencing them (see Bug fixes below).
+
 ### Debugging
 
 - `WBFlush` now mirrors each write to a dump file when `DumpFd ≥ 0`, appending

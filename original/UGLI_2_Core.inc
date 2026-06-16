@@ -176,6 +176,31 @@ resourcestring
   { Intro (hard-coded inside Intro procedure body) }
   sIntroBrand   = '* DANISOFT * PRESENTS *';
   sIntroWelcome = 'Hello, get ready to play!';
+  { CLI help (--help / -h) }
+  sCliUsage = 'Usage: UGLI_2 [options]';
+  sCliOptions = 'Options:';
+  sCliHelp  = 'Show this help and exit.';
+  sCliLog1  = 'Route ALSA/PortAudio messages to <file> (default: /dev/null).';
+  sCliLog2  = 'Useful when diagnosing sound hardware issues.';
+
+function CLIHelpText: string;
+begin
+  CLIHelpText :=
+    'UGLI 2 v' + Version + LineEnding + LineEnding +
+    sCliUsage + LineEnding + LineEnding +
+    sCliOptions + LineEnding +
+    '  -h, --help' + LineEnding +
+    '      ' + sCliHelp + LineEnding +
+    '  --stderr-log <file>' + LineEnding +
+    '      ' + sCliLog1 + LineEnding +
+    '      ' + sCliLog2 + LineEnding;
+end;
+
+procedure ShowCLIHelp;
+begin
+  Write(CLIHelpText);
+  Halt(0);
+end;
 
 procedure MyCursorOn;
 begin

@@ -203,3 +203,23 @@ msgstr "* DANISOFT * PRÄSENTIERT *"
 #: ugli_2:sintrowelcome
 msgid "Hello, get ready to play!"
 msgstr "Hallo, gleich geht's los!"
+
+#: ugli_2:scliusage
+msgid "Usage: UGLI_2 [options]"
+msgstr "Verwendung: UGLI_2 [Optionen]"
+
+#: ugli_2:sclioptions
+msgid "Options:"
+msgstr "Optionen:"
+
+#: ugli_2:sclihelp
+msgid "Show this help and exit."
+msgstr "Diese Hilfe anzeigen und beenden."
+
+#: ugli_2:sclilog1
+msgid "Route ALSA/PortAudio messages to <file> (default: /dev/null)."
+msgstr "ALSA/PortAudio-Meldungen in <Datei> schreiben (Standard: /dev/null)."
+
+#: ugli_2:sclilog2
+msgid "Useful when diagnosing sound hardware issues."
+msgstr "Nützlich zur Diagnose von Soundhardware-Problemen."

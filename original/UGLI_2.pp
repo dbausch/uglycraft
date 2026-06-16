@@ -71,6 +71,10 @@ var
   StderrLog: string;
 
 begin
+  LoadTranslation;
+  for I := 1 to ParamCount do
+    if (ParamStr(I) = '--help') or (ParamStr(I) = '-h') then
+      ShowCLIHelp;
   StderrLog := '';
   for I := 1 to ParamCount - 1 do
     if ParamStr(I) = '--stderr-log' then
