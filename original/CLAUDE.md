@@ -53,6 +53,7 @@ Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `getopts`, 
 | `original/kb/display-system.md` | Screen buffer, ANSI colour encoding, SGR sequences, GetKey VT100 parser |
 | `original/kb/crt-removal.md` | Why CRT was removed, what replaced each CRT call, colour mapping |
 | `original/kb/i18n.md` | Translated strings, YesKey/NoKey system, adding a language |
+| `original/kb/sound-system.md` | UOS+PortAudio architecture, history of stderr suppression, committed vs. fetched UOS sources, `--log` behaviour |
 
 ## Code style
 
