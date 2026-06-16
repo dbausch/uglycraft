@@ -31,7 +31,7 @@ shell = """
           -o font_family="Liberation Mono" -o font_size=16 \
           -o remember_window_size=false \
           -o initial_window_height=25c -o initial_window_width=80c \
-          original/UGLI_2 "$@"
+          -- original/UGLI_2 "$@"
   fi
 """
 
