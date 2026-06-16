@@ -123,6 +123,14 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   (V2 consec-skip, V3 row-span, V2b/V3b single-write variants) used by the
   performance benchmark and correctness tests.
 
+### Bug fixes
+
+- Stderr (fd 2) is redirected to `/dev/null` at startup before any TTY or
+  sound initialisation.  ALSA buffer-underrun warnings and other library
+  diagnostic output previously landed as raw text at the terminal cursor
+  position, corrupting whatever cell the cursor happened to be pointing at
+  (typically visible as a patch of black-on-black characters).
+
 ### Debugging
 
 - `WBFlush` now mirrors each write to a dump file when `DumpFd ≥ 0`, appending

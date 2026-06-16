@@ -67,9 +67,16 @@ const
 {$I UGLI_2_Core.inc}
 
 var
-  Tio: Termios;
+  Tio    : Termios;
+  DevNull: cint;
 
 begin
+  DevNull := fpOpen('/dev/null', O_WRONLY);
+  if DevNull >= 0 then
+    begin
+      fpDup2(DevNull, 2);
+      fpClose(DevNull);
+    end;
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
   MyCursorOff;
