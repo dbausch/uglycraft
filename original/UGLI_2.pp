@@ -1,7 +1,7 @@
 {$H+}
 program UGLI_2;
 
-uses CThreads, DOS, BaseUnix, SysUtils, termio, gettext, UOSSound;
+uses CThreads, DOS, BaseUnix, SysUtils, termio, gettext, getopts, UOSSound;
 
 label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
@@ -67,29 +67,11 @@ const
 {$I UGLI_2_Core.inc}
 
 var
-  Tio      : Termios;
-  StderrLog: string;
+  Tio: Termios;
 
 begin
   LoadTranslation;
-  for I := 1 to ParamCount do
-    if (ParamStr(I) = '--help') or (ParamStr(I) = '-h') then
-      ShowCLIHelp;
-  StderrLog := '';
-  for I := 1 to ParamCount do
-    begin
-      if (ParamStr(I) = '--stderr-log') and (I < ParamCount) then
-        StderrLog := ParamStr(I + 1);
-      if ParamStr(I) = '--skip-intro' then
-        SkipIntro := true;
-      if (ParamStr(I) = '--level') and (I < ParamCount) then
-        begin
-          StartAtLevel := StrToIntDef(ParamStr(I + 1), 1);
-          if StartAtLevel < 1 then StartAtLevel := 1;
-          if StartAtLevel > 9 then StartAtLevel := 9;
-          SkipIntro := true;
-        end;
-    end;
+  ParseCLI;
   InitStderrSink(StderrLog);
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);

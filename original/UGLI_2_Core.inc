@@ -55,6 +55,7 @@ var
   DumpFd: cint = -1;
   SkipIntro: Boolean = false;
   StartAtLevel: Integer = 0;  { 0 = not set via --level; 1-9 = explicit }
+  StderrLog: string = '';
 
 { Route stderr (fd 2) to LogFile for the lifetime of the process.
   Empty LogFile → /dev/null (silence). Non-empty → open/create/truncate
@@ -208,6 +209,35 @@ procedure ShowCLIHelp;
 begin
   Write(CLIHelpText);
   Halt(0);
+end;
+
+procedure ParseCLI;
+var
+  Opts: array[0..4] of TOption;
+  C: Char;
+  LongIndex: LongInt;
+begin
+  Opts[0].SetOption('help', No_Argument, nil, 'h');
+  Opts[1].SetOption('skip-intro', No_Argument, nil, 's');
+  Opts[2].SetOption('level', Required_Argument, nil, 'l');
+  Opts[3].SetOption('stderr-log', Required_Argument, nil, 'e');
+  Opts[4].SetOption('', No_Argument, nil, #0);
+  OptErr := false;
+  repeat
+    C := GetLongOpts('h', @Opts[0], LongIndex);
+    case C of
+      'h': ShowCLIHelp;
+      's': SkipIntro := true;
+      'l':
+        begin
+          StartAtLevel := StrToIntDef(OptArg, 1);
+          if StartAtLevel < 1 then StartAtLevel := 1;
+          if StartAtLevel > 9 then StartAtLevel := 9;
+          SkipIntro := true;
+        end;
+      'e': StderrLog := OptArg;
+    end;
+  until C = EndOfOptions;
 end;
 
 procedure MyCursorOn;

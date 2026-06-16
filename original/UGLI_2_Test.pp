@@ -1,7 +1,7 @@
 {$mode objfpc}{$H+}
 program UGLI_2_Test;
 
-uses CThreads, DOS, BaseUnix, SysUtils, termio, gettext, UOSSound,
+uses CThreads, DOS, BaseUnix, SysUtils, termio, gettext, getopts, UOSSound,
      fpcunit, testregistry, consoletestrunner;
 
 const
