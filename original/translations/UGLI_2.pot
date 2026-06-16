@@ -223,6 +223,6 @@ msgid "Skip the animated intro; still shows the item-descriptions screen."
 msgstr ""
 
 #: ugli_2:sclilevel1
-msgid "Start at level N (1\342\200\2239; default: 1). Skips both intro and item-descriptions screen."
+msgid "Start directly at level N (1\342\200\2239), skipping intro and item-descriptions screen."
 msgstr ""
 

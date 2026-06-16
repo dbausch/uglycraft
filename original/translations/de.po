@@ -229,5 +229,5 @@ msgid "Skip the animated intro; still shows the item-descriptions screen."
 msgstr "Animiertes Intro überspringen; Gegenstandsliste wird noch angezeigt."
 
 #: ugli_2:sclilevell1
-msgid "Start at level N (1–9; default: 1). Skips both intro and item-descriptions screen."
-msgstr "Spiel bei Level N starten (1–9; Standard: 1). Überspringt Intro und Gegenstandsliste."
+msgid "Start directly at level N (1–9), skipping intro and item-descriptions screen."
+msgstr "Direkt bei Level N starten (1–9), Intro und Gegenstandsliste werden übersprungen."

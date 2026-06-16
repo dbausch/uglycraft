@@ -186,7 +186,7 @@ resourcestring
   sCliLog1 = 'Route ALSA/PortAudio messages to <file> (default: /dev/null).';
   sCliLog2 = 'Useful when diagnosing sound hardware issues.';
   sCliSkipIntro = 'Skip the animated intro; still shows the item-descriptions screen.';
-  sCliLevel1 = 'Start at level N (1–9; default: 1). Skips both intro and item-descriptions screen.';
+  sCliLevel1 = 'Start directly at level N (1–9), skipping intro and item-descriptions screen.';
 
 function CLIHelpText: string;
 begin
