@@ -12,7 +12,7 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 - **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files and `ANSI-87.conf` from GitHub on first run, then compiles with `fpc -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
-Run `poe test-original` to build and execute the fpcunit test suite (130 tests, exits 0 on all-pass).
+Run `poe test-original` to build and execute the fpcunit test suite (136 tests, exits 0 on all-pass).
 
 ## File structure
 
@@ -97,10 +97,12 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `RawTTYFd` | cint | Write-only `/dev/tty` file descriptor (single-write terminal output via `fpWrite` in `BufFlush`) |
 | `WBuf[0..65535]` | `array of Byte` | Output byte buffer for `BufFlush`; filled by `WB`/`WBCh`/`WBInt`, flushed by `WBFlush` |
 | `WBufPos` | Integer | Current write position in `WBuf` |
-| `DumpFd` | cint | When ≥ 0, `WBFlush` mirrors each write to this fd with a `0x00` sentinel; toggled by F6 via `ToggleDump`; closed at CleanUp |
+| `DumpFd` | cint | When ≥ 0, `WBFlush` mirrors each write to this fd with a `0x00` sentinel; toggled by F6 via `ToggleDump` or set by `--dump`; closed at CleanUp |
+| `DumpFile` | string | Set by `--dump <file>`; when non-empty, `DumpFd` is opened after `Init` and `BufFlushForce` emits the initial frame |
 | `SkipIntro` | Boolean | Set by `--skip-intro` or `--level`; when `true`, `Init` skips the animated logo sequence |
 | `StartAtLevel` | Integer | Set by `--level N` (1–9); 0 means not set. When > 0, `Init` skips `ShowItemDescriptions`; `NewGame:` uses it as the initial level; F4 restarts at this level |
-| `StderrLog` | string | Set by `--stderr-log <path>`; passed to `InitStderrSink` which routes fd 2 to the file (empty → `/dev/null`) |
+| `LogFile` | string | Set by `--log <file>`; passed to `OpenLog` which routes fd 2 to the file (empty → `/dev/null`) and keeps `LogFd` open for structured `Log()` entries |
+| `LogFd` | cint | When ≥ 0, `Log()` writes timestamped entries here; closed at CleanUp |
 
 ## Key constants (`UGLI_2.pp`)
 
@@ -133,7 +135,9 @@ All Pascal source follows `STYLE.md`. Key rules:
 
 **`PrepareLevel`**: Full level reset — clears interior `Blocked` cells, calls `InitLevel(Level)` (sets walls and `Start*` defaults), copies `Start*` to live `X/Y/EX/EY/Direction`, then calls `Redraw`. Called at genuine level-start time and when the player is caught.
 
-**`BufFlush`**: Emits all dirty cells to the terminal via a single `fpWrite` syscall (V2b algorithm). Batches `ESC[?7l`, per-cell SGR and content, and `ESC[?7h` into `WBuf`, then calls `WBFlush`. Skips `ESC[r;cH` cursor-position when the cursor is already at the next adjacent cell (same row, next column). If `BufFlushEnabled = false`, clears dirty flags and returns immediately without writing to the terminal (used by the test suite). Always called after composing a complete frame; partial updates go through `BufPutCell` / `BufFill` first.
+**`BufFlush`**: Emits all dirty cells to the terminal via a single `fpWrite` syscall (V2b algorithm). Before the `BufFlushEnabled` guard, if `DumpFd ≥ 0`, forces cell (80, 25) to a red `●` recording indicator. Batches `ESC[?7l`, per-cell SGR and content, and `ESC[?7h` into `WBuf`, then calls `WBFlush`. Skips `ESC[r;cH` cursor-position when the cursor is already at the next adjacent cell (same row, next column). If `BufFlushEnabled = false`, clears dirty flags and returns immediately without writing to the terminal (used by the test suite).
+
+**`BufFlushForce`**: Marks every cell in `Dirty` as `true`, then calls `BufFlush`. Used by `ToggleDump` (on start) and the `--dump` startup path to ensure the dump begins with a self-contained snapshot of the current screen.
 
 **`Redraw`**: Lightweight screen repaint — `BufFill` (clear buffer), `DrawBorder`, `DrawKeys`, `DrawInner`, `BufFlush`. Does not touch `Blocked` or call `InitLevel`. Use after overlay screens (help, story).
 

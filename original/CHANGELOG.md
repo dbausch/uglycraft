@@ -167,6 +167,17 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   recording on/off; dump is written to `/tmp/ugli_dump.bin` (truncated at start
   of each recording).  The dump file enables offline bisection of rendering
   artefacts independently of the game session.
+- `BufFlushForce` — marks every cell in `Dirty` as `true`, then calls `BufFlush`,
+  producing a complete self-contained frame in a single WBFlush write.
+- `ToggleDump` calls `BufFlushForce` when opening the dump file so the dump
+  always begins with a full-screen snapshot; replaying from write 0 shows a
+  coherent frame regardless of prior game state.
+- Red `●` (U+25CF) drawn at cell (80, 25) inside `BufFlush` whenever `DumpFd ≥ 0`,
+  before the `BufFlushEnabled` guard.  Visible recording indicator; automatically
+  captured in the dump stream.  Dump file is unbounded (no size cap).
+- `--dump <file>` / `-d <file>` CLI option: opens the named file and calls
+  `BufFlushForce` immediately after `Init`, so recording starts from the first
+  frame without requiring an in-game F6 press.
 - `UGLI_2_Replay.pp` — standalone replay utility: reads a zero-byte-delimited
   dump file and writes the first N chunks to stdout.
   Usage: `./UGLI_2_Replay <dump_file> [n_writes]`
@@ -176,13 +187,13 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ### Testing
 
-- fpcunit test suite (`UGLI_2_Test.pp`): 119 unit tests across twelve classes
+- fpcunit test suite (`UGLI_2_Test.pp`): 136 unit tests across thirteen classes
   covering string utilities, screen buffer, level init, drawing, game logic,
   enemy AI, player movement, block placement, player-caught state, dialog
-  rendering, screen overlays, game-flow transitions, and BufFlush output
-  correctness (`TBufFlushOutputTests` — TTY and raw-fd output captured to a
-  temp file). `BufFlushEnabled := false` suppresses terminal output in all
-  non-flush tests.
+  rendering, screen overlays, game-flow transitions, BufFlush output
+  correctness (`TBufFlushOutputTests`), CLI help text, structured logging
+  (`TLogTests`), and dump/recording features (`TDumpTests`). `BufFlushEnabled
+  := false` suppresses terminal output in all non-flush tests.
 - `poe test-original` task: compiles `UGLI_2_Test.pp` and runs all tests;
   exits 0 on all-pass.
 - `poe bench-original` task: compiles and runs `UGLI_2_BufFlush_Bench.pp` in
