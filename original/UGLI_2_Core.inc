@@ -54,6 +54,24 @@ var
   WBufPos: Integer = 0;
   DumpFd : cint    = -1;
 
+{ Route stderr (fd 2) to LogFile for the lifetime of the process.
+  Empty LogFile → /dev/null (silence). Non-empty → open/create/truncate
+  that path. Pass --stderr-log <file> on the command line to capture ALSA
+  and PortAudio diagnostics without corrupting the terminal display. }
+procedure InitStderrSink(const LogFile: string);
+var Fd: cint;
+begin
+  if LogFile = '' then
+    Fd := fpOpen('/dev/null', O_WRONLY)
+  else
+    Fd := fpOpen(LogFile, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+  if Fd >= 0 then
+    begin
+      fpDup2(Fd, 2);
+      fpClose(Fd);
+    end;
+end;
+
 procedure WB(const S: AnsiString);
 var I: Integer;
 begin

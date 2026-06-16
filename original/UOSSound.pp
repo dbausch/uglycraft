@@ -35,41 +35,16 @@ var
   FPlayer:  cint32   = 0;
   FInput:   cint32   = -1;
 
-{ Redirect fd 2 to /dev/null; returns saved fd (or -1 on failure). }
-function SuppressStderr: cint;
-var nul: cint;
-begin
-  Result := fpDup(2);
-  nul := fpOpen('/dev/null', O_WRONLY);
-  if nul >= 0 then
-  begin
-    fpDup2(nul, 2);
-    fpClose(nul);
-  end;
-end;
-
-procedure RestoreStderr(saved: cint);
-begin
-  if saved >= 0 then
-  begin
-    fpDup2(saved, 2);
-    fpClose(saved);
-  end;
-end;
+{ InitStderrSink in UGLI_2_Core.inc handles fd 2 permanently at startup;
+  no per-call suppression needed here. }
 
 procedure Init;
 var
   loaded: Boolean;
   i: Integer;
-  savedErr: cint;
 begin
   if FReady then Exit;
   FReady := True;  { mark attempted so we never retry on failure }
-
-  { PortAudio probes every configured ALSA/JACK/OSS backend at init time
-    and writes failure messages for absent hardware directly to fd 2.
-    Suppress for the duration of the device scan. }
-  savedErr := SuppressStderr;
 
   loaded := False;
   for i := 0 to High(PA_LIBS) do
@@ -79,36 +54,21 @@ begin
       Break;
     end;
 
-  if not loaded then
-  begin
-    RestoreStderr(savedErr);
-    Exit;
-  end;
+  if not loaded then Exit;
 
-  if not uos_CreatePlayer(FPlayer) then
-  begin
-    RestoreStderr(savedErr);
-    Exit;
-  end;
+  if not uos_CreatePlayer(FPlayer) then Exit;
 
   { Stereo square wave, silent (volume=0), endless when active.
     duration=-1 sets 1000 ms initially; we switch to endless below. }
   FInput := uos_AddFromSynth(FPlayer, -1, 1, 1, 440, 440, 0, 0,
                               -1, 0, 0, 0, -1, -1, -1);
-  if FInput < 0 then
-  begin
-    RestoreStderr(savedErr);
-    Exit;
-  end;
+  if FInput < 0 then Exit;
 
   if uos_AddIntoDevOut(FPlayer) < 0 then
   begin
     FInput := -1;
-    RestoreStderr(savedErr);
     Exit;
   end;
-
-  RestoreStderr(savedErr);
 
   uos_PlayNoFree(FPlayer);
   FPlaying := True;

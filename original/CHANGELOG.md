@@ -125,11 +125,16 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ### Bug fixes
 
-- Stderr (fd 2) is redirected to `/dev/null` at startup before any TTY or
-  sound initialisation.  ALSA buffer-underrun warnings and other library
-  diagnostic output previously landed as raw text at the terminal cursor
-  position, corrupting whatever cell the cursor happened to be pointing at
-  (typically visible as a patch of black-on-black characters).
+- Stderr (fd 2) is permanently routed to `/dev/null` at startup via
+  `InitStderrSink` (in `UGLI_2_Core.inc`).  ALSA buffer-underrun warnings
+  and other library diagnostic output previously landed as raw text at the
+  terminal cursor position, corrupting the display.  Pass
+  `--stderr-log <file>` on the command line to route those messages to a file
+  instead (useful when diagnosing sound hardware issues).
+- `UOSSound.Init` previously used a local `SuppressStderr`/`RestoreStderr`
+  pair to silence PortAudio's init-time ALSA probe.  Now that `InitStderrSink`
+  handles fd 2 permanently before `Init` is ever called, the per-call
+  suppression was redundant and has been removed.
 
 ### Debugging
 

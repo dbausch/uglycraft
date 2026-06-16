@@ -67,16 +67,15 @@ const
 {$I UGLI_2_Core.inc}
 
 var
-  Tio    : Termios;
-  DevNull: cint;
+  Tio      : Termios;
+  StderrLog: string;
 
 begin
-  DevNull := fpOpen('/dev/null', O_WRONLY);
-  if DevNull >= 0 then
-    begin
-      fpDup2(DevNull, 2);
-      fpClose(DevNull);
-    end;
+  StderrLog := '';
+  for I := 1 to ParamCount - 1 do
+    if ParamStr(I) = '--stderr-log' then
+      StderrLog := ParamStr(I + 1);
+  InitStderrSink(StderrLog);
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
   MyCursorOff;
