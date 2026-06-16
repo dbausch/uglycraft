@@ -1814,6 +1814,71 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
+{ TDumpTests — BufFlushForce, recording indicator, --dump CLI option }
+{ ------------------------------------------------------------------ }
+
+type
+  TDumpTests = class(TTestCase)
+  protected
+    procedure SetUp; override;
+    procedure TearDown; override;
+  published
+    procedure TestBufFlushForce_ForcesAllCells;
+    procedure TestDumpIndicator_SetsCellWhenRecording;
+    procedure TestDumpIndicator_NoCellWhenNotRecording;
+    procedure TestHelpText_ContainsDump;
+  end;
+
+procedure TDumpTests.SetUp;
+begin
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty,  SizeOf(Dirty),  0);
+  DumpFd := -1;
+end;
+
+procedure TDumpTests.TearDown;
+begin
+  DumpFd := -1;
+  BufFlushEnabled := false;
+end;
+
+procedure TDumpTests.TestBufFlushForce_ForcesAllCells;
+{ BufFlushForce must emit cells that were not dirty before the call. }
+var S: AnsiString;
+begin
+  Screen[1, 1].Ch := 'Q';
+  Screen[1, 1].Fg := White;
+  Screen[1, 1].Bg := Black;
+  { Dirty is still all-false from SetUp; BufFlushForce must set it. }
+  S := CaptureRawFlush(@BufFlushForce);
+  AssertTrue('BufFlushForce emits non-dirty cell', Pos('Q', S) > 0);
+end;
+
+procedure TDumpTests.TestDumpIndicator_SetsCellWhenRecording;
+{ When DumpFd >= 0, BufFlush must write red ● to Screen[ScreenW, ScreenH]
+  before the BufFlushEnabled guard, so the cell is set even in test mode. }
+begin
+  DumpFd := 1;  { non-negative sentinel; BufFlushEnabled=false → no actual write }
+  BufFlush;
+  AssertEquals('indicator char', '●', Screen[ScreenW, ScreenH].Ch);
+  AssertEquals('indicator fg Red', Red, Integer(Screen[ScreenW, ScreenH].Fg));
+end;
+
+procedure TDumpTests.TestDumpIndicator_NoCellWhenNotRecording;
+{ When DumpFd < 0, BufFlush must not touch Screen[ScreenW, ScreenH]. }
+begin
+  Screen[ScreenW, ScreenH].Ch := 'Z';
+  BufFlush;
+  AssertEquals('cell unchanged when not recording', 'Z',
+    Screen[ScreenW, ScreenH].Ch);
+end;
+
+procedure TDumpTests.TestHelpText_ContainsDump;
+begin
+  AssertTrue('help text contains --dump', Pos('--dump', CLIHelpText) > 0);
+end;
+
+{ ------------------------------------------------------------------ }
 { Main                                                               }
 { ------------------------------------------------------------------ }
 
@@ -1837,6 +1902,7 @@ begin
   RegisterTest(TBufFlushOutputTests);
   RegisterTest(TCliHelpTests);
   RegisterTest(TLogTests);
+  RegisterTest(TDumpTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
   Runner.Run;
