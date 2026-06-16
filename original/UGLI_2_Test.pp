@@ -1879,6 +1879,82 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
+{ TDumpFileTests — verify WBFlush writes bytes + sentinel to DumpFd  }
+{ ------------------------------------------------------------------ }
+
+const TmpDumpPath = '/tmp/ugli_dump_file_test.tmp';
+
+function ReadTmpDumpFile: AnsiString;
+var F: File of Byte; B: Byte;
+begin
+  Result := '';
+  Assign(F, TmpDumpPath);
+  Reset(F);
+  while not Eof(F) do
+    begin Read(F, B); Result := Result + Chr(B); end;
+  Close(F);
+end;
+
+type
+  TDumpFileTests = class(TTestCase)
+  protected
+    procedure SetUp; override;
+    procedure TearDown; override;
+  published
+    procedure TestDump_WBFlushWritesToFile;
+    procedure TestDump_ChunkEndsWithSentinel;
+    procedure TestDump_IndicatorBytesInDump;
+  end;
+
+procedure TDumpFileTests.SetUp;
+begin
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty,  SizeOf(Dirty),  0);
+  BufPutCell(5, 3, White, Black, 'A');
+  DumpFd := fpOpen(TmpDumpPath, O_WRONLY or O_CREAT or O_TRUNC, 438);
+end;
+
+procedure TDumpFileTests.TearDown;
+begin
+  if DumpFd >= 0 then
+    begin fpClose(DumpFd); DumpFd := -1; end;
+  BufFlushEnabled := false;
+  fpUnlink(PChar(TmpDumpPath));
+end;
+
+procedure TDumpFileTests.TestDump_WBFlushWritesToFile;
+{ WBFlush must mirror the frame bytes to DumpFd when it is open. }
+var S: AnsiString;
+begin
+  CaptureRawFlush(@BufFlush);
+  fpClose(DumpFd); DumpFd := -1;
+  S := ReadTmpDumpFile;
+  AssertTrue('dump file is non-empty after flush', Length(S) > 0);
+end;
+
+procedure TDumpFileTests.TestDump_ChunkEndsWithSentinel;
+{ WBFlush must append a 0x00 sentinel byte after each chunk. }
+var S: AnsiString;
+begin
+  CaptureRawFlush(@BufFlush);
+  fpClose(DumpFd); DumpFd := -1;
+  S := ReadTmpDumpFile;
+  AssertTrue('dump file has content', Length(S) > 0);
+  AssertEquals('last byte is 0x00 sentinel', Chr(0), S[Length(S)]);
+end;
+
+procedure TDumpFileTests.TestDump_IndicatorBytesInDump;
+{ When DumpFd >= 0, BufFlush injects ● at (80,25); the UTF-8 bytes
+  must reach the dump stream, not just Screen[]. }
+var S: AnsiString;
+begin
+  CaptureRawFlush(@BufFlush);
+  fpClose(DumpFd); DumpFd := -1;
+  S := ReadTmpDumpFile;
+  AssertTrue('dump contains ● UTF-8 bytes', Pos('●', S) > 0);
+end;
+
+{ ------------------------------------------------------------------ }
 { Main                                                               }
 { ------------------------------------------------------------------ }
 
@@ -1903,6 +1979,7 @@ begin
   RegisterTest(TCliHelpTests);
   RegisterTest(TLogTests);
   RegisterTest(TDumpTests);
+  RegisterTest(TDumpFileTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
   Runner.Run;
