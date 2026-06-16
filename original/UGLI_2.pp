@@ -88,6 +88,7 @@ begin
           if StartAtLevel < 1 then StartAtLevel := 1;
           if StartAtLevel > 9 then StartAtLevel := 9;
           SkipIntro := true;
+          SkipItemDesc := true;
         end;
     end;
   InitStderrSink(StderrLog);

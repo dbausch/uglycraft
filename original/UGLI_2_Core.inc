@@ -54,6 +54,7 @@ var
   WBufPos: Integer = 0;
   DumpFd: cint = -1;
   SkipIntro: Boolean = false;
+  SkipItemDesc: Boolean = false;
   StartAtLevel: Integer = 1;
 
 { Route stderr (fd 2) to LogFile for the lifetime of the process.
@@ -184,8 +185,8 @@ resourcestring
   sCliHelp = 'Show this help and exit.';
   sCliLog1 = 'Route ALSA/PortAudio messages to <file> (default: /dev/null).';
   sCliLog2 = 'Useful when diagnosing sound hardware issues.';
-  sCliSkipIntro = 'Skip the intro and item-descriptions screen.';
-  sCliLevel1 = 'Start at level N (1–9; default: 1). Implies --skip-intro.';
+  sCliSkipIntro = 'Skip the animated intro; still shows the item-descriptions screen.';
+  sCliLevel1 = 'Start at level N (1–9; default: 1). Skips both intro and item-descriptions screen.';
 
 function CLIHelpText: string;
 begin
@@ -1637,19 +1638,18 @@ begin
   NoKey  := [Ord(UpCase(sNoChar[1])),  Ord(LowerCase(sNoChar)[1])];
   Randomize;
   if not SkipIntro then
-    begin
-      Intro(
-        '                  **        **    **********   **           **                 ',
-        '                  **        **   **        **  **           **                 ',
-        '                  **        **   **        **  **           **                 ',
-        '                  **        **   **            **           **                 ',
-        '                  **        **   **     *****  **           **                 ',
-        '                  **        **   **        **  **           **                 ',
-        '                  **        **   **        **  **           **                 ',
-        '                   **********     **********   **********   **                 ',
-        Version, Release, User, License);
-      ShowItemDescriptions;
-    end;
+    Intro(
+      '                  **        **    **********   **           **                 ',
+      '                  **        **   **        **  **           **                 ',
+      '                  **        **   **        **  **           **                 ',
+      '                  **        **   **            **           **                 ',
+      '                  **        **   **     *****  **           **                 ',
+      '                  **        **   **        **  **           **                 ',
+      '                  **        **   **        **  **           **                 ',
+      '                   **********     **********   **********   **                 ',
+      Version, Release, User, License);
+  if not SkipItemDesc then
+    ShowItemDescriptions;
   FillScreen(FieldBg);
   MoveDelay := 100;
   PausesRemaining := 20;
