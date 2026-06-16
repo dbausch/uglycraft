@@ -52,7 +52,8 @@ const MaxWBufSize = 65536;
 var
   WBuf: array[0..MaxWBufSize - 1] of Byte;
   WBufPos: Integer = 0;
-  DumpFd: cint = -1;
+  DumpFd  : cint   = -1;
+  DumpFile: string = '';
   SkipIntro: Boolean = false;
   StartAtLevel: Integer = 0;  { 0 = not set via --level; 1-9 = explicit }
   LogFile: string = '';
@@ -124,13 +125,18 @@ begin
   WBufPos := 0;
 end;
 
+procedure BufFlushForce; forward;
+
 procedure ToggleDump;
 const DumpFileName = '/tmp/ugli_dump.bin';
 begin
   if DumpFd >= 0 then
     begin fpClose(DumpFd); DumpFd := -1; end
   else
-    DumpFd := fpOpen(DumpFileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+    begin
+      DumpFd := fpOpen(DumpFileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+      BufFlushForce;
+    end;
 end;
 
 resourcestring
@@ -205,6 +211,8 @@ resourcestring
   sCliLog2 = 'Library diagnostic messages (ALSA/PortAudio) are also routed there.';
   sCliSkipIntro = 'Skip the animated intro; still shows the item-descriptions screen.';
   sCliLevel1 = 'Start directly at level N (1–9), skipping intro and item-descriptions screen.';
+  sCliDump1  = 'Record every WBFlush write to <file> for rendering-artefact bisection.';
+  sCliDump2  = 'Recording starts immediately; red ● appears at bottom-right while active.';
 
 function CLIHelpText: string;
 begin
@@ -220,7 +228,10 @@ begin
     '      ' + sCliLevel1 + LineEnding +
     '  -l, --log <file>' + LineEnding +
     '      ' + sCliLog1 + LineEnding +
-    '      ' + sCliLog2 + LineEnding;
+    '      ' + sCliLog2 + LineEnding +
+    '  -d, --dump <file>' + LineEnding +
+    '      ' + sCliDump1 + LineEnding +
+    '      ' + sCliDump2 + LineEnding;
 end;
 
 procedure ShowCLIHelp;
@@ -231,7 +242,7 @@ end;
 
 procedure ParseCLI;
 var
-  Opts: array[0..4] of TOption;
+  Opts: array[0..5] of TOption;
   C: Char;
   LongIndex: LongInt;
 begin
@@ -239,10 +250,11 @@ begin
   Opts[1].SetOption('skip-intro', No_Argument, nil, 's');
   Opts[2].SetOption('level', Required_Argument, nil, 'n');
   Opts[3].SetOption('log', Required_Argument, nil, 'l');
-  Opts[4].SetOption('', No_Argument, nil, #0);
+  Opts[4].SetOption('dump', Required_Argument, nil, 'd');
+  Opts[5].SetOption('', No_Argument, nil, #0);
   OptErr := false;
   repeat
-    C := GetLongOpts(':hl:', @Opts[0], LongIndex);
+    C := GetLongOpts(':hl:d:', @Opts[0], LongIndex);
     case C of
       'h': ShowCLIHelp;
       's': SkipIntro := true;
@@ -254,6 +266,7 @@ begin
           SkipIntro := true;
         end;
       'l': LogFile := OptArg;
+      'd': DumpFile := OptArg;
       '?', ':': ShowCLIHelp;
     end;
   until C = EndOfOptions;
@@ -303,6 +316,8 @@ const
 var
   Col, Row, LastFg, LastBg, FgCode, BgCode, LastCol, LastRow: Integer;
 begin
+  if DumpFd >= 0 then
+    BufPutCell(ScreenW, ScreenH, Red, Black, '●');
   if not BufFlushEnabled then
     begin
       for Col := 1 to ScreenW do
@@ -337,6 +352,15 @@ begin
         end;
   WB(#27'[?7h');
   WBFlush;
+end;
+
+procedure BufFlushForce;
+var Col, Row: Integer;
+begin
+  for Col := 1 to ScreenW do
+    for Row := 1 to ScreenH do
+      Dirty[Col, Row] := true;
+  BufFlush;
 end;
 
 procedure BufDesaturate;
