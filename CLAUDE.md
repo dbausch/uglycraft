@@ -47,6 +47,11 @@ Every spec must contain:
 
 Commit the spec alone, before any implementation code.
 
+**After committing the spec, stop and wait for the user to confirm it before
+proceeding to tests or implementation.** Never move from step 2 to step 3
+without an explicit confirmation message. The user may want to adjust scope,
+wording, or approach before any code is written.
+
 ### 3 — Tests (`original/` Pascal work only)
 
 Add tests to `UGLI_2_Test.pp` that cover the required behaviour.
