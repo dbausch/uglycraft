@@ -76,13 +76,13 @@ begin
     if (ParamStr(I) = '--help') or (ParamStr(I) = '-h') then
       ShowCLIHelp;
   StderrLog := '';
-  for I := 1 to ParamCount - 1 do
+  for I := 1 to ParamCount do
     begin
-      if ParamStr(I) = '--stderr-log' then
+      if (ParamStr(I) = '--stderr-log') and (I < ParamCount) then
         StderrLog := ParamStr(I + 1);
       if ParamStr(I) = '--skip-intro' then
         SkipIntro := true;
-      if ParamStr(I) = '--level' then
+      if (ParamStr(I) = '--level') and (I < ParamCount) then
         begin
           StartAtLevel := StrToIntDef(ParamStr(I + 1), 1);
           if StartAtLevel < 1 then StartAtLevel := 1;
