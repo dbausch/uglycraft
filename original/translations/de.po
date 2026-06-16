@@ -231,3 +231,11 @@ msgstr "Animiertes Intro überspringen; Gegenstandsliste wird noch angezeigt."
 #: ugli_2:sclilevell1
 msgid "Start directly at level N (1–9), skipping intro and item-descriptions screen."
 msgstr "Direkt bei Level N starten (1–9), Intro und Gegenstandsliste werden übersprungen."
+
+#: ugli_2:sclidump1
+msgid "Record every WBFlush write to <file> for rendering-artefact bisection."
+msgstr "Jeden WBFlush-Schreibvorgang für Darstellungsfehler-Bisektierung in <Datei> aufzeichnen."
+
+#: ugli_2:sclidump2
+msgid "Recording starts immediately; red ● appears at bottom-right while active."
+msgstr "Aufzeichnung beginnt sofort; rotes ● erscheint unten rechts solange sie aktiv ist."

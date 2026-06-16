@@ -89,6 +89,11 @@ begin
   tcsetattr(TTYFd, TCSANOW, Tio);
   RawTio := Tio;
   Init;
+  if DumpFile <> '' then
+    begin
+      DumpFd := fpOpen(DumpFile, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+      BufFlushForce;
+    end;
   Log('sound: ' + SoundBackendName);
 NewGame:
   if StartAtLevel > 0 then Level := StartAtLevel else Level := 1;
