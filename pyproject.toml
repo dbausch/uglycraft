@@ -22,16 +22,16 @@ shell  = ".venv/bin/python main.py --level ${level}"
 args   = [{name = "level", positional = true}]
 
 [tool.poe.tasks.run-original]
-help  = "Run the Linux port of the original UGLI 2 in a new terminal (must build-original first)"
+help  = "Run the original UGLI 2 in a new terminal. Forward args with --: poe run-original -- --level 5"
 shell = """
   if [ -n "${TERMINAL}" ]; then
-    ${TERMINAL} original/UGLI_2
+    ${TERMINAL} original/UGLI_2 "$@"
   else
     kitty -c original/ANSI-87.conf \
           -o font_family="Liberation Mono" -o font_size=16 \
           -o remember_window_size=false \
           -o initial_window_height=25c -o initial_window_width=80c \
-          original/UGLI_2
+          original/UGLI_2 "$@"
   fi
 """
 

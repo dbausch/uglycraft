@@ -77,8 +77,19 @@ begin
       ShowCLIHelp;
   StderrLog := '';
   for I := 1 to ParamCount - 1 do
-    if ParamStr(I) = '--stderr-log' then
-      StderrLog := ParamStr(I + 1);
+    begin
+      if ParamStr(I) = '--stderr-log' then
+        StderrLog := ParamStr(I + 1);
+      if ParamStr(I) = '--skip-intro' then
+        SkipIntro := true;
+      if ParamStr(I) = '--level' then
+        begin
+          StartAtLevel := StrToIntDef(ParamStr(I + 1), 1);
+          if StartAtLevel < 1 then StartAtLevel := 1;
+          if StartAtLevel > 9 then StartAtLevel := 9;
+          SkipIntro := true;
+        end;
+    end;
   InitStderrSink(StderrLog);
   Assign(TTY, '/dev/tty');
   ReWrite(TTY);
@@ -94,7 +105,7 @@ begin
   RawTio := Tio;
   Init;
 NewGame:
-  Level := 1;
+  Level := StartAtLevel;
   Score := 0;
   Lives := 10;
   ItemNo := 1;

@@ -198,3 +198,23 @@ msgstr ""
 msgid "Hello, get ready to play!"
 msgstr ""
 
+#: ugli_2:scliusage
+msgid "Usage: UGLI_2 [options]"
+msgstr ""
+
+#: ugli_2:sclioptions
+msgid "Options:"
+msgstr ""
+
+#: ugli_2:sclihelp
+msgid "Show this help and exit."
+msgstr ""
+
+#: ugli_2:sclilog1
+msgid "Route ALSA/PortAudio messages to <file> (default: /dev/null)."
+msgstr ""
+
+#: ugli_2:sclilog2
+msgid "Useful when diagnosing sound hardware issues."
+msgstr ""
+

@@ -223,3 +223,11 @@ msgstr "ALSA/PortAudio-Meldungen in <Datei> schreiben (Standard: /dev/null)."
 #: ugli_2:sclilog2
 msgid "Useful when diagnosing sound hardware issues."
 msgstr "Nützlich zur Diagnose von Soundhardware-Problemen."
+
+#: ugli_2:scliskipintro
+msgid "Skip the intro and item-descriptions screen."
+msgstr "Intro und Gegenstandsliste überspringen."
+
+#: ugli_2:sclilevell1
+msgid "Start at level N (1–9; default: 1). Implies --skip-intro."
+msgstr "Spiel bei Level N starten (1–9; Standard: 1). Impliziert --skip-intro."

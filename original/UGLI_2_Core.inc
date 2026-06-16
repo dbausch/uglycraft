@@ -50,9 +50,11 @@ var
 const MaxWBufSize = 65536;
 
 var
-  WBuf   : array[0..MaxWBufSize - 1] of Byte;
+  WBuf: array[0..MaxWBufSize - 1] of Byte;
   WBufPos: Integer = 0;
-  DumpFd : cint    = -1;
+  DumpFd: cint = -1;
+  SkipIntro: Boolean = false;
+  StartAtLevel: Integer = 1;
 
 { Route stderr (fd 2) to LogFile for the lifetime of the process.
   Empty LogFile → /dev/null (silence). Non-empty → open/create/truncate
@@ -179,9 +181,11 @@ resourcestring
   { CLI help (--help / -h) }
   sCliUsage = 'Usage: UGLI_2 [options]';
   sCliOptions = 'Options:';
-  sCliHelp  = 'Show this help and exit.';
-  sCliLog1  = 'Route ALSA/PortAudio messages to <file> (default: /dev/null).';
-  sCliLog2  = 'Useful when diagnosing sound hardware issues.';
+  sCliHelp = 'Show this help and exit.';
+  sCliLog1 = 'Route ALSA/PortAudio messages to <file> (default: /dev/null).';
+  sCliLog2 = 'Useful when diagnosing sound hardware issues.';
+  sCliSkipIntro = 'Skip the intro and item-descriptions screen.';
+  sCliLevel1 = 'Start at level N (1–9; default: 1). Implies --skip-intro.';
 
 function CLIHelpText: string;
 begin
@@ -191,6 +195,10 @@ begin
     sCliOptions + LineEnding +
     '  -h, --help' + LineEnding +
     '      ' + sCliHelp + LineEnding +
+    '  --skip-intro' + LineEnding +
+    '      ' + sCliSkipIntro + LineEnding +
+    '  --level <N>' + LineEnding +
+    '      ' + sCliLevel1 + LineEnding +
     '  --stderr-log <file>' + LineEnding +
     '      ' + sCliLog1 + LineEnding +
     '      ' + sCliLog2 + LineEnding;
@@ -1629,17 +1637,20 @@ begin
   YesKey := [Ord(UpCase(sYesChar[1])), Ord(LowerCase(sYesChar)[1])];
   NoKey  := [Ord(UpCase(sNoChar[1])),  Ord(LowerCase(sNoChar)[1])];
   Randomize;
-  Intro(
-    '                  **        **    **********   **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                  **        **   **            **           **                 ',
-    '                  **        **   **     *****  **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                  **        **   **        **  **           **                 ',
-    '                   **********     **********   **********   **                 ',
-    Version, Release, User, License);
-  ShowItemDescriptions;
+  if not SkipIntro then
+    begin
+      Intro(
+        '                  **        **    **********   **           **                 ',
+        '                  **        **   **        **  **           **                 ',
+        '                  **        **   **        **  **           **                 ',
+        '                  **        **   **            **           **                 ',
+        '                  **        **   **     *****  **           **                 ',
+        '                  **        **   **        **  **           **                 ',
+        '                  **        **   **        **  **           **                 ',
+        '                   **********     **********   **********   **                 ',
+        Version, Release, User, License);
+      ShowItemDescriptions;
+    end;
   FillScreen(FieldBg);
   MoveDelay := 100;
   PausesRemaining := 20;

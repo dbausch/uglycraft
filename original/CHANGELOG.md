@@ -141,8 +141,14 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 - `--help` / `-h`: print usage and option descriptions, then exit.  Output
   is translated if a matching `.mo` file is found (German: `LC_ALL=de_DE.UTF-8
   ./UGLI_2 --help`).
+- `--skip-intro`: skip the animated intro and item-descriptions screen; jump
+  straight to the game.
+- `--level <N>`: start at level N (1–9); implies `--skip-intro`.  F4 (restart)
+  returns to the specified level, not level 1.
 - `--stderr-log <file>`: route ALSA/PortAudio diagnostic messages to a file
   instead of silencing them (see Bug fixes below).
+- `poe run-original` now forwards arguments after `--` to the binary, e.g.
+  `poe run-original -- --level 5 --skip-intro`.
 
 ### Debugging
 
