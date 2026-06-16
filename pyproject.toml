@@ -24,6 +24,12 @@ args   = [{name = "level", positional = true}]
 [tool.poe.tasks.run-original]
 help  = "Run the original UGLI 2 in a new terminal. Forward args with --: poe run-original -- --level 5"
 shell = """
+  for arg in $POE_EXTRA_ARGS; do
+    if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
+      original/UGLI_2 $POE_EXTRA_ARGS
+      exit 0
+    fi
+  done
   if [ -n "${TERMINAL}" ]; then
     ${TERMINAL} original/UGLI_2 $POE_EXTRA_ARGS
   else
