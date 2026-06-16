@@ -224,7 +224,7 @@ begin
   Opts[4].SetOption('', No_Argument, nil, #0);
   OptErr := false;
   repeat
-    C := GetLongOpts('h', @Opts[0], LongIndex);
+    C := GetLongOpts(':h', @Opts[0], LongIndex);
     case C of
       'h': ShowCLIHelp;
       's': SkipIntro := true;
@@ -236,6 +236,7 @@ begin
           SkipIntro := true;
         end;
       'e': StderrLog := OptArg;
+      '?', ':': ShowCLIHelp;
     end;
   until C = EndOfOptions;
 end;
