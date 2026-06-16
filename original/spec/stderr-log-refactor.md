@@ -101,18 +101,28 @@ stderr.
 
 ---
 
-## Note on "many ALSA probe messages"
+## Note on ALSA probe messages and PipeWire
 
-The `SuppressStderr` wrapper in `UOSSound.Init` was introduced because PortAudio
-writes "failure messages for absent hardware directly to fd 2" during its backend
-probe.  These only appear when a backend (JACK, OSS, a missing sound card) fails
-to initialise.  On a system where ALSA finds all its configured devices cleanly,
-the probe succeeds silently and nothing is written to fd 2.
+The original display corruption was caused by ALSA/PortAudio writing backend
+probe failure messages directly to fd 2 during `Pa_Initialize()` — one message
+per absent or misconfigured audio backend (JACK, OSS, surround PCM, etc.).
 
-A `--stderr-log` run on such a system will produce an empty (or near-empty) log
-file — the redirect mechanism is correct (confirmed by an ALSA underrun message
-that did appear in the log during playback), but the probe generates no output
-when audio hardware is clean.
+These messages only appear when a backend probe **fails**.  On this system,
+PipeWire provides a complete ALSA emulation layer, so every probe that
+PortAudio issues succeeds silently.  A minimal test (`ProbeSound.pp` — compiled
+and run 2026-06-16, then deleted) confirmed this: calling `Ton()` → `UOSSound.Init`
+produced no output whatsoever on fd 2 in an interactive PipeWire session.
+
+A headless C test (same session, no PipeWire audio context) did produce the
+expected probe messages, confirming that the `dup2` redirect mechanism is
+correct and that messages reach a log file when they are generated.
+
+**Consequence for the spec:** The `--stderr-log` option cannot be confirmed by
+observing probe messages on this machine.  The acceptance criterion is met by:
+1. `TStderrSinkTests` (three unit tests covering null-sink and log-file capture).
+2. Absence of display corruption during play (display was clean since da21e2c).
+3. On a system without PipeWire ALSA emulation, probe messages would appear in
+   the log file exactly as intended.
 
 ---
 
@@ -120,7 +130,6 @@ when audio hardware is clean.
 
 - [x] `poe build-original` exits 0 (da21e2c)
 - [x] `poe test-original` exits 0, 125 tests pass (da21e2c)
-- [x] `--stderr-log <file>` captures fd-2 output instead of corrupting the
-      terminal — confirmed working: one ALSA underrun message appeared in the
-      log during a playback test; probe messages absent because this system's
-      audio config is clean
+- [ ] `--stderr-log <file>` captures ALSA probe messages in the log (cannot
+      confirm on this machine — PipeWire silences the probe; display corruption
+      is gone, TStderrSinkTests pass)
