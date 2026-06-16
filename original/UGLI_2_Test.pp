@@ -1654,6 +1654,8 @@ type
     procedure TestHelpText_ContainsVersion;
     procedure TestHelpText_ContainsHelpFlag;
     procedure TestHelpText_ContainsStderrLog;
+    procedure TestHelpText_ContainsSkipIntro;
+    procedure TestHelpText_ContainsLevel;
   end;
 
 procedure TCliHelpTests.TestHelpText_ContainsVersion;
@@ -1672,6 +1674,16 @@ end;
 procedure TCliHelpTests.TestHelpText_ContainsStderrLog;
 begin
   AssertTrue('help text contains --stderr-log', Pos('--stderr-log', CLIHelpText) > 0);
+end;
+
+procedure TCliHelpTests.TestHelpText_ContainsSkipIntro;
+begin
+  AssertTrue('help text contains --skip-intro', Pos('--skip-intro', CLIHelpText) > 0);
+end;
+
+procedure TCliHelpTests.TestHelpText_ContainsLevel;
+begin
+  AssertTrue('help text contains --level', Pos('--level', CLIHelpText) > 0);
 end;
 
 { ------------------------------------------------------------------ }
