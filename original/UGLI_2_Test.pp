@@ -1645,6 +1645,97 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
+{ TStderrSinkTests — verify InitStderrSink routes fd 2 correctly    }
+{ ------------------------------------------------------------------ }
+
+type
+  TStderrSinkTests = class(TTestCase)
+  private
+    FSavedErr: cint;
+    FLogFile : string;
+  protected
+    procedure SetUp; override;
+    procedure TearDown; override;
+  published
+    procedure TestSink_NullSilences;
+    procedure TestSink_LogFileCaptures;
+    procedure TestSink_LogFileTruncates;
+  end;
+
+procedure TStderrSinkTests.SetUp;
+begin
+  FSavedErr := fpDup(2);
+  FLogFile  := '/tmp/ugli_test_stderr.tmp';
+end;
+
+procedure TStderrSinkTests.TearDown;
+begin
+  if FSavedErr >= 0 then
+    begin
+      fpDup2(FSavedErr, 2);
+      fpClose(FSavedErr);
+      FSavedErr := -1;
+    end;
+  fpUnlink(PChar(FLogFile));
+end;
+
+procedure TStderrSinkTests.TestSink_NullSilences;
+{ Verify that fd 2 becomes a character device (/dev/null) after InitStderrSink(''). }
+const
+  ModeTypeMask = $F000;   { S_IFMT }
+  CharDevMode  = $2000;   { S_IFCHR }
+var St: Stat;
+begin
+  InitStderrSink('');
+  AssertEquals('fstat on fd 2 succeeds', 0, fpFstat(2, St));
+  AssertEquals('fd 2 is a character device',
+    CharDevMode, St.st_mode and ModeTypeMask);
+end;
+
+procedure TStderrSinkTests.TestSink_LogFileCaptures;
+{ Verify that bytes written to fd 2 appear in the log file. }
+const TestStr = 'ugli-stderr-test';
+var
+  Fd    : cint;
+  Buf   : array[0..63] of Byte;
+  N     : SizeInt;
+  Actual: string;
+begin
+  InitStderrSink(FLogFile);
+  fpWrite(2, TestStr[1], Length(TestStr));
+  Fd := fpOpen(FLogFile, O_RDONLY);
+  AssertTrue('log file opened', Fd >= 0);
+  N := fpRead(Fd, Buf[0], SizeOf(Buf));
+  fpClose(Fd);
+  SetLength(Actual, N);
+  if N > 0 then Move(Buf[0], Actual[1], N);
+  AssertEquals(TestStr, Actual);
+end;
+
+procedure TStderrSinkTests.TestSink_LogFileTruncates;
+{ Verify that a second call to InitStderrSink on the same path truncates
+  the file, so only the second batch of bytes is present. }
+const First = 'ABCDE'; Second = 'XY';
+var
+  Fd    : cint;
+  Buf   : array[0..63] of Byte;
+  N     : SizeInt;
+  Actual: string;
+begin
+  InitStderrSink(FLogFile);
+  fpWrite(2, First[1], Length(First));
+  InitStderrSink(FLogFile);          { re-opens with O_TRUNC }
+  fpWrite(2, Second[1], Length(Second));
+  Fd := fpOpen(FLogFile, O_RDONLY);
+  AssertTrue('log file re-opened after truncate', Fd >= 0);
+  N := fpRead(Fd, Buf[0], SizeOf(Buf));
+  fpClose(Fd);
+  SetLength(Actual, N);
+  if N > 0 then Move(Buf[0], Actual[1], N);
+  AssertEquals('second write overwrites first', Second, Actual);
+end;
+
+{ ------------------------------------------------------------------ }
 { Main                                                               }
 { ------------------------------------------------------------------ }
 
@@ -1666,6 +1757,7 @@ begin
   RegisterTest(TScreenOverlayTests);
   RegisterTest(TGameFlowTests);
   RegisterTest(TBufFlushOutputTests);
+  RegisterTest(TStderrSinkTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
   Runner.Run;
