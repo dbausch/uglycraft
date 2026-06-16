@@ -173,6 +173,44 @@ end; {if Zahl = 10}   { was {if zahl = 10} }
 - No space between an identifier and its opening `(` in a call: `WriteLn(...)`.
 - No space before `[` in subscripts: `Sper[I, J]`.
 
+### Colon
+
+- No space before `:` in any context (type annotations, case labels, record
+  field declarations).
+- One space after `:` — `X: Integer`, `1: begin`.
+
+### Binary operators
+
+One space before and one space after every binary operator: `:=`, `+`, `-`,
+`*`, `/`, `div`, `mod`, `=`, `<>`, `<`, `>`, `<=`, `>=`, `and`, `or`,
+`xor`, `not`, `in`, `is`, `as`.
+
+```pascal
+X := Y + 1;
+if A = B then ...
+while I <= N do ...
+```
+
+### No operator alignment
+
+Do **not** add extra spaces to vertically align `:`, `=`, `:=`, or any other
+operator across adjacent lines.  Each declaration or statement is spaced
+naturally without regard for the column positions of neighbouring lines.
+
+```pascal
+{ Wrong — extra spaces inserted to align colons/equals }
+var
+  Tio      : Termios;
+  StderrLog: string;
+  DumpFd   : cint = -1;
+
+{ Correct }
+var
+  Tio: Termios;
+  StderrLog: string;
+  DumpFd: cint = -1;
+```
+
 ---
 
 ## Scope
