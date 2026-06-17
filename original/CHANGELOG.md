@@ -123,6 +123,15 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   (V2 consec-skip, V3 row-span, V2b/V3b single-write variants) used by the
   performance benchmark and correctness tests.
 
+### Sound
+
+- Fix sound distortion (chopping artefacts and frequency sweep): the UOS synth
+  input defaulted to Float32 sample format while `AddIntoDevOut` defaulted to
+  Int16. UOS's internal format conversion introduced the artefacts. Both the
+  synth and the output device now explicitly use matching parameters: stereo,
+  Float32, 44100 Hz, 1024 frames. Sound quality now matches the original DOS
+  version.
+
 ### Bug fixes
 
 - `HighScoreEntry`: removed a spurious `WaitKey` that appeared after writing
@@ -178,8 +187,12 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 - `--dump <file>` / `-d <file>` CLI option: opens the named file and calls
   `BufFlushForce` immediately after `Init`, so recording starts from the first
   frame without requiring an in-game F6 press.
+- `ToggleDump` clears the red `●` indicator (writes a black space at (80, 25)
+  and flushes) when dump recording is toggled off.
 - `UGLI_2_Replay.pp` — standalone replay utility: reads a zero-byte-delimited
-  dump file and writes the first N chunks to stdout.
+  dump file and writes the first N chunks to stdout. Clears the screen at
+  start; resets attributes, re-enables auto-wrap, and positions the cursor at
+  row 26 after playback so the shell prompt appears cleanly below the replay.
   Usage: `./UGLI_2_Replay <dump_file> [n_writes]`
 - `GetKey` extended with `ESC[17~` → `KeyF6` (xterm/kitty F6 encoding in the
   numeric-sequence case).  `KeyF6 = 64` added to the const block.
