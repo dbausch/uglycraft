@@ -68,5 +68,6 @@ begin
 
   fpWrite(1, PChar(#27'[26;1H'#27'[?7h'#27'[0m')^, 16);
   WriteLn(StdErr, 'Replayed ', WriteCount, ' write(s).');
+  fpWrite(1, PChar(#27'[2K')^, 4);
   FreeMem(Buf);
 end.
