@@ -125,13 +125,19 @@ begin
   WBufPos := 0;
 end;
 
+procedure BufPutCell(Col, Row: Integer; Fg, Bg: Byte; const Ch: String); forward;
+procedure BufFlush; forward;
 procedure BufFlushForce; forward;
 
 procedure ToggleDump;
 const DumpFileName = '/tmp/ugli_dump.bin';
 begin
   if DumpFd >= 0 then
-    begin fpClose(DumpFd); DumpFd := -1; end
+    begin
+      fpClose(DumpFd); DumpFd := -1;
+      BufPutCell(ScreenW, ScreenH, Black, Black, ' ');
+      BufFlush;
+    end
   else
     begin
       DumpFd := fpOpen(DumpFileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
