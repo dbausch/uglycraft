@@ -154,7 +154,24 @@ sequence = ["_push-linux", "_push-windows"]
 
 [tool.poe.tasks.deploy]
 help     = "Push all distributables to itch.io"
-sequence = ["deploy-original-linux", "deploy-original-dos", "_push-linux", "_push-windows"]
+sequence = ["deploy-original-linux", "deploy-original-dos", "_push-linux", "_push-windows", "deploy-aur"]
+
+[tool.poe.tasks.deploy-aur]
+help  = "Update and push the AUR package (../uglycraft-aur)"
+shell = """
+  AUR_DIR=../uglycraft-aur
+  [ -d "$AUR_DIR/.git" ] || { echo "error: $AUR_DIR is not a git repo"; exit 1; }
+  cp packaging/PKGBUILD packaging/.SRCINFO "$AUR_DIR/"
+  cd "$AUR_DIR"
+  VER=$(grep -oP '(?<=pkgver=)\\S+' PKGBUILD)-$(grep -oP '(?<=pkgrel=)\\S+' PKGBUILD)
+  git add PKGBUILD .SRCINFO
+  if git diff --cached --quiet; then
+    echo "nothing to update — AUR repo already matches"
+  else
+    git commit -m "uglycraft $VER"
+    git push
+  fi
+"""
 
 [tool.poe.tasks._push-linux]
 shell = "butler push dist/linux-64 dbausch/uglycraft:linux-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"

@@ -20,6 +20,7 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 | `poe deploy-uglycraft` | Push Linux and Windows channels only |
 | `poe deploy-original-linux` | Push `dist/original-linux` to itch.io |
 | `poe deploy-original-dos` | Push `dist/original-dos` to itch.io |
+| `poe deploy-aur` | Copy PKGBUILD + .SRCINFO to `../uglycraft-aur`, commit and push |
 
 Build and deploy are separate steps — deploy tasks only call butler, never build.
 Windows build requires Wine installed via the system package manager; `poe setup-windows` handles the rest.
