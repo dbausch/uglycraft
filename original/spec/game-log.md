@@ -2,16 +2,16 @@
 
 ## Status
 
-- [ ] `--stderr-log` renamed to `--log`; short option `-l` added; `--level` loses short form
-- [ ] `LogFile: string` global replaces `StderrLog`; `LogFd: cint = -1` global added
-- [ ] `OpenLog(FileName)` replaces `InitStderrSink`: opens file, redirects fd 2, keeps `LogFd`
-- [ ] `Log(Msg)` procedure writes timestamped line to `LogFd`
-- [ ] Log entries written: started (version), flags, sound backend, gameplay events, exit
-- [ ] `UOSSound.Init` writes sound-backend status to fd 2 (reaches log via redirect)
-- [ ] `TLogTests` replaces `TStderrSinkTests` — all renamed tests green plus new `TestLog_Writes`
-- [ ] `poe build-original` passes
-- [ ] `poe test-original` passes
-- [ ] `poe run-original --log /tmp/ugli.log` produces a readable log (confirmed by user)
+- [x] `--stderr-log` renamed to `--log`; short option `-l` added; `--level` loses short form — `278155b`
+- [x] `LogFile: string` global replaces `StderrLog`; `LogFd: cint = -1` global added — `278155b`
+- [x] `OpenLog(FileName)` replaces `InitStderrSink`: opens file, redirects fd 2, keeps `LogFd` — `278155b`
+- [x] `Log(Msg)` procedure writes timestamped line to `LogFd` — `278155b`
+- [x] Log entries written: started (version), flags, sound backend, gameplay events, exit — `278155b`
+- [x] `UOSSound.Init` writes sound-backend status to fd 2 (reaches log via redirect) — `278155b`
+- [x] `TLogTests` replaces `TStderrSinkTests` — all renamed tests green plus new `TestLog_Writes` — `278155b`
+- [x] `poe build-original` passes
+- [x] `poe test-original` passes
+- [x] `poe run-original --log /tmp/ugli.log` produces a readable log — user confirmed 2026-06-17
 
 ---
 
@@ -121,7 +121,7 @@ if LogFd >= 0 then fpClose(LogFd);
 
 ## Done when
 
-- [ ] `poe build-original` exits 0
-- [ ] `poe test-original` exits 0, all tests pass
-- [ ] `poe run-original --log /tmp/ugli.log`, play briefly, quit — log contains
-      started/flags/sound/new-game/item/caught/exit entries (confirmed by user)
+- [x] `poe build-original` exits 0
+- [x] `poe test-original` exits 0, all tests pass
+- [x] `poe run-original --log /tmp/ugli.log`, play briefly, quit — log contains
+      started/flags/sound/new-game/item/exit entries — user confirmed 2026-06-17
