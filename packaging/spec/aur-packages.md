@@ -10,8 +10,8 @@
 - [x] `packaging/uglycraft.desktop` — freedesktop .desktop file for UGLYCRAFT — `b43597e`
 - [x] `packaging/ugli.desktop` — freedesktop .desktop file for UGLI — `b43597e`
 - [x] `makepkg` builds both packages without error — tested locally with `makepkg -ef`
-- [ ] `uglycraft` package installs and runs correctly
-- [ ] `ugli` package installs and runs correctly
+- [x] `uglycraft` package installs and runs correctly — user confirmed 2026-06-17
+- [x] `ugli` package installs and runs correctly — user confirmed 2026-06-17
 
 ---
 
@@ -236,12 +236,12 @@ Install files as listed in the tables above using standard `install -Dm{644,755}
 
 ## Done when
 
-- [ ] `makepkg` in `packaging/` builds both packages without error
-- [ ] `pacman -U uglycraft-*.pkg.tar.zst` installs; `uglycraft` opens pygame window, plays correctly (manual check)
-- [ ] `pacman -U ugli-*.pkg.tar.zst` installs; `ugli` opens kitty with ANSI-87, game plays correctly (manual check)
+- [x] `makepkg` in `packaging/` builds both packages without error
+- [x] `pacman -U uglycraft-*.pkg.tar.zst` installs; `uglycraft` opens pygame window, plays correctly (manual check) — user confirmed 2026-06-17
+- [x] `pacman -U ugli-*.pkg.tar.zst` installs; `ugli` opens kitty with ANSI-87, game plays correctly (manual check) — user confirmed 2026-06-17
 - [ ] `ugli --help` prints help to current terminal without opening kitty (manual check)
 - [ ] High-score file lands at `~/.local/share/ugli/UGLI.HSC` (manual check)
-- [ ] `uglycraft.svg` renders the player smiley clearly at small sizes (manual check)
-- [ ] `ugli.svg` renders bold "UGLI" lettering clearly at small sizes (manual check)
-- [ ] Both .desktop files appear in application launcher after install (manual check)
+- [x] `uglycraft.svg` renders the player smiley clearly at small sizes (manual check) — user confirmed 2026-06-17
+- [x] `ugli.svg` renders bold "UGLI" lettering clearly at small sizes (manual check) — user confirmed 2026-06-17
+- [x] Both .desktop files appear in application launcher after install (manual check) — user confirmed 2026-06-17
 - [ ] `namcap` reports no errors on PKGBUILD
