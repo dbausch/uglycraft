@@ -21,17 +21,18 @@ The original port committed the UOS source files directly to the repository
 of committing it") removed them and switched to `curl`-fetching from GitHub on
 first build.
 
-**The two source generations behave differently at `Pa_Initialize()` time:**
+**The two source generations were initially thought to behave differently:**
 
 | Source generation | ALSA probe messages on `Init` |
 |---|---|
 | Original committed sources (`2fe4698`) | Many messages — one per absent/misconfigured backend |
-| Currently fetched sources | Silent — probe succeeds cleanly |
+| Currently fetched sources | Sometimes silent, sometimes noisy |
 
-This was confirmed by building `ProbeSound` variants against each source
-generation (2026-06-16) and running them in the same terminal session.  The
-difference is entirely in how the two UOS versions call into PortAudio, not in
-PipeWire, ALSA config, or the `SuppressStderr` wrapper.
+Testing on 2026-06-16 with `ProbeSound` variants suggested the fetched sources
+were always silent, but a `--log` capture on 2026-06-17 showed the full set of
+probe messages appearing with the same fetched sources.  The root cause is
+uncertain — it may involve PipeWire/ALSA session state or timing rather than
+the UOS source version alone.
 
 ---
 
@@ -77,30 +78,23 @@ log when `--log` is active.
 
 ## What to expect from `--log`
 
-### With fetched UOS sources (current build)
+### ALSA probe messages
 
-The log will contain structured entries from the game (started, flags, sound
-backend, gameplay events, exit) but **no ALSA probe messages** — the fetched
-UOS version initialises PortAudio without generating any fd 2 output on probe.
+Earlier testing (2026-06-16) concluded that the currently fetched UOS sources
+did **not** produce ALSA probe messages, unlike the original committed sources
+(`2fe4698`).  However, a `--log` capture on 2026-06-17 showed the full set of
+probe messages appearing again with the same fetched sources (dated 2026-06-09).
+The cause of the discrepancy is uncertain — it may depend on PipeWire/ALSA
+state, session timing, or other environmental factors rather than the UOS
+source version alone.
+
+In practice, assume that ALSA/JACK/OSS probe messages **may or may not**
+appear on any given run.  The `--log` redirect captures them regardless.
 
 `UOSSound.Init` explicitly writes one of:
 - `UOSSound: PortAudio ready (libportaudio.so.2)` — normal case
 - `UOSSound: uos_CreatePlayer failed, sound disabled` — device init failure
 - `UOSSound: no PortAudio library found, sound disabled` — no libportaudio
-
-### With original committed UOS sources (`2fe4698`)
-
-Many ALSA probe messages appear on `Pa_Initialize()`.  Example:
-
-```
-ALSA lib pcm.c:2722: Unknown PCM cards.pcm.rear
-ALSA lib pcm.c:2722: Unknown PCM cards.pcm.center_lfe
-connect(2) call to /dev/shm/jack-1000/default/jack_0 failed (err=No such file or directory)
-ALSA lib pcm_oss.c:404: Cannot open device /dev/dsp
-...
-```
-
-These were the "many messages on each run" visible before suppression was added.
 
 ### Buffer-underrun messages
 
