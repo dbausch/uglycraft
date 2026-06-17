@@ -2,17 +2,17 @@
 
 ## Status
 
-- [ ] `DumpFd` + modified `WBFlush` in `UGLI_2_Core.inc`
-- [ ] `ToggleDump` procedure + F6 keybinding (`GetKey`, `HandleInput`, CleanUp)
-- [ ] `UGLI_2_Replay.pp` built with `poe build-replay`
-- [ ] `poe build-original` passes
-- [ ] `poe build-replay` passes
-- [ ] Dump file is unbounded — no size cap applied
-- [ ] `BufFlushForce` procedure emits every cell regardless of dirty bits
-- [ ] `ToggleDump` calls `BufFlushForce` on start so dump begins with a complete frame
-- [ ] Red `●` drawn at (80, 25) inside `BufFlush` whenever `DumpFd ≥ 0`
-- [ ] `--dump <file>` / `-d <file>` CLI option: sets dump path and starts recording immediately
-- [ ] Manual bisection workflow confirmed (user must confirm)
+- [x] `DumpFd` + modified `WBFlush` in `UGLI_2_Core.inc` — `51a7d8c`
+- [x] `ToggleDump` procedure + F6 keybinding (`GetKey`, `HandleInput`, CleanUp) — `51a7d8c`, `e451c56`
+- [x] `UGLI_2_Replay.pp` built with `poe build-replay` — `c32d75c`, `7e27d8c`
+- [x] `poe build-original` passes
+- [x] `poe build-replay` passes
+- [x] Dump file is unbounded — no size cap applied — `51a7d8c`
+- [x] `BufFlushForce` procedure emits every cell regardless of dirty bits — `51a7d8c`
+- [x] `ToggleDump` calls `BufFlushForce` on start so dump begins with a complete frame — `51a7d8c`
+- [x] Red `●` drawn at (80, 25) inside `BufFlush` whenever `DumpFd ≥ 0` — `51a7d8c`
+- [x] `--dump <file>` / `-d <file>` CLI option: sets dump path and starts recording immediately — `e2878f7`
+- [x] Manual bisection workflow confirmed — user confirmed 2026-06-17
 
 ---
 
@@ -233,12 +233,12 @@ poe build-original && poe build-replay
 
 ## Done when
 
-- [ ] `poe build-original` exits 0
-- [ ] `poe build-replay` exits 0
-- [ ] F6 during gameplay: red `●` appears at bottom-right; `/tmp/ugli_dump.bin`
+- [x] `poe build-original` exits 0
+- [x] `poe build-replay` exits 0
+- [x] F6 during gameplay: red `●` appears at bottom-right; `/tmp/ugli_dump.bin`
       is created; first write in the file is a complete frame; F6 again removes
-      indicator and stops recording (confirmed by user)
-- [ ] `./UGLI_2_Replay /tmp/ugli_dump.bin 10` replays first 10 writes to
-      stdout correctly; write 0 shows a full screen (confirmed by user)
-- [ ] `poe run-original --dump /tmp/ugli_dump.bin` starts recording immediately
-      on launch; red `●` visible from the first frame (confirmed by user)
+      indicator and stops recording — user confirmed 2026-06-17
+- [x] `./UGLI_2_Replay /tmp/ugli_dump.bin 10` replays first 10 writes to
+      stdout correctly; write 0 shows a full screen — user confirmed 2026-06-17
+- [x] `poe run-original --dump /tmp/ugli_dump.bin` starts recording immediately
+      on launch; red `●` visible from the first frame — user confirmed 2026-06-17
