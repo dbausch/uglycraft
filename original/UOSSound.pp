@@ -75,12 +75,12 @@ begin
   end;
 
   { Stereo square wave, silent (volume=0), endless when active.
-    duration=-1 sets 1000 ms initially; we switch to endless below. }
-  FInput := uos_AddFromSynth(FPlayer, -1, 1, 1, 440, 440, 0, 0,
-                              -1, 0, 0, 0, -1, -1, -1);
+    Float32 at 44100 Hz, 1024 frames — output must match. }
+  FInput := uos_AddFromSynth(FPlayer, 2, 1, 1, 440, 440, 0, 0,
+                              -1, 0, 0, -1, 0, 44100, 1024);
   if FInput < 0 then Exit;
 
-  if uos_AddIntoDevOut(FPlayer) < 0 then
+  if uos_AddIntoDevOut(FPlayer, -1, -1, 44100, 2, 0, 65536, 1024) < 0 then
   begin
     FInput := -1;
     Exit;
