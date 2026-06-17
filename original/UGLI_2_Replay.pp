@@ -18,6 +18,7 @@ var
   I, ChunkStart, WriteCount: LongInt;
 
 begin
+  fpWrite(1, PChar(#27'[2J'#27'[1;1H')^, 10);
   if ParamCount < 1 then
     begin
       WriteLn(StdErr, 'Usage: UGLI_2_Replay <dump_file> [n_writes]');
