@@ -1,6 +1,6 @@
 pkgbase=uglycraft
 pkgname=('uglycraft' 'ugli')
-pkgver=1.2
+pkgver=1.3
 pkgrel=1
 arch=('x86_64')
 url='https://github.com/dbausch/uglycraft'

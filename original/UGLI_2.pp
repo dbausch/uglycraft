@@ -7,7 +7,7 @@ label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
 const
   User = 'Public Domain';
-  Version = '2.3';
+  Version = '2.4';
   Release = '0042';
   FieldW = 80;
   FieldH = 20;
