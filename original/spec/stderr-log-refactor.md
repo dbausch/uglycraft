@@ -130,6 +130,5 @@ observing probe messages on this machine.  The acceptance criterion is met by:
 
 - [x] `poe build-original` exits 0 (da21e2c)
 - [x] `poe test-original` exits 0, 125 tests pass (da21e2c)
-- [ ] `--stderr-log <file>` captures ALSA probe messages in the log (cannot
-      confirm on this machine — PipeWire silences the probe; display corruption
-      is gone, TStderrSinkTests pass)
+- [x] `--stderr-log <file>` captures ALSA probe messages — superseded by
+      `--log` (see `game-log.md`); confirmed via `/tmp/ugli.log` on 2026-06-17
