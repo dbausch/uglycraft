@@ -8,5 +8,5 @@
   <circle cx="30" cy="18" r="3" fill="#141414"/>
   <circle cx="28.5" cy="16.5" r="1.5" fill="#fff"/>
   <!-- Smile -->
-  <path d="M 16.5 27 A 7.5 4.5 0 0 1 31.5 27" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 16.5 27 A 7.5 4.5 0 0 0 31.5 27" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round"/>
 </svg>
