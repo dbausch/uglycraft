@@ -200,13 +200,14 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ### Testing
 
-- fpcunit test suite (`UGLI_2_Test.pp`): 136 unit tests across thirteen classes
+- fpcunit test suite (`UGLI_2_Test.pp`): 139 unit tests across fourteen classes
   covering string utilities, screen buffer, level init, drawing, game logic,
   enemy AI, player movement, block placement, player-caught state, dialog
   rendering, screen overlays, game-flow transitions, BufFlush output
   correctness (`TBufFlushOutputTests`), CLI help text, structured logging
-  (`TLogTests`), and dump/recording features (`TDumpTests`). `BufFlushEnabled
-  := false` suppresses terminal output in all non-flush tests.
+  (`TLogTests`), dump/recording features (`TDumpTests`), and dump file binary
+  inspection (`TDumpFileTests`). `BufFlushEnabled := false` suppresses terminal
+  output in all non-flush tests.
 - `poe test-original` task: compiles `UGLI_2_Test.pp` and runs all tests;
   exits 0 on all-pass.
 - `poe bench-original` task: compiles and runs `UGLI_2_BufFlush_Bench.pp` in
