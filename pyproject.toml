@@ -154,7 +154,7 @@ sequence = ["_push-linux", "_push-windows"]
 
 [tool.poe.tasks.deploy]
 help     = "Push all distributables to itch.io"
-sequence = ["deploy-original-linux", "deploy-original-dos", "_push-linux", "_push-windows", "deploy-aur"]
+sequence = ["deploy-original-linux", "_push-linux", "_push-windows", "deploy-aur"]
 
 [tool.poe.tasks.deploy-aur]
 help  = "Update and push the AUR package (../uglycraft-aur)"
