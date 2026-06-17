@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=UGLYCRAFT
+GenericName=Arcade Game
+Comment=Treasure-collecting arcade game inspired by UGLI (1996)
+Exec=uglycraft
+Icon=uglycraft
+Terminal=false
+Categories=Game;ArcadeGame;
+Keywords=game;arcade;retro;

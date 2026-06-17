@@ -1,0 +1,88 @@
+pkgbase=uglycraft
+pkgname=('uglycraft' 'ugli')
+pkgver=1.1
+pkgrel=1
+arch=('x86_64')
+url='https://github.com/dbausch/uglycraft'
+license=('GPL-3.0-only')
+makedepends=('fpc')
+source=("$pkgbase-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz"
+        "uos.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos.pas"
+        "uos_flat.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos_flat.pas"
+        "uos_portaudio.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos_portaudio.pas"
+        "ANSI-87.conf::https://raw.githubusercontent.com/kovidgoyal/kitty-themes/master/themes/ANSI-87.conf")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP')
+
+prepare() {
+  cd "$pkgbase-$pkgver"
+  mkdir -p original/uos
+  cp "$srcdir"/{uos.pas,uos_flat.pas,uos_portaudio.pas} original/uos/
+  cp "$srcdir/ANSI-87.conf" original/
+  cat > original/uos/uos_define.inc <<'EOF'
+{$DEFINE portaudio}
+{$DEFINE synthesizer}
+EOF
+}
+
+build() {
+  cd "$pkgbase-$pkgver/original"
+  fpc -Fuuos UGLI_2.pp
+}
+
+package_uglycraft() {
+  pkgdesc='Treasure-collecting arcade game inspired by UGLI (1996)'
+  depends=('python' 'python-pygame' 'python-numpy')
+
+  cd "$pkgbase-$pkgver"
+
+  install -d "$pkgdir/usr/share/uglycraft"
+  install -m644 main.py game.py constants.py sprites.py levels.py \
+    entities.py hiscore.py sounds.py "$pkgdir/usr/share/uglycraft/"
+  install -d "$pkgdir/usr/share/uglycraft/fonts"
+  install -m644 fonts/ShareTechMono-Regular.ttf \
+    "$pkgdir/usr/share/uglycraft/fonts/"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/uglycraft" <<'WRAPPER'
+#!/bin/bash
+exec python /usr/share/uglycraft/main.py "$@"
+WRAPPER
+
+  install -Dm644 packaging/uglycraft.desktop \
+    "$pkgdir/usr/share/applications/uglycraft.desktop"
+  install -Dm644 packaging/uglycraft.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/uglycraft.svg"
+
+  install -Dm644 LICENSES/GPL-3.0.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/GPL-3.0.txt"
+  install -Dm644 LICENSES/OFL-1.1-ShareTechMono.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-ShareTechMono.txt"
+}
+
+package_ugli() {
+  pkgdesc='UGLI 2 (1996) — text-mode treasure game (Linux/FPC port)'
+  optdepends=('portaudio: sound support via UOS/PortAudio'
+              'kitty: terminal launcher with ANSI-87 colour theme'
+              'ttf-liberation: Liberation Mono font for kitty launcher')
+
+  cd "$pkgbase-$pkgver"
+
+  install -Dm755 original/UGLI_2 "$pkgdir/usr/share/ugli/UGLI_2"
+  install -Dm644 original/ANSI-87.conf "$pkgdir/usr/share/ugli/ANSI-87.conf"
+  install -d "$pkgdir/usr/share/ugli/translations"
+  install -m644 original/translations/*.mo \
+    "$pkgdir/usr/share/ugli/translations/"
+
+  install -Dm755 packaging/ugli.sh "$pkgdir/usr/bin/ugli"
+
+  install -Dm644 packaging/ugli.desktop \
+    "$pkgdir/usr/share/applications/ugli.desktop"
+  install -Dm644 packaging/ugli.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/ugli.svg"
+
+  install -Dm644 LICENSES/GPL-3.0.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/GPL-3.0.txt"
+}

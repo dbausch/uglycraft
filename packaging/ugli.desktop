@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=UGLI
+GenericName=Text-Mode Game
+Comment=UGLI 2 (1996) — text-mode treasure game (Linux/FPC port)
+Exec=ugli
+Icon=ugli
+Terminal=false
+Categories=Game;ArcadeGame;
+Keywords=game;arcade;retro;terminal;
