@@ -104,6 +104,27 @@ source version.  They land in the log file when `--log` is active.
 
 ---
 
+## Sample format mismatch fix (`6ebb27b`)
+
+Prior to this fix, the game's sound had audible distortion: a chopping
+artefact and frequency sweep that made it sound nothing like the clean square
+waves of the original DOS version.
+
+**Root cause:** `uos_AddFromSynth` defaults to **Float32** sample format,
+while `uos_AddIntoDevOut()` (called with no arguments) defaults to **Int16**.
+UOS silently converts between the two, and that conversion introduced the
+artefacts.
+
+**Fix:** `UOSSound.Init` now passes explicit matching parameters to both
+calls — stereo, Float32, 44100 Hz, 1024 frames on the synth input; stereo,
+Float32, 44100 Hz on the device output.
+
+**Diagnosis method:** a minimal `ProbeSound.pp` test program that played a
+single 440 Hz tone for 3 seconds.  With mismatched formats it reproduced the
+distortion; with matched Float32 on both sides it produced a clean square wave.
+
+---
+
 ## Sound effects reference
 
 | Procedure | Hz / pattern | Trigger |
