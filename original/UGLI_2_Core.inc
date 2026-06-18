@@ -1613,6 +1613,7 @@ begin
   MyCursorOff;
   Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, sScoreEntry + S);
   Assign(F, HighScoreFileName);
+  {$I-}
   Append(F);
   if IOResult = 0
   then
@@ -1635,8 +1636,10 @@ begin
           WriteLn;
         end;
     end;
+  {$I+}
   Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
   Assign(F, HighScoreFileName);
+  {$I-}
   Reset(F);
   if IOResult = 0
   then
@@ -1665,6 +1668,7 @@ begin
           Close(F);
         end;
     end;
+  {$I+}
   Write(TTY, #27'[25;1H'); Flush(TTY);
   Write(sPressKey);
   { Re-enable raw mode before returning to game }

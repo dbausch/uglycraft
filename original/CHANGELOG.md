@@ -30,6 +30,9 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 - Game no longer hangs on quit when the async sound timer thread is active.
 - Red flash on caught now fills the field with solid red instead of preserving
   characters (enemy was previously visible through the flash).
+- High score file operations no longer crash on first run when `UGLI.HSC`
+  does not exist yet (`{$I-}` was missing, so `Append` raised a runtime error
+  instead of letting `IOResult` handle it).
 
 ---
 
