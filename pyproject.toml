@@ -16,13 +16,8 @@ help  = "Create venv and install all dependencies"
 shell = "virtualenv .venv && .venv/bin/pip install -r requirements.txt"
 
 [tool.poe.tasks.run]
-help = "Run the game"
+help = "Run the game. Forward args with --: poe run -- --level 5"
 cmd  = ".venv/bin/python main.py"
-
-[tool.poe.tasks.run-level]
-help   = "Run the game starting at a specific level (e.g. poe run-level 10)"
-shell  = ".venv/bin/python main.py --level ${level}"
-args   = [{name = "level", positional = true}]
 
 [tool.poe.tasks.run-original]
 help  = "Run the original UGLI 2 in a new terminal. Forward args with --: poe run-original -- --level 5"
