@@ -4,8 +4,10 @@
 
 `UOSSound.pp` wraps the UOS audio library (Pascal bindings for PortAudio).
 Sound is produced by synthesising a continuous square wave at a controlled
-frequency and volume.  `Ton(Hz, Ms)` plays a note for a fixed duration;
-`Sound(Hz)` / `NoSound` control an ongoing tone.
+frequency and volume.  `Beep(Hz, Ms)` plays a note synchronously;
+`BeepAsync(Hz, Ms)` starts a tone and returns immediately — a background timer
+thread calls `NoSound` after the duration expires.  `Sound(Hz)` / `NoSound`
+control an ongoing tone directly.
 
 Initialisation is **lazy**: `UOSSound.Init` is called from `Sound()` on the
 first invocation, not at program start.  `FReady := True` is set at the
@@ -129,9 +131,9 @@ distortion; with matched Float32 on both sides it produced a clean square wave.
 
 | Procedure | Hz / pattern | Trigger |
 |---|---|---|
-| `SoundBump` | 40 Hz, 5 ms | Player walks into a wall |
-| `SoundPickup` | 250 Hz, 50 ms | Treasure collected |
-| `SoundCaught` | 80 Hz, 200 ms | Player caught by enemy |
-| `SoundGameOver` | descending sweep 200→100 Hz + 600→0 sweep | Lives = 0 |
-| `SoundWon` | 100/200/300/400 Hz, 500 ms each | All items collected |
-| `Ton` (intro) | I × 150 Hz, 300 ms each, I = 0..7 | During animated intro |
+| `SoundBump` | 40 Hz, 5 ms | Player walks into a wall | async |
+| `SoundPickup` | 250 Hz, 50 ms | Treasure collected | async |
+| `SoundCaught` | 80 Hz, 200 ms | Player caught by enemy | async |
+| `SoundGameOver` | descending sweep 200→100 Hz + 600→0 sweep | Lives = 0 | sync |
+| `SoundWon` | 100/200/300/400 Hz, 500 ms each | All items collected | sync |
+| `Beep` (intro) | I × 150 Hz, 300 ms each, I = 0..7 | During animated intro | sync |

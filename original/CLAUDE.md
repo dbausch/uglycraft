@@ -18,8 +18,9 @@ Run `poe test-original` to build and execute the fpcunit test suite (139 tests, 
 
 ### `UOSSound.pp` (unit `UOSSound`) — FPC/Linux sound
 
-- Wraps UOS + PortAudio to provide `Sound(Hz)`, `NoSound`, `Ton(Hz, Ms)`
-- Named effects: `SoundBump`, `SoundPickup`, `SoundCaught`, `SoundGameOver`, `SoundWon`
+- Wraps UOS + PortAudio to provide `Sound(Hz)`, `NoSound`, `Beep(Hz, Ms)`, `BeepAsync(Hz, Ms)`
+- `Beep` is synchronous (blocks caller); `BeepAsync` returns immediately, a background timer thread silences after the given duration
+- Named effects: `SoundBump`, `SoundPickup`, `SoundCaught` (async); `SoundGameOver`, `SoundWon` (sync)
 - UOS source fetched from GitHub at build time; requires `libportaudio.so.2` at runtime
 
 ### `UGLI_2_Core.inc` — shared include file
@@ -187,6 +188,8 @@ CleanUp:  { restore terminal, ANSI clear screen, exit }
 ## Sound
 
 `UOSSound.pp` wraps UOS + PortAudio. Requires `libportaudio.so.2` at runtime; falls back to silence if unavailable. UOS source is fetched from GitHub at build time — not committed to the repo.
+
+Gameplay sounds (`SoundBump`, `SoundPickup`, `SoundCaught`) use `BeepAsync` — the tone plays for a fixed duration via a background timer thread without blocking the main loop. Fanfares (`SoundGameOver`, `SoundWon`) and intro sounds use synchronous `Beep`.
 
 
 ## Internationalisation (i18n)

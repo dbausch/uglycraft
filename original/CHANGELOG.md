@@ -5,6 +5,19 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- Renamed `Ton(Hz, Ms)` to `Beep(Hz, Ms)` in `UOSSound.pp` and all call sites.
+- `SoundBump`, `SoundPickup`, and `SoundCaught` now use non-blocking
+  `BeepAsync` — the tone plays for a fixed duration via a background timer
+  thread without blocking the main loop.
+- When the player is caught, the entire playing field (including border)
+  flashes red for 200 ms while the caught sound plays.
+
+---
+
 ## 2.4
 
 ### Internationalisation
