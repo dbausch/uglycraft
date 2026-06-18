@@ -1354,7 +1354,12 @@ begin
           TryHoriz := not TryHoriz;
         end;
       if (EX <> OldEX) or (EY <> OldEY) then
-        Draw(OldEX, OldEY, FieldBg, FieldBg, ' ');
+      begin
+        if (OldEX = ItemX) and (OldEY = ItemY) then
+          DrawItem
+        else
+          Draw(OldEX, OldEY, FieldBg, FieldBg, ' ');
+      end;
       Draw(EX, EY, EnemyFg, FieldBg, '☻');
     end;
 end; {EnemyMove}
