@@ -47,6 +47,7 @@ var
   FAsyncMs: LongInt = 0;
   FAsyncGen: LongInt = 0;
   FTimerStarted: Boolean = False;
+  FQuitting: Boolean = False;
 
 { OpenLog in UGLI_2_Core.inc routes fd 2 to the log file at startup;
   diagnostic writes below use fd 2 directly and land in the log. }
@@ -61,15 +62,17 @@ var
   LocalGen: LongInt;
 begin
   Result := 0;
-  while True do
+  while not FQuitting do
   begin
     RTLEventWaitFor(FAsyncEvent);
+    if FQuitting then Break;
     repeat
       RTLEventResetEvent(FAsyncEvent);
       LocalGen := FAsyncGen;
       RTLEventWaitFor(FAsyncEvent, FAsyncMs);
-    until FAsyncGen = LocalGen;
-    NoSound;
+    until (FAsyncGen = LocalGen) or FQuitting;
+    if not FQuitting then
+      NoSound;
   end;
 end;
 
@@ -220,6 +223,11 @@ begin
 end;
 
 finalization
+  if FTimerStarted then
+  begin
+    FQuitting := True;
+    RTLEventSetEvent(FAsyncEvent);
+  end;
   if FPlaying then uos_stop(FPlayer);
   if FReady   then uos_free;
   if FAsyncEvent <> nil then RTLEventDestroy(FAsyncEvent);
