@@ -106,7 +106,7 @@ License texts live in `LICENSES/` and are copied into each build by the poe task
 
 ## Current version
 
-**v1.3** — bump this whenever a new git tag is created.
+**v1.4** — bump this whenever a new git tag is created.
 
 ## What this is
 
