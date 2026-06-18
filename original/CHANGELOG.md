@@ -25,6 +25,8 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 - Item pickup frame is now flushed to the terminal before the level restarts,
   so the player is visibly shown on the item cell at the moment of collection.
+- Item is no longer erased for one frame when the enemy walks over it and
+  leaves the cell.
 
 ---
 
