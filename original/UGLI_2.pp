@@ -146,6 +146,7 @@ StartLevel:
             Log('level ' + IntToStr(Level - 1) + ' complete');
             LevelComplete;
           end;
+        BufFlush;
         goto StartLevel;
       end;
     BufFlush;
