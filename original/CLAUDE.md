@@ -86,7 +86,8 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `X`, `Y` | Integer | Player position (1-indexed, column × row) |
 | `BlockX`, `BlockY` | Integer | Position of the last player-placed block; redrawn by movement functions |
 | `EX`, `EY` | Integer | Enemy position |
-| `Direction` | TDirection | Last direction key pressed; player keeps moving in this direction each tick |
+| `Direction` | TDirection | Current movement direction; updated by `DirDequeue` or directly |
+| `DirQueue[0..7]` | `TDirection` ring buffer | Queued direction changes from input drain; `DirHead`/`DirTail` index into it |
 | `StartX`, `StartY` | Integer | Player start position for the current level (set by `InitLevelN`, applied by `PrepareLevel`) |
 | `StartEX`, `StartEY` | Integer | Enemy start position for the current level |
 | `StartDir` | TDirection | Starting direction for the current level |
@@ -146,17 +147,19 @@ All Pascal source follows `STYLE.md`. Key rules:
 
 **`EnemyMove`** (enemy AI): Greedy chase. Each `EnemyTick`, computes `DX = EX - X`, `DY = EY - Y`. If `|DX| ≥ |DY|`, tries to move horizontally toward player first; falls back to vertical if blocked. Vice versa otherwise. No pathfinding — can get stuck behind walls.
 
-**`HandleInput`**: Main input handler. Sets `KeyCode := 0` at entry so each keystroke is processed exactly once. Dispatches:
-- Arrow keys → set `Direction`
-- Home/End → adjust `MoveDelay`
+**`HandleInput`**: Main input handler. Drains all pending keys from the TTY buffer (`while KeyPressed do`) and dispatches each one:
+- Arrow keys → enqueue into `DirQueue` (deduplicated against tail)
+- Home/End → adjust `MoveDelay` (fires immediately, multiple events stack)
 - Space → toggle `Laying` (continuous block-placement mode)
-- F1 → help screen
-- F2 → story screen
+- F1 → flush direction queue, show help screen, break
+- F2 → flush direction queue, show story screen, break
 - F3 → buy a life (5000 pts)
 - P → pause (5 s, decrements `PausesRemaining`)
-- Escape → quit (checked in main loop after `HandleInput`)
-- F4 → restart (checked in main loop)
-- F5 → `RemoveBlocks` (checked in main loop)
+- Escape → flush direction queue, break (checked in main loop)
+- F4 → flush direction queue, break (checked in main loop)
+- F5 → flush direction queue, break (checked in main loop)
+
+After draining, calls `MovePlayer` (pops one direction from `DirQueue`, or continues in current `Direction` if empty), `PlaceBlock` if laying, and draws player.
 
 **`PlaceBlock`**: Places a `█` at the player's current position if not already blocked; costs 20 pts. Auto-disables `Laying` if points or block budget run out.
 

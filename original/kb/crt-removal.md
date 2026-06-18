@@ -34,7 +34,7 @@ Converts CRT colour index to ANSI SGR digit. Applied in `BufFlush`:
 | `GotoXY(x, y)` | `ESC[y;xH` inside `BufFlush` (only for dirty cells) |
 | `ClrScr` | `BufFill(Black, Black, ' ')` + `BufFlush`, or `ESC[2J ESC[H` directly |
 | `ClrEol` | Not used — buffer approach makes it unnecessary |
-| `KeyPressed` | `HasTTYByte` (uses `fpIoctl(FIONREAD)`) |
+| `KeyPressed` | `KeyPressed` (same name; uses `fpIoctl(FIONREAD)` on `TTYFd`) |
 | `ReadKey` | `GetKey` (VT100 parser on `TTYFd`) |
 | `Delay(ms)` | `Sleep(ms)` (from `SysUtils`) |
 

@@ -15,6 +15,16 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   thread without blocking the main loop.
 - When the player is caught, the entire playing field (including border)
   flashes red for 200 ms while the caught sound plays.
+- `HandleInput` now drains all pending keys per tick instead of reading one.
+  Direction keys are queued in a ring buffer (deduplicated); one direction
+  is consumed per tick.  Holding non-direction keys (e.g. End) no longer
+  blocks movement for multiple ticks.
+- Renamed `HasTTYByte` to `KeyPressed` (standard Turbo Pascal name).
+
+### Fixed
+
+- Item pickup frame is now flushed to the terminal before the level restarts,
+  so the player is visibly shown on the item cell at the moment of collection.
 
 ---
 
