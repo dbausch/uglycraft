@@ -7,8 +7,8 @@ label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
 const
   User = 'Public Domain';
-  Version = '2.4';
-  Release = '0042';
+  Version = '2.5';
+  Release = '0043';
   FieldW = 80;
   FieldH = 20;
   ScreenW = FieldW;   { terminal width — buffer covers full 80-column line }

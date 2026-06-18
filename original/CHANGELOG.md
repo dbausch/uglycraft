@@ -5,7 +5,7 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ---
 
-## [Unreleased]
+## 2.5
 
 ### Changed
 
