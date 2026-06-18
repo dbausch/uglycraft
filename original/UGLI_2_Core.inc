@@ -717,7 +717,7 @@ begin
       SetBg(I);
       Write(ITTY, #27'[2J'#27'[H');
       Flush(ITTY);
-      Ton(I * 150, 300);
+      Beep(I * 150, 300);
       Sleep(20);
     end;
   Sleep(100);
@@ -792,7 +792,7 @@ begin
   WaitKey;
   Write(ITTY, #27'[2J'#27'[H');
   for I := 40 to 50 do
-    Ton(I, 150);
+    Beep(I, 150);
   Write(ITTY, #27'[r'); { reset scroll region }
   Flush(ITTY);
   Close(ITTY);
@@ -1736,9 +1736,20 @@ begin
   InitBorder;
 end;
 
+procedure FlashField;
+var Col, Row: Integer;
+begin
+  for Col := 1 to FieldW do
+    for Row := 1 to FieldH do
+      BufPutCell(Col, Row, Screen[Col, Row].Fg, Red, Screen[Col, Row].Ch);
+  BufFlush;
+end;
+
 procedure PlayerCaught;
 begin
   SoundCaught;
+  FlashField;
+  Sleep(200);
   Score := Score - ItemNo * 1000;
   if Score < 0 then Score := 0;
   ItemNo := 1;

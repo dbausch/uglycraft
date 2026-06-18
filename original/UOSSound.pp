@@ -1,8 +1,8 @@
 unit UOSSound;
 
 { Sound wrapper for UGLI 2 FPC port.
-  Provides Sound(Hz)/NoSound/Ton(Hz,Ms) backed by UOS + PortAudio.
-  Falls back to silence if PortAudio is not installed. }
+  Provides Sound(Hz)/NoSound/Beep(Hz,Ms)/BeepAsync(Hz,Ms) backed by
+  UOS + PortAudio.  Falls back to silence if PortAudio is not installed. }
 
 {$mode objfpc}{$H+}
 
@@ -13,7 +13,12 @@ procedure Sound(Hz: Word);
 procedure NoSound;
 
 { Play Hz for Ms milliseconds synchronously. }
-procedure Ton(Hz: Word; Ms: Integer);
+procedure Beep(Hz: Word; Ms: Integer);
+
+{ Play Hz for Ms milliseconds without blocking the caller.
+  The sound is silenced automatically after Ms by a background thread.
+  A new call cancels any pending timer from a previous BeepAsync. }
+procedure BeepAsync(Hz: Word; Ms: Integer);
 
 { Named sound effects. }
 procedure SoundBump;      { wall bump — low 40 Hz blip }
@@ -38,12 +43,44 @@ var
   FPlayer:  cint32   = 0;
   FInput:   cint32   = -1;
 
+  FAsyncEvent: PRTLEvent = nil;
+  FAsyncMs: LongInt = 0;
+  FAsyncGen: LongInt = 0;
+  FTimerStarted: Boolean = False;
+
 { OpenLog in UGLI_2_Core.inc routes fd 2 to the log file at startup;
   diagnostic writes below use fd 2 directly and land in the log. }
 
 procedure WriteLog(const S: AnsiString);
 begin
   fpWrite(2, S[1], Length(S));
+end;
+
+function TimerThreadFunc({%H-}P: Pointer): PtrInt;
+var
+  LocalGen: LongInt;
+begin
+  Result := 0;
+  while True do
+  begin
+    RTLEventWaitFor(FAsyncEvent);
+    repeat
+      RTLEventResetEvent(FAsyncEvent);
+      LocalGen := FAsyncGen;
+      RTLEventWaitFor(FAsyncEvent, FAsyncMs);
+    until FAsyncGen = LocalGen;
+    NoSound;
+  end;
+end;
+
+procedure EnsureTimerThread;
+var
+  TID: TThreadID;
+begin
+  if FTimerStarted then Exit;
+  FTimerStarted := True;
+  FAsyncEvent := RTLEventCreate;
+  BeginThread(@TimerThreadFunc, nil, TID);
 end;
 
 procedure Init;
@@ -108,11 +145,23 @@ begin
   uos_InputSetSynth(FPlayer, FInput, -1, -1, -1, -1, 0, 0, -1, -1, -1, True);
 end;
 
-procedure Ton(Hz: Word; Ms: Integer);
+procedure Beep(Hz: Word; Ms: Integer);
 begin
+  InterLockedIncrement(FAsyncGen);
   Sound(Hz);
   Sleep(Ms);
   NoSound;
+end;
+
+procedure BeepAsync(Hz: Word; Ms: Integer);
+begin
+  Init;
+  if FInput < 0 then Exit;
+  EnsureTimerThread;
+  FAsyncMs := Ms;
+  InterLockedIncrement(FAsyncGen);
+  Sound(Hz);
+  RTLEventSetEvent(FAsyncEvent);
 end;
 
 function SoundBackendName: string;
@@ -127,28 +176,28 @@ end;
 
 procedure SoundBump;
 begin
-  Ton(40, 5);
+  BeepAsync(40, 5);
 end;
 
 procedure SoundPickup;
 begin
-  Ton(250, 50);
+  BeepAsync(250, 50);
 end;
 
 procedure SoundCaught;
 begin
-  Ton(80, 200);
+  BeepAsync(80, 200);
 end;
 
 procedure SoundGameOver;
 var
   i: Integer;
 begin
-  Ton(200, 100);
-  Ton(150, 100);
-  Ton(200, 100);
-  Ton(150, 100);
-  Ton(100, 100);
+  Beep(200, 100);
+  Beep(150, 100);
+  Beep(200, 100);
+  Beep(150, 100);
+  Beep(100, 100);
   NoSound;
   Sleep(200);
   i := 600;
@@ -164,13 +213,14 @@ end;
 
 procedure SoundWon;
 begin
-  Ton(100, 500);
-  Ton(200, 500);
-  Ton(300, 500);
-  Ton(400, 500);
+  Beep(100, 500);
+  Beep(200, 500);
+  Beep(300, 500);
+  Beep(400, 500);
 end;
 
 finalization
   if FPlaying then uos_stop(FPlayer);
   if FReady   then uos_free;
+  if FAsyncEvent <> nil then RTLEventDestroy(FAsyncEvent);
 end.
