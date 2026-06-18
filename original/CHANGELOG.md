@@ -28,6 +28,8 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 - Item is no longer erased for one frame when the enemy walks over it and
   leaves the cell.
 - Game no longer hangs on quit when the async sound timer thread is active.
+- Red flash on caught now fills the field with solid red instead of preserving
+  characters (enemy was previously visible through the flash).
 
 ---
 

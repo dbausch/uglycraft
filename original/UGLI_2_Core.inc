@@ -1790,7 +1790,7 @@ var Col, Row: Integer;
 begin
   for Col := 1 to FieldW do
     for Row := 1 to FieldH do
-      BufPutCell(Col, Row, Screen[Col, Row].Fg, Red, Screen[Col, Row].Ch);
+      BufPutCell(Col, Row, Red, Red, ' ');
   BufFlush;
 end;
 
