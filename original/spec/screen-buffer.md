@@ -2,16 +2,16 @@
 
 ## Status
 
-- [ ] `TScreenCell` type, `TScreenBuffer` type, `Screen` + `Dirty` globals declared
-- [ ] `BufPutCell` — writes one character to buffer, marks cell dirty only on change
-- [ ] `BufFlush` — emits dirty cells to TTY via raw ANSI; clears damage map
-- [ ] `Draw` body rewritten to call `BufPutCell` per character; TTY writes removed
-- [ ] `BufFill` — clears buffer to a given character/colour pair; marks all dirty
-- [ ] `Redraw`: `BufFill` replaces `ClrScr`; `BufFlush` added at end
-- [ ] Full-screen overlays (`ShowHelp`, `ShowStory`, `ShowItemDescriptions`, `HighScoreEntry`): `ClrScr` → `BufFill`; `BufFlush` before `WaitKey`
-- [ ] `BufDesaturate` — desaturates all cells in-place (Fg → LightGray, Bg → Black); marks all dirty
-- [ ] `Dialog`: `BufDesaturate` before box draw; single `BufFlush` renders dimmed background + box
-- [ ] Main game loop: `BufFlush` called once per tick
+- [x] `TScreenCell` type, `TScreenBuffer` type, `Screen` + `Dirty` globals declared
+- [x] `BufPutCell` — writes one character to buffer, marks cell dirty only on change
+- [x] `BufFlush` — emits dirty cells to TTY via raw ANSI; clears damage map
+- [x] `Draw` body rewritten to call `BufPutCell` per character; TTY writes removed
+- [x] `BufFill` — clears buffer to a given character/colour pair; marks all dirty
+- [x] `Redraw`: `BufFill` replaces `ClrScr`; `BufFlush` added at end
+- [x] Full-screen overlays (`ShowHelp`, `ShowStory`, `ShowItemDescriptions`, `HighScoreEntry`): `ClrScr` → `BufFill`; `BufFlush` before `WaitKey`
+- [x] `BufDesaturate` — desaturates all cells in-place (Fg → LightGray, Bg → Black); marks all dirty
+- [x] `Dialog`: `BufDesaturate` before box draw; single `BufFlush` renders dimmed background + box
+- [x] Main game loop: `BufFlush` called once per tick
 
 ---
 
@@ -264,11 +264,11 @@ implementation.
 
 ## Done when
 
-- [ ] `Redraw` produces no visible blank frame between the clear and the finished scene
-  (confirmed by watching level entry and screen restoration after F1/F2). — _commit 3_
-- [ ] `Dialog` shows a dim desaturated game behind the box, not the full-colour live game
-  — _commit 4_
-- [ ] `BufFlush` with `BufFlushEnabled = false` leaves `Screen` populated and `Dirty` clear
-  without writing to the terminal — verified in a test run. — _commit 2_
-- [ ] All existing gameplay, HUD updates, overlays, and dialogs continue to work correctly
-  in both English and German. — _commits 3–5_
+- [x] `Redraw` produces no visible blank frame between the clear and the finished scene
+  (confirmed by watching level entry and screen restoration after F1/F2) — b83f53f
+- [x] `Dialog` shows a dim desaturated game behind the box, not the full-colour live game
+  — 10a8ddf, 72c6d34
+- [x] `BufFlush` with `BufFlushEnabled = false` leaves `Screen` populated and `Dirty` clear
+  without writing to the terminal — verified in a test run — 0bc0f0e
+- [x] All existing gameplay, HUD updates, overlays, and dialogs continue to work correctly
+  in both English and German — b83f53f, 10a8ddf, ec594ff
