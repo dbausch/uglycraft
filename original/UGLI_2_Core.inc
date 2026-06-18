@@ -34,6 +34,8 @@ var
   Key: Char;
   Direction, StartDir: TDirection;
   Laying: Boolean;
+  DirQueue: array[0..7] of TDirection;
+  DirHead, DirTail: Integer;
   Screen          : TScreenBuffer;
   Dirty           : array[1..ScreenW, 1..ScreenH] of Boolean;
   BufFlushEnabled : Boolean = true;
@@ -548,14 +550,14 @@ begin
   DrawParagraph := N;
 end;
 
-function HasTTYByte: Boolean;
+function KeyPressed: Boolean;
 const
   FIONREAD = $541B;
 var N: Integer;
 begin
   N := 0;
   fpIoctl(TTYFd, FIONREAD, @N);
-  HasTTYByte := N > 0;
+  KeyPressed := N > 0;
 end;
 
 { Read one key press from /dev/tty; parse VT100 escape sequences and return
@@ -579,7 +581,7 @@ begin
       Exit;
     end;
   { ESC — start of a terminal escape sequence }
-  if not HasTTYByte then
+  if not KeyPressed then
     begin
       GetKey := Chr(KeyEscape);
       Exit;
@@ -587,7 +589,7 @@ begin
   B2 := ReadB;
   if B2 = Ord('[') then
     begin
-      if not HasTTYByte then begin GetKey := Chr(KeyEscape); Exit; end;
+      if not KeyPressed then begin GetKey := Chr(KeyEscape); Exit; end;
       B3 := ReadB;
       case B3 of
         Ord('A'): begin GetKey := Chr(KeyUp);     Exit; end;
@@ -598,7 +600,7 @@ begin
         Ord('F'): begin GetKey := Chr(KeySlower); Exit; end;
         Ord('['):  { Linux console: ESC [ [ X for F1–F5 }
           begin
-            if HasTTYByte then
+            if KeyPressed then
               begin
                 B4 := ReadB;
                 case B4 of
@@ -620,7 +622,7 @@ begin
         if (B3 >= Ord('0')) and (B3 <= Ord('9')) then
           begin
             B4 := B3 - Ord('0');  { accumulate first digit }
-            while HasTTYByte do
+            while KeyPressed do
               begin
                 B3 := ReadB;
                 if B3 = Ord('~') then Break;
@@ -647,7 +649,7 @@ begin
   else if B2 = Ord('O') then
     begin
       { ESC O X for F1–F4 and Home/End on some terminals }
-      if not HasTTYByte then begin GetKey := Chr(KeyEscape); Exit; end;
+      if not KeyPressed then begin GetKey := Chr(KeyEscape); Exit; end;
       B3 := ReadB;
       case B3 of
         Ord('P'): begin GetKey := Chr(KeyF1);     Exit; end;
@@ -1240,6 +1242,7 @@ begin
   X := StartX; Y := StartY;
   EX := StartEX; EY := StartEY;
   Direction := StartDir;
+  DirHead := 0; DirTail := 0;
   Redraw;
 end; {PrepareLevel}
 
@@ -1486,8 +1489,40 @@ begin
   end;
 end;
 
+procedure DirEnqueue(D: TDirection);
+var Prev: Integer;
+begin
+  if DirHead <> DirTail then
+  begin
+    Prev := (DirTail - 1) and 7;
+    if DirQueue[Prev] = D then Exit;
+  end;
+  DirQueue[DirTail] := D;
+  DirTail := (DirTail + 1) and 7;
+  if DirTail = DirHead then
+    DirHead := (DirHead + 1) and 7;
+end;
+
+function DirDequeue: Boolean;
+begin
+  if DirHead = DirTail then
+  begin
+    DirDequeue := false;
+    Exit;
+  end;
+  Direction := DirQueue[DirHead];
+  DirHead := (DirHead + 1) and 7;
+  DirDequeue := true;
+end;
+
+procedure DirFlush;
+begin
+  DirHead := DirTail;
+end;
+
 procedure MovePlayer;
 begin
+  DirDequeue;
   case Direction of
     DirRight: MoveRight(X, Y);
     DirLeft:  MoveLeft(X, Y);
@@ -1508,39 +1543,48 @@ end;
 procedure HandleInput;
 begin
   KeyCode := 0;
-  if HasTTYByte then
-    begin
-      Key := GetKey;
-      KeyCode := Ord(Key);
-      case KeyCode of
-        KeyRight, KeyLeft, KeyUp, KeyDown: Direction := KeyToDir(KeyCode);
-        KeyPause: DoPause;
-        KeySlower: SlowDown;
-        KeyFaster: SpeedUp;
-        KeySpace: Laying := not Laying;
-        KeyF3:
-          begin
-            if Score >= 5000 then
-              begin
-                Lives := Lives + 1;
-                Score := Score - 5000;
-                DrawLives;
-                DrawScore;
-              end;
-          end;
-        KeyF1:
-          begin
-            ShowHelp;
-            Redraw;
-          end;
-        KeyF2:
-          begin
-            ShowStory;
-            Redraw;
-          end;
-        KeyF6: ToggleDump;
-      end; {case}
-    end;
+  while KeyPressed do
+  begin
+    Key := GetKey;
+    KeyCode := Ord(Key);
+    case KeyCode of
+      KeyRight, KeyLeft, KeyUp, KeyDown: DirEnqueue(KeyToDir(KeyCode));
+      KeyPause: DoPause;
+      KeySlower: SlowDown;
+      KeyFaster: SpeedUp;
+      KeySpace: Laying := not Laying;
+      KeyF3:
+        begin
+          if Score >= 5000 then
+            begin
+              Lives := Lives + 1;
+              Score := Score - 5000;
+              DrawLives;
+              DrawScore;
+            end;
+        end;
+      KeyF1:
+        begin
+          DirFlush;
+          ShowHelp;
+          Redraw;
+          Break;
+        end;
+      KeyF2:
+        begin
+          DirFlush;
+          ShowStory;
+          Redraw;
+          Break;
+        end;
+      KeyF6: ToggleDump;
+      KeyEscape, KeyF4, KeyF5:
+        begin
+          DirFlush;
+          Break;
+        end;
+    end; {case}
+  end;
   EnemyTick := (EnemyTick + 1) mod 2;
   MovePlayer;
   if Laying then PlaceBlock;
