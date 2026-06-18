@@ -2,16 +2,16 @@
 
 ## Status
 
-- [ ] Rename `HasTTYByte` → `KeyPressed`
-- [ ] `HandleInput` drains all pending keys per tick (`while KeyPressed do`)
-- [ ] Direction keys enqueue into a ring buffer (deduplicated against tail)
-- [ ] `MovePlayer` pops one direction per tick; auto-run continues if queue empty
-- [ ] Action keys (Speed, Space, F3, F6) fire immediately during drain
-- [ ] F1, F2, F4, F5, Escape flush the queue before executing their action
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: holding End no longer blocks movement
-- [ ] Manual check: quick Up→Left tap during leftward run executes both directions
+- [x] Rename `HasTTYByte` → `KeyPressed`
+- [x] `HandleInput` drains all pending keys per tick (`while KeyPressed do`)
+- [x] Direction keys enqueue into a ring buffer (deduplicated against tail)
+- [x] `MovePlayer` pops one direction per tick; auto-run continues if queue empty
+- [x] Action keys (Speed, Space, F3, F6) fire immediately during drain
+- [x] F1, F2, F4, F5, Escape flush the queue before executing their action
+- [x] Game compiles (`poe build-original` exits 0)
+- [x] All tests pass (`poe test-original` exits 0)
+- [x] Manual check: holding End no longer blocks movement — confirmed
+- [x] Manual check: quick Up→Left tap during leftward run executes both directions — confirmed
 
 ## Background
 
@@ -86,16 +86,16 @@ Both keypresses are honoured across two ticks.
 
 ## Done when
 
-- [ ] `HasTTYByte` renamed to `KeyPressed` everywhere (function + all call sites)
-- [ ] `HandleInput` drains all pending keys in a `while KeyPressed do` loop
-- [ ] Direction keys are enqueued, deduplicated against the tail
-- [ ] `MovePlayer` pops one direction per tick from the queue
-- [ ] Auto-run continues in current `Direction` when the queue is empty
-- [ ] Action keys (Home, End, Space, F3, F6) fire immediately during drain
-- [ ] F1, F2, F4, F5, Escape flush the direction queue before their action
-- [ ] F1, F2, F4, F5, Escape break out of the drain loop
-- [ ] Queue overflow drops the oldest entry
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: holding End no longer blocks movement for multiple ticks
-- [ ] Manual check: quick Up→Left tap during leftward run executes both
+- [x] `HasTTYByte` renamed to `KeyPressed` everywhere (function + all call sites) — `78b9250`
+- [x] `HandleInput` drains all pending keys in a `while KeyPressed do` loop — `78b9250`
+- [x] Direction keys are enqueued, deduplicated against the tail — `78b9250`
+- [x] `MovePlayer` pops one direction per tick from the queue — `78b9250`
+- [x] Auto-run continues in current `Direction` when the queue is empty — `78b9250`
+- [x] Action keys (Home, End, Space, F3, F6) fire immediately during drain — `78b9250`
+- [x] F1, F2, F4, F5, Escape flush the direction queue before their action — `78b9250`
+- [x] F1, F2, F4, F5, Escape break out of the drain loop — `78b9250`
+- [x] Queue overflow drops the oldest entry — `78b9250`
+- [x] Game compiles (`poe build-original` exits 0) — `78b9250`
+- [x] All tests pass (`poe test-original` exits 0) — `78b9250`
+- [x] Manual check: holding End no longer blocks movement for multiple ticks — confirmed
+- [x] Manual check: quick Up→Left tap during leftward run executes both — confirmed

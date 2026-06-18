@@ -2,13 +2,13 @@
 
 ## Status
 
-- [ ] Rename `Ton` to `Beep` in `UOSSound.pp` and all call sites
-- [ ] Add `BeepAsync(Hz, Ms)` — non-blocking, auto-silences after Ms
-- [ ] `SoundBump` uses `BeepAsync` (5 ms, no gameplay lag)
-- [ ] `SoundPickup` uses `BeepAsync` (50 ms, no pickup lag)
-- [ ] `SoundCaught` uses `BeepAsync` (200 ms, non-blocking)
-- [ ] `PlayerCaught` flashes entire field red for 200 ms while sound plays
-- [ ] Synchronous callers (`SoundGameOver`, `SoundWon`, intro) unchanged
+- [x] Rename `Ton` to `Beep` in `UOSSound.pp` and all call sites
+- [x] Add `BeepAsync(Hz, Ms)` — non-blocking, auto-silences after Ms
+- [x] `SoundBump` uses `BeepAsync` (5 ms, no gameplay lag)
+- [x] `SoundPickup` uses `BeepAsync` (50 ms, no pickup lag)
+- [x] `SoundCaught` uses `BeepAsync` (200 ms, non-blocking)
+- [x] `PlayerCaught` flashes entire field red for 200 ms while sound plays
+- [x] Synchronous callers (`SoundGameOver`, `SoundWon`, intro) unchanged
 
 ## Background
 
@@ -64,15 +64,15 @@ Implementation in `PlayerCaught`:
 
 ## Done when
 
-- [ ] `Ton` renamed to `Beep` everywhere; no remaining references to `Ton`
-- [ ] `BeepAsync` exists, is non-blocking, auto-silences after the given duration
-- [ ] Concurrent calls to `BeepAsync` or `Sound` cancel any pending timer (no overlap)
-- [ ] `SoundBump` calls `BeepAsync(40, 5)` — wall bumps don't block movement
-- [ ] `SoundPickup` calls `BeepAsync(250, 50)` — item pickup doesn't lag
-- [ ] `SoundCaught` calls `BeepAsync(80, 200)` — caught sound is non-blocking
-- [ ] `PlayerCaught` shows a full-field red flash for 200 ms during the sound
-- [ ] `SoundGameOver`, `SoundWon`, intro sounds still use synchronous `Beep`
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: pickup no longer causes noticeable movement lag
-- [ ] Manual check: red flash is visible when caught
+- [x] `Ton` renamed to `Beep` everywhere; no remaining references to `Ton` — `592f6b3`
+- [x] `BeepAsync` exists, is non-blocking, auto-silences after the given duration — `592f6b3`
+- [x] Concurrent calls to `BeepAsync` or `Sound` cancel any pending timer (no overlap) — `592f6b3`
+- [x] `SoundBump` calls `BeepAsync(40, 5)` — wall bumps don't block movement — `592f6b3`
+- [x] `SoundPickup` calls `BeepAsync(250, 50)` — item pickup doesn't lag — `592f6b3`
+- [x] `SoundCaught` calls `BeepAsync(80, 200)` — caught sound is non-blocking — `592f6b3`
+- [x] `PlayerCaught` shows a full-field red flash for 200 ms during the sound — `592f6b3`
+- [x] `SoundGameOver`, `SoundWon`, intro sounds still use synchronous `Beep` — `592f6b3`
+- [x] Game compiles (`poe build-original` exits 0) — `592f6b3`
+- [x] All tests pass (`poe test-original` exits 0) — `592f6b3`
+- [x] Manual check: pickup no longer causes noticeable movement lag — confirmed
+- [x] Manual check: red flash is visible when caught — confirmed
