@@ -6,6 +6,9 @@ authors     = [{name = "Daniel Bausch", email = "db@edv-bausch.de"}]
 requires-python = ">=3.10"
 dependencies    = ["pygame>=2.0", "numpy", "pyinstaller"]
 
+[tool.poe]
+verbosity = -1
+
 [tool.poe.tasks]
 
 [tool.poe.tasks.install]
