@@ -2,14 +2,14 @@
 
 ## Status
 
-- ✓ `EX`/`EY` added to each `InitLevel1`–`InitLevel9`
-- ✓ `AwardPoints` formula changed to `ItemNo * 100` (called before increment)
-- ✓ Label `NextItem` renamed to `StartLevel`; label declaration updated
-- ✓ `NewGame:` initializes all variables directly for Level 1
-- ✓ `LevelComplete` procedure extracted
-- ✓ `IsPlayerCaught` / `IsItemPickedUp` helper functions added
-- ✓ Pickup logic inlined at `if IsItemPickedUp` with correct award-before-increment order
-- ✓ `DrawLevel` renamed from `WriteLevel`
+- [x] `EX`/`EY` added to each `InitLevel1`–`InitLevel9`
+- [x] `AwardPoints` formula changed to `ItemNo * 100` (called before increment)
+- [x] Label `NextItem` renamed to `StartLevel`; label declaration updated
+- [x] `NewGame:` initializes all variables directly for Level 1
+- [x] `LevelComplete` procedure extracted
+- [x] `IsPlayerCaught` / `IsItemPickedUp` helper functions added
+- [x] Pickup logic inlined at `if IsItemPickedUp` with correct award-before-increment order
+- [x] `DrawLevel` renamed from `WriteLevel`
 
 ---
 
@@ -219,8 +219,8 @@ StartLevel:
 
 ## Done when
 
-- ✓ `poe build-original` compiles with no errors or warnings
-- ✓ `poe run-original`:
+- [x] `poe build-original` compiles with no errors or warnings
+- [x] `poe run-original`:
   - Level 1 splash appears immediately after the intro screens (no fake Level 0)
   - Lives counter shows 10 at the Level 1 splash
   - Collecting rope awards 100 points

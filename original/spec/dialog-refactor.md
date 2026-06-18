@@ -2,19 +2,19 @@
 
 ## Status
 
-- ✓ `DrawInner` draws player, enemy, and current item after the wall/space loop
-- ✓ `ItemX := 0` sentinel set in `NewGame:` and in pickup handler before `LevelComplete`/`goto StartLevel`
-- ✓ `WaitKey: Integer` function added after `GetKey`
-- ✓ `YesKey` / `NoKey` typed set constants added to `const` section
-- ✓ `Dialog(Title, Prompt: String): Integer` function added after `WaitKey`
-- ✓ `LevelTransition` replaced with single `Dialog` call; centered (Y1 = 9)
-- ✓ `GameOver` replaced with `Dialog('G A M E  O V E R', '')`
-- ✓ `WinScreen` replaced with `Dialog` call; star animation removed
-- ✓ `AskPlayAgain` loops `Dialog` until `YesKey`/`NoKey`
-- ✓ `RemoveBlocks` loops `Dialog('B L Ö C K E   E N T F E R N E N', 'J / N')`; cost removed
-- ✓ `DrawBlocks` HUD label changed from `'STEINE'` to `'BLÖCKE'`
-- ✓ `ShowHelp`, `ShowStory`, `ShowItemDescriptions` exit via `WaitKey`
-- ✓ `HighScoreEntry` post-score and post-file pauses use `WaitKey`
+- [x] `DrawInner` draws player, enemy, and current item after the wall/space loop
+- [x] `ItemX := 0` sentinel set in `NewGame:` and in pickup handler before `LevelComplete`/`goto StartLevel`
+- [x] `WaitKey: Integer` function added after `GetKey`
+- [x] `YesKey` / `NoKey` typed set constants added to `const` section
+- [x] `Dialog(Title, Prompt: String): Integer` function added after `WaitKey`
+- [x] `LevelTransition` replaced with single `Dialog` call; centered (Y1 = 9)
+- [x] `GameOver` replaced with `Dialog('G A M E  O V E R', '')`
+- [x] `WinScreen` replaced with `Dialog` call; star animation removed
+- [x] `AskPlayAgain` loops `Dialog` until `YesKey`/`NoKey`
+- [x] `RemoveBlocks` loops `Dialog('B L Ö C K E   E N T F E R N E N', 'J / N')`; cost removed
+- [x] `DrawBlocks` HUD label changed from `'STEINE'` to `'BLÖCKE'`
+- [x] `ShowHelp`, `ShowStory`, `ShowItemDescriptions` exit via `WaitKey`
+- [x] `HighScoreEntry` post-score and post-file pauses use `WaitKey`
 
 ---
 
@@ -215,8 +215,8 @@ Two bare `ReadLn` pauses (after displaying score, after displaying file) → `Wa
 
 ## Done when
 
-- ✓ `poe build-original` compiles with no errors or warnings (d81242f)
-- ✓ `poe run-original` (d81242f, confirmed by user):
+- [x] `poe build-original` compiles with no errors or warnings (d81242f)
+- [x] `poe run-original` (d81242f, confirmed by user):
   - Level splash vertically centered (rows 9–11, not 8–10)
   - GAME OVER, Play Again, and RemoveBlocks dialogs all use `█` border style and are centered
   - WinScreen: splash centered; star animation gone; `SoundWon` plays then high-score entry follows

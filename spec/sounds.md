@@ -1,18 +1,16 @@
 # Sound and Music
 
-## Overview
+## Status
 
-| # | Deliverable | Status |
-|---|---|---|
-| 1 | `sounds.py` with `SoundManager` class | ✓ |
-| 2 | 14 procedural sound effects (all game events) | ✓ |
-| 3 | 10 procedural level music tracks (one per level) | ✓ |
-| 4 | Music tempo and darkness increase with level | ✓ |
-| 5 | Mixer pre-init in `main.py` | ✓ |
-| 6 | `SoundManager` integrated into `Game` | ✓ |
-| 7 | Music pauses/unpauses with P key | ✓ |
-| 8 | Title-screen music (D minor, orchestral fanfare) | ✓ |
-| 9 | Win-screen music (C major, joyful fanfare) | ✓ |
+- [x] `sounds.py` with `SoundManager` class
+- [x] 14 procedural sound effects (all game events)
+- [x] 10 procedural level music tracks (one per level)
+- [x] Music tempo and darkness increase with level
+- [x] Mixer pre-init in `main.py`
+- [x] `SoundManager` integrated into `Game`
+- [x] Music pauses/unpauses with P key
+- [x] Title-screen music (D minor, orchestral fanfare)
+- [x] Win-screen music (C major, joyful fanfare)
 
 ## Sound effects
 
@@ -138,14 +136,14 @@ Channel 0 is reserved for music; channels 1–15 are used by SFX.
 | P key pressed → PAUSED | `sounds.pause_music()` |
 | P key pressed → PLAYING | `sounds.unpause_music()` |
 
-## Done when:
+## Done when
 
-1. ✓ `sounds.py` exists; `SoundManager` importable; fails gracefully without numpy. — 1b3ffa2
-2. ✓ All 14 SFX audible at appropriate game events. — 1b3ffa2, c2939ec, f8e0938, ad65207
-3. ✓ 10 level music tracks with composed melodic themes loop without gaps. — 1b3ffa2, 46c2bfc, 641cc2d, a0ba633, 02cd34d, a09a4de
-4. ✓ Each level's music is noticeably faster and darker than the previous. — 1b3ffa2, 641cc2d
-5. ✓ Music pauses when P is pressed and resumes on P again. — 1b3ffa2
-6. ✓ Boss-appear sting plays when entering level 10. — 1b3ffa2
-7. ✓ Game continues normally if mixer init fails (silent fallback). — 1b3ffa2
-8. ✓ Title-screen music plays on the title screen. — c2939ec
-9. ✓ Win-screen music plays when the player clears all 10 levels. — (this session)
+- [x] `sounds.py` exists; `SoundManager` importable; fails gracefully without numpy — 1b3ffa2
+- [x] All 14 SFX audible at appropriate game events — 1b3ffa2, c2939ec, f8e0938, ad65207
+- [x] 10 level music tracks with composed melodic themes loop without gaps — 1b3ffa2, 46c2bfc, 641cc2d, a0ba633, 02cd34d, a09a4de
+- [x] Each level's music is noticeably faster and darker than the previous — 1b3ffa2, 641cc2d
+- [x] Music pauses when P is pressed and resumes on P again — 1b3ffa2
+- [x] Boss-appear sting plays when entering level 10 — 1b3ffa2
+- [x] Game continues normally if mixer init fails (silent fallback) — 1b3ffa2
+- [x] Title-screen music plays on the title screen — c2939ec
+- [x] Win-screen music plays when the player clears all 10 levels — (this session)

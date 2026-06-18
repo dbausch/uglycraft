@@ -2,12 +2,12 @@
 
 ## Status
 
-- ✓ Color constants added to `const` section
-- ✓ `WriteXY` renamed to `Draw`; `Fg`/`Bg` parameters added
-- ✓ `DrawHLine` updated with `Fg`/`Bg` parameters
-- ✓ All call sites updated: `TextColor`/`TextBackground` removed, colors passed inline
-- ✓ Local `const Fg/Bg` blocks added in procedures that repeat one color pair
-- ✓ `DrawLives`/`DrawBlocks` `LightRed` background bug fixed (`CounterBg = Red`)
+- [x] Color constants added to `const` section
+- [x] `WriteXY` renamed to `Draw`; `Fg`/`Bg` parameters added
+- [x] `DrawHLine` updated with `Fg`/`Bg` parameters
+- [x] All call sites updated: `TextColor`/`TextBackground` removed, colors passed inline
+- [x] Local `const Fg/Bg` blocks added in procedures that repeat one color pair
+- [x] `DrawLives`/`DrawBlocks` `LightRed` background bug fixed (`CounterBg = Red`)
 
 ---
 
@@ -129,7 +129,7 @@ immediately overridden by every branch inside the procedure).
 
 ## Done when
 
-- ✓ `poe build-original` compiles with no errors or warnings
-- ✓ `poe run-original`: all screen elements display with the correct colors
-- ✓ HUD counters (score, lives, pauses, blocks, level) all show on a Red background
-- ✓ No `TextColor`/`TextBackground` calls remain that affect subsequent `Draw` calls (grep confirms: only the pair inside `Draw`, the pair inside `HighScoreEntry` for `WriteLn` prompts, and `TextBackground(FieldBg)` immediately before `ClrScr` calls are allowed)
+- [x] `poe build-original` compiles with no errors or warnings
+- [x] `poe run-original`: all screen elements display with the correct colors
+- [x] HUD counters (score, lives, pauses, blocks, level) all show on a Red background
+- [x] No `TextColor`/`TextBackground` calls remain that affect subsequent `Draw` calls (grep confirms: only the pair inside `Draw`, the pair inside `HighScoreEntry` for `WriteLn` prompts, and `TextBackground(FieldBg)` immediately before `ClrScr` calls are allowed)

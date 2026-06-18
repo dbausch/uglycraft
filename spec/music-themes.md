@@ -1,14 +1,12 @@
 # Level Music Themes
 
-## Overview
+## Status
 
-| # | Deliverable | Status |
-|---|---|---|
-| 1 | 10 composed melodic themes (64 MIDI pitches each) in `_LEVEL_THEMES` | ✓ |
-| 2 | Themes replace mechanical arpeggio patterns in `_make_music_track()` | ✓ |
-| 3 | L10 boss theme uses half-bar tritone arpeggio instead of a melody | ✓ |
-| 4 | Title screen theme (D minor, 80 BPM, 4 bars) in `_make_title_music()` | ✓ |
-| 5 | Win screen theme (C major, 108 BPM, 4 bars) in `_make_win_music()` | ✓ |
+- [x] 10 composed melodic themes (64 MIDI pitches each) in `_LEVEL_THEMES`
+- [x] Themes replace mechanical arpeggio patterns in `_make_music_track()`
+- [x] L10 boss theme uses half-bar tritone arpeggio instead of a melody
+- [x] Title screen theme (D minor, 80 BPM, 4 bars) in `_make_title_music()`
+- [x] Win screen theme (C major, 108 BPM, 4 bars) in `_make_win_music()`
 
 Ten composed melodic themes, one per level.  Each theme is 64 eighth-note
 slots (8 bars × 8 steps) stored as absolute MIDI pitches in `_LEVEL_THEMES`
@@ -294,3 +292,13 @@ Bar 2 Am:  76 69 72 76  74 72 71 69   (E5 A4 C5 E5 | D5 C5 B4 A4)
 Bar 3 F:   65 69 72 77  76 74 72 74   (F4 A4 C5 F5 | E5 D5 C5 D5)
 Bar 4 G:   67 74 79 74  79 76 72 -1   (G4 D5 G5 D5 | G5 E5 C5 _)
 ```
+
+---
+
+## Done when
+
+- [x] All 10 level themes are distinct, recognisable melodies (not mechanical arpeggios)
+- [x] L10 boss theme is a tritone arpeggio pattern, not a composed melody
+- [x] Title screen theme plays on the title screen
+- [x] Win screen theme plays on the win screen
+- [x] Music loops seamlessly without pops or gaps

@@ -1,11 +1,6 @@
----
-status:
-- [x] Spurious WaitKey removed from HighScoreEntry
----
-
 # Remove spurious WaitKey from HighScoreEntry
 
-## Overview
+## Status
 
 - [x] Spurious WaitKey removed from HighScoreEntry
 
