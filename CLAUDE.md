@@ -9,7 +9,7 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 | Task | Action |
 |---|---|
 | `poe install` | Create venv and install all dependencies |
-| `poe run` | Run the game (forward args with `--`: `poe run -- --level 5`) |
+| `poe run` | Run the game (e.g. `poe run --level 5`) |
 | `poe build-linux` | Build `dist/linux-64/uglycraft` + license notices (~41 MB) |
 | `poe setup-windows` | One-time: install Python 3.13 + deps into Wine |
 | `poe build-windows` | Build `dist/windows-64/uglycraft.exe` + license notices (~25 MB) via Wine |

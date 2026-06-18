@@ -16,7 +16,7 @@ help  = "Create venv and install all dependencies"
 shell = "virtualenv .venv && .venv/bin/pip install -r requirements.txt"
 
 [tool.poe.tasks.run]
-help = "Run the game. Forward args with --: poe run -- --level 5"
+help = "Run the game (e.g. poe run --level 5)"
 cmd  = ".venv/bin/python main.py"
 
 [tool.poe.tasks.run-original]
