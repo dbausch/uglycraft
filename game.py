@@ -808,7 +808,7 @@ class Game:
             with open(path, 'r', encoding='utf-8') as f:
                 return f.read()
         except OSError:
-            return 'History text not found.'
+            return 'File not found.'
 
     def _wrap_text(self, text, font, max_width):
         lines = []

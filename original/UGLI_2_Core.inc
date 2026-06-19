@@ -189,7 +189,7 @@ resourcestring
   sHelpHome   = '[Home]      Faster';
   { History screen (ShowStory) }
   sStoryTitle = 'The History of UGLI';
-  sHistoryMissing = 'History text not found.';
+  sHistoryMissing = 'File not found.';
   { Item descriptions screen (ShowItemDescriptions) — one paragraph; wrapped at display time }
   sItemListTitle = 'T R E A S U R E S   T O   C O L L E C T';
   sItemInstTitle = 'H O W   T O   P L A Y';

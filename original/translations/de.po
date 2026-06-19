@@ -137,8 +137,8 @@ msgid "The History of UGLI"
 msgstr "Die Geschichte von UGLI"
 
 #: ugli_2:shistorymissing
-msgid "History text not found."
-msgstr "Geschichtstext nicht gefunden."
+msgid "File not found."
+msgstr "Datei nicht gefunden."
 
 #: ugli_2:sitemlisttitle
 msgid "T R E A S U R E S   T O   C O L L E C T"
