@@ -1,6 +1,6 @@
 pkgbase=uglycraft
 pkgname=('uglycraft' 'ugli')
-pkgver=1.3
+pkgver=1.4
 pkgrel=1
 arch=('x86_64')
 url='https://github.com/dbausch/uglycraft'
@@ -45,6 +45,9 @@ package_uglycraft() {
   install -d "$pkgdir/usr/share/uglycraft/fonts"
   install -m644 fonts/ShareTechMono-Regular.ttf \
     "$pkgdir/usr/share/uglycraft/fonts/"
+  install -d "$pkgdir/usr/share/uglycraft/translations"
+  install -m644 translations/history_*.txt \
+    "$pkgdir/usr/share/uglycraft/translations/"
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/uglycraft" <<'WRAPPER'
 #!/bin/bash
@@ -74,6 +77,8 @@ package_ugli() {
   install -Dm644 original/ANSI-87.conf "$pkgdir/usr/share/ugli/ANSI-87.conf"
   install -d "$pkgdir/usr/share/ugli/translations"
   install -m644 original/translations/*.mo \
+    "$pkgdir/usr/share/ugli/translations/"
+  install -m644 original/translations/history_*.txt \
     "$pkgdir/usr/share/ugli/translations/"
 
   install -Dm755 packaging/ugli.sh "$pkgdir/usr/bin/ugli"

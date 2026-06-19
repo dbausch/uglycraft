@@ -255,6 +255,8 @@ class Game:
                 elif event.key == pygame.K_h:
                     self.state = SHOW_SCORES
                     self._scores_return_to = TITLE
+                elif event.key == pygame.K_s:
+                    self.state = STORY
                 elif event.key == pygame.K_q:
                     self.state = QUIT_GAME
 
@@ -275,9 +277,7 @@ class Game:
 
         elif self.state == STORY:
             if event.type == pygame.KEYDOWN:
-                self._full_reset()
-                self._intro_timer = 2000
-                self.state = LEVEL_INTRO
+                self._title_init()
 
         elif self.state == LEVEL_INTRO:
             if event.type == pygame.KEYDOWN:
@@ -766,7 +766,7 @@ class Game:
             prompt = self.font_med.render("PRESS ENTER TO PLAY", True, YELLOW)
             self.surf.blit(prompt, (LOGICAL_W // 2 - prompt.get_width() // 2, 460))
 
-        footer = self.font_small.render("[H] High scores          [Q] Quit", True, GRAY)
+        footer = self.font_small.render("[H] High scores   [S] History   [Q] Quit", True, GRAY)
         self.surf.blit(footer, (LOGICAL_W // 2 - footer.get_width() // 2, 510))
 
     # ── Difficulty selection screen ───────────────────────────────────────────
@@ -801,26 +801,50 @@ class Game:
 
     # ── Story screen ─────────────────────────────────────────────────────────
 
+    def _load_history_text(self):
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(base, 'translations', 'history_en.txt')
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except OSError:
+            return 'History text not found.'
+
+    def _wrap_text(self, text, font, max_width):
+        lines = []
+        for paragraph in text.split('\n\n'):
+            words = paragraph.split()
+            if not words:
+                lines.append('')
+                continue
+            current = words[0]
+            for word in words[1:]:
+                test = current + ' ' + word
+                if font.size(test)[0] <= max_width:
+                    current = test
+                else:
+                    lines.append(current)
+                    current = word
+            lines.append(current)
+            lines.append('')
+        if lines and lines[-1] == '':
+            lines.pop()
+        return lines
+
     def _render_story(self):
         self.surf.fill((10, 5, 20))
-        lines = [
-            "THE  STORY",
-            "",
-            "A king has locked you in his castle.",
-            '"I will only free you once you have',
-            ' found all my treasures," he said,',
-            "slamming the door.",
-            "",
-            "You dash off to collect them — but",
-            "something lurks in the shadows...",
-            "",
-            "Press any key to begin.",
-        ]
-        for i, line in enumerate(lines):
-            color = YELLOW if i == 0 else WHITE
-            font  = self.font_big if i == 0 else self.font_med
-            img   = font.render(line, True, color)
-            self.surf.blit(img, (LOGICAL_W // 2 - img.get_width() // 2, 60 + i * 40))
+        title = self.font_big.render("THE  HISTORY  OF  UGLI", True, YELLOW)
+        self.surf.blit(title, (LOGICAL_W // 2 - title.get_width() // 2, 40))
+        text = self._load_history_text()
+        lines = self._wrap_text(text, self.font_med, LOGICAL_W - 80)
+        y = 110
+        for line in lines:
+            if line:
+                img = self.font_med.render(line, True, WHITE)
+                self.surf.blit(img, (40, y))
+            y += 28
+        prompt = self.font_small.render("Press any key", True, GRAY)
+        self.surf.blit(prompt, (LOGICAL_W // 2 - prompt.get_width() // 2, 500))
 
     # ── Score entry ───────────────────────────────────────────────────────────
 

@@ -48,6 +48,7 @@ help  = "Build standalone Linux distributable (dist/linux-64/)"
 shell = """
   .venv/bin/pyinstaller --onefile --noconsole --name uglycraft \
     --add-data "fonts/ShareTechMono-Regular.ttf:fonts" \
+    --add-data "translations/history_en.txt:translations" \
     --distpath dist/linux-64 main.py
   cp -r LICENSES dist/linux-64/
 """
@@ -69,7 +70,8 @@ shell = """
   WINEDEBUG=-all wine \
     ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
     -m PyInstaller --onefile --noconsole --name uglycraft \
-    --add-data "fonts/ShareTechMono-Regular.ttf;fonts" main.py
+    --add-data "fonts/ShareTechMono-Regular.ttf;fonts" \
+    --add-data "translations/history_en.txt;translations" main.py
   mkdir -p dist/windows-64
   mv dist/uglycraft.exe dist/windows-64/
   cp -r LICENSES dist/windows-64/
@@ -132,6 +134,7 @@ shell = """
   mkdir -p dist/original-linux/translations
   cp original/UGLI_2 dist/original-linux/
   cp original/translations/*.mo dist/original-linux/translations/
+  cp original/translations/history_*.txt dist/original-linux/translations/
   VERSION=$(grep -oP "(?<=Version = ')[^']+" original/UGLI_2.pp)
   butler push dist/original-linux dbausch/uglycraft:original-linux \
     --userversion "$VERSION"
