@@ -25,6 +25,19 @@ Build and deploy are separate steps — deploy tasks only call butler, never bui
 Windows build requires Wine installed via the system package manager; `poe setup-windows` handles the rest.
 Version is read from the latest git tag automatically.
 
+### Arch packaging and tags
+
+The PKGBUILD downloads source from GitHub by git tag.  Two kinds of tags:
+
+- **Release tags** (`v1.4`, `v1.5`, …) — immutable once pushed.  Created at
+  release time, never moved.
+- **Dev tag** (`dev`) — movable.  Force-pushed to HEAD before building arch
+  packages during development.  The PKGBUILD references `_tag=dev`; for a
+  release build, change `_tag` to `v<version>`.
+
+Before running `makepkg`, always: `git tag -f dev && git push <remote> --tags -f`,
+then `rm packaging/uglycraft-*.tar.gz` to clear the cached tarball.
+
 ## Development workflow
 
 Every non-trivial change follows this sequence. Skipping a step requires an
