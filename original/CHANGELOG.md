@@ -5,6 +5,18 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- Replaced fictional in-game story (F2) with the real history of UGLI.
+  Story body text now loaded from external `translations/history_<lang>.txt`
+  files; labels remain as resourcestrings.  Falls back to a translated
+  placeholder if the file is not found.
+- Renamed "Story of UGLI" to "History of UGLI" in key help bar and help screen.
+
+---
+
 ## 2.5
 
 ### Changed

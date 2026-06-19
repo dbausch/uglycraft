@@ -1300,18 +1300,18 @@ end;
 
 procedure TScreenOverlayTests.TestShowStory_TitleInBuffer;
 begin
-  { Center('The Story of UGLI') [18 chars]: 31 spaces → 'T' at col 32, row 2. }
+  { Center('The History of UGLI') [20 chars]: 30 spaces → 'T' at col 31, row 2. }
   EnqueueKey(Ord('x'));
   ShowStory;
-  AssertEquals('T', Screen[32, 2].Ch);
+  AssertEquals('T', Screen[31, 2].Ch);
 end;
 
 procedure TScreenOverlayTests.TestShowStory_DrawsParagraph;
 begin
-  { Story paragraph at Col=5, Row=4.  First visible char is 'A' (from 'A king...'). }
+  { History text loaded from file; first visible char at Col=5, Row=4 is 'I' (from 'In 1993...'). }
   EnqueueKey(Ord('x'));
   ShowStory;
-  AssertEquals('A', Screen[5, 4].Ch);
+  AssertEquals('I', Screen[5, 4].Ch);
 end;
 
 { ------------------------------------------------------------------ }

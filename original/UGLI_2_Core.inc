@@ -172,7 +172,7 @@ resourcestring
   sLabelBlocks = 'BLOCKS ';
   { Key help bar — 3 lines at rows 21, 23, 25 }
   sKeys1 = '← = left  ↓ = down  → = right  ↑ = up';
-  sKeys2 = '<F1> = Help  <F2> = Story of UGLI  <F3> = Buy life  <F4> = Restart';
+  sKeys2 = '<F1> = Help  <F2> = History of UGLI  <F3> = Buy life  <F4> = Restart';
   sKeys3 = '<P> = Pause  <End> = Slower  <Home> = Faster  <Esc> = Quit';
   { Help screen (ShowHelp) }
   sHelpTitle  = 'UGLI HELP';
@@ -181,15 +181,15 @@ resourcestring
   sHelpP      = '[P]         Pause a short while (uses 1 pause)';
   sHelpEsc    = '[Esc]       Quit';
   sHelpF1     = '[F1]        This help screen';
-  sHelpF2     = '[F2]        The story of UGLI';
+  sHelpF2     = '[F2]        The history of UGLI';
   sHelpF3     = '[F3]        Buy a life (costs 5000 points)';
   sHelpF4     = '[F4]        Restart';
   sHelpF5     = '[F5]        Remove all placed blocks';
   sHelpEnd    = '[End]       Slower';
   sHelpHome   = '[Home]      Faster';
-  { Story screen (ShowStory) — one paragraph; wrapped + justified at display time }
-  sStoryTitle = 'The Story of UGLI';
-  sStoryText  = 'A king has locked you in his castle. With the words: "I will not set you free until you have found all of my treasures," he slammed the door shut. There is nothing left for you to do but collect his treasures. So you start running immediately to collect them all.';
+  { History screen (ShowStory) }
+  sStoryTitle = 'The History of UGLI';
+  sHistoryMissing = 'History text not found.';
   { Item descriptions screen (ShowItemDescriptions) — one paragraph; wrapped at display time }
   sItemListTitle = 'T R E A S U R E S   T O   C O L L E C T';
   sItemInstTitle = 'H O W   T O   P L A Y';
@@ -1429,16 +1429,85 @@ begin
   Y := SaveY;
 end;
 
+function LoadHistoryText: String;
+var
+  ExeDir, Lang, FallbackLang, Path: String;
+  F: Text;
+  Line, Buf: String;
+  Len: Integer;
+begin
+  ExeDir := ParamStr(0);
+  Len := Length(ExeDir);
+  while (Len > 0) and (ExeDir[Len] <> '/') do Dec(Len);
+  SetLength(ExeDir, Len);
+
+  GetLanguageIDs(Lang, FallbackLang);
+  if Length(Lang) >= 2 then
+    SetLength(Lang, 2)
+  else
+    Lang := 'en';
+
+  Path := ExeDir + 'translations/history_' + Lang + '.txt';
+  {$I-}
+  Assign(F, Path);
+  Reset(F);
+  if IOResult <> 0 then
+  begin
+    Path := ExeDir + 'translations/history_en.txt';
+    Assign(F, Path);
+    Reset(F);
+    if IOResult <> 0 then
+    begin
+      LoadHistoryText := sHistoryMissing;
+      Exit;
+    end;
+  end;
+  Buf := '';
+  while not Eof(F) do
+  begin
+    ReadLn(F, Line);
+    if Buf <> '' then
+      Buf := Buf + LineEnding;
+    Buf := Buf + Line;
+  end;
+  Close(F);
+  {$I+}
+  LoadHistoryText := Buf;
+end;
+
 procedure ShowStory;
 const
   Fg    = HelpFg;
   Bg    = FieldBg;
   TextW = 72;
   Col   = (FieldW - TextW) div 2 + 1;
+var
+  HistoryText, Para: String;
+  Row, P, Start: Integer;
 begin
   BufFill(FieldBg, FieldBg, ' ');
   Draw(1, 2, Fg, Bg, Center(sStoryTitle));
-  DrawParagraph(sStoryText, Col, 4, TextW, Fg, Bg);
+  HistoryText := LoadHistoryText;
+  Row := 4;
+  Start := 1;
+  P := 1;
+  while P <= Length(HistoryText) do
+  begin
+    if (P < Length(HistoryText)) and (HistoryText[P] = #10) and (HistoryText[P + 1] = #10) then
+    begin
+      Para := Copy(HistoryText, Start, P - Start);
+      Row := Row + DrawParagraph(Para, Col, Row, TextW, Fg, Bg) + 1;
+      P := P + 2;
+      Start := P;
+    end
+    else
+      Inc(P);
+  end;
+  if Start <= Length(HistoryText) then
+  begin
+    Para := Copy(HistoryText, Start, Length(HistoryText) - Start + 1);
+    DrawParagraph(Para, Col, Row, TextW, Fg, Bg);
+  end;
   Draw(1, 24, Fg, Bg, Center(sPressKey));
   BufFlush;
   WaitKey;

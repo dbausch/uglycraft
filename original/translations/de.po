@@ -77,7 +77,7 @@ msgid "\342\206\220 = left  \342\206\223 = down  \342\206\222 = right  \342\206\
 msgstr "← = links  ↓ = unten  → = rechts  ↑ = oben"
 
 #: ugli_2:skeys2
-msgid "<F1> = Help  <F2> = Story of UGLI  <F3> = Buy life  <F4> = Restart"
+msgid "<F1> = Help  <F2> = History of UGLI  <F3> = Buy life  <F4> = Restart"
 msgstr "<F1> = Hilfe  <F2> = Geschichte von UGLI  <F3> = Leben kaufen  <F4> = Neustart"
 
 #: ugli_2:skeys3
@@ -109,7 +109,7 @@ msgid "[F1]        This help screen"
 msgstr "[F1]        Diese Hilfe"
 
 #: ugli_2:shelpf2
-msgid "[F2]        The story of UGLI"
+msgid "[F2]        The history of UGLI"
 msgstr "[F2]        Die Geschichte von UGLI"
 
 #: ugli_2:shelpf3
@@ -133,12 +133,12 @@ msgid "[Home]      Faster"
 msgstr "[Pos1]      Schneller"
 
 #: ugli_2:sstorytitle
-msgid "The Story of UGLI"
-msgstr "Geschichte von UGLI"
+msgid "The History of UGLI"
+msgstr "Die Geschichte von UGLI"
 
-#: ugli_2:sstorytext
-msgid "A king has locked you in his castle. With the words: \"I will not set you free until you have found all of my treasures,\" he slammed the door shut. There is nothing left for you to do but collect his treasures. So you start running immediately to collect them all."
-msgstr "Du bist von einem König in eine Burg eingeschlossen worden. Mit den Worten: \"Ich lasse Dich erst wieder frei, wenn Du alle meine Schätze wieder gefunden hast\", knallte er die Tür zu. Da bleibt Dir wohl nichts anderes mehr übrig, als seine Schätze zu holen. Du rennst also sofort los, um alle Schätze einzusammeln."
+#: ugli_2:shistorymissing
+msgid "History text not found."
+msgstr "Geschichtstext nicht gefunden."
 
 #: ugli_2:sitemlisttitle
 msgid "T R E A S U R E S   T O   C O L L E C T"

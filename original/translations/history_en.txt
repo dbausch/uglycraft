@@ -1,0 +1,5 @@
+In 1993, a kid wanted more games for his old PC. His father said: make your own. So he did — and UGLI was born. A smiley face chasing treasures on a text-mode screen, with the PC speaker as its only voice.
+
+Other kids wanted it too. Floppy disks changed hands at school and around town. He paid for an ad in the local sports club magazine from the pocket money he earned selling copies. By 1996, version two brought more levels and the ability to place walls.
+
+Thirty years later, the game is back in two flavors — a faithful port and UGLYCRAFT, a full remake. Both are free and open source (GPLv3), available on itch.io and GitHub.
