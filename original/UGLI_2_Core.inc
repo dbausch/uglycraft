@@ -13,16 +13,16 @@ type
 
 const
   Items : array[1..ItemCount] of TItemData = (
-    (Ch: '|'; Fg: Brown),
-    (Ch: '☼'; Fg: LightBlue),
-    (Ch: ':'; Fg: LightRed),
-    (Ch: '*'; Fg: LightBlue),
-    (Ch: '='; Fg: Yellow),
-    (Ch: '≡'; Fg: LightGray),
-    (Ch: 'Γ'; Fg: Cyan),
     (Ch: 'Φ'; Fg: Yellow),
-    (Ch: '♦'; Fg: LightGreen),
-    (Ch: '⌂'; Fg: Yellow)
+    (Ch: '⚔'; Fg: Yellow),
+    (Ch: '▼'; Fg: LightRed),
+    (Ch: '⛬'; Fg: LightMagenta),
+    (Ch: '🞙'; Fg: LightCyan),
+    (Ch: '≡'; Fg: LightGray),
+    (Ch: '='; Fg: Yellow),
+    (Ch: '🝁'; Fg: LightGray),
+    (Ch: '⚑'; Fg: LightGreen),
+    (Ch: '🜲'; Fg: Yellow)
   );
 
 var
@@ -149,15 +149,15 @@ end;
 
 resourcestring
   { Item names — parallel to Items[1..10] }
-  sItemName1  = 'Rope';
-  sItemName2  = 'Large Sparkling Diamond';
-  sItemName3  = 'Small Gems';
-  sItemName4  = 'Small Sparkling Diamond';
-  sItemName5  = 'Gold Bar';
+  sItemName1  = 'Lamp';
+  sItemName2  = 'Swords';
+  sItemName3  = 'Small Ruby';
+  sItemName4  = 'Small Gems';
+  sItemName5  = 'Small Diamond';
   sItemName6  = 'Silver Bar';
-  sItemName7  = 'Well';
-  sItemName8  = 'Lamp';
-  sItemName9  = 'Large Gem';
+  sItemName7  = 'Gold Bar';
+  sItemName8  = 'Necklace';
+  sItemName9  = 'Flag';
   sItemName10 = 'Crown';
   { Yes/No key characters — single uppercase letter each.
     YesKey/NoKey sets are built from these at startup (see Init).

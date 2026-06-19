@@ -14,6 +14,8 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   files; labels remain as resourcestrings.  Falls back to a translated
   placeholder if the file is not found.
 - Renamed "Story of UGLI" to "History of UGLI" in key help bar and help screen.
+- Reordered and replaced collectible items: Lamp, Swords, Small Ruby,
+  Small Gems, Small Diamond, Silver Bar, Gold Bar, Necklace, Flag, Crown.
 
 ---
 

@@ -5,40 +5,40 @@ msgstr ""
 "Language: de\n"
 
 #: ugli_2:sitemname1
-msgid "Rope"
-msgstr "Seil"
+msgid "Lamp"
+msgstr "Lampe"
 
 #: ugli_2:sitemname2
-msgid "Large Sparkling Diamond"
-msgstr "grosser glänzender Diamant"
+msgid "Swords"
+msgstr "Schwerter"
 
 #: ugli_2:sitemname3
+msgid "Small Ruby"
+msgstr "kleiner Rubin"
+
+#: ugli_2:sitemname4
 msgid "Small Gems"
 msgstr "kleine Edelsteine"
 
-#: ugli_2:sitemname4
-msgid "Small Sparkling Diamond"
-msgstr "kleiner glänzender Diamant"
-
 #: ugli_2:sitemname5
-msgid "Gold Bar"
-msgstr "Goldbarren"
+msgid "Small Diamond"
+msgstr "kleiner Diamant"
 
 #: ugli_2:sitemname6
 msgid "Silver Bar"
 msgstr "Silberbarren"
 
 #: ugli_2:sitemname7
-msgid "Well"
-msgstr "Brunnen"
+msgid "Gold Bar"
+msgstr "Goldbarren"
 
 #: ugli_2:sitemname8
-msgid "Lamp"
-msgstr "Lampe"
+msgid "Necklace"
+msgstr "Halskette"
 
 #: ugli_2:sitemname9
-msgid "Large Gem"
-msgstr "grosser Edelstein"
+msgid "Flag"
+msgstr "Flagge"
 
 #: ugli_2:sitemname10
 msgid "Crown"

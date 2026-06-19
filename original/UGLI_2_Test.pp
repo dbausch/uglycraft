@@ -573,7 +573,7 @@ type
     procedure TestDrawParagraph_Wraps;
     procedure TestGetItemName_AllNonEmpty;
     procedure TestDrawItemName_ZoneWidth;
-    procedure TestDrawItemName_RopeCentred;
+    procedure TestDrawItemName_LampCentred;
     procedure TestDrawItemName_CrownOnLevel9;
   end;
 
@@ -645,14 +645,14 @@ begin
   AssertEquals(0, Length(Screen[67, 20].Ch));
 end;
 
-procedure TDrawTests.TestDrawItemName_RopeCentred;
+procedure TDrawTests.TestDrawItemName_LampCentred;
 begin
-  { "Rope" (4 chars) in ZoneW=55: Pad = (55-4) div 2 = 25.
-    'R' appears at ZoneStart(12) + Pad(25) = col 37. }
+  { "Lamp" (4 chars) in ZoneW=55: Pad = (55-4) div 2 = 25.
+    'L' appears at ZoneStart(12) + Pad(25) = col 37. }
   ItemNo := 1;
   Level  := 1;
   DrawItemName;
-  AssertEquals('R', Screen[37, 20].Ch);
+  AssertEquals('L', Screen[37, 20].Ch);
 end;
 
 procedure TDrawTests.TestDrawItemName_CrownOnLevel9;
@@ -685,7 +685,7 @@ type
     procedure TestIsItemPickedUp_True;
     procedure TestIsItemPickedUp_False;
     procedure TestIsItemPickedUp_YMismatch;
-    procedure TestGetItemName_Rope;
+    procedure TestGetItemName_Lamp;
     procedure TestGetItemName_Crown;
   end;
 
@@ -772,9 +772,9 @@ begin
   AssertFalse(IsItemPickedUp);
 end;
 
-procedure TGameLogicTests.TestGetItemName_Rope;
+procedure TGameLogicTests.TestGetItemName_Lamp;
 begin
-  AssertEquals('Rope', GetItemName(1));
+  AssertEquals('Lamp', GetItemName(1));
 end;
 
 procedure TGameLogicTests.TestGetItemName_Crown;
