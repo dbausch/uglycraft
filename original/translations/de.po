@@ -13,16 +13,16 @@ msgid "Swords"
 msgstr "Schwerter"
 
 #: ugli_2:sitemname3
-msgid "Small Ruby"
-msgstr "kleiner Rubin"
+msgid "Ruby"
+msgstr "Rubin"
 
 #: ugli_2:sitemname4
-msgid "Small Gems"
-msgstr "kleine Edelsteine"
+msgid "Gems"
+msgstr "Edelsteine"
 
 #: ugli_2:sitemname5
-msgid "Small Diamond"
-msgstr "kleiner Diamant"
+msgid "Diamond"
+msgstr "Diamant"
 
 #: ugli_2:sitemname6
 msgid "Silver Bar"

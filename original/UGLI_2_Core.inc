@@ -17,7 +17,7 @@ const
     (Ch: '⚔'; Fg: Yellow),
     (Ch: '▼'; Fg: LightRed),
     (Ch: '⛬'; Fg: LightMagenta),
-    (Ch: '🞙'; Fg: LightCyan),
+    (Ch: '◆'; Fg: LightCyan),
     (Ch: '≡'; Fg: LightGray),
     (Ch: '='; Fg: Yellow),
     (Ch: '🝁'; Fg: LightGray),
@@ -151,9 +151,9 @@ resourcestring
   { Item names — parallel to Items[1..10] }
   sItemName1  = 'Lamp';
   sItemName2  = 'Swords';
-  sItemName3  = 'Small Ruby';
-  sItemName4  = 'Small Gems';
-  sItemName5  = 'Small Diamond';
+  sItemName3  = 'Ruby';
+  sItemName4  = 'Gems';
+  sItemName5  = 'Diamond';
   sItemName6  = 'Silver Bar';
   sItemName7  = 'Gold Bar';
   sItemName8  = 'Necklace';
