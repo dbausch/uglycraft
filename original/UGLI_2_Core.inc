@@ -510,13 +510,15 @@ begin
   I := 1;
   while I <= Length(S) do
     begin
-      if (Ord(S[I]) and $F0) = $E0 then N := 3
+      if (Ord(S[I]) and $F8) = $F0 then N := 4
+      else if (Ord(S[I]) and $F0) = $E0 then N := 3
       else if (Ord(S[I]) and $E0) = $C0 then N := 2
       else N := 1;
       Ch[0] := Chr(N);
       if N >= 1 then Ch[1] := S[I];
       if N >= 2 then Ch[2] := S[I + 1];
       if N >= 3 then Ch[3] := S[I + 2];
+      if N >= 4 then Ch[4] := S[I + 3];
       BufPutCell(C, Row, Fg, Bg, Ch);
       Inc(I, N);
       Inc(C);

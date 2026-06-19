@@ -14,8 +14,14 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   files; labels remain as resourcestrings.  Falls back to a translated
   placeholder if the file is not found.
 - Renamed "Story of UGLI" to "History of UGLI" in key help bar and help screen.
-- Reordered and replaced collectible items: Lamp, Swords, Small Ruby,
-  Small Gems, Small Diamond, Silver Bar, Gold Bar, Necklace, Flag, Crown.
+- Reordered and replaced collectible items: Lamp, Swords, Ruby, Gems,
+  Diamond, Silver Bar, Gold Bar, Necklace, Flag, Crown.
+
+### Fixed
+
+- `Draw` now handles 4-byte UTF-8 sequences (U+10000+).  Previously only
+  1–3 byte sequences were recognized; 4-byte characters (necklace, crown)
+  were split into garbage.
 
 ---
 
