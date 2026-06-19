@@ -1,5 +1,5 @@
-1993 wollte ein Kind mehr Spiele für seinen alten PC. Sein Vater sagte: Mach dir doch selber welche. Das tat er — und UGLI war geboren. Ein Smiley, der auf einem Textbildschirm Schätze jagte, mit dem PC-Lautsprecher als einziger Stimme.
+1993 wünschte sich ein Junge mehr Spiele für seinen alten PC. Der Rat seines Vaters war knapp: Schreib dir selber welche. Gesagt, getan — und UGLI erblickte das Licht der Welt. Ein Smiley auf der Jagd nach Schätzen, über den Textbildschirm huschend, mit schlichten Soundeffekten aus dem PC-Lautsprecher.
 
-Andere Kinder wollten es auch haben. Disketten wechselten in der Schule und in der Stadt den Besitzer. Von dem verdienten Taschengeld bezahlte er sogar eine Anzeige in der Vereinszeitung des örtlichen Sportvereins. Bis 1996 war eine zweite Version entstanden: mehr Levels und die Möglichkeit, eigene Mauern zu setzen.
+Bald wollten es auch andere haben. Disketten machten in der Schule und im Dorf die Runde. Vom verdienten Taschengeld finanzierte er sogar eine Anzeige in der Vereinszeitung des örtlichen Sportvereins. Bis 1996 war daraus eine zweite Version gewachsen: neue Levels und die Möglichkeit, eigene Mauern zu errichten.
 
-Fast dreißig Jahre später ist das Spiel zurück — in zwei Varianten: einer originalgetreuen Portierung für moderne Systeme und UGLYCRAFT, einem kompletten Remake mit Grafik und Musik. Beide sind frei und quelloffen (GPLv3), verfügbar auf itch.io und GitHub.
+Fast dreißig Jahre später kehrt das Spiel zurück — in zwei Varianten: einer originalgetreuen Portierung für moderne Systeme und UGLYCRAFT, einem kompletten Remake mit Grafik und Musik. Beide sind frei und quelloffen (GPLv3), verfügbar auf itch.io und GitHub.
