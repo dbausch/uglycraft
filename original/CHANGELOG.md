@@ -18,6 +18,7 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   Diamond, Silver Bar, Gold Bar, Necklace, Flag, Crown.
 - Replaced gems (⛬→⁂), diamond (◆→♦), and crown (🜲→♛) symbols with
   characters that render at single-cell width in monospace fonts.
+- Changed ruby color from LightRed to Red.
 
 ### Fixed
 

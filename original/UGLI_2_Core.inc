@@ -15,7 +15,7 @@ const
   Items : array[1..ItemCount] of TItemData = (
     (Ch: 'Φ'; Fg: Yellow),
     (Ch: '⚔'; Fg: Yellow),
-    (Ch: '▼'; Fg: LightRed),
+    (Ch: '▼'; Fg: Red),
     (Ch: '⁂'; Fg: LightMagenta),
     (Ch: '♦'; Fg: LightCyan),
     (Ch: '≡'; Fg: LightGray),
