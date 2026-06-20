@@ -987,9 +987,14 @@ end; {Redraw}
 
 procedure InitLevel1;
 begin
-  StartX := 40;
+  for I := 2 to 19 do
+    begin
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
+    end;
+  StartX := 76;
   StartY := 10;
-  StartDir := DirRight;
+  StartDir := DirLeft;
   StartEX := 5;
   StartEY := 10;
 end; {InitLevel1}
@@ -998,88 +1003,113 @@ procedure InitLevel2;
 var
   I: Integer;
 begin
+  for I := 2 to 19 do
+    begin
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
+    end;
   for I := 18 to 62 do
     begin
       Blocked[I, 10] := true;
+      Blocked[I, 11] := true;
     end;
-  StartX := 40;
-  StartY := 5;
-  StartDir := DirRight;
+  StartX := 76;
+  StartY := 18;
+  StartDir := DirLeft;
   StartEX := 5;
-  StartEY := 10;
+  StartEY := 3;
 end; {InitLevel2}
 
 procedure InitLevel3;
 var
   I: Integer;
 begin
-  for I := 5 to 15 do
+  for I := 2 to 19 do
+    begin
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
+    end;
+  for I := 5 to 16 do
     begin
       Blocked[20, I] := true;
+      Blocked[21, I] := true;
+      Blocked[22, I] := true;
+      Blocked[58, I] := true;
+      Blocked[59, I] := true;
       Blocked[60, I] := true;
     end;
   for I := 20 to 60 do
-    begin
-      Blocked[I, 10] := true;
-    end;
-  Blocked[39, 10] := false;
-  Blocked[40, 10] := false;
-  Blocked[41, 10] := false;
-  StartX := 40;
-  StartY := 9;
-  StartDir := DirUp;
-  StartEX := 5;
-  StartEY := 10;
+    if (I < 39) or (I > 41) then
+      begin
+        Blocked[I, 10] := true;
+        Blocked[I, 11] := true;
+      end;
+  StartX := 51;
+  StartY := 6;
+  StartDir := DirLeft;
+  StartEX := 28;
+  StartEY := 15;
 end; {InitLevel3}
 
 procedure InitLevel4;
 var
   I: Integer;
 begin
-  for I := 4 to 8 do
+  for I := 2 to 19 do
     begin
-      Blocked[15, I] := true;
-      Blocked[65, I] := true;
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
     end;
-  for I := 6 to 74 do
-    Blocked[I, 10] := true;
-  for I := 12 to 16 do
-    begin
-      Blocked[15, I] := true;
-      Blocked[65, I] := true;
-    end;
-  Blocked[39, 10] := false;
-  Blocked[40, 10] := false;
-  Blocked[41, 10] := false;
-  StartX := 40;
-  StartY := 9;
-  StartDir := DirRight;
-  StartEX := 5;
-  StartEY := 10;
+  for I := 4 to 17 do
+    if (I < 9) or (I > 12) then
+      begin
+        Blocked[15, I] := true;
+        Blocked[16, I] := true;
+        Blocked[17, I] := true;
+        Blocked[63, I] := true;
+        Blocked[64, I] := true;
+        Blocked[65, I] := true;
+      end;
+  for I := 6 to 75 do
+    if (I < 39) or (I > 42) then
+      begin
+        Blocked[I, 10] := true;
+        Blocked[I, 11] := true;
+      end;
+  StartX := 59;
+  StartY := 16;
+  StartDir := DirLeft;
+  StartEX := 21;
+  StartEY := 5;
 end; {InitLevel4}
 
 procedure InitLevel5;
 var
   I: Integer;
 begin
-  for I := 5 to 15 do
+  for I := 2 to 19 do
     begin
-      Blocked[20, I] := true;
-      Blocked[60, I] := true;
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
     end;
-  for I := 22 to 58 do
-    begin
-      Blocked[I, 7] := true;
-      Blocked[I, 13] := true;
-    end;
-  for I := 20 to 60 do
-    begin
-      Blocked[I, 10] := false;
-    end;
-  StartX := 40;
-  StartY := 10;
-  StartDir := DirUp;
-  StartEX := 5;
+  for I := 4 to 17 do
+    if (I <> 8) and (I <> 13) then
+      begin
+        Blocked[19, I] := true;
+        Blocked[20, I] := true;
+        Blocked[61, I] := true;
+        Blocked[62, I] := true;
+      end;
+  for I := 6 to 75 do
+    if (I < 17) or ((I >= 23) and (I <= 58)) or (I > 64) then
+      begin
+        Blocked[I, 8] := true;
+        Blocked[I, 13] := true;
+      end;
+  StartX := 73;
+  StartY := 11;
+  StartDir := DirLeft;
+  StartEX := 8;
   StartEY := 10;
 end; {InitLevel5}
 
@@ -1087,134 +1117,172 @@ procedure InitLevel6;
 var
   I: Integer;
 begin
-  for I := 2 to 8 do
+  for I := 2 to 19 do
     begin
-      Blocked[10, I] := true;
-      Blocked[20, I] := true;
-      Blocked[30, I] := true;
-      Blocked[40, I] := true;
-      Blocked[50, I] := true;
-      Blocked[60, I] := true;
-      Blocked[70, I] := true;
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
     end;
-  for I := 12 to 19 do
-    begin
-      Blocked[10, I] := true;
-      Blocked[20, I] := true;
-      Blocked[30, I] := true;
-      Blocked[40, I] := true;
-      Blocked[50, I] := true;
-      Blocked[60, I] := true;
-      Blocked[70, I] := true;
-    end;
-  for I := 5 to 15 do
+  for I := 2 to 19 do
+    if (I < 9) or (I > 12) then
+      begin
+        Blocked[10, I] := true;
+        Blocked[11, I] := true;
+        Blocked[20, I] := true;
+        Blocked[21, I] := true;
+        Blocked[30, I] := true;
+        Blocked[31, I] := true;
+        Blocked[40, I] := true;
+        Blocked[41, I] := true;
+        Blocked[50, I] := true;
+        Blocked[51, I] := true;
+        Blocked[60, I] := true;
+        Blocked[61, I] := true;
+        Blocked[70, I] := true;
+        Blocked[71, I] := true;
+      end;
+  for I := 5 to 16 do
     begin
       Blocked[15, I] := true;
+      Blocked[16, I] := true;
       Blocked[25, I] := true;
+      Blocked[26, I] := true;
       Blocked[35, I] := true;
+      Blocked[36, I] := true;
       Blocked[45, I] := true;
+      Blocked[46, I] := true;
       Blocked[55, I] := true;
+      Blocked[56, I] := true;
       Blocked[65, I] := true;
+      Blocked[66, I] := true;
     end;
-  for I := 6 to 74 do
-    begin
-      Blocked[I, 10] := true;
-      Blocked[I, 9] := false;
-      Blocked[I, 11] := false;
-    end;
-  Blocked[38, 10] := false;
-  Blocked[39, 10] := false;
-  Blocked[40, 10] := false;
-  Blocked[41, 10] := false;
-  Blocked[42, 10] := false;
+  for I := 6 to 75 do
+    if (I <= 39) or (I >= 42) then
+      begin
+        Blocked[I, 9] := false;
+        Blocked[I, 10] := true;
+        Blocked[I, 11] := true;
+        Blocked[I, 12] := false;
+      end;
   StartX := 75;
   StartY := 5;
   StartDir := DirDown;
-  StartEX := 5;
-  StartEY := 10;
+  StartEX := 6;
+  StartEY := 16;
 end; {InitLevel6}
 
 procedure InitLevel7;
 var
-  I, J: Integer;
+  I, K: Integer;
 begin
-  J := 0;
-  for I := 3 to 17 do
+  for I := 2 to 19 do
     begin
-      Inc(J);
-      Blocked[5 + J, I] := true;
-      Blocked[33 + J, I] := true;
-      Blocked[60 + J, I] := true;
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
     end;
-  J := 16;
-  for I := 3 to 17 do
+  for I := 0 to 11 do
     begin
-      Dec(J);
-      Blocked[5 + J, I] := true;
-      Blocked[33 + J, I] := true;
-      Blocked[60 + J, I] := true;
+      K := (I div 6) * 4; { jump across horizontal wall }
+      { stroke from top-left to bottom-right }
+      Blocked[8 + I + K, 3 + I + K] := true;
+      Blocked[9 + I + K, 3 + I + K] := true;
+      Blocked[10 + I + K, 3 + I + K] := true;
+      Blocked[32 + I + K, 3 + I + K] := true;
+      Blocked[33 + I + K, 3 + I + K] := true;
+      Blocked[34 + I + K, 3 + I + K] := true;
+      Blocked[56 + I + K, 3 + I + K] := true;
+      Blocked[57 + I + K, 3 + I + K] := true;
+      Blocked[58 + I + K, 3 + I + K] := true;
+      { stroke from top-right to bottom-left }
+      Blocked[23 - I - K, 3 + I + K] := true;
+      Blocked[24 - I - K, 3 + I + K] := true;
+      Blocked[25 - I - K, 3 + I + K] := true;
+      Blocked[47 - I - K, 3 + I + K] := true;
+      Blocked[48 - I - K, 3 + I + K] := true;
+      Blocked[49 - I - K, 3 + I + K] := true;
+      Blocked[71 - I - K, 3 + I + K] := true;
+      Blocked[72 - I - K, 3 + I + K] := true;
+      Blocked[73 - I - K, 3 + I + K] := true;
     end;
-  for J := 9 to 11 do
-    for I := 2 to 79 do
-      Blocked[I, J] := false;
-  for I := 6 to 74 do
-    Blocked[I, 10] := true;
-  for I := 54 to 56 do
-    Blocked[I, 10] := false;
-  for I := 26 to 28 do
-    Blocked[I, 10] := false;
-  StartX := 75;
-  StartY := 10;
-  StartDir := DirRight;
+  for I := 6 to 75 do
+    if (I < 28) or ((I > 29) and (I < 52)) or (I > 53) then
+      begin
+        Blocked[I, 10] := true;
+        Blocked[I, 11] := true;
+      end;
+  StartX := 76;
+  StartY := 3;
+  StartDir := DirDown;
   StartEX := 5;
-  StartEY := 10;
+  StartEY := 18;
 end; {InitLevel7}
 
 procedure InitLevel8;
 var
   I: Integer;
 begin
-  for I := 2 to 15 do
+  for I := 2 to 19 do
+    begin
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
+    end;
+  for I := 2 to 16 do
     begin
       Blocked[10, I] := true;
+      Blocked[11, I] := true;
       Blocked[30, I] := true;
+      Blocked[31, I] := true;
       Blocked[50, I] := true;
+      Blocked[51, I] := true;
       Blocked[70, I] := true;
+      Blocked[71, I] := true;
     end;
   for I := 5 to 19 do
     begin
       Blocked[20, I] := true;
+      Blocked[21, I] := true;
       Blocked[40, I] := true;
+      Blocked[41, I] := true;
       Blocked[60, I] := true;
+      Blocked[61, I] := true;
     end;
   StartX := 75;
   StartY := 5;
   StartDir := DirDown;
-  StartEX := 5;
-  StartEY := 10;
+  StartEX := 6;
+  StartEY := 5;
 end; {InitLevel8}
 
 procedure InitLevel9;
-var I: Integer;
+var I, J: Integer;
+const B: array[1..12] of String = (
+  '##        ##   ##########   ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  '##        ##  ##            ##            ##',
+  '##        ##  ##     #####  ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  '##        ##  ##        ##  ##            ##',
+  ' ##########    ##########   ############  ##'
+);
 begin
-  for I := 5 to 15 do
+  for I := 2 to 19 do
     begin
-      Blocked[20, I] := true;
-      Blocked[60, I] := true;
-      Blocked[39, I] := true;
-      Blocked[41, I] := true;
+      Blocked[2, I] := true;
+      Blocked[79, I] := true;
     end;
-  for I := 21 to 38 do
-    Blocked[I, 5] := true;
-  for I := 42 to 59 do
-    Blocked[I, 5] := true;
-  for I := 22 to 37 do
-    Blocked[I, 15] := true;
-  for I := 43 to 58 do
-    Blocked[I, 15] := true;
-  StartX := 40;
+  for J := 1 to 12 do
+    for I := 1 to 44 do
+      if B[J][I] = '#' then
+        begin
+          Blocked[I + 18, J + 4] := true;
+        end;
+  StartX := 76;
   StartY := 10;
-  StartDir := DirUp;
+  StartDir := DirLeft;
   StartEX := 5;
   StartEY := 10;
 end;
