@@ -16,13 +16,13 @@ const
     (Ch: 'Φ'; Fg: Yellow),
     (Ch: '⚔'; Fg: Yellow),
     (Ch: '▼'; Fg: LightRed),
-    (Ch: '⛬'; Fg: LightMagenta),
-    (Ch: '◆'; Fg: LightCyan),
+    (Ch: '⁂'; Fg: LightMagenta),
+    (Ch: '♦'; Fg: LightCyan),
     (Ch: '≡'; Fg: LightGray),
     (Ch: '='; Fg: Yellow),
     (Ch: '🝁'; Fg: LightGray),
     (Ch: '⚑'; Fg: LightGreen),
-    (Ch: '🜲'; Fg: Yellow)
+    (Ch: '♛'; Fg: Yellow)
   );
 
 var
