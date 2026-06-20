@@ -2,22 +2,22 @@
 
 ## Status
 
-- [ ] `translations/history_en.txt` — English history text
-- [ ] `translations/history_de.txt` — German history text
-- [ ] `sStoryTitle` → `'The History of UGLI'`; `sStoryText` removed
-- [ ] `sKeys2` and `sHelpF2` updated to say "History" instead of "Story"
-- [ ] `sHistoryMissing` resourcestring for fallback when file not found
-- [ ] `LoadHistoryText` loads text file by locale, falls back gracefully
-- [ ] `ShowStory` renders multi-paragraph text (split on blank lines)
-- [ ] `de.po` / `de.mo` updated
-- [ ] UGLYCRAFT: `[S] History` on title screen, loads from file, returns to title
-- [ ] Packaging includes `history_*.txt`
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: F2 shows history, fits on 80×25 screen
-- [ ] Manual check: German text loads with `LANG=de_DE.UTF-8`
-- [ ] Manual check: missing file shows placeholder, no crash
-- [ ] Manual check: UGLYCRAFT title screen shows [S], history displays
+- [x] `translations/history_en.txt` — English history text
+- [x] `translations/history_de.txt` — German history text
+- [x] `sStoryTitle` → `'The History of UGLI'`; `sStoryText` removed
+- [x] `sKeys2` and `sHelpF2` updated to say "History" instead of "Story"
+- [x] `sHistoryMissing` resourcestring for fallback when file not found
+- [x] `LoadHistoryText` loads text file by locale, falls back gracefully
+- [x] `ShowStory` renders multi-paragraph text (split on blank lines)
+- [x] `de.po` / `de.mo` updated
+- [x] UGLYCRAFT: `[S] History` on title screen, loads from file, returns to title
+- [x] Packaging includes `history_*.txt`
+- [x] Game compiles (`poe build-original` exits 0)
+- [x] All tests pass (`poe test-original` exits 0)
+- [x] Manual check: F2 shows history, fits on 80×25 screen
+- [x] Manual check: German text loads with `LANG=de_DE.UTF-8`
+- [x] Manual check: missing file shows placeholder, no crash
+- [x] Manual check: UGLYCRAFT title screen shows [S], history displays
 
 ## Approved English text
 
@@ -66,10 +66,10 @@ for each one, advancing the row cursor by the returned line count plus one
 
 ## Done when
 
-- [ ] History text files exist and are loaded at runtime
-- [ ] F2 in original shows multi-paragraph justified history text
-- [ ] German translation loads when locale is German
-- [ ] Missing file shows translated placeholder, no crash
-- [ ] UGLYCRAFT title screen has `[S]` option leading to history
-- [ ] History screen in UGLYCRAFT returns to title on any key
-- [ ] Packaging includes `history_*.txt` for both arch and itch
+- [x] History text files exist and are loaded at runtime — `6e56cbf`
+- [x] F2 in original shows multi-paragraph justified history text — confirmed by user
+- [x] German translation loads when locale is German — confirmed by user
+- [x] Missing file shows translated placeholder, no crash — confirmed by user
+- [x] UGLYCRAFT title screen has `[S]` option leading to history — `efbc2c1`
+- [x] History screen in UGLYCRAFT returns to title on any key — confirmed by user
+- [x] Packaging includes `history_*.txt` for both arch and itch — `6e56cbf`
