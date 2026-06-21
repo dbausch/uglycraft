@@ -26,6 +26,7 @@ packaging/*.pkg.tar.zst
 packaging/*.tar.gz
 packaging/uos*.pas
 packaging/ANSI-87.conf
+packaging/uglycraft-git/
 
 # Runtime data
 uglycraft.hsc
