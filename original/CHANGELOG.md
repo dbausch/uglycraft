@@ -22,6 +22,10 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 - Reworked all 9 level layouts: thicker walls (2–3 cells), inner border
   walls on cols 2 and 79, repositioned player and enemy starts.  Level 9
   now features a string-art "UGLI" pattern.
+- Reworked high score screen: single name field, "Wall of Fame" headline
+  with congratulations message, sorted and ranked top-10 display with
+  proper column alignment (4-cell margins).  File format now uses TAB
+  separator; old space-separated entries are parsed correctly.
 
 ### Fixed
 

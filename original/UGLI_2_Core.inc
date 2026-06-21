@@ -42,7 +42,7 @@ var
   { When non-nil, WaitKey calls this instead of GetKey — set in tests. }
   KeyProviderFunc : function: Integer = nil;
   F, TTY: Text;
-  FirstName, LastName, S: String;
+  S: String;
   Line: String[80];
   YesKey, NoKey: set of Byte;
   TTYFd           : Integer;   { /dev/tty fd for raw key reads }
@@ -203,10 +203,11 @@ resourcestring
   sRemoveBlocks = 'R E M O V E   B L O C K S';
   sPlayAgain    = 'P L A Y   A G A I N ?';
   sYesNo        = 'Y / N';         { must match sYesChar / sNoChar }
-  { High score entry (HighScoreEntry) }
-  sFirstName   = 'FIRST NAME ';
-  sLastName    = 'LAST NAME ';
-  sScoreEntry  = 'Score ';
+  { High score entry / display (HighScoreEntry, ShowHighScores) }
+  sHSTitle    = 'W A L L   O F   F A M E';
+  sHSCongrats = 'Congratulations!  You scored ';
+  sHSPoints   = ' points.';
+  sHSPrompt   = 'Please enter your name:';
   sHSFileError = 'Could not create high score file.';
   { Intro (hard-coded inside Intro procedure body) }
   sIntroBrand   = '* DANISOFT * PRESENTS *';
@@ -399,6 +400,24 @@ begin
       if (B < $80) or (B >= $C0) then Inc(Count);
     end;
   UTF8Cols := Count;
+end;
+
+function UTF8Truncate(const S: String; MaxCols: Integer): String;
+var I, Cols, N: Integer;
+begin
+  Cols := 0;
+  I := 1;
+  while I <= Length(S) do
+    begin
+      if (Ord(S[I]) and $F8) = $F0 then N := 4
+      else if (Ord(S[I]) and $F0) = $E0 then N := 3
+      else if (Ord(S[I]) and $E0) = $C0 then N := 2
+      else N := 1;
+      Inc(Cols);
+      if Cols > MaxCols then Break;
+      Inc(I, N);
+    end;
+  UTF8Truncate := Copy(S, 1, I - 1);
 end;
 
 function Center(S: String): String;
@@ -1735,84 +1754,143 @@ begin
   Draw(X, Y, PlayerFg, FieldBg, '☺');
 end;
 
-procedure HighScoreEntry;
+procedure ParseHSLine(const Raw: String; var Name: String; var Pts: LongInt);
+var P, Code: Integer;
 begin
-  { Restore cooked mode so ReadLn works }
-  tcsetattr(TTYFd, TCSANOW, SavedTio);
-  MyCursorOn;
-  { LightBlue on Black }
-  Write(TTY, #27'[0;94;40m'#27'[2J'#27'[H'); Flush(TTY);
-  WriteLn;
-  WriteLn(sFirstName);
-  Write(TTY, #27'[2;', UTF8Cols(sFirstName) + 1, 'H'); Flush(TTY);
-  ReadLn(FirstName);
-  WriteLn(sLastName);
-  Write(TTY, #27'[3;', UTF8Cols(sLastName) + 1, 'H'); Flush(TTY);
-  ReadLn(LastName);
-  MyCursorOff;
-  Str(Score * Lives, S); Draw(1, 4, CounterFg, FieldBg, sScoreEntry + S);
-  Assign(F, HighScoreFileName);
-  {$I-}
-  Append(F);
-  if IOResult = 0
-  then
+  P := Pos(#9, Raw);
+  if P > 0 then
     begin
-      WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
-      Close(F);
-      WriteLn;
+      Name := Copy(Raw, 1, P - 1);
+      Val(Copy(Raw, P + 1, Length(Raw) - P), Pts, Code);
+      if Code <> 0 then Pts := 0;
     end
   else
     begin
-      ReWrite(F);
-      if IOResult <> 0 then
+      P := Length(Raw);
+      while (P > 0) and (Raw[P] <> ' ') do Dec(P);
+      if P > 0 then
         begin
-          WriteLn(sHSFileError);
+          Name := Copy(Raw, 1, P - 1);
+          Val(Copy(Raw, P + 1, Length(Raw) - P), Pts, Code);
+          if Code <> 0 then begin Name := Raw; Pts := 0; end;
         end
       else
-        begin
-          WriteLn(F, FirstName, ' ', LastName, '    ', Score * Lives);
-          Close(F);
-          WriteLn;
-        end;
+        begin Name := Raw; Pts := 0; end;
     end;
-  {$I+}
-  Write(TTY, #27'[2J'#27'[H'); Flush(TTY);
+end;
+
+procedure ShowHighScores;
+const
+  MaxEntries = 100;
+  Margin     = 4;
+  RankW      = 4;
+  ScoreW     = 8;
+  NameMaxW   = ScreenW - Margin * 2 - RankW - ScoreW;
+var
+  Names: array[1..MaxEntries] of String;
+  Scores: array[1..MaxEntries] of LongInt;
+  Count, Rank, Row, Pad, NC: Integer;
+  Tmp: String;
+  TmpScore: LongInt;
+  ScoreStr, RankStr: String[12];
+begin
+  Count := 0;
   Assign(F, HighScoreFileName);
   {$I-}
   Reset(F);
-  if IOResult = 0
-  then
+  if IOResult = 0 then
     begin
-      while not Eof(F) do
+      while (not Eof(F)) and (Count < MaxEntries) do
         begin
           ReadLn(F, Line);
-          WriteLn(Line);
+          if Line <> '' then
+            begin
+              Inc(Count);
+              ParseHSLine(Line, Names[Count], Scores[Count]);
+            end;
         end;
       Close(F);
-    end
-  else
-    begin
-      ReWrite(F);
-      if IOResult <> 0 then
-        begin
-          WriteLn(sHSFileError);
-        end
-      else
-        begin
-          while not Eof(F) do
-            begin
-              ReadLn(F, Line);
-              WriteLn(Line);
-            end;
-          Close(F);
-        end;
     end;
   {$I+}
-  Write(TTY, #27'[25;1H'); Flush(TTY);
-  Write(sPressKey);
-  { Re-enable raw mode before returning to game }
-  tcsetattr(TTYFd, TCSANOW, RawTio);
+  { Sort descending by score (insertion sort) }
+  for I := 2 to Count do
+    begin
+      Tmp := Names[I];
+      TmpScore := Scores[I];
+      J := I - 1;
+      while (J >= 1) and (Scores[J] < TmpScore) do
+        begin
+          Names[J + 1] := Names[J];
+          Scores[J + 1] := Scores[J];
+          Dec(J);
+        end;
+      Names[J + 1] := Tmp;
+      Scores[J + 1] := TmpScore;
+    end;
+  BufFill(FieldBg, FieldBg, ' ');
+  Draw(1, 2, LightBlue, FieldBg, Center(sHSTitle));
+  if Count = 0 then
+    begin
+      BufFlush;
+      Draw(1, ScreenH, LightBlue, FieldBg, Center(sPressKey));
+      BufFlush;
+      WaitKey;
+      Exit;
+    end;
+  Row := 4;
+  for Rank := 1 to Count do
+    begin
+      if Rank > 10 then Break;
+      Str(Rank, RankStr);
+      while UTF8Cols(RankStr) < 2 do RankStr := ' ' + RankStr;
+      RankStr := RankStr + '. ';
+      Str(Scores[Rank], ScoreStr);
+      NC := NameMaxW - UTF8Cols(ScoreStr);
+      Tmp := UTF8Truncate(Names[Rank], NC);
+      Pad := NC - UTF8Cols(Tmp);
+      while Pad > 0 do begin Tmp := Tmp + ' '; Dec(Pad); end;
+      Draw(Margin + 1, Row, LightBlue, FieldBg,
+        RankStr + Tmp + ScoreStr);
+      Inc(Row);
+    end;
+  Draw(1, ScreenH, LightBlue, FieldBg, Center(sPressKey));
+  BufFlush;
   WaitKey;
+end;
+
+procedure HighScoreEntry;
+const Margin = 4;
+var
+  Name, ScoreStr: String;
+  FinalScore: LongInt;
+begin
+  FinalScore := Score * Lives;
+  Str(FinalScore, ScoreStr);
+  BufFill(FieldBg, FieldBg, ' ');
+  Draw(1, 2, LightBlue, FieldBg, Center(sHSTitle));
+  Draw(Margin + 1, 4, LightBlue, FieldBg,
+    sHSCongrats + ScoreStr + sHSPoints);
+  Draw(Margin + 1, 6, LightBlue, FieldBg, sHSPrompt);
+  Draw(Margin + 1, 8, LightBlue, FieldBg, '> ');
+  BufFlush;
+  tcsetattr(TTYFd, TCSANOW, SavedTio);
+  MyCursorOn;
+  Write(TTY, #27'[8;', Margin + 3, 'H'); Flush(TTY);
+  ReadLn(Name);
+  MyCursorOff;
+  tcsetattr(TTYFd, TCSANOW, RawTio);
+  if Name = '' then Name := '???';
+  Assign(F, HighScoreFileName);
+  {$I-}
+  Append(F);
+  if IOResult <> 0 then ReWrite(F);
+  if IOResult = 0 then
+    begin
+      WriteLn(F, Name, #9, FinalScore);
+      Close(F);
+    end;
+  {$I+}
+  ShowHighScores;
 end;
 
 procedure ShowItemDescriptions;

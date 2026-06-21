@@ -180,17 +180,21 @@ msgstr "N O C H M A L  S P I E L E N"
 msgid "Y / N"
 msgstr "J / N"
 
-#: ugli_2:sfirstname
-msgid "FIRST NAME "
-msgstr "VORNAME "
+#: ugli_2:shstitle
+msgid "W A L L   O F   F A M E"
+msgstr "R U H M E S H A L L E"
 
-#: ugli_2:slastname
-msgid "LAST NAME "
-msgstr "NAME "
+#: ugli_2:shscongrats
+msgid "Congratulations!  You scored "
+msgstr "Herzlichen Glückwunsch!  Du hast "
 
-#: ugli_2:sscoreentry
-msgid "Score "
-msgstr "Punkte "
+#: ugli_2:shspoints
+msgid " points."
+msgstr " Punkte erreicht."
+
+#: ugli_2:shsprompt
+msgid "Please enter your name:"
+msgstr "Bitte gib deinen Namen ein:"
 
 #: ugli_2:shsfileerror
 msgid "Could not create high score file."
