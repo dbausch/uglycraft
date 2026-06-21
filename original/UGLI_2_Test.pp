@@ -1964,6 +1964,218 @@ begin
 end;
 
 { ------------------------------------------------------------------ }
+{ TCharConstTests — character constants and drawing helpers          }
+{ ------------------------------------------------------------------ }
+
+type
+  TCharConstTests = class(TTestCase)
+  protected
+    procedure SetUp; override;
+  published
+    procedure TestPlayerCh;
+    procedure TestEnemyCh;
+    procedure TestWallCh;
+    procedure TestHLineCh;
+    procedure TestDrawBlank;
+    procedure TestDrawPlayer;
+    procedure TestDrawEnemy;
+    procedure TestItemChars;
+    procedure TestItemColors;
+  end;
+
+procedure TCharConstTests.SetUp;
+begin
+  BufFlushEnabled := false;
+  FillChar(Screen, SizeOf(Screen), 0);
+  FillChar(Dirty, SizeOf(Dirty), 0);
+  X := 10; Y := 5;
+  EX := 20; EY := 15;
+end;
+
+procedure TCharConstTests.TestPlayerCh;
+begin
+  AssertEquals('☺', PlayerCh);
+end;
+
+procedure TCharConstTests.TestEnemyCh;
+begin
+  AssertEquals('☻', EnemyCh);
+end;
+
+procedure TCharConstTests.TestWallCh;
+begin
+  AssertEquals('█', WallCh);
+end;
+
+procedure TCharConstTests.TestHLineCh;
+begin
+  AssertEquals('─', HLineCh);
+end;
+
+procedure TCharConstTests.TestDrawBlank;
+begin
+  Draw(5, 3, White, Black, 'X');
+  DrawBlank(5, 3);
+  AssertEquals(' ', Screen[5, 3].Ch);
+  AssertEquals(FieldBg, Screen[5, 3].Fg);
+  AssertEquals(FieldBg, Screen[5, 3].Bg);
+end;
+
+procedure TCharConstTests.TestDrawPlayer;
+begin
+  DrawPlayer;
+  AssertEquals(PlayerCh, Screen[X, Y].Ch);
+  AssertEquals(PlayerFg, Screen[X, Y].Fg);
+  AssertEquals(FieldBg, Screen[X, Y].Bg);
+end;
+
+procedure TCharConstTests.TestDrawEnemy;
+begin
+  DrawEnemy;
+  AssertEquals(EnemyCh, Screen[EX, EY].Ch);
+  AssertEquals(EnemyFg, Screen[EX, EY].Fg);
+  AssertEquals(FieldBg, Screen[EX, EY].Bg);
+end;
+
+procedure TCharConstTests.TestItemChars;
+begin
+  AssertEquals('Φ', Items[1].Ch);
+  AssertEquals('⚔', Items[2].Ch);
+  AssertEquals('▼', Items[3].Ch);
+  AssertEquals('⁂', Items[4].Ch);
+  AssertEquals('♦', Items[5].Ch);
+  AssertEquals('≡', Items[6].Ch);
+  AssertEquals('=', Items[7].Ch);
+  AssertEquals('🝁', Items[8].Ch);
+  AssertEquals('⚑', Items[9].Ch);
+  AssertEquals('♛', Items[10].Ch);
+end;
+
+procedure TCharConstTests.TestItemColors;
+begin
+  AssertEquals(Yellow, Items[1].Fg);
+  AssertEquals(Yellow, Items[2].Fg);
+  AssertEquals(Red, Items[3].Fg);
+  AssertEquals(LightMagenta, Items[4].Fg);
+  AssertEquals(LightCyan, Items[5].Fg);
+  AssertEquals(LightGray, Items[6].Fg);
+  AssertEquals(Yellow, Items[7].Fg);
+  AssertEquals(LightGray, Items[8].Fg);
+  AssertEquals(LightGreen, Items[9].Fg);
+  AssertEquals(Yellow, Items[10].Fg);
+end;
+
+{ ------------------------------------------------------------------ }
+{ TUtilTests — UTF8Truncate, ParseHSLine, RandomPos                  }
+{ ------------------------------------------------------------------ }
+
+type
+  TUtilTests = class(TTestCase)
+  protected
+    procedure SetUp; override;
+  published
+    procedure TestUTF8Truncate_Short;
+    procedure TestUTF8Truncate_Exact;
+    procedure TestUTF8Truncate_Truncates;
+    procedure TestUTF8Truncate_MultiByte;
+    procedure TestUTF8Truncate_Empty;
+    procedure TestParseHSLine_Tab;
+    procedure TestParseHSLine_OldFormat;
+    procedure TestParseHSLine_OldFormatMultiName;
+    procedure TestParseHSLine_NoScore;
+    procedure TestRandomPos_NotBlocked;
+    procedure TestRandomPos_AvoidsWalls;
+  end;
+
+procedure TUtilTests.SetUp;
+begin
+  BufFlushEnabled := false;
+  FillChar(Blocked, SizeOf(Blocked), 0);
+  InitBorder;
+end;
+
+procedure TUtilTests.TestUTF8Truncate_Short;
+begin
+  AssertEquals('Hi', UTF8Truncate('Hi', 10));
+end;
+
+procedure TUtilTests.TestUTF8Truncate_Exact;
+begin
+  AssertEquals('Hello', UTF8Truncate('Hello', 5));
+end;
+
+procedure TUtilTests.TestUTF8Truncate_Truncates;
+begin
+  AssertEquals('Hel', UTF8Truncate('Hello', 3));
+end;
+
+procedure TUtilTests.TestUTF8Truncate_MultiByte;
+begin
+  AssertEquals('←', UTF8Truncate('←→', 1));
+end;
+
+procedure TUtilTests.TestUTF8Truncate_Empty;
+begin
+  AssertEquals('', UTF8Truncate('', 5));
+end;
+
+procedure TUtilTests.TestParseHSLine_Tab;
+var Name: String; Pts: LongInt;
+begin
+  ParseHSLine('Alice'#9'12345', Name, Pts);
+  AssertEquals('Alice', Name);
+  AssertEquals(12345, Pts);
+end;
+
+procedure TUtilTests.TestParseHSLine_OldFormat;
+var Name: String; Pts: LongInt;
+begin
+  ParseHSLine('Bob 5000', Name, Pts);
+  AssertEquals('Bob', Name);
+  AssertEquals(5000, Pts);
+end;
+
+procedure TUtilTests.TestParseHSLine_OldFormatMultiName;
+var Name: String; Pts: LongInt;
+begin
+  ParseHSLine('John Doe 9999', Name, Pts);
+  AssertEquals('John Doe', Name);
+  AssertEquals(9999, Pts);
+end;
+
+procedure TUtilTests.TestParseHSLine_NoScore;
+var Name: String; Pts: LongInt;
+begin
+  ParseHSLine('JustAName', Name, Pts);
+  AssertEquals('JustAName', Name);
+  AssertEquals(0, Pts);
+end;
+
+procedure TUtilTests.TestRandomPos_NotBlocked;
+var Attempt: Integer;
+begin
+  for Attempt := 1 to 50 do
+    begin
+      ItemX := 0; ItemY := 0;
+      RandomPos;
+      AssertFalse('item must not be on blocked cell',
+        Blocked[ItemX, ItemY]);
+    end;
+end;
+
+procedure TUtilTests.TestRandomPos_AvoidsWalls;
+var Attempt: Integer;
+begin
+  for Attempt := 1 to 50 do
+    begin
+      ItemX := 0; ItemY := 0;
+      RandomPos;
+      AssertTrue('ItemX in range', (ItemX >= 2) and (ItemX <= 79));
+      AssertTrue('ItemY in range', (ItemY >= 2) and (ItemY <= 19));
+    end;
+end;
+
+{ ------------------------------------------------------------------ }
 { Main                                                               }
 { ------------------------------------------------------------------ }
 
@@ -1989,6 +2201,8 @@ begin
   RegisterTest(TLogTests);
   RegisterTest(TDumpTests);
   RegisterTest(TDumpFileTests);
+  RegisterTest(TCharConstTests);
+  RegisterTest(TUtilTests);
   Runner := TTestRunner.Create(nil);
   Runner.Initialize;
   Runner.Run;
