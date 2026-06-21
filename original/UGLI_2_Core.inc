@@ -239,6 +239,7 @@ var
   C: Char;
   LongIndex: LongInt;
 begin
+  FillChar(Opts, SizeOf(Opts), 0);
   Opts[0].SetOption('help', No_Argument, nil, 'h');
   Opts[1].SetOption('skip-intro', No_Argument, nil, 's');
   Opts[2].SetOption('level', Required_Argument, nil, 'n');
@@ -1815,7 +1816,7 @@ const
 var
   Names: array[1..MaxEntries] of String;
   Scores: array[1..MaxEntries] of LongInt;
-  Count, Rank, Row, Pad, NC: Integer;
+  Count, Rank, Row, Pad: Integer;
   Tmp: String;
   TmpScore: LongInt;
   ScoreStr, RankStr: String[12];
