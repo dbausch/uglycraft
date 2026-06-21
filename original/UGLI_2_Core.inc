@@ -1,3 +1,4 @@
+{$WARN 6058 OFF} { "marked as inline is not inlined" — FPC's BaseUnix calls }
 type
   TDirection = (DirRight, DirLeft, DirDown, DirUp);
   TItemData = record
