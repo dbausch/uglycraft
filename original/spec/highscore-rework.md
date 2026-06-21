@@ -2,15 +2,15 @@
 
 ## Status
 
-- [ ] Single name field (no first/last split)
-- [ ] TAB-separated storage format (name + score)
-- [ ] Sorted and ranked display (highest score first)
-- [ ] Entry screen with congratulations headline and instructions
-- [ ] Proper alignment with 4-column margins, name truncation
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: entry screen shows congratulations and instructions
-- [ ] Manual check: high score list is sorted, ranked, and aligned
+- [x] Single name field (no first/last split)
+- [x] TAB-separated storage format (name + score)
+- [x] Sorted and ranked display (highest score first)
+- [x] Entry screen with congratulations headline and instructions
+- [x] Proper alignment with 4-column margins, name truncation
+- [x] Game compiles (`poe build-original` exits 0)
+- [x] All tests pass (`poe test-original` exits 0)
+- [x] Manual check: entry screen shows congratulations and instructions
+- [x] Manual check: high score list is sorted, ranked, and aligned
 
 ## Current behaviour
 
@@ -137,11 +137,11 @@ score.  This handles old entries gracefully.
 
 ## Done when
 
-- [ ] Single name field replaces first/last name
-- [ ] File format uses TAB separator
-- [ ] Old space-separated entries are parsed correctly
-- [ ] Entry screen shows congratulations with score and prompt
-- [ ] Display shows sorted top-10 with rank, aligned in 72-col layout
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: entry and display screens look correct
+- [x] Single name field replaces first/last name — `430afeb`
+- [x] File format uses TAB separator — `430afeb`
+- [x] Old space-separated entries are parsed correctly — `430afeb`, confirmed by user
+- [x] Entry screen shows congratulations with score and prompt — `430afeb`, `650e4bb`
+- [x] Display shows sorted top-10 with rank, aligned in 72-col layout — `430afeb`, `650e4bb`
+- [x] Game compiles (`poe build-original` exits 0) — `430afeb`
+- [x] All tests pass (`poe test-original` exits 0) — `430afeb`
+- [x] Manual check: entry and display screens look correct — confirmed by user
