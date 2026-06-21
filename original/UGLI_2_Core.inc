@@ -24,6 +24,10 @@ const
     (Ch: '⚑'; Fg: LightGreen),
     (Ch: '♛'; Fg: Yellow)
   );
+  PlayerCh = '☺';
+  EnemyCh  = '☻';
+  WallCh   = '█';
+  HLineCh  = '─';
 
 var
   BlocksRemaining, MoveDelay, PausesRemaining, EnemyTick, KeyCode, I, J,
@@ -125,28 +129,6 @@ begin
       fpWrite(DumpFd, NullByte, 1);
     end;
   WBufPos := 0;
-end;
-
-procedure BufPutCell(Col, Row: Integer; Fg, Bg: Byte; const Ch: String); forward;
-procedure BufFlush; forward;
-procedure BufFlushForce; forward;
-procedure DrawItem; forward;
-procedure RandomPos; forward;
-
-procedure ToggleDump;
-const DumpFileName = '/tmp/ugli_dump.bin';
-begin
-  if DumpFd >= 0 then
-    begin
-      fpClose(DumpFd); DumpFd := -1;
-      BufPutCell(ScreenW, ScreenH, Black, Black, ' ');
-      BufFlush;
-    end
-  else
-    begin
-      DumpFd := fpOpen(DumpFileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
-      BufFlushForce;
-    end;
 end;
 
 resourcestring
@@ -374,6 +356,22 @@ begin
   BufFlush;
 end;
 
+procedure ToggleDump;
+const DumpFileName = '/tmp/ugli_dump.bin';
+begin
+  if DumpFd >= 0 then
+    begin
+      fpClose(DumpFd); DumpFd := -1;
+      BufPutCell(ScreenW, ScreenH, Black, Black, ' ');
+      BufFlush;
+    end
+  else
+    begin
+      DumpFd := fpOpen(DumpFileName, O_WRONLY or O_CREAT or O_TRUNC, $1A4);
+      BufFlushForce;
+    end;
+end;
+
 procedure BufDesaturate;
 var Col, Row: Integer;
 begin
@@ -551,6 +549,21 @@ var I: Integer;
 begin
   for I := X1 to X2 do
     Draw(I, Y, Fg, Bg, Ch);
+end;
+
+procedure DrawBlank(Col, Row: Integer);
+begin
+  Draw(Col, Row, FieldBg, FieldBg, ' ');
+end;
+
+procedure DrawPlayer;
+begin
+  Draw(X, Y, PlayerFg, FieldBg, PlayerCh);
+end;
+
+procedure DrawEnemy;
+begin
+  Draw(EX, EY, EnemyFg, FieldBg, EnemyCh);
 end;
 
 { Word-wrap Text and draw it justified at (Col, Row), one line per row.
@@ -832,23 +845,17 @@ begin
 end;
 
 procedure DrawInner;
-const
-  Fg = WallFg;
-  Bg = FieldBg;
 var I, J: Integer;
 begin
   for I := 2 to 79 do
     for J := 2 to 19 do
       if Blocked[I, J] then
-        Draw(I, J, Fg, Bg, '█')
+        Draw(I, J, WallFg, FieldBg, WallCh)
       else
-        Draw(I, J, Fg, Bg, ' ');
-  if X >= 2 then
-    Draw(X, Y, PlayerFg, FieldBg, '☺');
-  if EX >= 2 then
-    Draw(EX, EY, EnemyFg, FieldBg, '☻');
-  if ItemX >= 2 then
-    DrawItem;
+        DrawBlank(I, J);
+  if X >= 2 then DrawPlayer;
+  if EX >= 2 then DrawEnemy;
+  if ItemX >= 2 then DrawItem;
 end;
 
 procedure DrawLevel;
@@ -913,9 +920,9 @@ const
   Bg = FieldBg;
 begin
   Draw(2, 21, Fg, Bg, sKeys1);
-  DrawHLine(1, 80, 22, Fg, Bg, '─');
+  DrawHLine(1, 80, 22, Fg, Bg, HLineCh);
   Draw(2, 23, Fg, Bg, sKeys2);
-  DrawHLine(1, 80, 24, Fg, Bg, '─');
+  DrawHLine(1, 80, 24, Fg, Bg, HLineCh);
   Draw(2, 25, Fg, Bg, sKeys3);
 end; {DrawKeys}
 
@@ -981,13 +988,13 @@ var I: Integer;
 begin
   for I := 1 to FieldW do
     begin
-      Draw(I, 1, Fg, Bg, '█');
-      Draw(I, FieldH, Fg, Bg, '█');
+      Draw(I, 1, Fg, Bg, WallCh);
+      Draw(I, FieldH, Fg, Bg, WallCh);
     end;
   for I := 2 to FieldH - 1 do
     begin
-      Draw(1, I, Fg, Bg, '█');
-      Draw(FieldW, I, Fg, Bg, '█');
+      Draw(1, I, Fg, Bg, WallCh);
+      Draw(FieldW, I, Fg, Bg, WallCh);
     end;
   DrawLevel;
   DrawScore;
@@ -1338,8 +1345,6 @@ begin
 end; {PrepareLevel}
 
 procedure MoveDown(var X: Integer; var Y: Integer);
-const
-  Bg = FieldBg;
 var OldY: Integer;
 begin
   OldY := Y;
@@ -1347,15 +1352,13 @@ begin
   else Y := Y + 1;
   if Y <> OldY then
     begin
-      Draw(X, OldY, Bg, Bg, ' ');
-      Draw(X, Y, PlayerFg, Bg, '☺');
+      DrawBlank(X, OldY);
+      DrawPlayer;
     end;
-  Draw(BlockX, BlockY, WallFg, Bg, '█');
+  Draw(BlockX, BlockY, WallFg, FieldBg, WallCh);
 end; {MoveDown}
 
 procedure MoveLeft(var X: Integer; var Y: Integer);
-const
-  Bg = FieldBg;
 var OldX: Integer;
 begin
   OldX := X;
@@ -1363,15 +1366,13 @@ begin
   else X := X - 1;
   if X <> OldX then
     begin
-      Draw(OldX, Y, Bg, Bg, ' ');
-      Draw(X, Y, PlayerFg, Bg, '☺');
+      DrawBlank(OldX, Y);
+      DrawPlayer;
     end;
-  Draw(BlockX, BlockY, WallFg, Bg, '█');
+  Draw(BlockX, BlockY, WallFg, FieldBg, WallCh);
 end; {MoveLeft}
 
 procedure MoveRight(var X: Integer; var Y: Integer);
-const
-  Bg = FieldBg;
 var OldX: Integer;
 begin
   OldX := X;
@@ -1379,15 +1380,13 @@ begin
   else X := X + 1;
   if X <> OldX then
     begin
-      Draw(OldX, Y, Bg, Bg, ' ');
-      Draw(X, Y, PlayerFg, Bg, '☺');
+      DrawBlank(OldX, Y);
+      DrawPlayer;
     end;
-  Draw(BlockX, BlockY, WallFg, Bg, '█');
+  Draw(BlockX, BlockY, WallFg, FieldBg, WallCh);
 end; {MoveRight}
 
 procedure MoveUp(var X: Integer; var Y: Integer);
-const
-  Bg = FieldBg;
 var OldY: Integer;
 begin
   OldY := Y;
@@ -1395,10 +1394,10 @@ begin
   else Y := Y - 1;
   if Y <> OldY then
     begin
-      Draw(X, OldY, Bg, Bg, ' ');
-      Draw(X, Y, PlayerFg, Bg, '☺');
+      DrawBlank(X, OldY);
+      DrawPlayer;
     end;
-  Draw(BlockX, BlockY, WallFg, Bg, '█');
+  Draw(BlockX, BlockY, WallFg, FieldBg, WallCh);
 end; {MoveUp}
 
 procedure EnemyMove;
@@ -1449,9 +1448,9 @@ begin
         if (OldEX = ItemX) and (OldEY = ItemY) then
           DrawItem
         else
-          Draw(OldEX, OldEY, FieldBg, FieldBg, ' ');
+          DrawBlank(OldEX, OldEY);
       end;
-      Draw(EX, EY, EnemyFg, FieldBg, '☻');
+      DrawEnemy;
     end;
 end; {EnemyMove}
 
@@ -1482,7 +1481,7 @@ begin
     Laying := false
   else if not Blocked[X, Y] then
     begin
-      Draw(X, Y, WallFg, FieldBg, '█');
+      Draw(X, Y, WallFg, FieldBg, WallCh);
       Blocked[X, Y] := true;
       BlockX := X;
       BlockY := Y;
@@ -1621,16 +1620,16 @@ begin
   X2 := X1 + W - 1;
   if Prompt = '' then BoxH := 3 else BoxH := 4;
   Y1 := (FieldH - BoxH) div 2 + 1;
-  DrawHLine(X1, X2, Y1, Fg, Bg, '█');
-  Draw(X1, Y1 + 1, Fg, Bg, '█');
+  DrawHLine(X1, X2, Y1, Fg, Bg, WallCh);
+  Draw(X1, Y1 + 1, Fg, Bg, WallCh);
   Pad := (W - 2 - TW) div 2;
   Buf := '';
   for I := 1 to Pad do Buf := Buf + ' ';
   Buf := Buf + Title;
   while UTF8Cols(Buf) < W - 2 do Buf := Buf + ' ';
   Draw(X1 + 1, Y1 + 1, Fg, Bg, Buf);
-  Draw(X2, Y1 + 1, Fg, Bg, '█');
-  DrawHLine(X1, X2, Y1 + 2, Fg, Bg, '█');
+  Draw(X2, Y1 + 1, Fg, Bg, WallCh);
+  DrawHLine(X1, X2, Y1 + 2, Fg, Bg, WallCh);
   if Prompt <> '' then
     begin
       Pad := (W - PW) div 2;
@@ -1696,12 +1695,20 @@ begin
   end;
 end;
 
+procedure RandomPos;
+begin
+  repeat
+    ItemX := Round((Random * 77) + 2);
+    ItemY := Round((Random * 17) + 2);
+  until not Blocked[ItemX, ItemY];
+end;
+
 procedure GracePeriod;
 begin
   if ItemX = 0 then RandomPos;
   DrawItem;
-  Draw(X, Y, PlayerFg, FieldBg, '☺');
-  Draw(EX, EY, EnemyFg, FieldBg, '☻');
+  DrawPlayer;
+  DrawEnemy;
   BufFlush;
   Sleep(1000);
   while KeyPressed do
@@ -1770,7 +1777,7 @@ begin
   EnemyTick := (EnemyTick + 1) mod 2;
   MovePlayer;
   if Laying then PlaceBlock;
-  Draw(X, Y, PlayerFg, FieldBg, '☺');
+  DrawPlayer;
 end;
 
 procedure ParseHSLine(const Raw: String; var Name: String; var Pts: LongInt);
@@ -2065,14 +2072,6 @@ end;
 function IsItemPickedUp: Boolean;
 begin
   IsItemPickedUp := (ItemX = X) and (ItemY = Y);
-end;
-
-procedure RandomPos;
-begin
-  repeat
-    ItemX := Round((Random * 77) + 2);
-    ItemY := Round((Random * 17) + 2);
-  until not Blocked[ItemX, ItemY];
 end;
 
 procedure RemoveBlocks;
