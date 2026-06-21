@@ -19,24 +19,27 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 | `poe deploy-uglycraft` | Push Linux and Windows channels only |
 | `poe deploy-original-linux` | Push `dist/original-linux` to itch.io |
 | `poe deploy-original-dos` | Push `dist/original-dos` to itch.io |
-| `poe deploy-aur` | Copy PKGBUILD + .SRCINFO to `../uglycraft-aur`, commit and push |
+| `poe deploy-aur` | Copy release PKGBUILD + .SRCINFO to `../uglycraft-aur`, commit and push |
+| `poe deploy-aur-git` | Copy git PKGBUILD + .SRCINFO to `../uglycraft-git-aur`, commit and push |
 
 Build and deploy are separate steps — deploy tasks only call butler, never build.
 Windows build requires Wine installed via the system package manager; `poe setup-windows` handles the rest.
 Version is read from the latest git tag automatically.
 
-### Arch packaging and tags
+### Arch packaging
 
-The PKGBUILD downloads source from GitHub by git tag.  Two kinds of tags:
+Two AUR packages, each with its own repo:
 
-- **Release tags** (`v1.4`, `v1.5`, …) — immutable once pushed.  Created at
-  release time, never moved.
-- **Dev tag** (`dev`) — movable.  Force-pushed to HEAD before building arch
-  packages during development.  The PKGBUILD references `_tag=dev`; for a
-  release build, change `_tag` to `v<version>`.
+- **`uglycraft` / `ugli`** (release) — `packaging/PKGBUILD`, pinned to a
+  release tag (`_tag=v1.5`).  Deployed with `poe deploy-aur` to
+  `../uglycraft-aur`.  At release time, update `pkgver`, `_tag`, and run
+  `updpkgsums` to fill in real sha256 checksums.
+- **`uglycraft-git` / `ugli-git`** (VCS) — `packaging/PKGBUILD-git`, clones
+  the repo and derives `pkgver` from `git describe`.  Deployed with
+  `poe deploy-aur-git` to `../uglycraft-git-aur`.  No tags to manage.
 
-Before running `makepkg`, always: `git tag -f dev && git push <remote> --tags -f`,
-then `rm packaging/uglycraft-*.tar.gz` to clear the cached tarball.
+Each set `provides` and `conflicts` with the other so only one can be
+installed at a time.
 
 ## Development workflow
 

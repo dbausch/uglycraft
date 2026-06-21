@@ -177,7 +177,7 @@ help     = "Push all distributables to itch.io"
 sequence = ["deploy-original-linux", "_push-linux", "_push-windows", "deploy-aur"]
 
 [tool.poe.tasks.deploy-aur]
-help  = "Update and push the AUR package (../uglycraft-aur)"
+help  = "Update and push the release AUR package (../uglycraft-aur)"
 shell = """
   AUR_DIR=../uglycraft-aur
   [ -d "$AUR_DIR/.git" ] || { echo "error: $AUR_DIR is not a git repo"; exit 1; }
@@ -189,6 +189,23 @@ shell = """
     echo "nothing to update — AUR repo already matches"
   else
     git commit -m "uglycraft $VER"
+    git push
+  fi
+"""
+
+[tool.poe.tasks.deploy-aur-git]
+help  = "Update and push the git AUR package (../uglycraft-git-aur)"
+shell = """
+  AUR_DIR=../uglycraft-git-aur
+  [ -d "$AUR_DIR/.git" ] || { echo "error: $AUR_DIR is not a git repo"; exit 1; }
+  cp packaging/PKGBUILD-git "$AUR_DIR/PKGBUILD"
+  cp packaging/.SRCINFO-git "$AUR_DIR/.SRCINFO"
+  cd "$AUR_DIR"
+  git add PKGBUILD .SRCINFO
+  if git diff --cached --quiet; then
+    echo "nothing to update — AUR repo already matches"
+  else
+    git commit -m "uglycraft-git $(date +%Y%m%d)"
     git push
   fi
 """
