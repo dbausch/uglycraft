@@ -442,12 +442,20 @@ end;
 procedure TLevelTests.TestInitLevel1_NoWalls;
 var I, J: Integer;
 begin
+  InitBorder;
   InitLevel1;
-  AssertEquals(40, StartX);
+  AssertEquals(76, StartX);
   AssertEquals(10, StartY);
-  for I := 2 to FieldW - 1 do
+  { Interior open except inner border walls at cols 2 and 79 }
+  for I := 3 to FieldW - 2 do
     for J := 2 to FieldH - 1 do
       AssertFalse('blocked at ' + IntToStr(I) + ',' + IntToStr(J), Blocked[I, J]);
+  { Inner border walls }
+  for J := 2 to FieldH - 1 do
+    begin
+      AssertTrue('inner wall col 2', Blocked[2, J]);
+      AssertTrue('inner wall col 79', Blocked[79, J]);
+    end;
 end;
 
 procedure TLevelTests.TestInitLevel2_Wall;
@@ -487,45 +495,46 @@ begin
   InitBorder;
   InitLevel4;
   AssertTrue('wall starts at col 6', Blocked[6, 10]);
-  AssertTrue('wall ends at col 74', Blocked[74, 10]);
+  AssertTrue('wall ends at col 75', Blocked[75, 10]);
   AssertFalse('col 5 open', Blocked[5, 10]);
-  AssertFalse('col 75 open', Blocked[75, 10]);
-  { Centre gap cleared. }
+  AssertFalse('col 76 open', Blocked[76, 10]);
+  { Centre gap cleared (4 cells). }
   AssertFalse('gap at 39,10', Blocked[39, 10]);
   AssertFalse('gap at 40,10', Blocked[40, 10]);
   AssertFalse('gap at 41,10', Blocked[41, 10]);
+  AssertFalse('gap at 42,10', Blocked[42, 10]);
 end;
 
 procedure TLevelTests.TestInitLevel5_Row10Clear;
 begin
   InitBorder;
   InitLevel5;
-  { Vertical walls at cols 20 and 60 span rows 5-15 (including row 10),
-    but InitLevel5 explicitly clears the entire row 10 from col 20 to 60. }
-  AssertFalse('col 20 row 10 must be clear', Blocked[20, 10]);
-  AssertFalse('col 60 row 10 must be clear', Blocked[60, 10]);
+  { Row 10 is open between the vertical walls — no horizontal wall there. }
   AssertFalse('col 40 row 10 must be clear', Blocked[40, 10]);
-  { Row 10 outside the cleared range stays unblocked (never set). }
   AssertFalse('col 5 row 10', Blocked[5, 10]);
+  { Vertical walls at cols 19-20 and 61-62 have gaps at rows 8 and 13. }
+  AssertTrue('wall col 19 row 10', Blocked[19, 10]);
+  AssertFalse('gap col 19 row 8', Blocked[19, 8]);
 end;
 
 procedure TLevelTests.TestInitLevel9_DividerWalls;
 begin
   InitBorder;
   InitLevel9;
-  { Double centre divider at cols 39 and 41, rows 5-15. Row 10 is in that range. }
-  AssertTrue('divider col 39 row 10', Blocked[39, 10]);
-  AssertTrue('divider col 41 row 10', Blocked[41, 10]);
+  { "UGLI" string art: "U" starts at col 19, row 5. }
+  AssertTrue('U top-left', Blocked[19, 5]);
+  AssertTrue('U bottom curve', Blocked[20, 16]);
+  { Gap inside the U }
+  AssertFalse('inside U', Blocked[21, 10]);
 end;
 
 procedure TLevelTests.TestInitLevel9_CentreCorridor;
 begin
   InitBorder;
   InitLevel9;
-  { Col 40 is the open corridor between the two divider walls. }
-  AssertFalse('centre corridor at col 40', Blocked[40, 10]);
-  { Player starts at (40, 10) — must not be blocked. }
+  { Player starts at (76, 10) in the open area right of the art. }
   AssertFalse('player start not blocked', Blocked[StartX, StartY]);
+  AssertEquals(76, StartX);
 end;
 
 procedure TLevelTests.TestInitLevel1to9_StartPos;
