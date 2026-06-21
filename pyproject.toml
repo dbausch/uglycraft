@@ -106,12 +106,16 @@ shell = """
   [ -f original/ANSI-87.conf ] || curl -fsSL \
     "https://raw.githubusercontent.com/kovidgoyal/kitty-themes/master/themes/ANSI-87.conf" \
     -o original/ANSI-87.conf
+  echo "const GitSHA = '$(git rev-parse --short HEAD)';" > original/git_sha.inc
   cd original && fpc -Fuuos UGLI_2.pp
 """
 
 [tool.poe.tasks.test-original]
 help  = "Build and run UGLI_2 unit tests"
-shell = "cd original && fpc -Fuuos -oUGLI_2_Test UGLI_2_Test.pp && ./UGLI_2_Test --all --format=plainnotiming"
+shell = """
+  echo "const GitSHA = '$(git rev-parse --short HEAD)';" > original/git_sha.inc
+  cd original && fpc -Fuuos -oUGLI_2_Test UGLI_2_Test.pp && ./UGLI_2_Test --all --format=plainnotiming
+"""
 
 [tool.poe.tasks.build-replay]
 help  = "Build the WBFlush replay debugging utility (UGLI_2_Replay)"

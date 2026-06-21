@@ -8,7 +8,7 @@ label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 const
   User = 'Public Domain';
   Version = '2.5';
-  Release = '0043';
+  {$I git_sha.inc}
   FieldW = 80;
   FieldH = 20;
   ScreenW = FieldW;   { terminal width — buffer covers full 80-column line }
@@ -73,7 +73,7 @@ begin
   LoadTranslation;
   ParseCLI;
   OpenLog(LogFile);
-  Log('started UGLI 2 v' + Version + '/' + Release);
+  Log('started UGLI 2 v' + Version + '/' + GitSHA);
   Log('flags: skip-intro=' + BoolToStr(SkipIntro, 'true', 'false')
     + ' start-level=' + IntToStr(StartAtLevel));
   Assign(TTY, '/dev/tty');

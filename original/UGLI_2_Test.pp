@@ -7,7 +7,7 @@ uses CThreads, DOS, BaseUnix, SysUtils, termio, gettext, getopts, UOSSound,
 const
   User = 'Public Domain';
   Version = '2.3';
-  Release = '0042';
+  {$I git_sha.inc}
   FieldW = 80;
   FieldH = 20;
   ScreenW = FieldW;

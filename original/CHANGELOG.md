@@ -9,6 +9,9 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ### Changed
 
+- Replaced `Release` constant with `GitSHA`, injected at compile time
+  from `git rev-parse --short HEAD`.  The intro and log now show the
+  git commit hash instead of a manually maintained release number.
 - Replaced fictional in-game story (F2) with the real history of UGLI.
   Story body text now loaded from external `translations/history_<lang>.txt`
   files; labels remain as resourcestrings.  Falls back to a translated

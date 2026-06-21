@@ -1,6 +1,6 @@
 pkgbase=uglycraft-git
 pkgname=('uglycraft-git' 'ugli-git')
-pkgver=dev.r13.g039f131
+pkgver=1.4.r20.g21ad119
 pkgrel=1
 arch=('x86_64')
 url='https://github.com/dbausch/uglycraft'
@@ -35,6 +35,7 @@ EOF
 
 build() {
   cd "$pkgbase/original"
+  echo "const GitSHA = '$(git rev-parse --short HEAD)';" > git_sha.inc
   fpc -Fuuos UGLI_2.pp
 }
 

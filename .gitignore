@@ -13,6 +13,7 @@ build/
 original/*.o
 original/*.ppu
 original/*.rsj
+original/git_sha.inc
 original/UGLI_2
 original/UGLI_2_Test
 original/UGLI_2_Bench

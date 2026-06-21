@@ -31,6 +31,7 @@ EOF
 
 build() {
   cd "$pkgbase-$pkgver/original"
+  echo "const GitSHA = '$pkgver';" > git_sha.inc
   fpc -Fuuos UGLI_2.pp
 }
 
