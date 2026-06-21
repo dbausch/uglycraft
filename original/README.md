@@ -198,7 +198,7 @@ CRT sound stubs on Linux.  UOS source is fetched from GitHub at build time;
 `libportaudio.so.2` is required at runtime and falls back to silence if
 unavailable.
 
-### 13. Gameplay and code improvements (2.1–2.3)
+### 13. Gameplay and code improvements (2.1+)
 
 After the initial port reached version 2.0, several rounds of gameplay and
 code quality work followed:
@@ -208,20 +208,21 @@ code quality work followed:
   removal to F5; continuous movement in the last pressed direction.
 - **Dialog system (2.3)**: unified all message boxes behind `WaitKey` (drains
   key queue) and `Dialog(Title, Prompt)` (draws a centered `█`-bordered box,
-  waits, restores the interior via `DrawInner`).  `DrawInner` now redraws the
-  player, enemy, and current item, so any overlay can restore the full game
-  field with a single call.
-- **`TDirection` enum (2.3)**: replaced `Direction: Char` (which stored
-  raw keyboard scan codes) with a `TDirection = (DirRight, DirLeft, DirDown,
-  DirUp)` enum.  `KeyToDir` converts scan codes to the enum; `MovePlayer`
-  dispatches on it.
-- **`TItemData` record (2.3)**: treasure character, name, and gameplay color
-  are defined once in an `Items[1..10]` typed constant array.  `DrawItem` and
-  `ShowItemDescriptions` both derive from it, eliminating duplicated data.
-- **Level initialisation (2.3)**: `InitLevel1`–`InitLevel9` write to
-  `StartX/StartY/StartEX/StartEY/StartDir`; `PrepareLevel` copies these to
-  live variables.  This means `RemoveBlocks` can call `InitLevel` to rebuild
-  walls without disturbing any live game state.
+  waits, restores the interior via `DrawInner`).
+- **Off-screen buffer (2.4)**: all rendering goes through `BufPutCell` into
+  an in-memory buffer; `BufFlush` emits only changed cells in a single
+  `fpWrite` syscall, eliminating per-cell kernel round-trips.
+- **Internationalisation (2.4)**: all strings extracted to `resourcestring`
+  constants with English defaults; German provided as the first `.mo`
+  translation.  See §14 below.
+- **Async sound (2.5)**: gameplay sounds (`SoundBump`, `SoundPickup`,
+  `SoundCaught`) use `BeepAsync` — non-blocking background timer thread.
+- **High score rework**: single name field, TAB-separated storage, sorted
+  top-10 "Wall of Fame" display with ranked entries and aligned columns.
+- **Level rework**: all 9 levels redesigned with thicker walls and inner
+  border walls; level 9 features a string-art "UGLI" pattern.
+- **Grace period**: 1-second pause with item, player, and enemy visible at
+  level start and after being caught; arrow keys set the initial direction.
 
 See `CHANGELOG.md` for the complete list of fixes and changes per version.
 
