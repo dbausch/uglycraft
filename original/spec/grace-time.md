@@ -2,13 +2,13 @@
 
 ## Status
 
-- [ ] Item visible during level-start grace time
-- [ ] Arrow key input accepted during grace time to set initial direction
-- [ ] Grace time added after being caught (player, enemy, item visible)
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: item visible and direction choosable at level start
-- [ ] Manual check: grace time after being caught feels right
+- [x] Item visible during level-start grace time
+- [x] Arrow key input accepted during grace time to set initial direction
+- [x] Grace time added after being caught (player, enemy, item visible)
+- [x] Game compiles (`poe build-original` exits 0)
+- [x] All tests pass (`poe test-original` exits 0)
+- [x] Manual check: item visible and direction choosable at level start
+- [x] Manual check: grace time after being caught feels right
 
 ## Current behaviour
 
@@ -68,9 +68,9 @@ by the caller (main loop).
 
 ## Done when
 
-- [ ] Item visible during grace time at level start and after caught
-- [ ] Arrow key during grace time sets initial direction
-- [ ] Grace time after caught matches level-start grace time (1 s)
-- [ ] Game compiles (`poe build-original` exits 0)
-- [ ] All tests pass (`poe test-original` exits 0)
-- [ ] Manual check: both grace time moments feel right
+- [x] Item visible during grace time at level start and after caught — `6e46f6e`
+- [x] Arrow key during grace time sets initial direction — `6e46f6e`
+- [x] Grace time after caught matches level-start grace time (1 s) — `6e46f6e`
+- [x] Game compiles (`poe build-original` exits 0) — `dff739c`
+- [x] All tests pass (`poe test-original` exits 0) — `dff739c`
+- [x] Manual check: both grace time moments feel right — confirmed by user
