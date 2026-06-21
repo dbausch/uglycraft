@@ -108,7 +108,7 @@ NewGame:
   LevelTransition;
 StartLevel:
   EnemyTick := 0;
-  RandomPos;
+  if ItemX = 0 then RandomPos;
   repeat
     Sleep(MoveDelay);
     DrawItem;
@@ -123,6 +123,7 @@ StartLevel:
         Log('caught at (' + IntToStr(EX) + ',' + IntToStr(EY) + ') lives='
           + IntToStr(Lives));
         if Lives = 0 then goto OnGameOver;
+        GracePeriod;
       end;
     if IsItemPickedUp then
       begin

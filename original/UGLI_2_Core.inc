@@ -130,6 +130,8 @@ end;
 procedure BufPutCell(Col, Row: Integer; Fg, Bg: Byte; const Ch: String); forward;
 procedure BufFlush; forward;
 procedure BufFlushForce; forward;
+procedure DrawItem; forward;
+procedure RandomPos; forward;
 
 procedure ToggleDump;
 const DumpFileName = '/tmp/ugli_dump.bin';
@@ -1694,13 +1696,30 @@ begin
   end;
 end;
 
+procedure GracePeriod;
+begin
+  if ItemX = 0 then RandomPos;
+  DrawItem;
+  Draw(X, Y, PlayerFg, FieldBg, '☺');
+  Draw(EX, EY, EnemyFg, FieldBg, '☻');
+  BufFlush;
+  Sleep(1000);
+  while KeyPressed do
+    begin
+      Key := GetKey;
+      KeyCode := Ord(Key);
+      if KeyCode in [KeyRight, KeyLeft, KeyUp, KeyDown] then
+        Direction := KeyToDir(KeyCode);
+    end;
+end;
+
 procedure LevelTransition;
 begin
   Str(Level, S);
   KeyCode := Dialog(sLevelPrefix + S, sPressKey);
   if KeyCode in [KeyRight, KeyLeft, KeyUp, KeyDown] then
     Direction := KeyToDir(KeyCode);
-  Sleep(1000);
+  GracePeriod;
 end;
 
 procedure HandleInput;

@@ -26,6 +26,9 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
   with congratulations message, sorted and ranked top-10 display with
   proper column alignment (4-cell margins).  File format now uses TAB
   separator; old space-separated entries are parsed correctly.
+- Added 1-second grace period after being caught, matching the existing
+  level-start grace time.  Item, player, and enemy are all visible
+  during both grace periods; arrow keys set the initial direction.
 
 ### Fixed
 
