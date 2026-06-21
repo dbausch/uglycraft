@@ -12,7 +12,7 @@ UGLI (version 2, 1996) is a DOS text-mode game written in Turbo Pascal 7 by Dani
 - **Free Pascal / Linux** (recommended): `poe build-original` from the repo root. Fetches the three required UOS source files and `ANSI-87.conf` from GitHub on first run, then compiles with `fpc -Fuuos UGLI_2.pp`. Requires `fpc` and `curl` on PATH, and `libportaudio` at runtime for sound.
 - **DOSBox + TP7**: Mount the directory and compile from within DOSBox for authentic behaviour.
 
-Run `poe test-original` to build and execute the fpcunit test suite (139 tests, exits 0 on all-pass).
+Run `poe test-original` to build and execute the fpcunit test suite (159 tests, exits 0 on all-pass).
 
 ## File structure
 
@@ -33,7 +33,7 @@ Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `getopts`, 
 
 ### `UGLI_2_Test.pp` (program `UGLI_2_Test`) — fpcunit test suite
 
-139 unit tests across fourteen classes (string utilities, screen buffer, level init, drawing, game logic, enemy AI, player movement, block placement, player-caught state, dialog rendering, screen overlays, game-flow transitions, CLI help text, structured logging, dump/recording, dump file binary inspection). Build and run with `poe test-original`.
+159 unit tests across sixteen classes (string utilities, screen buffer, level init, drawing, game logic, enemy AI, player movement, block placement, player-caught state, dialog rendering, screen overlays, game-flow transitions, CLI help text, structured logging, dump/recording, dump file binary inspection, character constants and drawing helpers, utility functions). Build and run with `poe test-original`.
 
 ### `translations/` — runtime locale files
 
@@ -116,6 +116,9 @@ All Pascal source follows `STYLE.md`. Key rules:
 | `KeyEscape` / `KeySpace` | 27 / 32 | Escape / Space |
 | `KeyF1`–`KeyF5` | 59–63 | Function keys F1–F5 |
 | `KeyF6` | 64 | F6 — toggle WBFlush dump recording (`ESC[17~` in xterm/kitty) |
+| `PlayerCh` / `EnemyCh` | `'☺'` / `'☻'` | Player and enemy display characters |
+| `WallCh` / `HLineCh` | `'█'` / `'─'` | Wall block and horizontal line characters |
+| `GitVersion` | (injected) | Short git SHA or version, generated into `git_sha.inc` at build time |
 | `BlocksRemaining` | init 2000 | Block-placement budget |
 | `HighScoreFileName` | `'UGLI.HSC'` | High score file path |
 
@@ -152,7 +155,7 @@ All Pascal source follows `STYLE.md`. Key rules:
 - Home/End → adjust `MoveDelay` (fires immediately, multiple events stack)
 - Space → toggle `Laying` (continuous block-placement mode)
 - F1 → flush direction queue, show help screen, break
-- F2 → flush direction queue, show story screen, break
+- F2 → flush direction queue, show history screen, break
 - F3 → buy a life (5000 pts)
 - P → pause (5 s, decrements `PausesRemaining`)
 - Escape → flush direction queue, break (checked in main loop)
@@ -165,9 +168,17 @@ After draining, calls `MovePlayer` (pops one direction from `DirQueue`, or conti
 
 **`RemoveBlocks`**: Modal dialog (Y/N in English; J/N in German). On yes: clears interior `Blocked`, calls `InitLevel` (rebuilds level walls only — live position, direction, and enemy are untouched), redraws border, resets `BlockX`/`BlockY`. No point cost.
 
-**`DrawItem` / `RandomPos`**: Place current treasure at a random non-blocked position.
+**`DrawBlank(Col, Row)`**: Clears a single cell to `FieldBg` background.
 
-**`HighScoreEntry`**: End-of-game high score entry. Reads player name, appends `name score` record to `UGLI.HSC`, then displays the full file content on screen.
+**`DrawPlayer`** / **`DrawEnemy`**: Draw the player or enemy at their current position with standard colours and character constants (`PlayerCh`, `EnemyCh`).
+
+**`DrawItem`** / **`RandomPos`**: Draw the current treasure; place it at a random non-blocked position.
+
+**`GracePeriod`**: 1-second pause with item, player, and enemy visible. Drains any arrow keys pressed during the sleep to set the initial direction. Called at level start (from `LevelTransition`) and after being caught (from the main loop).
+
+**`HighScoreEntry`**: End-of-game high score entry. Shows "Wall of Fame" headline with congratulations and score, reads a single name via `ReadLn`, appends `name<TAB>score` to `UGLI.HSC`, then calls `ShowHighScores`.
+
+**`ShowHighScores`**: Reads all entries from `UGLI.HSC`, sorts descending by score, displays the top 10 with rank numbers, aligned name and right-aligned score (4-column margins). Parses both TAB-separated and old space-separated formats.
 
 ## Main loop structure
 
@@ -177,8 +188,9 @@ Uses named `goto` labels:
 label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 ...
 NewGame:    { Level := 1; Score := 0; Lives := 10; ItemNo := 1; PrepareLevel; LevelTransition }
-StartLevel: { EnemyTick := 0; RandomPos }
+StartLevel: { EnemyTick := 0; RandomPos if ItemX = 0 }
             { repeat: Sleep(MoveDelay), DrawItem, HandleInput, EnemyMove, collision checks }
+            {   caught → PlayerCaught; GracePeriod (if lives > 0) }
             {   treasure collected → ItemX := 0; goto StartLevel }
             {   lives = 0 → goto OnGameOver }
             { until Escape }

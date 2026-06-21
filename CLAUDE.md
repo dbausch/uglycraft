@@ -13,7 +13,7 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 | `poe build-linux` | Build `dist/linux-64/uglycraft` + license notices (~41 MB) |
 | `poe setup-windows` | One-time: install Python 3.13 + deps into Wine |
 | `poe build-windows` | Build `dist/windows-64/uglycraft.exe` + license notices (~25 MB) via Wine |
-| `poe build-original` | Fetch UOS source (curl) and build `original/UGLI_2` with FPC |
+| `poe build-original` | Generate `git_sha.inc`, fetch UOS source (curl), and build `original/UGLI_2` with FPC |
 | `poe clean` | Remove all build artifacts (`dist/`, `build/`, compiled Pascal output) |
 | `poe deploy` | Push all four itch.io channels with current git tag as version |
 | `poe deploy-uglycraft` | Push Linux and Windows channels only |
