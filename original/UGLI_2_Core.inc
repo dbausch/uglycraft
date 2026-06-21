@@ -1831,8 +1831,7 @@ begin
   Draw(1, 2, LightBlue, FieldBg, Center(sHSTitle));
   if Count = 0 then
     begin
-      BufFlush;
-      Draw(1, ScreenH, LightBlue, FieldBg, Center(sPressKey));
+      Draw(1, ScreenH - 1, LightBlue, FieldBg, Center(sPressKey));
       BufFlush;
       WaitKey;
       Exit;
@@ -1845,15 +1844,15 @@ begin
       while UTF8Cols(RankStr) < 2 do RankStr := ' ' + RankStr;
       RankStr := RankStr + '. ';
       Str(Scores[Rank], ScoreStr);
-      NC := NameMaxW - UTF8Cols(ScoreStr);
-      Tmp := UTF8Truncate(Names[Rank], NC);
-      Pad := NC - UTF8Cols(Tmp);
+      while UTF8Cols(ScoreStr) < ScoreW do ScoreStr := ' ' + ScoreStr;
+      Tmp := UTF8Truncate(Names[Rank], NameMaxW);
+      Pad := NameMaxW - UTF8Cols(Tmp);
       while Pad > 0 do begin Tmp := Tmp + ' '; Dec(Pad); end;
       Draw(Margin + 1, Row, LightBlue, FieldBg,
         RankStr + Tmp + ScoreStr);
       Inc(Row);
     end;
-  Draw(1, ScreenH, LightBlue, FieldBg, Center(sPressKey));
+  Draw(1, ScreenH - 1, LightBlue, FieldBg, Center(sPressKey));
   BufFlush;
   WaitKey;
 end;
@@ -1875,7 +1874,7 @@ begin
   BufFlush;
   tcsetattr(TTYFd, TCSANOW, SavedTio);
   MyCursorOn;
-  Write(TTY, #27'[8;', Margin + 3, 'H'); Flush(TTY);
+  Write(TTY, #27'[0;94;40m'#27'[8;', Margin + 3, 'H'); Flush(TTY);
   ReadLn(Name);
   MyCursorOff;
   tcsetattr(TTYFd, TCSANOW, RawTio);
