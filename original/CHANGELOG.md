@@ -7,6 +7,10 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ## [Unreleased]
 
+---
+
+## 2.6
+
 ### Changed
 
 - Replaced `Release` constant with `GitVersion`, injected at compile

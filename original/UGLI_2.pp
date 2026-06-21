@@ -7,7 +7,7 @@ label NewGame, StartLevel, PlayAgain, OnGameOver, CleanUp;
 
 const
   User = 'Public Domain';
-  Version = '2.5';
+  Version = '2.6';
   {$I git_sha.inc}
   FieldW = 80;
   FieldH = 20;
