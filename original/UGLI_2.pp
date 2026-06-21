@@ -73,7 +73,7 @@ begin
   LoadTranslation;
   ParseCLI;
   OpenLog(LogFile);
-  Log('started UGLI 2 v' + Version + '/' + GitSHA);
+  Log('started UGLI 2 v' + Version + '/' + GitVersion);
   Log('flags: skip-intro=' + BoolToStr(SkipIntro, 'true', 'false')
     + ' start-level=' + IntToStr(StartAtLevel));
   Assign(TTY, '/dev/tty');

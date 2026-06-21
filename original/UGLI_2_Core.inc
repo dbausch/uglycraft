@@ -713,7 +713,7 @@ begin
 end;
 
 procedure Intro(Logo1, Logo2, Logo3, Logo4, Logo5, Logo6, Logo7, Logo8: String; Version: String;
-  GitSHA, User, CopyYear: String);
+  GitVersion, User, CopyYear: String);
 { CRT index → ANSI colour digit: same mapping as FPC CRT AnsiTbl='04261537' }
 const AnsiClr: array[0..7] of Byte = (0, 4, 2, 6, 1, 5, 3, 7);
 var I: Integer;
@@ -815,7 +815,7 @@ begin
   Sleep(200);
   WLn('');
   Sleep(200);
-  WLn(Center('Version: ' + Version + '/' + GitSHA));
+  WLn(Center('Version: ' + Version + '/' + GitVersion));
   Sleep(200);
   WLn('');
   Sleep(200);
@@ -2022,7 +2022,7 @@ begin
       '                  **        **   **        **  **           **                 ',
       '                  **        **   **        **  **           **                 ',
       '                   **********     **********   **********   **                 ',
-      Version, GitSHA, User, License);
+      Version, GitVersion, User, License);
   if StartAtLevel = 0 then
     ShowItemDescriptions;
   FillScreen(FieldBg);
