@@ -2,11 +2,11 @@
 
 ## Status
 
-- [ ] `packaging/PKGBUILD` cleaned up for release tags only
-- [ ] `packaging/PKGBUILD-git` created for VCS package
-- [ ] `deploy-aur` task updated (or split) to handle both repos
-- [ ] Dev tag workflow removed from CLAUDE.md
-- [ ] Both packages build and install cleanly
+- [x] `packaging/PKGBUILD` cleaned up for release tags only
+- [x] `packaging/PKGBUILD-git` created for VCS package
+- [x] `deploy-aur` task updated (or split) to handle both repos
+- [x] Dev tag workflow removed from CLAUDE.md
+- [x] Both packages build and install cleanly
 
 ## Problem
 
@@ -133,7 +133,7 @@ manual:
 ## Done when
 
 - [ ] `packaging/PKGBUILD` uses release tag, has `conflicts`/`provides`, real sha256sums
-- [ ] `packaging/PKGBUILD-git` exists and builds from git HEAD
-- [ ] `deploy-aur` and `deploy-aur-git` poe tasks work
-- [ ] Dev tag workflow removed from `CLAUDE.md`
-- [ ] Both packages build cleanly with `makepkg`
+- [x] `packaging/PKGBUILD-git` exists and builds from git HEAD — `21ad119`
+- [x] `deploy-aur` and `deploy-aur-git` poe tasks work — `21ad119`
+- [x] Dev tag workflow removed from `CLAUDE.md` — `21ad119`
+- [x] Both packages build and install cleanly — confirmed by user (conflict resolution works)
