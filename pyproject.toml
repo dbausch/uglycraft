@@ -22,20 +22,39 @@ cmd  = ".venv/bin/python main.py"
 [tool.poe.tasks.run-original]
 help  = "Run the original UGLI 2 in a new terminal. Forward args with --: poe run-original -- --level 5"
 shell = """
+  fs=false
+  args=""
   for arg in $POE_EXTRA_ARGS; do
     if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
       original/UGLI_2 $POE_EXTRA_ARGS
       exit 0
     fi
+    if [ "$arg" = "--fs" ] || [ "$arg" = "-f" ]; then
+      fs=true
+    else
+      args="$args $arg"
+    fi
   done
-  if [ -n "${TERMINAL}" ]; then
-    ${TERMINAL} original/UGLI_2 $POE_EXTRA_ARGS
+  if [ "$fs" = true ]; then
+    if [ -n "${TERMINAL_FS}" ]; then
+      ${TERMINAL_FS} original/UGLI_2 $args
+    else
+      kitty -c original/ANSI-87.conf \
+            -o font_family="Liberation Mono" -o font_size=28 \
+            -o remember_window_size=false \
+            -o initial_window_height=25c -o initial_window_width=80c \
+            -o 'single_window_padding_width=1 58.5' \
+            --start-as=fullscreen \
+            -- original/UGLI_2 $args
+    fi
+  elif [ -n "${TERMINAL}" ]; then
+    ${TERMINAL} original/UGLI_2 $args
   else
     kitty -c original/ANSI-87.conf \
           -o font_family="Liberation Mono" -o font_size=16 \
           -o remember_window_size=false \
           -o initial_window_height=25c -o initial_window_width=80c \
-          -- original/UGLI_2 $POE_EXTRA_ARGS
+          -- original/UGLI_2 $args
   fi
 """
 
