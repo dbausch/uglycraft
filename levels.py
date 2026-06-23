@@ -6,7 +6,7 @@ All coordinates are interior: cols 1-28, rows 1-14.
 enemy_starts is a list of positions; EASY always uses only the first one,
 HARD uses all of them (1 enemy for levels 1-3, 2 for 4-6, 3 for 7-9).
 """
-from constants import COLS, ROWS
+from constants import COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN
 
 
 def _hwall(x1, x2, y):
@@ -185,3 +185,80 @@ LEVELS = [
         ),
     },
 ]
+
+
+# ── Act 2 helpers ─────────────────────────────────────────────────────────────
+
+def _typed_walls(*segments):
+    """Build a dict {(col, row): wall_type} from (wall_type, positions) pairs."""
+    walls = {}
+    for wall_type, positions in segments:
+        for pos in positions:
+            c, r = pos
+            if 1 <= c <= COLS - 2 and 1 <= r <= ROWS - 2:
+                walls[(c, r)] = wall_type
+    return walls
+
+def _r(*args):
+    """Shorthand for reinforced wall segments."""
+    return (WALL_REINFORCED, _make_walls(*args))
+
+def _s(*args):
+    """Shorthand for stone wall segments."""
+    return (WALL_STONE, _make_walls(*args))
+
+def _w(*args):
+    """Shorthand for wooden wall segments."""
+    return (WALL_WOODEN, _make_walls(*args))
+
+
+# ── Act 2 levels ──────────────────────────────────────────────────────────────
+
+ACT2_LEVELS = [
+
+    # 11 ── "The Passage" ── 2 rooms ──────────────────────────────────────────
+    #
+    # First Act 2 level. Two rooms connected by a right/left exit at row 7.
+    # Reinforced walls form corridors and chambers. A patrol guard walks the
+    # main corridor. Stone walls block a shortcut.
+    {
+        'start_room': 'hall',
+        'player_start': (2, 3),
+        'rooms': {
+            'hall': {
+                'walls': _typed_walls(
+                    # Reinforced corridor walls
+                    _r(_hwall(1, 28, 5)),             # horizontal divider
+                    _r(_hwall(1, 28, 10)),            # lower divider
+                    _r(_vwall(14, 1, 4)),             # upper pillar
+                    _r(_vwall(14, 11, 14)),           # lower pillar
+                    # Stone walls blocking shortcuts (breakable)
+                    _s(_hwall(12, 16, 5)),            # gap in upper divider
+                    _s(_vwall(14, 6, 9)),             # centre pillar (breakable)
+                ),
+                'enemy_starts': [(27, 8)],
+                'patrol_enemies': [
+                    {'start': (5, 8),
+                     'waypoints': [(5, 8), (25, 8)]},
+                ],
+                'exits': {'right_7': 'forge'},
+            },
+            'forge': {
+                'walls': _typed_walls(
+                    # Reinforced room structure
+                    _r(_vwall(8, 1, 14)),             # left chamber wall
+                    _r(_vwall(20, 1, 14)),            # right chamber wall
+                    _r(_hwall(9, 19, 5)),             # upper cross wall
+                    _r(_hwall(9, 19, 10)),            # lower cross wall
+                    # Wooden barriers (easy to break through)
+                    _w([(12, 5)]),                    # gap in upper cross
+                    _w([(16, 10)]),                   # gap in lower cross
+                ),
+                'enemy_starts': [(14, 8)],
+                'exits': {'left_7': 'hall'},
+            },
+        },
+    },
+]
+
+LEVELS.extend(ACT2_LEVELS)

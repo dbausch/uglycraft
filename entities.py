@@ -94,3 +94,49 @@ class Enemy(Entity):
                 candidates.append((nc, nr))
         if candidates and best < float('inf'):
             self.col, self.row = random.choice(candidates)
+
+
+class PatrolEnemy(Enemy):
+    """Enemy that walks a fixed back-and-forth path between waypoints."""
+
+    def __init__(self, col, row, waypoints):
+        super().__init__(col, row)
+        self.waypoints = waypoints
+        self._wp_idx = 0
+        self._forward = True
+
+    def move_patrol(self, walls, occupied=frozenset()):
+        if not self.waypoints:
+            return
+        target_col, target_row = self.waypoints[self._wp_idx]
+        if self.col == target_col and self.row == target_row:
+            if self._forward:
+                if self._wp_idx < len(self.waypoints) - 1:
+                    self._wp_idx += 1
+                else:
+                    self._forward = False
+                    if self._wp_idx > 0:
+                        self._wp_idx -= 1
+            else:
+                if self._wp_idx > 0:
+                    self._wp_idx -= 1
+                else:
+                    self._forward = True
+                    if self._wp_idx < len(self.waypoints) - 1:
+                        self._wp_idx += 1
+            target_col, target_row = self.waypoints[self._wp_idx]
+
+        dx = target_col - self.col
+        dy = target_row - self.row
+        dc = (1 if dx > 0 else -1) if dx != 0 else 0
+        dr = (1 if dy > 0 else -1) if dy != 0 else 0
+
+        if dc != 0:
+            nc = self.col + dc
+            if 0 <= nc < COLS and not walls[nc][self.row] and (nc, self.row) not in occupied:
+                self.col = nc
+                return
+        if dr != 0:
+            nr = self.row + dr
+            if 0 <= nr < ROWS and not walls[self.col][nr] and (self.col, nr) not in occupied:
+                self.row = nr

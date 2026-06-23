@@ -7,7 +7,7 @@ import pygame
 from constants import *
 from sprites import create_sprites
 from levels import LEVELS
-from entities import Player, Enemy
+from entities import Player, Enemy, PatrolEnemy
 from hiscore import load_scores, save_score, qualifies
 from sounds import SoundManager
 from rooms import RoomState, parse_level_walls, find_exit
@@ -27,6 +27,7 @@ SHOW_SCORES = 'show_scores'
 PLAY_AGAIN  = 'play_again'
 
 NUM_LEVELS  = len(LEVELS)
+ACT1_BOSS_LEVEL = 10
 
 
 class Game:
@@ -166,7 +167,7 @@ class Game:
             pc, pr = data['player_start']
             self.player = Player(pc, pr)
             starts = data['enemy_starts']
-            active = starts if (self.difficulty == HARD and level_num < NUM_LEVELS) \
+            active = starts if (self.difficulty == HARD and level_num != ACT1_BOSS_LEVEL) \
                      else starts[:1]
             self.enemies = [Enemy(ec, er) for ec, er in active]
 
@@ -180,11 +181,11 @@ class Game:
                 factor = 1.05 ** (act2_last - level_num)
                 self.enemy_ms = round(ACT2_BASE_ENEMY_MS * factor)
                 self.move_ms  = round(ACT2_BASE_MOVE_MS  * factor)
-        elif level_num == NUM_LEVELS:
+        elif level_num == ACT1_BOSS_LEVEL:
             self.enemy_ms = BOSS_MOVE_MS
             self.move_ms  = BASE_MOVE_MS
         else:
-            factor = 1.07 ** (NUM_LEVELS - level_num)
+            factor = 1.07 ** (ACT1_BOSS_LEVEL - level_num)
             self.enemy_ms = round(BASE_ENEMY_MS * factor)
             self.move_ms  = round(BASE_MOVE_MS  * factor)
 
@@ -198,7 +199,7 @@ class Game:
         self._flash_timer  = 0
         self._intro_timer  = 0
         self.sounds.start_music(level_num)
-        if level_num == NUM_LEVELS:
+        if level_num == ACT1_BOSS_LEVEL:
             self.sounds.play('boss_appear')
 
     # ── Multi-room support ────────────────────────────────────────────────────
@@ -222,6 +223,10 @@ class Game:
             starts = room_data.get('enemy_starts', [])
             active = starts if self.difficulty == HARD else starts[:1]
             self.enemies = [Enemy(ec, er) for ec, er in active]
+            for pdata in room_data.get('patrol_enemies', []):
+                pe = PatrolEnemy(pdata['start'][0], pdata['start'][1],
+                                 pdata['waypoints'])
+                self.enemies.append(pe)
 
         self._build_walls_multiroom()
         self._bump_consumed.clear()
@@ -272,7 +277,7 @@ class Game:
         self.item_no += 1
         if self.item_no > 9:
             self.item_no = 1
-        self.treasure_item_no = 10 if (self.item_no == 9 and self.level == NUM_LEVELS) \
+        self.treasure_item_no = 10 if (self.item_no == 9 and self.level == ACT1_BOSS_LEVEL) \
                              else self.item_no
         # Crown on the boss level spawns at a fixed position inside the vault
         if self.treasure_item_no == 10:
@@ -604,13 +609,19 @@ class Game:
                 dist = self._bfs_from(self.player.col, self.player.row)
                 for enemy in self.enemies:
                     reserved.discard((enemy.col, enemy.row))
-                    enemy.move_bfs(dist, occupied=reserved)
+                    if isinstance(enemy, PatrolEnemy):
+                        enemy.move_patrol(self.walls, occupied=reserved)
+                    else:
+                        enemy.move_bfs(dist, occupied=reserved)
                     reserved.add((enemy.col, enemy.row))
             else:
                 for enemy in self.enemies:
                     reserved.discard((enemy.col, enemy.row))
-                    enemy.move_toward(self.player.col, self.player.row,
-                                      self.walls, occupied=reserved)
+                    if isinstance(enemy, PatrolEnemy):
+                        enemy.move_patrol(self.walls, occupied=reserved)
+                    else:
+                        enemy.move_toward(self.player.col, self.player.row,
+                                          self.walls, occupied=reserved)
                     reserved.add((enemy.col, enemy.row))
             for enemy in self.enemies:
                 if (enemy.col, enemy.row) == self.treasure_pos:
@@ -711,14 +722,17 @@ class Game:
             self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
         # Enemies / boss
-        if self.level == NUM_LEVELS:
+        if self.level == ACT1_BOSS_LEVEL:
             phase = (pygame.time.get_ticks() // 120) % 4
             for enemy in self.enemies:
                 self.surf.blit(sp[f'boss_{phase}'], (enemy.col * TILE, enemy.row * TILE))
         else:
-            ekey = f'enemy_{(self.level - 1) // 3 + 1}'
+            ekey = f'enemy_{min((self.level - 1) // 3 + 1, 3)}'
             for enemy in self.enemies:
-                self.surf.blit(sp[ekey], (enemy.col * TILE, enemy.row * TILE))
+                if isinstance(enemy, PatrolEnemy):
+                    self.surf.blit(sp['patrol_guard'], (enemy.col * TILE, enemy.row * TILE))
+                else:
+                    self.surf.blit(sp[ekey], (enemy.col * TILE, enemy.row * TILE))
 
         # Player
         self.surf.blit(sp['player'],
@@ -760,7 +774,7 @@ class Game:
             (f"LIVES {self.lives:>2}",               HUD_LIFE),
             (f"SEEK: {item_name:<{max_name}}",       HUD_TEXT),
         ]
-        if self.level == NUM_LEVELS:
+        if self.level == ACT1_BOSS_LEVEL:
             elems.append(("BOSS", MAGENTA))
         elif self.difficulty == HARD:
             elems.append(("HARD", RED))

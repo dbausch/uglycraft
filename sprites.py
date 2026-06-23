@@ -598,6 +598,39 @@ def draw_crown(size=TILE):
     return s
 
 
+def draw_patrol_guard(size=TILE):
+    """Patrol enemy: ogre with lantern — walks a fixed path, doesn't chase."""
+    s = _surf(size)
+    skin = (72, 152, 48)
+    dark = (44, 96, 26)
+
+    pygame.draw.circle(s, skin, (5, 14), 4)
+    pygame.draw.circle(s, dark, (5, 14), 2)
+    pygame.draw.circle(s, skin, (27, 14), 4)
+    pygame.draw.circle(s, dark, (27, 14), 2)
+
+    pygame.draw.rect(s, skin, (6, 4, 20, 22), border_radius=5)
+    pygame.draw.rect(s, dark, (6, 4, 20, 22), 1, border_radius=5)
+    pygame.draw.rect(s, dark, (6, 9, 20, 3))
+
+    for ex in (12, 20):
+        pygame.draw.circle(s, WHITE, (ex, 12), 3)
+        pygame.draw.circle(s, (20, 20, 20), (ex, 12), 2)
+        pygame.draw.circle(s, WHITE, (ex - 1, 11), 1)
+
+    pygame.draw.rect(s, dark, (13, 16, 6, 3), border_radius=1)
+    pygame.draw.rect(s, (15, 10, 5), (8, 21, 16, 5), border_radius=2)
+    pygame.draw.line(s, WHITE, (11, 21), (11, 24), 2)
+    pygame.draw.line(s, WHITE, (20, 21), (20, 24), 2)
+
+    # Lantern in hand (right side)
+    pygame.draw.rect(s, (40, 40, 15), (25, 18, 5, 8))
+    pygame.draw.rect(s, (255, 225, 60), (26, 19, 3, 5))
+    pygame.draw.circle(s, (255, 245, 200), (27, 21), 2)
+
+    return s
+
+
 def draw_placed_wall(size=TILE):
     """Player-placed block — distinct from level walls"""
     s = _surf(size, alpha=False)
@@ -637,6 +670,7 @@ def create_sprites():
         'boss_2':        draw_boss_ogre(2),
         'boss_3':        draw_boss_ogre(3),
         'shield':        draw_shield_overlay(),
+        'patrol_guard':  draw_patrol_guard(),
         1:               draw_coin(),
         2:               draw_big_diamond(),
         3:               draw_small_gems(),
