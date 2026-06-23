@@ -90,12 +90,14 @@ LEVELS = [
     {
         'player_start':  (28, 3),
         'enemy_starts': [(2, 8),    # left corridor
-                         (2, 13)],  # bottom-left
+                         (3, 13)],  # bottom-left
         'walls': _make_walls(
-            *[_vwall(c, 2, 6)  for c in (5, 10, 15, 20, 25)],
-            *[_vwall(c, 9, 13) for c in (5, 10, 15, 20, 25)],
-            *[_vwall(c, 2, 6)  for c in (7, 12, 17, 22, 27)],
-            *[_vwall(c, 9, 13) for c in (7, 12, 17, 22, 27)],
+            *[_vwall(c, 2, 6)  for c in (2, 7, 20, 25)],
+            *[_vwall(c, 9, 13) for c in (2, 7, 20, 25)],
+            *[_hwall(12, 17, r) for r in (2, 4, 6)],
+            *[_hwall(12, 17, r) for r in (9, 11, 13)],
+            *[_vwall(c, 2, 6)  for c in (4, 9, 22, 27)],
+            *[_vwall(c, 9, 13) for c in (4, 9, 22, 27)],
         ),
     },
 
@@ -161,15 +163,15 @@ LEVELS = [
     {
         'player_start':  (2, 7),
         'enemy_starts': [(27, 7)],        # the boss — 1 enemy on all difficulties
-        'crown_pos':     (14, 8),         # fixed position, not randomly spawned
+        'crown_pos':     (14, 7),         # fixed position, not randomly spawned
         'walls': _make_walls(
             # Triple-layered central vault
-            _hwall(9,  20,  3), _hwall(9,  20, 12),
-            _vwall(9,   3, 12), _vwall(20,  3, 12),
-            _hwall(11, 18,  5), _hwall(11, 18, 10),
-            _vwall(11,  5, 10), _vwall(18,  5, 10),
-            _hwall(13, 16,  7), _hwall(13, 16,  9),
-            _vwall(13,  7,  9), _vwall(16,  7,  9),
+            _hwall(9,  20,  2), _hwall(9,  20, 12),
+            _vwall(9,   2, 12), _vwall(20,  2, 12),
+            _hwall(11, 18,  4), _hwall(11, 18, 10),
+            _vwall(11,  4, 10), _vwall(18,  4, 10),
+            _hwall(13, 16,  6), _hwall(13, 16,  8),
+            _vwall(13,  6,  8), _vwall(16,  6,  8),
             # Corner cavities (open toward centre)
             _vwall(4,  1,  4), _vwall(25,  1,  4),
             _vwall(4, 10, 14), _vwall(25, 10, 14),
@@ -177,8 +179,9 @@ LEVELS = [
             [(7, 2)],  [(22, 2)],
             [(7, 13)], [(22, 13)],
             [(5, 5)],  [(24, 5)],
-            [(5, 10)], [(24, 10)],
+            [(5, 10)], [(6, 10)], [(23, 10)], [(24, 10)],
             [(7, 7)],  [(22, 7)],
+            [(10, 14)], [(13, 13)], [(16, 14)], [(19, 13)],
         ),
     },
 ]
