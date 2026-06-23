@@ -78,6 +78,44 @@ def draw_wall(size=TILE):
     return s
 
 
+def draw_reinforced_wall(size=TILE):
+    """Indestructible interior wall — dark stone with rivets, heavier than brick."""
+    s = _surf(size, alpha=False)
+    s.fill((35, 35, 48))
+    mid = size // 2
+    for row_y, offset in ((1, 0), (mid + 1, mid // 3)):
+        bh = mid - 2
+        for bx, bw in ((1 + offset, mid - 2), (mid + offset, size - mid - 2)):
+            bx = bx % (size - 2) + 1
+            pygame.draw.rect(s, (58, 58, 78), (bx, row_y, min(bw, size - bx - 1), bh))
+            pygame.draw.line(s, (78, 78, 100), (bx, row_y), (bx + min(bw, 8), row_y))
+            pygame.draw.line(s, (78, 78, 100), (bx, row_y), (bx, row_y + 2))
+            pygame.draw.line(s, (25, 25, 35),
+                             (bx, row_y + bh - 1), (bx + min(bw, size - bx - 1), row_y + bh - 1))
+    for rx, ry in ((4, 4), (size - 6, 4), (4, size - 6), (size - 6, size - 6)):
+        pygame.draw.circle(s, (90, 90, 110), (rx, ry), 2)
+        pygame.draw.circle(s, (45, 45, 60), (rx, ry), 2, 1)
+    return s
+
+
+def draw_wooden_wall(size=TILE):
+    """Breakable wooden wall — brown planks, easier to break than stone."""
+    s = _surf(size, alpha=False)
+    s.fill((80, 45, 15))
+    plank_h = size // 4
+    for i in range(4):
+        y = i * plank_h
+        shade = 10 if i % 2 == 0 else -10
+        color = (90 + shade, 50 + shade, 18 + shade // 2)
+        pygame.draw.rect(s, color, (1, y + 1, size - 2, plank_h - 2))
+        pygame.draw.line(s, (110, 65, 25), (1, y + 1), (size - 2, y + 1), 1)
+        pygame.draw.line(s, (55, 30, 8), (1, y + plank_h - 1), (size - 2, y + plank_h - 1), 1)
+    for nx, ny in ((6, size // 4), (size - 8, size * 3 // 4)):
+        pygame.draw.circle(s, (55, 30, 10), (nx, ny), 3)
+        pygame.draw.circle(s, (70, 40, 15), (nx, ny), 2)
+    return s
+
+
 def draw_floor(size=TILE):
     s = _surf(size, alpha=False)
     s.fill((8, 8, 12))
@@ -584,6 +622,8 @@ def create_sprites():
     return {
         'border_wall':   draw_border_wall(),
         'wall':          draw_wall(),
+        'wall_reinforced': draw_reinforced_wall(),
+        'wall_wooden':   draw_wooden_wall(),
         'placed_wall':   draw_placed_wall(),
         'crack1':        draw_damage_cracks(1),
         'crack2':        draw_damage_cracks(2),

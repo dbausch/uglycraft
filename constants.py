@@ -36,6 +36,22 @@ SHIELD_COST_PTS    = 250
 SHIELD_DURATION_MS = 10_000  # shield lasts 10 seconds
 WALL_HITS_TO_BREAK = 3   # bumps required to destroy one inner wall
 BREAKS_PER_CREDIT  = 2   # walls to destroy to earn one placement credit
+
+# ── Wall types ───────────────────────────────────────────────────────────────
+WALL_STONE      = 'stone'       # breakable in 3 bumps (default, Act 1 + Act 2)
+WALL_WOODEN     = 'wooden'      # breakable in 2 bumps (Act 2)
+WALL_REINFORCED = 'reinforced'  # indestructible interior wall (Act 2)
+
+WALL_BUMPS = {
+    WALL_STONE:  3,
+    WALL_WOODEN: 2,
+}
+
+# ── Act 2 constants ──────────────────────────────────────────────────────────
+ACT2_START_LEVEL = 11
+ACT2_BASE_MOVE_MS  = 80
+ACT2_BASE_ENEMY_MS = 160
+ACT2_BOSS_MOVE_MS  = 78
 LIFE_PENALTY = 500         # flat points lost on death
 
 # Points awarded when treasure item_no is collected (item_no 1 yields 0, 2→100, …)

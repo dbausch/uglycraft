@@ -77,7 +77,7 @@ class Game:
             w[c][0] = w[c][ROWS - 1] = True
         for r in range(ROWS):
             w[0][r] = w[COLS - 1][r] = True
-        # Level walls
+        # Level walls (dict: (col, row) → wall_type)
         for (c, r) in self._level_walls:
             w[c][r] = True
         # Placed walls
@@ -94,9 +94,13 @@ class Game:
             return  # key not released since last hit — ignore
         if self._is_border(col, row):
             return  # indestructible
+        wall_type = self._level_walls.get((col, row))
+        if wall_type == WALL_REINFORCED:
+            return  # indestructible interior wall
         self._bump_consumed.add(key)
+        hits_needed = WALL_BUMPS.get(wall_type, WALL_HITS_TO_BREAK)
         hits = self._wall_hits.get((col, row), 0) + 1
-        if hits >= WALL_HITS_TO_BREAK:
+        if hits >= hits_needed:
             self._break_wall(col, row)
         else:
             self._wall_hits[(col, row)] = hits
@@ -104,7 +108,7 @@ class Game:
 
     def _break_wall(self, col, row):
         self._wall_hits.pop((col, row), None)
-        self._level_walls.discard((col, row))
+        self._level_walls.pop((col, row), None)
         self._placed_walls.discard((col, row))
         self._build_walls()
         self.sounds.play('break')
@@ -136,7 +140,11 @@ class Game:
         self.level = level_num
         self.item_no  = 0
         data = LEVELS[level_num - 1]
-        self._level_walls = set(data['walls'])
+        raw_walls = data['walls']
+        if isinstance(raw_walls, dict):
+            self._level_walls = dict(raw_walls)
+        else:
+            self._level_walls = {pos: WALL_STONE for pos in raw_walls}
         # Refund one credit per placed wall being cleared (they were earned legitimately)
         self._place_credits += len(self._placed_walls)
         self._placed_walls.clear()
@@ -575,18 +583,27 @@ class Game:
     def _render_field(self):
         sp = self.sprites
 
+        _WALL_SPRITE = {WALL_STONE: 'wall', WALL_WOODEN: 'wall_wooden',
+                        WALL_REINFORCED: 'wall_reinforced'}
+
         for c in range(COLS):
             for r in range(ROWS):
                 x, y = c * TILE, r * TILE
                 if self.walls[c][r]:
                     if self._is_border(c, r):
                         self.surf.blit(sp['border_wall'], (x, y))
-                    else:
-                        base = 'placed_wall' if (c, r) in self._placed_walls else 'wall'
-                        self.surf.blit(sp[base], (x, y))
+                    elif (c, r) in self._placed_walls:
+                        self.surf.blit(sp['placed_wall'], (x, y))
                         hits = self._wall_hits.get((c, r), 0)
                         if hits:
                             self.surf.blit(sp[f'crack{hits}'], (x, y))
+                    else:
+                        wt = self._level_walls.get((c, r), WALL_STONE)
+                        self.surf.blit(sp[_WALL_SPRITE.get(wt, 'wall')], (x, y))
+                        if wt != WALL_REINFORCED:
+                            hits = self._wall_hits.get((c, r), 0)
+                            if hits:
+                                self.surf.blit(sp[f'crack{hits}'], (x, y))
                 else:
                     self.surf.blit(sp['floor'], (x, y))
 
