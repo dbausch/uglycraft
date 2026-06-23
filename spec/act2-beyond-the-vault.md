@@ -361,13 +361,114 @@ One new mechanic per level. Each level teaches one concept before combining.
 
 ## Level Randomization
 
-Each playthrough varies within hand-designed constraints. Details TBD - see
-separate section below once the approach is refined.
+Each playthrough generates different room layouts procedurally. A hidden seed
+(auto-generated from the system clock at game start) drives a seeded RNG
+(`random.Random(seed)`) so generation is deterministic for a given seed.
 
-The goal: treasure positions, material positions, some enemy placements, and
-non-structural breakable walls vary per run (seeded by a per-game random seed).
-The reinforced wall skeleton, switch/machine wiring, and puzzle logic remain
-fixed to guarantee solvability.
+### Generation approach: layered constrained procedural generation
+
+Each Act 2 level has a **level template** that defines high-level structure:
+room count, connectivity (which rooms link where), which mechanics are active,
+difficulty parameters (enemy count, hazard density, resource scarcity), and
+which puzzle type(s) to use. The template is fixed per level; the layouts
+within it are generated.
+
+#### Layer 1 — Skeleton (reinforced walls)
+
+Generate the permanent architecture using **BSP (Binary Space Partition)**:
+
+1. Start with the full 30x16 interior (cols 1-28, rows 1-14)
+2. Recursively subdivide into 3-5 chambers by placing reinforced wall
+   partitions (horizontal or vertical)
+3. Cut doorways (1-2 tiles wide) in each partition to connect chambers
+4. Place room exits at border positions defined by the connectivity template
+5. Enforce minimum chamber size (5x4 tiles) and corridor width (1-2 tiles)
+
+Result: a unique arrangement of corridors and chambers every playthrough,
+all connected and navigable.
+
+#### Layer 2 — Puzzle templates
+
+Rather than generating puzzle logic from scratch, instantiate **puzzle
+templates** — hand-designed micro-layouts that guarantee their own internal
+solvability. Each template is parameterized (size, orientation, position)
+and slotted into a chamber that fits.
+
+Example puzzle templates:
+
+| Template | Elements | Internal guarantee |
+|----------|----------|--------------------|
+| "Key behind water" | Water stream, key on far side, plank supply nearby | Key reachable if player bridges the water |
+| "Plate and block" | Gate, pressure plate behind wall gap, pushable block | Gate opens when block is pushed onto plate |
+| "Timed sprint" | Button, drawbridge over water, corridor of correct length | Drawbridge stays open long enough to cross at current speed |
+| "Flame corridor" | Flame jets across corridor, shield or wall supply nearby | Passable with shield or by blocking the source |
+| "Lever trade-off" | Lever opens gate A but activates flame jets at B | Both paths viable with different resource costs |
+
+Templates specify relative positions of their elements. The generator places
+them into chambers, adjusting coordinates to fit. A chamber can hold one
+puzzle template or be left empty (just architecture + enemies).
+
+#### Layer 3 — Hazards
+
+Place environmental hazards in remaining open areas:
+
+- **Water streams**: pick a direction, lay tiles, end at a wall/drain.
+  Must not bisect the only path to a required element.
+- **Flame jets**: pick a source tile and direction. Verify the corridor is
+  passable during the off-cycle.
+- **Breakable walls** (stone/wooden): fill non-critical doorways and
+  alcove entrances.
+
+Each hazard has placement rules (e.g. water needs a drain point, flames
+need a clear line, breakable walls must not seal off the only path).
+
+#### Layer 4 — Population
+
+Place items and enemies in open floor tiles:
+
+- **Treasures**: distribute the level's treasure list across rooms, one
+  per open tile, prioritising chambers and dead ends
+- **Materials**: distribute based on which recipes the level uses, placed
+  in reasonable locations (rocks near rubble, planks near broken structures)
+- **Tools**: placed at the fixed position defined by the level template
+  (tools are too important to randomize freely)
+- **Enemies**: place at valid positions away from the player start, ensuring
+  BFS distance ≥ 5 tiles
+
+#### Layer 5 — Validation
+
+After generation, run a BFS flood-fill from the player start:
+
+1. Verify every treasure is reachable (considering breakable walls, keys,
+   switches — simulate the puzzle solutions)
+2. Verify every exit is reachable
+3. Verify the level is completable (all puzzles solvable in sequence)
+
+If validation fails, increment the seed and regenerate. With well-constrained
+templates and placement rules, failures should be rare (<5% of attempts).
+
+### What varies vs. what is fixed
+
+| Varies per playthrough | Fixed per level |
+|------------------------|-----------------|
+| Reinforced wall layout (BSP partition) | Room count and connectivity |
+| Chamber shapes and corridor positions | Which mechanics are active |
+| Treasure positions | Treasure types and quantities |
+| Material positions | Material types and quantities |
+| Enemy start positions | Enemy types and counts |
+| Breakable wall placement | Tool positions (critical items) |
+| Hazard positions (within rules) | Puzzle template selection |
+| Patrol guard waypoints | Switch → machine wiring logic |
+
+### New file: `levelgen.py`
+
+The procedural generator lives in a new file. It takes a level template and
+a seed, returns a fully populated level dict (same format as hand-designed
+levels in `levels.py`). The game calls the generator at level start for Act 2
+levels instead of reading from a static list.
+
+`levels.py` still contains the 10 Act 1 levels (static) and the 10 Act 2
+level templates (parameters for the generator).
 
 ---
 
@@ -377,7 +478,8 @@ fixed to guarantee solvability.
 |------|--------|
 | **New: `crafting.py`** | Material types, tool types, inventory state, recipe definitions, craftable item behaviours |
 | **New: `rooms.py`** | RoomState (persist/restore), RoomCluster (multi-room management), transitions |
-| **`levels.py`** | 10 new level definitions with rooms, wall types, pre-placed treasures/materials/tools, switches, machines, environmental elements |
+| **New: `levelgen.py`** | Procedural room generator: BSP skeleton, puzzle template instantiation, hazard/population placement, validation |
+| **`levels.py`** | 10 Act 1 levels (static, unchanged) + 10 Act 2 level templates (parameters for `levelgen.py`) |
 | **`game.py`** | Room transitions, TAB inventory overlay, SPACE context dispatch, water carry animation, flame/shield interaction, switch/machine tick, conveyor movement, LOOT HUD, pushable block physics |
 | **`entities.py`** | PatrolEnemy (waypoint path), ForgeOgre (faster wall-break), pushable block collision |
 | **`sprites.py`** | ~20 new procedural sprites |
