@@ -160,6 +160,14 @@ class Game:
             self._current_room = data['start_room']
             pc, pr = data['player_start']
             self.player = Player(pc, pr)
+            # Pre-placed treasures: gather from all rooms
+            self._loot_total = 0
+            self._loot_collected = 0
+            self._room_treasures = {}
+            for rkey, rdata in data['rooms'].items():
+                treasures = list(rdata.get('treasures', []))
+                self._room_treasures[rkey] = treasures
+                self._loot_total += len(treasures)
             self._enter_room(self._current_room)
         else:
             self._level_walls = parse_level_walls(data['walls'])
@@ -216,6 +224,8 @@ class Game:
             self._placed_walls = st.placed_walls
             self._wall_hits = st.wall_hits
             self.enemies = st.enemies
+            if hasattr(st, '_treasures'):
+                self._room_treasures[room_key] = st._treasures
         else:
             self._level_walls = parse_level_walls(room_data['walls'])
             self._placed_walls = set()
@@ -240,6 +250,8 @@ class Game:
             enemies=list(self.enemies),
             collected_pickups=set(),
         )
+        self._room_states[self._current_room]._treasures = \
+            list(self._room_treasures.get(self._current_room, []))
 
     def _build_walls_multiroom(self):
         """Build collision map for a multi-room level, opening exit tiles."""
@@ -272,6 +284,21 @@ class Game:
         self._transition_timer = 300
         self.sounds.play('move')
         return True
+
+    def _collect_loot(self):
+        """Check if the player is standing on a pre-placed treasure (Act 2)."""
+        pc, pr = self.player.col, self.player.row
+        room_key = self._current_room
+        treasures = self._room_treasures.get(room_key, [])
+        for i, (tc, tr, item_no) in enumerate(treasures):
+            if pc == tc and pr == tr:
+                self.score += TREASURE_POINTS.get(item_no, 0)
+                self.sounds.play('collect')
+                treasures.pop(i)
+                self._loot_collected += 1
+                if self._loot_collected >= self._loot_total:
+                    self._advance_level()
+                return
 
     def _spawn_treasure(self):
         self.item_no += 1
@@ -623,10 +650,11 @@ class Game:
                         enemy.move_toward(self.player.col, self.player.row,
                                           self.walls, occupied=reserved)
                     reserved.add((enemy.col, enemy.row))
-            for enemy in self.enemies:
-                if (enemy.col, enemy.row) == self.treasure_pos:
-                    self._relocate_treasure()
-                    break
+            if not self._is_multiroom:
+                for enemy in self.enemies:
+                    if (enemy.col, enemy.row) == self.treasure_pos:
+                        self._relocate_treasure()
+                        break
 
         # Collision: any enemy catches player
         for enemy in self.enemies:
@@ -635,13 +663,16 @@ class Game:
                 return
 
         # Treasure collection
-        if (self.player.col, self.player.row) == self.treasure_pos:
-            self.score += TREASURE_POINTS.get(self.treasure_item_no, 0)
-            self.sounds.play('collect')
-            if self.item_no == 9:
-                self._advance_level()
-            else:
-                self._spawn_treasure()
+        if self._is_multiroom:
+            self._collect_loot()
+        else:
+            if (self.player.col, self.player.row) == self.treasure_pos:
+                self.score += TREASURE_POINTS.get(self.treasure_item_no, 0)
+                self.sounds.play('collect')
+                if self.item_no == 9:
+                    self._advance_level()
+                else:
+                    self._spawn_treasure()
 
     # ── Rendering ────────────────────────────────────────────────────────────
 
@@ -716,10 +747,16 @@ class Game:
                     self.surf.blit(sp['floor'], (x, y))
 
         # Treasure
-        tc, tr = self.treasure_pos
-        tz = self.treasure_item_no
-        if tz in sp:
-            self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
+        if self._is_multiroom:
+            room_key = self._current_room
+            for tc, tr, item_no in self._room_treasures.get(room_key, []):
+                if item_no in sp:
+                    self.surf.blit(sp[item_no], (tc * TILE, tr * TILE))
+        else:
+            tc, tr = self.treasure_pos
+            tz = self.treasure_item_no
+            if tz in sp:
+                self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
         # Enemies / boss
         if self.level == ACT1_BOSS_LEVEL:
@@ -772,8 +809,11 @@ class Game:
             (f"SCORE {self.score:>7}",              HUD_TEXT),
             (f"LEVEL {self.level:>2}",               HUD_TEXT),
             (f"LIVES {self.lives:>2}",               HUD_LIFE),
-            (f"SEEK: {item_name:<{max_name}}",       HUD_TEXT),
         ]
+        if self._is_multiroom:
+            elems.append((f"LOOT {self._loot_collected:>2}/{self._loot_total}", GOLD))
+        else:
+            elems.append((f"SEEK: {item_name:<{max_name}}", HUD_TEXT))
         if self.level == ACT1_BOSS_LEVEL:
             elems.append(("BOSS", MAGENTA))
         elif self.difficulty == HARD:

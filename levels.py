@@ -241,6 +241,12 @@ ACT2_LEVELS = [
                     {'start': (5, 8),
                      'waypoints': [(5, 8), (25, 8)]},
                 ],
+                'treasures': [
+                    (4, 2, 5),     # gold ingot, upper-left
+                    (22, 3, 1),    # coin, upper-right
+                    (8, 12, 3),    # small gems, lower-left
+                    (20, 13, 2),   # big diamond, lower-right
+                ],
                 'exits': {'right_7': 'forge'},
             },
             'forge': {
@@ -255,6 +261,12 @@ ACT2_LEVELS = [
                     _w([(16, 10)]),                   # gap in lower cross
                 ),
                 'enemy_starts': [(14, 8)],
+                'treasures': [
+                    (14, 3, 4),    # trophy, centre upper chamber
+                    (10, 8, 6),    # platinum ingot, middle
+                    (18, 8, 7),    # necklace, middle
+                    (14, 12, 9),   # emerald, centre lower chamber
+                ],
                 'exits': {'left_7': 'hall'},
             },
         },
