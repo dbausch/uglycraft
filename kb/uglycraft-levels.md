@@ -54,13 +54,14 @@ No interior walls.
 
 ---
 
-## Level 6 — Grid of Pillars (2 enemies)
+## Level 6 — Grid of Pillars + Centre Bars (2 enemies)
 
-- 10 upper pillars (rows 2–6) at cols 5, 7, 10, 12, 15, 17, 20, 22, 25, 27
-- 10 lower pillars (rows 9–13) at same columns
-- Net: two rows of 10 pillars each, checkerboard-like spacing
+- 8 outer pillars (rows 2–6) at cols 2, 4, 7, 9, 20, 22, 25, 27
+- 8 lower outer pillars (rows 9–13) at same columns
+- 6 horizontal bars in centre: `_hwall(12, 17, r)` at rows 2, 4, 6 (upper) and 9, 11, 13 (lower)
+- Net: pillars flanking a centre corridor of horizontal bars, open gap at rows 7–8
 - Player: (28, 3) top-right
-- Enemies: [(2, 8), (2, 13)]
+- Enemies: [(2, 8), (3, 13)]
 
 ---
 
@@ -100,17 +101,17 @@ No interior walls.
 
 Three nested rectangular rings plus corner columns and scattered single blocks.
 
-**Outer ring:** `_hwall(9, 20, 3)`, `_hwall(9, 20, 12)`, `_vwall(9, 3, 12)`, `_vwall(20, 3, 12)`
+**Outer ring:** `_hwall(9, 20, 2)`, `_hwall(9, 20, 12)`, `_vwall(9, 2, 12)`, `_vwall(20, 2, 12)`
 
-**Middle ring:** `_hwall(11, 18, 5)`, `_hwall(11, 18, 10)`, `_vwall(11, 5, 10)`, `_vwall(18, 5, 10)`
+**Middle ring:** `_hwall(11, 18, 4)`, `_hwall(11, 18, 10)`, `_vwall(11, 4, 10)`, `_vwall(18, 4, 10)`
 
-**Inner ring:** `_hwall(13, 16, 7)`, `_hwall(13, 16, 9)`, `_vwall(13, 7, 9)`, `_vwall(16, 7, 9)`
+**Inner ring:** `_hwall(13, 16, 6)`, `_hwall(13, 16, 8)`, `_vwall(13, 6, 8)`, `_vwall(16, 6, 8)`
 
 **Corner columns:** `_vwall(4, 1, 4)`, `_vwall(25, 1, 4)`, `_vwall(4, 10, 14)`, `_vwall(25, 10, 14)`
 
-**Scattered single blocks:** (7,2),(22,2),(7,13),(22,13),(5,5),(24,5),(5,10),(24,10),(7,7),(22,7)
+**Scattered single blocks:** (7,2),(22,2),(7,13),(22,13),(5,5),(24,5),(5,10),(6,10),(23,10),(24,10),(7,7),(22,7),(10,14),(13,13),(16,14),(19,13)
 
-**Crown position (fixed):** (14, 8) — inside the inner ring (rows 7–9, cols 13–16)
+**Crown position (fixed):** (14, 7) — inside the inner ring (rows 6–8, cols 13–16)
 
 **To reach the Crown:** break through one wall of each ring (9 bumps minimum, 3 per ring), earning 4 placement credits (9 breaks ÷ 2 = 4 credits, 1 break remaining toward next).
 
