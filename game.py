@@ -10,6 +10,7 @@ from levels import LEVELS
 from entities import Player, Enemy
 from hiscore import load_scores, save_score, qualifies
 from sounds import SoundManager
+from rooms import RoomState, parse_level_walls, find_exit
 
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
@@ -140,39 +141,57 @@ class Game:
         self.level = level_num
         self.item_no  = 0
         data = LEVELS[level_num - 1]
-        raw_walls = data['walls']
-        if isinstance(raw_walls, dict):
-            self._level_walls = dict(raw_walls)
-        else:
-            self._level_walls = {pos: WALL_STONE for pos in raw_walls}
-        # Refund one credit per placed wall being cleared (they were earned legitimately)
+
+        # Refund one credit per placed wall being cleared
         self._place_credits += len(self._placed_walls)
         self._placed_walls.clear()
         self._wall_hits.clear()
         self._bump_consumed.clear()
-        self._build_walls()
-        pc, pr = data['player_start']
-        self.player  = Player(pc, pr)
-        starts = data['enemy_starts']
-        # Level 10 always has exactly 1 enemy (the boss) on both difficulties.
-        # Levels 1-9: HARD uses all starts, EASY only the first.
-        active = starts if (self.difficulty == HARD and level_num < NUM_LEVELS) \
-                 else starts[:1]
-        self.enemies = [Enemy(ec, er) for ec, er in active]
-        # Speed: level 10 runs at full BASE_ENEMY_MS / BOSS_MOVE_MS.
-        # Each earlier level is 7% slower per step: factor = 1.07^(10 − level).
-        # At level 1 both enemy and player are ~84% slower than at level 10.
-        # self.move_ms replaces REPEAT_MS in the key-repeat check so player speed scales too.
-        if level_num == NUM_LEVELS:
+
+        # Multi-room setup
+        self._is_multiroom = 'rooms' in data
+        self._room_states = {}
+        self._current_room = None
+        self._level_data = data
+        self._transition_timer = 0
+
+        if self._is_multiroom:
+            self._current_room = data['start_room']
+            pc, pr = data['player_start']
+            self.player = Player(pc, pr)
+            self._enter_room(self._current_room)
+        else:
+            self._level_walls = parse_level_walls(data['walls'])
+            self._build_walls()
+            pc, pr = data['player_start']
+            self.player = Player(pc, pr)
+            starts = data['enemy_starts']
+            active = starts if (self.difficulty == HARD and level_num < NUM_LEVELS) \
+                     else starts[:1]
+            self.enemies = [Enemy(ec, er) for ec, er in active]
+
+        # Speed scaling
+        if level_num >= ACT2_START_LEVEL:
+            act2_last = 20
+            if level_num == act2_last:
+                self.enemy_ms = ACT2_BOSS_MOVE_MS
+                self.move_ms  = ACT2_BASE_MOVE_MS
+            else:
+                factor = 1.05 ** (act2_last - level_num)
+                self.enemy_ms = round(ACT2_BASE_ENEMY_MS * factor)
+                self.move_ms  = round(ACT2_BASE_MOVE_MS  * factor)
+        elif level_num == NUM_LEVELS:
             self.enemy_ms = BOSS_MOVE_MS
             self.move_ms  = BASE_MOVE_MS
         else:
             factor = 1.07 ** (NUM_LEVELS - level_num)
             self.enemy_ms = round(BASE_ENEMY_MS * factor)
             self.move_ms  = round(BASE_MOVE_MS  * factor)
+
         self.shield = False
         self._shield_timer = 0
-        self._spawn_treasure()
+        if not self._is_multiroom:
+            self._spawn_treasure()
         self._move_timer   = 0
         self._enemy_timer  = 0
         self._key_repeat   = {}
@@ -181,6 +200,73 @@ class Game:
         self.sounds.start_music(level_num)
         if level_num == NUM_LEVELS:
             self.sounds.play('boss_appear')
+
+    # ── Multi-room support ────────────────────────────────────────────────────
+
+    def _enter_room(self, room_key):
+        """Load a room, restoring saved state if the player has visited before."""
+        room_data = self._level_data['rooms'][room_key]
+        self._current_room = room_key
+        self._current_room_data = room_data
+
+        if room_key in self._room_states:
+            st = self._room_states[room_key]
+            self._level_walls = st.level_walls
+            self._placed_walls = st.placed_walls
+            self._wall_hits = st.wall_hits
+            self.enemies = st.enemies
+        else:
+            self._level_walls = parse_level_walls(room_data['walls'])
+            self._placed_walls = set()
+            self._wall_hits = {}
+            starts = room_data.get('enemy_starts', [])
+            active = starts if self.difficulty == HARD else starts[:1]
+            self.enemies = [Enemy(ec, er) for ec, er in active]
+
+        self._build_walls_multiroom()
+        self._bump_consumed.clear()
+
+    def _save_room_state(self):
+        """Snapshot the current room's mutable state before leaving."""
+        self._room_states[self._current_room] = RoomState(
+            level_walls=dict(self._level_walls),
+            placed_walls=set(self._placed_walls),
+            wall_hits=dict(self._wall_hits),
+            enemies=list(self.enemies),
+            collected_pickups=set(),
+        )
+
+    def _build_walls_multiroom(self):
+        """Build collision map for a multi-room level, opening exit tiles."""
+        self._build_walls()
+        room_data = self._current_room_data
+        for exit_key in room_data.get('exits', {}):
+            side, pos_str = exit_key.rsplit('_', 1)
+            pos = int(pos_str)
+            if side == 'left':
+                self.walls[0][pos] = False
+            elif side == 'right':
+                self.walls[COLS - 1][pos] = False
+            elif side == 'top':
+                self.walls[pos][0] = False
+            elif side == 'bottom':
+                self.walls[pos][ROWS - 1] = False
+
+    def _try_room_transition(self):
+        """Check if the player is on an exit tile and transition if so."""
+        if not self._is_multiroom:
+            return False
+        result = find_exit(self.player.col, self.player.row,
+                           self._current_room_data)
+        if result is None:
+            return False
+        target_room, entry_col, entry_row = result
+        self._save_room_state()
+        self._enter_room(target_room)
+        self.player.col, self.player.row = entry_col, entry_row
+        self._transition_timer = 300
+        self.sounds.play('move')
+        return True
 
     def _spawn_treasure(self):
         self.item_no += 1
@@ -382,10 +468,10 @@ class Game:
         dcol, drow = self._DIR_MAP[key]
         moved = self.player.try_move(dcol, drow, self.walls)
         if moved:
-            # Successful step clears the bump-consumed flag so the player can
-            # bump the next wall they reach without having to re-press the key.
             self._bump_consumed.discard(key)
             self.sounds.play('move')
+            if self._is_multiroom:
+                self._try_room_transition()
         else:
             tc = self.player.col + dcol
             tr = self.player.row + drow
@@ -431,7 +517,12 @@ class Game:
             self._end_game(won=False)
         else:
             data = LEVELS[self.level - 1]
-            self.player.col, self.player.row = data['player_start']
+            if self._is_multiroom:
+                room_data = self._current_room_data
+                self.player.col, self.player.row = room_data.get(
+                    'player_start', data['player_start'])
+            else:
+                self.player.col, self.player.row = data['player_start']
 
     def _respawn_enemy(self, enemy):
         """Teleport enemy to a tile at significant BFS distance from the player."""
@@ -479,6 +570,10 @@ class Game:
             self._update_playing(dt)
 
     def _update_playing(self, dt):
+        if self._transition_timer > 0:
+            self._transition_timer -= dt
+            return
+
         if self._flash_timer > 0:
             self._flash_timer -= dt
 
@@ -555,7 +650,9 @@ class Game:
         elif self.state == PLAYING:
             self._render_field()
             self._render_hud()
-            if self._flash_timer > 0:
+            if self._transition_timer > 0:
+                self._render_transition_flash()
+            elif self._flash_timer > 0:
                 self._render_red_flash()
         elif self.state == PAUSED:
             self._render_field()
@@ -703,6 +800,12 @@ class Game:
         alpha = min(180, int(self._flash_timer * 0.3))
         flash = pygame.Surface((LOGICAL_W, ROWS * TILE), pygame.SRCALPHA)
         flash.fill((220, 20, 20, alpha))
+        self.surf.blit(flash, (0, 0))
+
+    def _render_transition_flash(self):
+        alpha = min(220, int(self._transition_timer * 0.7))
+        flash = pygame.Surface((LOGICAL_W, ROWS * TILE), pygame.SRCALPHA)
+        flash.fill((255, 255, 255, alpha))
         self.surf.blit(flash, (0, 0))
 
     # ── Title screen ─────────────────────────────────────────────────────────
