@@ -7,6 +7,7 @@ enemy_starts is a list of positions; EASY always uses only the first one,
 HARD uses all of them (1 enemy for levels 1-3, 2 for 4-6, 3 for 7-9).
 """
 from constants import COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN
+from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL, MAT_CRYSTAL
 
 
 def _hwall(x1, x2, y):
@@ -247,6 +248,12 @@ ACT2_LEVELS = [
                     (8, 12, 3),    # small gems, lower-left
                     (20, 13, 2),   # big diamond, lower-right
                 ],
+                'materials': [
+                    (10, 3, MAT_ROCKS),
+                    (18, 3, MAT_ROCKS),
+                    (3, 8, MAT_ROCKS),
+                    (26, 12, MAT_PLANKS),
+                ],
                 'exits': {'right_7': 'forge'},
             },
             'forge': {
@@ -266,6 +273,12 @@ ACT2_LEVELS = [
                     (10, 8, 6),    # platinum ingot, middle
                     (18, 8, 7),    # necklace, middle
                     (14, 12, 9),   # emerald, centre lower chamber
+                ],
+                'materials': [
+                    (12, 8, MAT_ROCKS),
+                    (16, 8, MAT_ROCKS),
+                    (10, 12, MAT_PLANKS),
+                    (18, 3, MAT_PLANKS),
                 ],
                 'exits': {'left_7': 'hall'},
             },

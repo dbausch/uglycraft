@@ -631,6 +631,52 @@ def draw_patrol_guard(size=TILE):
     return s
 
 
+def draw_rocks_pickup(size=TILE):
+    """Material pickup: pile of grey rocks."""
+    s = _surf(size)
+    for rx, ry, rr in [(10, 20, 5), (18, 18, 6), (14, 24, 4),
+                        (22, 22, 4), (8, 16, 3)]:
+        pygame.draw.circle(s, (120, 120, 130), (rx, ry), rr)
+        pygame.draw.circle(s, (80, 80, 90), (rx, ry), rr, 1)
+        pygame.draw.circle(s, (160, 160, 170), (rx - 1, ry - 1), max(1, rr // 2))
+    return s
+
+
+def draw_planks_pickup(size=TILE):
+    """Material pickup: stack of brown planks."""
+    s = _surf(size)
+    for i, y in enumerate([14, 18, 22]):
+        shade = 15 * (i % 2)
+        color = (140 + shade, 80 + shade, 25)
+        pygame.draw.rect(s, color, (6, y, 20, 3))
+        pygame.draw.rect(s, (100, 55, 15), (6, y, 20, 3), 1)
+    return s
+
+
+def draw_metal_pickup(size=TILE):
+    """Material pickup: silver metal scraps."""
+    s = _surf(size)
+    for mx, my, mw, mh in [(8, 14, 6, 3), (15, 18, 8, 2),
+                             (10, 22, 5, 3), (20, 15, 4, 5)]:
+        pygame.draw.rect(s, (170, 170, 185), (mx, my, mw, mh))
+        pygame.draw.rect(s, (130, 130, 145), (mx, my, mw, mh), 1)
+    return s
+
+
+def draw_crystal_pickup(size=TILE):
+    """Material pickup: glowing blue forge crystal."""
+    s = _surf(size)
+    cx, cy = size // 2, size // 2 + 2
+    pts = [(cx, cy - 8), (cx + 5, cy), (cx, cy + 8), (cx - 5, cy)]
+    glow = _surf(size)
+    pygame.draw.circle(glow, (60, 120, 255, 60), (cx, cy), 10)
+    s.blit(glow, (0, 0))
+    pygame.draw.polygon(s, (80, 160, 255), pts)
+    pygame.draw.polygon(s, (150, 210, 255), pts, 1)
+    pygame.draw.circle(s, WHITE, (cx - 1, cy - 3), 2)
+    return s
+
+
 def draw_placed_wall(size=TILE):
     """Player-placed block — distinct from level walls"""
     s = _surf(size, alpha=False)
@@ -671,6 +717,10 @@ def create_sprites():
         'boss_3':        draw_boss_ogre(3),
         'shield':        draw_shield_overlay(),
         'patrol_guard':  draw_patrol_guard(),
+        'mat_rocks':     draw_rocks_pickup(),
+        'mat_planks':    draw_planks_pickup(),
+        'mat_metal':     draw_metal_pickup(),
+        'mat_crystal':   draw_crystal_pickup(),
         1:               draw_coin(),
         2:               draw_big_diamond(),
         3:               draw_small_gems(),

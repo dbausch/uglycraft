@@ -11,6 +11,8 @@ from entities import Player, Enemy, PatrolEnemy
 from hiscore import load_scores, save_score, qualifies
 from sounds import SoundManager
 from rooms import RoomState, parse_level_walls, find_exit
+from crafting import (Inventory, RECIPES, CRAFT_NAMES, CRAFT_STONE_WALL,
+                      MATERIAL_NAMES, TOOL_NAMES, MAT_ROCKS)
 
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
@@ -25,6 +27,7 @@ WIN         = 'win'
 ENTER_SCORE = 'enter_score'
 SHOW_SCORES = 'show_scores'
 PLAY_AGAIN  = 'play_again'
+INVENTORY   = 'inventory'
 
 NUM_LEVELS  = len(LEVELS)
 ACT1_BOSS_LEVEL = 10
@@ -136,6 +139,8 @@ class Game:
         self._breaks_toward_credit    = 0    # leftover breaks toward next credit
         self._place_credits = 0   # available wall placements
         self._bump_consumed = set()  # direction keys that must be released before next bump
+        self.inventory = Inventory()
+        self._inv_cursor = 0  # cursor position in inventory screen
         self._start_level(1)
 
     def _start_level(self, level_num):
@@ -160,14 +165,16 @@ class Game:
             self._current_room = data['start_room']
             pc, pr = data['player_start']
             self.player = Player(pc, pr)
-            # Pre-placed treasures: gather from all rooms
+            # Pre-placed treasures and materials: gather from all rooms
             self._loot_total = 0
             self._loot_collected = 0
             self._room_treasures = {}
+            self._room_materials = {}
             for rkey, rdata in data['rooms'].items():
                 treasures = list(rdata.get('treasures', []))
                 self._room_treasures[rkey] = treasures
                 self._loot_total += len(treasures)
+                self._room_materials[rkey] = list(rdata.get('materials', []))
             self._enter_room(self._current_room)
         else:
             self._level_walls = parse_level_walls(data['walls'])
@@ -226,6 +233,8 @@ class Game:
             self.enemies = st.enemies
             if hasattr(st, '_treasures'):
                 self._room_treasures[room_key] = st._treasures
+            if hasattr(st, '_materials'):
+                self._room_materials[room_key] = st._materials
         else:
             self._level_walls = parse_level_walls(room_data['walls'])
             self._placed_walls = set()
@@ -252,6 +261,8 @@ class Game:
         )
         self._room_states[self._current_room]._treasures = \
             list(self._room_treasures.get(self._current_room, []))
+        self._room_states[self._current_room]._materials = \
+            list(self._room_materials.get(self._current_room, []))
 
     def _build_walls_multiroom(self):
         """Build collision map for a multi-room level, opening exit tiles."""
@@ -298,6 +309,20 @@ class Game:
                 self._loot_collected += 1
                 if self._loot_collected >= self._loot_total:
                     self._advance_level()
+                return
+
+    def _collect_materials(self):
+        """Check if the player is standing on a material pickup (Act 2)."""
+        if not self._is_multiroom:
+            return
+        pc, pr = self.player.col, self.player.row
+        room_key = self._current_room
+        materials = self._room_materials.get(room_key, [])
+        for i, (mc, mr, mat_type) in enumerate(materials):
+            if pc == mc and pr == mr:
+                self.inventory.add_material(mat_type)
+                self.sounds.play('collect')
+                materials.pop(i)
                 return
 
     def _spawn_treasure(self):
@@ -437,6 +462,9 @@ class Game:
                     else:
                         self._title_init()
 
+        elif self.state == INVENTORY:
+            self._inventory_event(event)
+
         elif self.state == ENTER_SCORE:
             self._enter_score_event(event)
 
@@ -455,7 +483,14 @@ class Game:
             elif k == pygame.K_RETURN:
                 self._buy_shield()
             elif k == pygame.K_SPACE:
-                self._place_wall()
+                if self._is_multiroom:
+                    self._act2_place()
+                else:
+                    self._place_wall()
+            elif k == pygame.K_TAB and self._is_multiroom:
+                self.state = INVENTORY
+                self._inv_cursor = 0
+                self.sounds.pause_music()
             elif k == pygame.K_F10:
                 self._advance_level()  # cheat: skip to next level
             # Register key-down for movement
@@ -517,6 +552,45 @@ class Game:
             self._placed_walls.add((c, r))
             self._build_walls()
             self.sounds.play('place_wall')
+
+    def _act2_place(self):
+        """SPACE in Act 2: place the active inventory item."""
+        c, r = self.player.col, self.player.row
+        active = self.inventory.active_item
+        if active == CRAFT_STONE_WALL:
+            if not self.walls[c][r]:
+                if self.inventory.has_item(CRAFT_STONE_WALL):
+                    self.inventory.use_item(CRAFT_STONE_WALL)
+                elif self.inventory.can_quick_place_wall():
+                    self.inventory.quick_place_wall()
+                else:
+                    return
+                self._placed_walls.add((c, r))
+                if self._is_multiroom:
+                    self._build_walls_multiroom()
+                else:
+                    self._build_walls()
+                self.sounds.play('place_wall')
+
+    def _inventory_event(self, event):
+        """Handle input in the inventory/crafting screen."""
+        if event.type != pygame.KEYDOWN:
+            return
+        k = event.key
+        if k in (pygame.K_ESCAPE, pygame.K_TAB):
+            self.state = PLAYING
+            self.sounds.unpause_music()
+        elif k == pygame.K_UP:
+            self._inv_cursor = max(0, self._inv_cursor - 1)
+        elif k == pygame.K_DOWN:
+            self._inv_cursor = min(len(RECIPES) - 1, self._inv_cursor + 1)
+        elif k == pygame.K_RETURN:
+            if self.inventory.can_craft(self._inv_cursor):
+                self.inventory.craft(self._inv_cursor)
+                self.sounds.play('credit')
+        elif k == pygame.K_SPACE:
+            result = RECIPES[self._inv_cursor][0]
+            self.inventory.active_item = result
 
     # ── Level transitions ─────────────────────────────────────────────────────
 
@@ -662,6 +736,9 @@ class Game:
                 self._on_caught(enemy)
                 return
 
+        # Material pickup (Act 2)
+        self._collect_materials()
+
         # Treasure collection
         if self._is_multiroom:
             self._collect_loot()
@@ -712,6 +789,10 @@ class Game:
             self._render_field()
             self._render_hud()
             self._render_overlay_text("PLAY AGAIN?", sub="[Y] yes   [N] no")
+        elif self.state == INVENTORY:
+            self._render_field()
+            self._render_hud()
+            self._render_inventory()
         elif self.state == ENTER_SCORE:
             self._render_enter_score()
         elif self.state == SHOW_SCORES:
@@ -757,6 +838,16 @@ class Game:
             tz = self.treasure_item_no
             if tz in sp:
                 self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
+
+        # Material pickups (Act 2)
+        if self._is_multiroom:
+            _MAT_SPRITE = {'rocks': 'mat_rocks', 'planks': 'mat_planks',
+                           'metal': 'mat_metal', 'crystal': 'mat_crystal'}
+            room_key = self._current_room
+            for mc, mr, mat_type in self._room_materials.get(room_key, []):
+                skey = _MAT_SPRITE.get(mat_type)
+                if skey and skey in sp:
+                    self.surf.blit(sp[skey], (mc * TILE, mr * TILE))
 
         # Enemies / boss
         if self.level == ACT1_BOSS_LEVEL:
@@ -849,6 +940,94 @@ class Game:
         if sub:
             simg = self.font_small.render(sub, True, GRAY)
             self.surf.blit(simg, (LOGICAL_W // 2 - simg.get_width() // 2, by + 58))
+
+    def _render_inventory(self):
+        """Draw the inventory/crafting overlay (pauses game)."""
+        overlay = pygame.Surface((LOGICAL_W, ROWS * TILE), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))
+        self.surf.blit(overlay, (0, 0))
+
+        inv = self.inventory
+        lx = 60   # left column x
+        rx = 500  # right column x
+        y = 30
+
+        # Title
+        title = self.font_big.render("INVENTORY", True, GOLD)
+        self.surf.blit(title, (LOGICAL_W // 2 - title.get_width() // 2, y))
+        y += 50
+
+        # Materials
+        mat_title = self.font_med.render("Materials", True, WHITE)
+        self.surf.blit(mat_title, (lx, y))
+        y += 28
+        for mat_type, name in MATERIAL_NAMES.items():
+            count = inv.materials.get(mat_type, 0)
+            col = WHITE if count > 0 else DKGRAY
+            txt = self.font_small.render(f"  {name}: {count}", True, col)
+            self.surf.blit(txt, (lx, y))
+            y += 20
+
+        # Tools
+        y += 10
+        tool_title = self.font_med.render("Tools", True, WHITE)
+        self.surf.blit(tool_title, (lx, y))
+        y += 28
+        if inv.tools:
+            for tool_type in inv.tools:
+                name = TOOL_NAMES.get(tool_type, tool_type)
+                txt = self.font_small.render(f"  {name}", True, LTGREEN)
+                self.surf.blit(txt, (lx, y))
+                y += 20
+        else:
+            txt = self.font_small.render("  (none found)", True, DKGRAY)
+            self.surf.blit(txt, (lx, y))
+
+        # Recipes (right column)
+        ry = 80
+        rec_title = self.font_med.render("Recipes  [Enter]=craft  [Space]=select", True, WHITE)
+        self.surf.blit(rec_title, (rx, ry))
+        ry += 28
+
+        for i, (result, ingredients, tool) in enumerate(RECIPES):
+            is_selected = (i == self._inv_cursor)
+            can = inv.can_craft(i)
+
+            if is_selected:
+                pygame.draw.rect(self.surf, (50, 50, 80),
+                                 (rx - 4, ry - 2, 420, 22))
+
+            name = CRAFT_NAMES.get(result, result)
+            parts = []
+            for mat, count in ingredients.items():
+                mname = MATERIAL_NAMES.get(mat, mat)
+                parts.append(f"{count}x {mname}")
+            recipe_str = " + ".join(parts)
+
+            if tool and tool not in inv.tools:
+                col = DKGRAY
+                lock = f" [needs {TOOL_NAMES.get(tool, tool)}]"
+            elif can:
+                col = LTGREEN
+                lock = ""
+            else:
+                col = GRAY
+                lock = ""
+
+            count_str = ""
+            if inv.crafted.get(result, 0) > 0:
+                count_str = f" ({inv.crafted[result]})"
+
+            active = " *" if inv.active_item == result else ""
+            line = f"{name}{count_str}: {recipe_str}{lock}{active}"
+            txt = self.font_small.render(line, True, col)
+            self.surf.blit(txt, (rx, ry))
+            ry += 22
+
+        # Footer
+        footer = self.font_small.render("[Tab/Esc] close   [Arrows] navigate", True, DKGRAY)
+        self.surf.blit(footer, (LOGICAL_W // 2 - footer.get_width() // 2,
+                                ROWS * TILE - 30))
 
     def _render_red_flash(self):
         alpha = min(180, int(self._flash_timer * 0.3))
