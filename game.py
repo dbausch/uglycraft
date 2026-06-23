@@ -948,8 +948,8 @@ class Game:
         self.surf.blit(overlay, (0, 0))
 
         inv = self.inventory
-        lx = 60   # left column x
-        rx = 500  # right column x
+        lx = 40   # left column x
+        rx = 340  # right column x
         y = 30
 
         # Title
@@ -995,7 +995,7 @@ class Game:
 
             if is_selected:
                 pygame.draw.rect(self.surf, (50, 50, 80),
-                                 (rx - 4, ry - 2, 420, 22))
+                                 (rx - 4, ry - 2, 600, 22))
 
             name = CRAFT_NAMES.get(result, result)
             parts = []
