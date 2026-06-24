@@ -95,8 +95,8 @@ class Game:
     def _is_border(self, col, row):
         return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
 
-    def _is_door_or_gate(self, col, row):
-        """Check if (col, row) is a locked door or gate — not breakable."""
+    def _is_unbumpable(self, col, row):
+        """Check if (col, row) is a door, gate, or pushable block."""
         if not self._is_multiroom:
             return False
         rk = self._current_room
@@ -106,6 +106,8 @@ class Game:
         for gc, gr in self._room_gates.get(rk, {}).values():
             if gc == col and gr == row:
                 return True
+        if (col, row) in self._room_blocks.get(rk, []):
+            return True
         return False
 
     def _register_bump(self, key, col, row):
@@ -117,8 +119,8 @@ class Game:
         wall_type = self._level_walls.get((col, row))
         if wall_type == WALL_REINFORCED:
             return  # indestructible interior wall
-        if self._is_door_or_gate(col, row):
-            return  # doors and gates are opened by keys/plates, not bumping
+        if self._is_unbumpable(col, row):
+            return  # doors, gates, and blocks are not breakable by bumping
         self._bump_consumed.add(key)
         hits_needed = WALL_BUMPS.get(wall_type, WALL_HITS_TO_BREAK)
         hits = self._wall_hits.get((col, row), 0) + 1
@@ -207,6 +209,7 @@ class Game:
                 self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
                 self._room_gates[rkey] = {gid: (gc, gr)
                                            for gc, gr, gid in rdata.get('gates', [])}
+            self.treasure_pos = None
             self._tile_owner = {}
             self._enter_room(self._current_room)
         else:
@@ -274,9 +277,15 @@ class Game:
             self._placed_walls = set()
             self._wall_hits = {}
             starts = room_data.get('enemy_starts', [])
-            active = starts if self.difficulty == HARD else starts[:1]
+            patrols = room_data.get('patrol_enemies', [])
+            if self.difficulty == HARD:
+                active = starts
+                active_patrols = patrols
+            else:
+                active = starts[:1]
+                active_patrols = patrols[:1] if patrols else []
             self.enemies = [Enemy(ec, er) for ec, er in active]
-            for pdata in room_data.get('patrol_enemies', []):
+            for pdata in active_patrols:
                 pe = PatrolEnemy(pdata['start'][0], pdata['start'][1],
                                  pdata['waypoints'])
                 self.enemies.append(pe)
@@ -288,9 +297,8 @@ class Game:
         self._verify_blocks()
 
     def _verify_blocks(self):
-        """Runtime check: every block must be pushable in ≥1 direction
-        using the ACTUAL game collision map."""
-        if not self._is_multiroom:
+        """Debug-only check: every block must be pushable in ≥1 direction."""
+        if not self._is_multiroom or not self._debug:
             return
         rk = self._current_room
         for bc, br in self._room_blocks.get(rk, []):
@@ -810,28 +818,24 @@ class Game:
             self._end_game(won=False)
         else:
             data = LEVELS[self.level - 1]
-            if self._is_multiroom:
-                room_data = self._current_room_data
-                self.player.col, self.player.row = room_data.get(
-                    'player_start', data['player_start'])
-            else:
-                self.player.col, self.player.row = data['player_start']
+            self.player.col, self.player.row = data['player_start']
 
     def _respawn_enemy(self, enemy):
         """Teleport enemy to a tile at significant BFS distance from the player."""
         dist = self._bfs_from(self.player.col, self.player.row)
         others = {(e.col, e.row) for e in self.enemies if e is not enemy}
+        excl = {self.treasure_pos} if self.treasure_pos else set()
         candidates = [
             pos for pos, d in dist.items()
             if d >= 8
-            and pos != self.treasure_pos
+            and pos not in excl
             and pos not in others
         ]
         if not candidates:
             candidates = [
                 pos for pos, d in dist.items()
                 if d >= 4
-                and pos != self.treasure_pos
+                and pos not in excl
                 and pos not in others
             ]
         if candidates:
@@ -923,6 +927,19 @@ class Game:
                         self._relocate_treasure()
                         break
 
+        # Treasure collection (checked before enemy collision so the player
+        # can grab a treasure even if an enemy is on the same tile)
+        if self._is_multiroom:
+            self._collect_loot()
+        else:
+            if (self.player.col, self.player.row) == self.treasure_pos:
+                self.score += TREASURE_POINTS.get(self.treasure_item_no, 0)
+                self.sounds.play('collect')
+                if self.item_no == 9:
+                    self._advance_level()
+                else:
+                    self._spawn_treasure()
+
         # Collision: any enemy catches player
         for enemy in self.enemies:
             if enemy.col == self.player.col and enemy.row == self.player.row:
@@ -935,18 +952,6 @@ class Game:
         # Pickups (Act 2)
         self._collect_materials()
         self._collect_keys()
-
-        # Treasure collection
-        if self._is_multiroom:
-            self._collect_loot()
-        else:
-            if (self.player.col, self.player.row) == self.treasure_pos:
-                self.score += TREASURE_POINTS.get(self.treasure_item_no, 0)
-                self.sounds.play('collect')
-                if self.item_no == 9:
-                    self._advance_level()
-                else:
-                    self._spawn_treasure()
 
     # ── Rendering ────────────────────────────────────────────────────────────
 
@@ -1026,53 +1031,36 @@ class Game:
 
         # Treasure
         if self._is_multiroom:
-            room_key = self._current_room
-            for tc, tr, item_no in self._room_treasures.get(room_key, []):
+            rk = self._current_room
+            for tc, tr, item_no in self._room_treasures.get(rk, []):
                 if item_no in sp:
                     self.surf.blit(sp[item_no], (tc * TILE, tr * TILE))
-        else:
+        elif self.treasure_pos:
             tc, tr = self.treasure_pos
             tz = self.treasure_item_no
             if tz in sp:
                 self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
-        # Pressure plates and gates (Act 2) — rendered under blocks/entities
-        if self._is_multiroom:
-            room_key = self._current_room
-            for pc, pr, _gid in self._room_plates.get(room_key, []):
-                self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
-            for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
-                gkey = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
-                self.surf.blit(sp[gkey], (gc * TILE, gr * TILE))
-
-        # Pushable blocks (Act 2)
-        if self._is_multiroom:
-            room_key = self._current_room
-            for bc, br in self._room_blocks.get(room_key, []):
-                self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
-
-        # Locked doors (Act 2) — rendered on top of floor
-        if self._is_multiroom:
-            room_key = self._current_room
-            for dc, dr, door_color in self._room_doors.get(room_key, []):
-                dkey = f'door_{door_color}'
-                if dkey in sp:
-                    self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
-
-        # Key pickups (Act 2)
-        if self._is_multiroom:
-            room_key = self._current_room
-            for kc, kr, key_color in self._room_keys.get(room_key, []):
-                kkey = f'key_{key_color}'
-                if kkey in sp:
-                    self.surf.blit(sp[kkey], (kc * TILE, kr * TILE))
-
-        # Material pickups (Act 2)
+        # Act 2 overlays: plates, gates, blocks, doors, keys, materials
         if self._is_multiroom:
             _MAT_SPRITE = {'rocks': 'mat_rocks', 'planks': 'mat_planks',
                            'metal': 'mat_metal', 'crystal': 'mat_crystal'}
-            room_key = self._current_room
-            for mc, mr, mat_type in self._room_materials.get(room_key, []):
+            for pc, pr, _gid in self._room_plates.get(rk, []):
+                self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
+            for gate_id, (gc, gr) in self._room_gates.get(rk, {}).items():
+                gkey = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
+                self.surf.blit(sp[gkey], (gc * TILE, gr * TILE))
+            for bc, br in self._room_blocks.get(rk, []):
+                self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
+            for dc, dr, door_color in self._room_doors.get(rk, []):
+                dkey = f'door_{door_color}'
+                if dkey in sp:
+                    self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
+            for kc, kr, key_color in self._room_keys.get(rk, []):
+                kkey = f'key_{key_color}'
+                if kkey in sp:
+                    self.surf.blit(sp[kkey], (kc * TILE, kr * TILE))
+            for mc, mr, mat_type in self._room_materials.get(rk, []):
                 skey = _MAT_SPRITE.get(mat_type)
                 if skey and skey in sp:
                     self.surf.blit(sp[skey], (mc * TILE, mr * TILE))

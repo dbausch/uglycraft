@@ -673,13 +673,17 @@ class SoundManager:
             snd.play()
 
     def start_music(self, key) -> None:
-        """key: 'title' or int 1–10."""
+        """key: 'title', 'win', or int level number."""
         if not self._ok or self._music_ch is None:
             return
         if self._current_key == key:
             return
         self._current_key = key
-        snd = self._music.get(key)
+        # Act 2 levels reuse Act 1 music tracks cyclically
+        lookup = key
+        if isinstance(key, int) and key > 10:
+            lookup = ((key - 11) % 10) + 1
+        snd = self._music.get(lookup)
         if snd is not None:
             self._music_ch.stop()
             self._music_ch.play(snd, loops=-1)

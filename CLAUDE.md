@@ -169,15 +169,19 @@ Or directly: `.venv/bin/python main.py --level N --easy/--hard`
 
 In debug mode (`--level`) the high-score entry screen is suppressed.
 
-## Architecture (8 Python files)
+## Architecture (12 Python files)
 
 | File | Role |
 |---|---|
-| `constants.py` | Logical resolution, tile size, colours, timing constants |
+| `constants.py` | Logical resolution, tile size, colours, timing, wall types |
 | `sprites.py` | All sprites drawn procedurally via `pygame.draw` — no image files |
-| `levels.py` | 10 level definitions as dicts with `walls` and `enemy_starts` |
-| `entities.py` | `Player` and `Enemy` (+ `Entity` base) — tile-grid movement, BFS pathfinding |
+| `levels.py` | Act 1 levels (hand-authored) + Act 2 levels (graph-generated at import) |
+| `entities.py` | `Player`, `Enemy`, `PatrolEnemy` — tile-grid movement, BFS pathfinding, room confinement |
 | `hiscore.py` | Top-10 score persistence to `uglycraft.hsc` |
-| `sounds.py` | `SoundManager` — 14 procedural SFX + 12 music tracks (10 levels, title, win) |
-| `game.py` | Full state machine + rendering. Note: a `STORY` state exists in code but is not reachable from the UI. |
+| `sounds.py` | `SoundManager` — 14 procedural SFX + 12 music tracks |
+| `game.py` | Full state machine, rendering, multi-room support, inventory/crafting UI |
 | `main.py` | Window creation, integer scaling, top-level event loop |
+| `crafting.py` | Materials, tools, keys, recipes, `Inventory` class |
+| `rooms.py` | `RoomState` for multi-room persistence, exit detection |
+| `levelgraph.py` | Graph model (`Node`, `Edge`, `LevelGraph`), generation, playability validation |
+| `levellayout.py` | Layout algorithm: graph → 30×16 grid, wall derivation, Sokoban solver |
