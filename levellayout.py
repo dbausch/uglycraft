@@ -284,6 +284,173 @@ def validate_layout(graph, placed, walls):
     return errors
 
 
+# ── Push puzzle solvability ────────────────────────────────────────────────────
+
+def validate_push_puzzles(room_data, tile_owner):
+    """Check that every push puzzle (block → plate) is solvable.
+
+    For each gate_id, finds the blocks and plate in the same room, then
+    runs a Sokoban-style BFS to verify the block can reach the plate.
+
+    State: (player_pos, frozenset_of_block_positions)
+    Transitions: player moves to adjacent tile; if it's a block and the
+    tile behind the block is free, the block is pushed.
+
+    Returns list of error strings (empty = all solvable).
+    """
+    errors = []
+    walls = room_data.get('walls', {})
+    blocks = room_data.get('pushable_blocks', [])
+    plates = room_data.get('pressure_plates', [])
+    gates_list = room_data.get('gates', [])
+
+    if not gates_list or not plates or not blocks:
+        return errors
+
+    # Build set of passable tiles (not reinforced walls)
+    passable = set()
+    for c in range(MIN_C, MAX_C + 1):
+        for r in range(MIN_R, MAX_R + 1):
+            if (c, r) not in walls or walls[(c, r)] != WALL_REINFORCED:
+                passable.add((c, r))
+
+    # Map gate_id → plate position
+    plate_map = {}
+    for pc, pr, gate_id in plates:
+        plate_map[gate_id] = (pc, pr)
+
+    # Map gate_id → which room the plate is in
+    gate_rooms = {}
+    for gate_id, plate_pos in plate_map.items():
+        gate_rooms[gate_id] = tile_owner.get(plate_pos)
+
+    # For each gate, check solvability
+    for gc, gr, gate_id in gates_list:
+        plate_pos = plate_map.get(gate_id)
+        if plate_pos is None:
+            errors.append(f"Gate {gate_id} has no pressure plate")
+            continue
+
+        plate_room = gate_rooms.get(gate_id)
+
+        # Find blocks in the same room as the plate
+        room_blocks = [
+            (bc, br) for bc, br in blocks
+            if tile_owner.get((bc, br)) == plate_room
+        ]
+        if not room_blocks:
+            errors.append(f"Gate {gate_id}: no blocks in plate room {plate_room}")
+            continue
+
+        # Room tiles for movement bounds
+        room_tiles = set()
+        if plate_room:
+            room_tiles = {pos for pos, name in tile_owner.items()
+                          if name == plate_room}
+        # Also include doorway tiles (not in tile_owner but passable)
+        for pos in passable:
+            if pos not in walls:
+                room_tiles.add(pos)
+
+        # Sokoban BFS: can ANY block reach the plate?
+        if _can_push_block_to(room_blocks, plate_pos, room_tiles, walls):
+            continue
+
+        errors.append(f"Gate {gate_id}: no block can be pushed to plate at {plate_pos}")
+
+    return errors
+
+
+def _can_push_block_to(block_positions, target, room_tiles, walls):
+    """BFS over Sokoban states to check if any block can reach the target.
+
+    Simplified: considers one block at a time (ignores multi-block interactions).
+    For each block, checks if there exists a sequence of pushes from its
+    start position to the target, where the player can position themselves
+    for each push.
+    """
+    for block_start in block_positions:
+        if _sokoban_bfs_single(block_start, target, room_tiles, walls):
+            return True
+    return False
+
+
+def _sokoban_bfs_single(block_start, target, passable, walls):
+    """Check if a single block can be pushed from block_start to target.
+
+    State: (block_col, block_row, player_col, player_row)
+    The player must be adjacent to the block (on the opposite side of the
+    push direction) and the tile behind the block must be free.
+
+    Uses BFS over reachable (block_pos, player_approach_side) states.
+    """
+    # First check: can we reach the block at all?
+    # Find all tiles reachable by the player without moving the block
+    def _player_reach(block_pos, start_tiles):
+        """BFS for player movement, treating block_pos as a wall."""
+        visited = set()
+        frontier = list(start_tiles)
+        visited.update(start_tiles)
+        while frontier:
+            c, r = frontier.pop()
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nc, nr = c + dc, r + dr
+                if ((nc, nr) in passable and (nc, nr) not in visited
+                        and (nc, nr) != block_pos
+                        and walls.get((nc, nr)) != WALL_REINFORCED):
+                    visited.add((nc, nr))
+                    frontier.append((nc, nr))
+        return visited
+
+    if block_start == target:
+        return True
+
+    # BFS over block positions
+    # State: block_pos
+    # For each state, check which directions the block can be pushed
+    # (player can reach the push position)
+    visited_block = {block_start}
+    queue = deque([block_start])
+
+    # Player can start anywhere reachable that isn't the block
+    initial_reach = _player_reach(block_start, passable - {block_start} - set(walls.keys()))
+
+    # Track (block_pos, player_reachable_set) — but that's too expensive.
+    # Simplified: for each block position, assume the player can reach any
+    # tile on the non-block side. This is optimistic but works for simple
+    # puzzles (single block, no dead ends).
+    while queue:
+        bx, by = queue.popleft()
+        if (bx, by) == target:
+            return True
+
+        # Player reach from around this block position
+        player_reach = _player_reach(
+            (bx, by),
+            {p for p in passable if p != (bx, by)
+             and walls.get(p) != WALL_REINFORCED})
+
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            # Player must be on the opposite side to push
+            push_from = (bx - dc, by - dr)
+            # Block moves to
+            push_to = (bx + dc, by + dr)
+
+            if push_from not in player_reach:
+                continue
+            if push_to not in passable:
+                continue
+            if walls.get(push_to) == WALL_REINFORCED:
+                continue
+            if push_to in visited_block:
+                continue
+
+            visited_block.add(push_to)
+            queue.append(push_to)
+
+    return False
+
+
 # ── Item placement ────────────────────────────────────────────────────────────
 
 def _bfs_dist(start, passable):
@@ -478,6 +645,11 @@ def build_level_dict(graph, rng=None):
     errors = validate_layout(graph, placed, walls)
     if errors:
         raise ValueError(f"Layout invariant violated: {errors}")
+
+    # Validate push puzzles are solvable
+    push_errors = validate_push_puzzles(room, tile_owner)
+    if push_errors:
+        raise ValueError(f"Unsolvable push puzzle: {push_errors}")
 
     return {
         'start_room': grid_name,

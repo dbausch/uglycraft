@@ -224,6 +224,12 @@ class LevelGraph:
         # Always create a corridor as the backbone
         corridor = graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
 
+        # Ensure at least one edge of each non-OPEN type in the feature set
+        required_types = [et for et in edge_types
+                          if et not in (EdgeType.OPEN, EdgeType.BREAKABLE)]
+        # Deduplicate
+        required_types = list(dict.fromkeys(required_types))
+
         # Attach rooms to the corridor
         room_names = []
         for i in range(room_count):
@@ -232,8 +238,11 @@ class LevelGraph:
             graph.add_node(name, size)
             room_names.append(name)
 
-            # Pick an edge type from the allowed set
-            et = rng.choice(edge_types)
+            # First rooms satisfy required types, rest are random
+            if i < len(required_types):
+                et = required_types[i]
+            else:
+                et = rng.choice(edge_types)
             params = {}
             if et == EdgeType.LOCKED:
                 params['key_colour'] = rng.choice(['red', 'blue', 'green'])
