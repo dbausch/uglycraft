@@ -470,25 +470,43 @@ class TestPushPuzzleSolvability(unittest.TestCase):
         errors = validate_push_puzzles(room, owner)
         self.assertEqual(errors, [])
 
-    def test_block_against_wall_unsolvable(self):
-        """Block in a corner can't reach the plate."""
+    def test_narrow_corridor_different_row_unsolvable(self):
+        """Block in row 5 of a 2-tile-wide corridor, plate in row 6.
+        Player can only push horizontally — can't reach row 6."""
         from levellayout import validate_push_puzzles
-        # Tiny room: 3x3, block in corner, plate on opposite side
-        floor = {(c, r) for c in range(5, 8) for r in range(5, 8)}
+        # 2-tile-wide corridor: rows 5-6, cols 5-20
+        floor = {(c, r) for c in range(5, 21) for r in range(5, 7)}
         walls = {(c, r): WALL_REINFORCED
                  for c in range(1, 29) for r in range(1, 15)
                  if (c, r) not in floor}
         room = {
             'walls': walls,
-            'pushable_blocks': [(5, 5)],  # top-left corner — stuck
-            'pressure_plates': [(7, 7, 'g1')],
-            'gates': [(8, 6, 'g1')],
+            'pushable_blocks': [(10, 5)],   # block in top row
+            'pressure_plates': [(10, 6, 'g1')],  # plate in bottom row
+            'gates': [(20, 5, 'g1')],
         }
         owner = {pos: 'room' for pos in floor}
         errors = validate_push_puzzles(room, owner)
-        # Block at (5,5) is in a corner — can only be pushed right or down,
-        # but can it reach (7,7)? It might or might not depending on room shape.
-        # The BFS will determine this.
+        self.assertTrue(len(errors) > 0,
+                         "Should be unsolvable: can't push block to adjacent row "
+                         "in a 2-tile corridor")
+
+    def test_wide_room_push_solvable(self):
+        """Block and plate in same row of a wide room — trivially solvable."""
+        from levellayout import validate_push_puzzles
+        floor = {(c, r) for c in range(5, 21) for r in range(5, 11)}
+        walls = {(c, r): WALL_REINFORCED
+                 for c in range(1, 29) for r in range(1, 15)
+                 if (c, r) not in floor}
+        room = {
+            'walls': walls,
+            'pushable_blocks': [(8, 7)],
+            'pressure_plates': [(15, 7, 'g1')],
+            'gates': [(20, 7, 'g1')],
+        }
+        owner = {pos: 'room' for pos in floor}
+        errors = validate_push_puzzles(room, owner)
+        self.assertEqual(errors, [])
 
     def test_generated_puzzles_solvable(self):
         """All generated levels with gates must have solvable puzzles."""

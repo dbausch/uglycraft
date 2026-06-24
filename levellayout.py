@@ -362,91 +362,99 @@ def validate_push_puzzles(room_data, tile_owner):
 
 
 def _can_push_block_to(block_positions, target, room_tiles, walls):
-    """BFS over Sokoban states to check if any block can reach the target.
+    """Check if any block can be pushed to the target.
 
-    Simplified: considers one block at a time (ignores multi-block interactions).
-    For each block, checks if there exists a sequence of pushes from its
-    start position to the target, where the player can position themselves
-    for each push.
+    Tries each block independently with a proper Sokoban BFS.
     """
+    passable = {pos for pos in room_tiles
+                if walls.get(pos) != WALL_REINFORCED}
     for block_start in block_positions:
-        if _sokoban_bfs_single(block_start, target, room_tiles, walls):
+        if _sokoban_bfs(block_start, target, passable):
             return True
     return False
 
 
-def _sokoban_bfs_single(block_start, target, passable, walls):
-    """Check if a single block can be pushed from block_start to target.
+def _player_reachable(player_start, block_pos, passable):
+    """BFS for player movement, treating block_pos as impassable."""
+    visited = {player_start}
+    frontier = [player_start]
+    while frontier:
+        c, r = frontier.pop()
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nc, nr = c + dc, r + dr
+            if ((nc, nr) in passable and (nc, nr) not in visited
+                    and (nc, nr) != block_pos):
+                visited.add((nc, nr))
+                frontier.append((nc, nr))
+    return visited
 
-    State: (block_col, block_row, player_col, player_row)
-    The player must be adjacent to the block (on the opposite side of the
-    push direction) and the tile behind the block must be free.
 
-    Uses BFS over reachable (block_pos, player_approach_side) states.
+def _normalize_player(player_pos, block_pos, passable):
+    """Reduce player position to a canonical representative of its
+    connected component (with block as obstacle). This collapses
+    equivalent states where the player is in the same region."""
+    reach = _player_reachable(player_pos, block_pos, passable)
+    return min(reach)
+
+
+def _sokoban_bfs(block_start, target, passable):
+    """Proper Sokoban solver for a single block.
+
+    State: (block_pos, player_zone) where player_zone is the canonical
+    tile of the player's connected component (with the block as wall).
+
+    Transitions: the player walks to a push position (adjacent to block,
+    opposite side of push direction), then pushes. After pushing, the
+    player stands at the block's old position.
     """
-    # First check: can we reach the block at all?
-    # Find all tiles reachable by the player without moving the block
-    def _player_reach(block_pos, start_tiles):
-        """BFS for player movement, treating block_pos as a wall."""
-        visited = set()
-        frontier = list(start_tiles)
-        visited.update(start_tiles)
-        while frontier:
-            c, r = frontier.pop()
-            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nc, nr = c + dc, r + dr
-                if ((nc, nr) in passable and (nc, nr) not in visited
-                        and (nc, nr) != block_pos
-                        and walls.get((nc, nr)) != WALL_REINFORCED):
-                    visited.add((nc, nr))
-                    frontier.append((nc, nr))
-        return visited
-
     if block_start == target:
         return True
 
-    # BFS over block positions
-    # State: block_pos
-    # For each state, check which directions the block can be pushed
-    # (player can reach the push position)
-    visited_block = {block_start}
-    queue = deque([block_start])
+    # Find ANY passable starting position for the player (not the block)
+    player_candidates = [p for p in passable if p != block_start]
+    if not player_candidates:
+        return False
 
-    # Player can start anywhere reachable that isn't the block
-    initial_reach = _player_reach(block_start, passable - {block_start} - set(walls.keys()))
+    # The player could start anywhere in the room that isn't the block.
+    # Try each connected component.
+    tried_starts = set()
+    for ps in player_candidates:
+        norm = _normalize_player(ps, block_start, passable)
+        if norm in tried_starts:
+            continue
+        tried_starts.add(norm)
 
-    # Track (block_pos, player_reachable_set) — but that's too expensive.
-    # Simplified: for each block position, assume the player can reach any
-    # tile on the non-block side. This is optimistic but works for simple
-    # puzzles (single block, no dead ends).
-    while queue:
-        bx, by = queue.popleft()
-        if (bx, by) == target:
-            return True
+        # BFS: state = (block_pos, player_zone_canonical)
+        start_state = (block_start, norm)
+        visited = {start_state}
+        queue = deque([start_state])
 
-        # Player reach from around this block position
-        player_reach = _player_reach(
-            (bx, by),
-            {p for p in passable if p != (bx, by)
-             and walls.get(p) != WALL_REINFORCED})
+        while queue:
+            (bx, by), p_zone = queue.popleft()
 
-        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            # Player must be on the opposite side to push
-            push_from = (bx - dc, by - dr)
-            # Block moves to
-            push_to = (bx + dc, by + dr)
+            # Player can reach any tile in their zone
+            p_reach = _player_reachable(p_zone, (bx, by), passable)
 
-            if push_from not in player_reach:
-                continue
-            if push_to not in passable:
-                continue
-            if walls.get(push_to) == WALL_REINFORCED:
-                continue
-            if push_to in visited_block:
-                continue
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                push_from = (bx - dc, by - dr)
+                push_to = (bx + dc, by + dr)
 
-            visited_block.add(push_to)
-            queue.append(push_to)
+                if push_from not in p_reach:
+                    continue
+                if push_to not in passable:
+                    continue
+
+                if push_to == target:
+                    return True
+
+                # After push: block at push_to, player at (bx, by)
+                new_p_zone = _normalize_player(
+                    (bx, by), push_to, passable)
+                new_state = (push_to, new_p_zone)
+
+                if new_state not in visited:
+                    visited.add(new_state)
+                    queue.append(new_state)
 
     return False
 
