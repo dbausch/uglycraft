@@ -809,31 +809,33 @@ def draw_flame(intensity, pos='mid', size=TILE):
                        int(5 + t * 7))
     s.blit(glow, (0, 0))
 
-    # Fire blobs along the flow axis (horizontal centre line)
+    # Fire blobs along the flow axis (horizontal centre line).
+    # Edge connectors use identical positions so adjacent tiles match.
+    er = int(3 + t * 3)  # edge blob radius (shared between tiles)
     blobs = [(cx, cy, int(4 + t * 4))]
 
-    # Left edge connector (unless this is the first tile)
+    # Left edge connector (shared shape with the previous tile's right edge)
     if pos != 'first':
-        blobs.append((0, cy, int(3 + t * 3)))
-        blobs.append((3, cy - 3, int(1 + t * 2)))
+        blobs.append((0, cy, er))
+        blobs.append((0, cy - 4, int(1 + t * 2)))
 
-    # Right edge connector (unless this is the last tile)
+    # Right edge connector (shared shape with the next tile's left edge)
     if pos != 'last':
-        blobs.append((size - 1, cy, int(3 + t * 3)))
-        blobs.append((size - 4, cy + 3, int(1 + t * 2)))
+        blobs.append((size - 1, cy, er))
+        blobs.append((size - 1, cy - 4, int(1 + t * 2)))
+
+    # Bridge blobs between centre and edges for continuity
+    if t > 0.3:
+        blobs.append((cx - 6, cy, int(2 + t * 2)))
+        blobs.append((cx + 6, cy, int(2 + t * 2)))
 
     # Flickering tongues upward/downward (don't reach perpendicular edges)
     if t > 0.3:
-        blobs.append((cx - 3, cy - int(3 + t * 4), int(1 + t * 2)))
-        blobs.append((cx + 4, cy + int(3 + t * 4), int(1 + t * 2)))
+        blobs.append((cx, cy - int(4 + t * 4), int(1 + t * 2)))
+        blobs.append((cx, cy + int(4 + t * 4), int(1 + t * 2)))
     if t > 0.6:
-        blobs.append((cx + 2, cy - int(4 + t * 3), int(1 + t * 2)))
-        blobs.append((cx - 3, cy + int(5 + t * 2), int(1 + t)))
-
-    # Extra mid-axis blobs for fullness
-    if t > 0.4:
-        blobs.append((cx - 6, cy + 1, int(2 + t * 2)))
-        blobs.append((cx + 5, cy - 1, int(2 + t * 2)))
+        blobs.append((cx + 3, cy - int(3 + t * 3), int(1 + t)))
+        blobs.append((cx - 3, cy + int(3 + t * 3), int(1 + t)))
 
     outer_r = int(180 + 50 * t)
     outer_g = int(50 + 50 * t)
