@@ -324,12 +324,17 @@ def _assign_items(graph, feature_set, rng):
             mat = rng.choice(mat_types)
             graph.nodes[target].materials.append((mat,))
 
-    # Distribute enemies (never in the corridor / start room, at least 1)
+    # Distribute enemies (never in corridor, never in rooms with push puzzles)
     e_min, e_max = feature_set.get('enemy_count', (1, 3))
     e_count = max(1, rng.randint(e_min, e_max))
-    non_corridor = [n for n in all_nodes if n != corridor_name]
+    puzzle_rooms = {n for n, node in graph.nodes.items()
+                    if node.blocks or node.plates}
+    enemy_candidates = [n for n in all_nodes
+                        if n != corridor_name and n not in puzzle_rooms]
+    if not enemy_candidates:
+        enemy_candidates = [n for n in all_nodes if n != corridor_name]
     for _ in range(e_count):
-        target = rng.choice(non_corridor)
+        target = rng.choice(enemy_candidates)
         graph.nodes[target].enemies.append(('chaser',))
 
     # Ensure every room with enemies has at least one treasure (reward for risk)
