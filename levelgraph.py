@@ -282,7 +282,9 @@ def _assign_items(graph, feature_set, rng):
         target = rng.choice(candidates)
         graph.nodes[target].keys.append((colour,))
 
-    # For each gated edge, place a plate and block on the start side
+    # For each gated edge, place plate AND block in the SAME room
+    # (the room on the start side of the gate, so the player can push
+    # the block onto the plate without crossing rooms)
     for gate_id, edge in needed_gates.items():
         candidates = [corridor_name]
         for name, _ in graph.neighbors(corridor_name):
@@ -292,10 +294,9 @@ def _assign_items(graph, feature_set, rng):
                           if n == name][0]
             if other_edge.edge_type in (EdgeType.OPEN, EdgeType.BREAKABLE):
                 candidates.append(name)
-        plate_target = rng.choice(candidates)
-        block_target = rng.choice(candidates)
-        graph.nodes[plate_target].plates.append((gate_id,))
-        graph.nodes[block_target].blocks.append(1)
+        target = rng.choice(candidates)
+        graph.nodes[target].plates.append((gate_id,))
+        graph.nodes[target].blocks.append(1)
 
     # Distribute treasures
     t_min, t_max = feature_set.get('treasure_count', (6, 10))
@@ -316,9 +317,15 @@ def _assign_items(graph, feature_set, rng):
             mat = rng.choice(mat_types)
             graph.nodes[target].materials.append((mat,))
 
-    # Distribute enemies
+    # Distribute enemies (never in the corridor / start room)
     e_min, e_max = feature_set.get('enemy_count', (1, 3))
     e_count = rng.randint(e_min, e_max)
     for _ in range(e_count):
         target = rng.choice([n for n in all_nodes if n != corridor_name])
         graph.nodes[target].enemies.append(('chaser',))
+
+    # Ensure every room with enemies has at least one treasure (reward for risk)
+    item_nos = list(range(1, 10))
+    for name, node in graph.nodes.items():
+        if node.enemies and not node.treasures:
+            node.treasures.append((rng.choice(item_nos),))

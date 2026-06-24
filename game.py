@@ -95,6 +95,19 @@ class Game:
     def _is_border(self, col, row):
         return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
 
+    def _is_door_or_gate(self, col, row):
+        """Check if (col, row) is a locked door or gate — not breakable."""
+        if not self._is_multiroom:
+            return False
+        rk = self._current_room
+        for dc, dr, _ in self._room_doors.get(rk, []):
+            if dc == col and dr == row:
+                return True
+        for gc, gr in self._room_gates.get(rk, {}).values():
+            if gc == col and gr == row:
+                return True
+        return False
+
     def _register_bump(self, key, col, row):
         """Called when the player walks into wall (col, row) via direction key."""
         if key in self._bump_consumed:
@@ -104,6 +117,8 @@ class Game:
         wall_type = self._level_walls.get((col, row))
         if wall_type == WALL_REINFORCED:
             return  # indestructible interior wall
+        if self._is_door_or_gate(col, row):
+            return  # doors and gates are opened by keys/plates, not bumping
         self._bump_consumed.add(key)
         hits_needed = WALL_BUMPS.get(wall_type, WALL_HITS_TO_BREAK)
         hits = self._wall_hits.get((col, row), 0) + 1

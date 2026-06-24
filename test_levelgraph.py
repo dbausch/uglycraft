@@ -247,6 +247,39 @@ class TestGeneration(unittest.TestCase):
         self.assertEqual(len(starts), 1)
         self.assertEqual(starts[0].size, NodeSize.CORRIDOR)
 
+    def test_enemy_rooms_have_treasure(self):
+        """Every room with enemies must have at least one treasure."""
+        features = self._make_features(enemy_count=(3, 4))
+        for seed in range(20):
+            rng = random.Random(seed)
+            g = LevelGraph.generate(features, rng=rng)
+            for name, node in g.nodes.items():
+                if node.enemies:
+                    self.assertTrue(
+                        node.treasures,
+                        f"Seed {seed}: {name} has enemies but no treasure")
+
+    def test_gate_block_and_plate_same_room(self):
+        """Block and plate for a gate must be in the same room."""
+        features = self._make_features(
+            edge_types=[EdgeType.OPEN, EdgeType.GATED])
+        for seed in range(20):
+            rng = random.Random(seed)
+            g = LevelGraph.generate(features, rng=rng)
+            for edge in g.edges:
+                if edge.edge_type != EdgeType.GATED:
+                    continue
+                gate_id = edge.params['gate_id']
+                plate_rooms = [n for n, node in g.nodes.items()
+                               if any(gid == gate_id for gid, in node.plates)]
+                block_rooms = [n for n, node in g.nodes.items()
+                               if node.blocks]
+                self.assertTrue(plate_rooms, f"Seed {seed}: no plate for {gate_id}")
+                self.assertTrue(block_rooms, f"Seed {seed}: no block for {gate_id}")
+                self.assertTrue(
+                    set(plate_rooms) & set(block_rooms),
+                    f"Seed {seed}: plate in {plate_rooms}, block in {block_rooms} — not same room")
+
     def test_respects_room_count(self):
         features = self._make_features(room_count=(3, 3))
         g = LevelGraph.generate(features)
