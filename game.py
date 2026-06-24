@@ -956,41 +956,37 @@ class Game:
         title = self.font_big.render("INVENTORY", True, GOLD)
         self.surf.blit(title, (LOGICAL_W // 2 - title.get_width() // 2, 14))
 
-        # ── Materials (left panel) ────────────────────────────────────────
-        # 2×2 grid of material icons with counts
+        # ── Materials (left panel, vertical list) ─────────────────────────
+        ROW = 26  # row height for vertical lists
         panel_x, panel_y = 30, 60
+        count_x = panel_x + ICO + 6       # "×N" column
+        name_x  = panel_x + ICO + 40      # name column
+
         header = self.font_small.render("Materials", True, GRAY)
         self.surf.blit(header, (panel_x, panel_y))
         panel_y += 22
 
-        mat_list = list(MATERIAL_NAMES.items())
-        for idx, (mat_type, name) in enumerate(mat_list):
-            col_off = (idx % 2) * 130
-            row_off = (idx // 2) * 32
-            x = panel_x + col_off
-            y = panel_y + row_off
+        for mat_type, name in MATERIAL_NAMES.items():
             count = inv.materials.get(mat_type, 0)
+            col = WHITE if count > 0 else DKGRAY
 
             icon_key = MATERIAL_ICONS.get(mat_type)
             if icon_key and icon_key in sp:
-                self.surf.blit(sp[icon_key], (x, y))
+                self.surf.blit(sp[icon_key], (panel_x, panel_y))
 
-            col = WHITE if count > 0 else DKGRAY
             txt = self.font_small.render(f"×{count}", True, col)
-            self.surf.blit(txt, (x + ICO + 4, y + 2))
+            self.surf.blit(txt, (count_x, panel_y + 2))
             nm = self.font_small.render(name, True, col)
-            self.surf.blit(nm, (x + ICO + 4 + txt.get_width() + 6, y + 2))
+            self.surf.blit(nm, (name_x, panel_y + 2))
+            panel_y += ROW
 
-        # ── Tools (below materials) ───────────────────────────────────────
-        tool_y = panel_y + 76
+        # ── Tools (below materials, vertical list) ────────────────────────
+        panel_y += 8
         header = self.font_small.render("Tools", True, GRAY)
-        self.surf.blit(header, (panel_x, tool_y))
-        tool_y += 22
+        self.surf.blit(header, (panel_x, panel_y))
+        panel_y += 22
 
-        all_tools = list(TOOL_NAMES.items())
-        for idx, (tool_type, name) in enumerate(all_tools):
-            x = panel_x + idx * 100
-            y = tool_y
+        for tool_type, name in TOOL_NAMES.items():
             has = tool_type in inv.tools
             icon_key = TOOL_ICONS.get(tool_type)
             if icon_key and icon_key in sp:
@@ -998,12 +994,13 @@ class Game:
                 if not has:
                     dark = icon.copy()
                     dark.fill((60, 60, 60, 180), special_flags=pygame.BLEND_RGBA_MULT)
-                    self.surf.blit(dark, (x, y))
+                    self.surf.blit(dark, (panel_x, panel_y))
                 else:
-                    self.surf.blit(icon, (x, y))
+                    self.surf.blit(icon, (panel_x, panel_y))
             col = LTGREEN if has else DKGRAY
             txt = self.font_small.render(name, True, col)
-            self.surf.blit(txt, (x + ICO + 4, y + 2))
+            self.surf.blit(txt, (name_x, panel_y + 2))
+            panel_y += ROW
 
         # ── Recipes (right panel) ─────────────────────────────────────────
         # Each recipe: [result icon] name  =  [ingredient icons] × count + ...
