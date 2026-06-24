@@ -218,6 +218,17 @@ def _generate_act2():
             'material_count': (5, 8),
             'enemy_count': (2, 3),
         },
+        # Level 14: + water streams
+        {
+            'room_count': (4, 6),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
+                           EdgeType.LOCKED, EdgeType.WATER],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL, NodeSize.CLOSET],
+            'treasure_count': (6, 10),
+            'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
+            'material_count': (5, 8),
+            'enemy_count': (2, 3),
+        },
     ]
 
     levels = []

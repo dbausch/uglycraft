@@ -30,6 +30,7 @@ class EdgeType(Enum):
     BREAKABLE = auto()   # stone or wooden wall, player can break through
     LOCKED    = auto()   # needs a key of a specific colour
     GATED     = auto()   # needs a pressure plate + pushable block
+    WATER     = auto()   # blocked by water, crossable with bridge (2 planks)
     STAIRS    = auto()   # connects nodes on different grids (floors)
 
 
@@ -187,6 +188,23 @@ class LevelGraph:
                         _expand({new_node})
                         changed = True
 
+                elif edge.edge_type == EdgeType.WATER:
+                    has_planks = any(
+                        'planks' in [m for m, in node.materials]
+                        for name, node in self.nodes.items()
+                        if name in reachable
+                    )
+                    has_block = any(
+                        node.blocks
+                        for name, node in self.nodes.items()
+                        if name in reachable
+                    )
+                    if has_planks or has_block:
+                        opened_edges.add(id(edge))
+                        new_node = edge.node_b if a_reachable else edge.node_a
+                        _expand({new_node})
+                        changed = True
+
         for name, node in self.nodes.items():
             if name not in reachable:
                 if node.treasures or node.materials or node.keys:
@@ -245,6 +263,8 @@ class LevelGraph:
                 params['key_colour'] = rng.choice(['red', 'blue', 'green'])
             elif et == EdgeType.GATED:
                 params['gate_id'] = f'gate_{i}'
+            elif et == EdgeType.WATER:
+                params['water_id'] = f'water_{i}'
             elif et == EdgeType.BREAKABLE:
                 params['wall_type'] = rng.choice(['stone', 'wooden'])
             graph.add_edge('corridor', name, et, **params)
@@ -261,9 +281,10 @@ def _assign_items(graph, feature_set, rng):
     all_nodes = list(graph.nodes.keys())
     corridor_name = 'corridor'
 
-    # Collect which keys and gates are needed
+    # Collect which keys, gates, and water crossings are needed
     needed_keys = {}   # {colour: edge}
     needed_gates = {}  # {gate_id: edge}
+    needed_water = {}  # {water_id: edge}
     for edge in graph.edges:
         if edge.edge_type == EdgeType.LOCKED:
             colour = edge.params['key_colour']
@@ -271,6 +292,9 @@ def _assign_items(graph, feature_set, rng):
         elif edge.edge_type == EdgeType.GATED:
             gate_id = edge.params['gate_id']
             needed_gates[gate_id] = edge
+        elif edge.edge_type == EdgeType.WATER:
+            water_id = edge.params.get('water_id', f'water_{id(edge)}')
+            needed_water[water_id] = edge
 
     # For each locked edge, place a key on the start side
     for colour, edge in needed_keys.items():
@@ -304,6 +328,20 @@ def _assign_items(graph, feature_set, rng):
         target = rng.choice(candidates)
         graph.nodes[target].plates.append((gate_id,))
         graph.nodes[target].blocks.append(1)
+
+    # For each water edge, ensure planks are reachable on the start side
+    for water_id, edge in needed_water.items():
+        candidates = [corridor_name]
+        for name, _ in graph.neighbors(corridor_name):
+            if name == edge.node_b:
+                continue
+            other_edge = [e for n, e in graph.neighbors(corridor_name)
+                          if n == name][0]
+            if other_edge.edge_type in (EdgeType.OPEN, EdgeType.BREAKABLE):
+                candidates.append(name)
+        target = rng.choice(candidates)
+        graph.nodes[target].materials.append(('planks',))
+        graph.nodes[target].materials.append(('planks',))
 
     # Distribute treasures
     t_min, t_max = feature_set.get('treasure_count', (6, 10))

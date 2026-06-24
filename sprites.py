@@ -756,6 +756,52 @@ def draw_gate_open(size=TILE):
     return s
 
 
+def draw_water(size=TILE):
+    """Water tile — dark blue with ripple lines."""
+    s = _surf(size, alpha=False)
+    s.fill((15, 25, 55))
+    ripple = (25, 45, 85)
+    for y in (size // 4, size // 2, size * 3 // 4):
+        pygame.draw.line(s, ripple, (2, y), (size - 3, y), 1)
+        pygame.draw.line(s, (35, 55, 95), (4, y + 1), (size - 5, y + 1), 1)
+    return s
+
+
+def draw_bridge_tile(size=TILE):
+    """Bridge over water — wooden planks."""
+    s = _surf(size, alpha=False)
+    s.fill((15, 25, 55))  # water underneath visible at edges
+    m = 2
+    for i in range(4):
+        y = m + i * (size - 2 * m) // 4
+        shade = 8 if i % 2 == 0 else -8
+        color = (120 + shade, 70 + shade, 25)
+        pygame.draw.rect(s, color, (m, y, size - 2 * m, (size - 2 * m) // 4 - 1))
+    return s
+
+
+def draw_flame_on(size=TILE):
+    """Active flame jet tile — orange/red fire."""
+    s = _surf(size, alpha=False)
+    s.fill((8, 8, 12))
+    for fx, fy, fr in [(size//4, size//2, 8), (size//2, size//3, 10),
+                        (size*3//4, size//2, 7), (size//2, size*2//3, 9)]:
+        pygame.draw.circle(s, (200, 80, 10), (fx, fy), fr)
+        pygame.draw.circle(s, (255, 160, 30), (fx, fy), fr // 2)
+    pygame.draw.circle(s, (255, 220, 80), (size // 2, size // 2), 4)
+    return s
+
+
+def draw_flame_off(size=TILE):
+    """Inactive flame jet tile — dark floor with scorch marks."""
+    s = _surf(size, alpha=False)
+    s.fill((8, 8, 12))
+    pygame.draw.circle(s, (20, 15, 10), (size // 3, size // 3), 3)
+    pygame.draw.circle(s, (20, 15, 10), (size * 2 // 3, size * 2 // 3), 4)
+    pygame.draw.circle(s, (18, 12, 8), (size // 2, size // 2), 2)
+    return s
+
+
 def draw_pushable_block(size=TILE):
     """Pushable block — grey stone, indestructible, player can push."""
     s = _surf(size, alpha=False)
@@ -961,6 +1007,10 @@ def create_sprites():
         'door_green_h':  _rotate_h(draw_locked_door((60, 200, 80))),
         'door_open_v':   draw_open_door(),
         'door_open_h':   _rotate_h(draw_open_door()),
+        'water':          draw_water(),
+        'bridge_tile':    draw_bridge_tile(),
+        'flame_on':       draw_flame_on(),
+        'flame_off':      draw_flame_off(),
         'pushable_block': draw_pushable_block(),
         'pressure_plate': draw_pressure_plate(),
         'gate_closed_v':  draw_gate_closed(),

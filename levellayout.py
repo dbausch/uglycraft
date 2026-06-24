@@ -189,6 +189,8 @@ def derive_walls(graph, placed):
         elif edge.edge_type == EdgeType.BREAKABLE:
             wt = edge.params.get('wall_type', 'stone')
             walls[conn] = WALL_STONE if wt == 'stone' else WALL_WOODEN
+        elif edge.edge_type == EdgeType.WATER:
+            walls.pop(conn, None)
         elif edge.edge_type in (EdgeType.LOCKED, EdgeType.GATED, EdgeType.STAIRS):
             walls.pop(conn, None)
 
@@ -616,9 +618,10 @@ def build_level_dict(graph, rng=None):
         all_plates.extend(pl)
         all_enemy_starts.extend(es)
 
-    # Locked doors and gates from edges
+    # Locked doors, gates, and water tiles from edges
     all_locked_doors = []
     all_gates = []
+    all_water_tiles = []
     orig_walls = {}
     floor = set()
     for pnode in placed.values():
@@ -631,7 +634,7 @@ def build_level_dict(graph, rng=None):
     for edge in graph.edges:
         if edge.node_a not in placed or edge.node_b not in placed:
             continue
-        if edge.edge_type not in (EdgeType.LOCKED, EdgeType.GATED):
+        if edge.edge_type not in (EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER):
             continue
         pa = placed[edge.node_a]
         pb = placed[edge.node_b]
@@ -642,6 +645,8 @@ def build_level_dict(graph, rng=None):
             all_locked_doors.append((*conn, edge.params['key_colour']))
         elif edge.edge_type == EdgeType.GATED:
             all_gates.append((*conn, edge.params['gate_id']))
+        elif edge.edge_type == EdgeType.WATER:
+            all_water_tiles.append(conn)
 
     # Build room dict
     grid_name = 'main'
@@ -665,6 +670,8 @@ def build_level_dict(graph, rng=None):
         room['pressure_plates'] = all_plates
     if all_gates:
         room['gates'] = all_gates
+    if all_water_tiles:
+        room['water_tiles'] = all_water_tiles
 
     # Validate layout invariant
     errors = validate_layout(graph, placed, walls)

@@ -208,6 +208,8 @@ class Game:
             self._room_blocks = {}
             self._room_plates = {}
             self._room_gates = {}
+            self._water_tiles = set()
+            self._bridged_tiles = set()
             self._gate_open = set()  # set of currently open gate_ids
             for rkey, rdata in data['rooms'].items():
                 treasures = list(rdata.get('treasures', []))
@@ -306,6 +308,7 @@ class Game:
                 self.enemies.append(pe)
 
         self._tile_owner = room_data.get('tile_owner', {})
+        self._water_tiles = set(tuple(t) for t in room_data.get('water_tiles', []))
         self._build_walls_multiroom()
         self._bump_consumed.clear()
         self._tag_enemies_with_rooms()
@@ -389,6 +392,10 @@ class Game:
         # Pushable blocks act as walls
         for bc, br in self._room_blocks.get(room_key, []):
             self.walls[bc][br] = True
+        # Unbridged water tiles act as walls
+        for wc, wr in getattr(self, '_water_tiles', set()):
+            if (wc, wr) not in getattr(self, '_bridged_tiles', set()):
+                self.walls[wc][wr] = True
         # Gates act as walls when closed
         for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
             if gate_id not in self._gate_open:
@@ -1082,6 +1089,11 @@ class Game:
                 self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
             for bc, br in self._room_blocks.get(rk, []):
                 self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
+            for wc, wr in self._water_tiles:
+                if (wc, wr) in self._bridged_tiles:
+                    self.surf.blit(sp['bridge_tile'], (wc * TILE, wr * TILE))
+                else:
+                    self.surf.blit(sp['water'], (wc * TILE, wr * TILE))
             for dc, dr, door_color in self._room_doors.get(rk, []):
                 o = self._door_orient(dc, dr)
                 dkey = f'door_{door_color}_{o}'
