@@ -218,6 +218,10 @@ def _w(*args):
 
 ACT2_LEVELS = [
 
+    # ── DESIGN RULE: every reinforced divider must have a doorway (1-tile
+    # gap) so all areas are reachable.  Sealed areas use breakable walls,
+    # locked doors, or gates — never solid reinforced spans.
+
     # 11 ── "The Passage" ── 2 rooms ──────────────────────────────────────────
     #
     # First Act 2 level. Two rooms connected by a right/left exit at row 7.
@@ -229,14 +233,16 @@ ACT2_LEVELS = [
         'rooms': {
             'hall': {
                 'walls': _typed_walls(
-                    # Reinforced corridor walls
-                    _r(_hwall(1, 28, 5)),             # horizontal divider
-                    _r(_hwall(1, 28, 10)),            # lower divider
-                    _r(_vwall(14, 1, 4)),             # upper pillar
-                    _r(_vwall(14, 11, 14)),           # lower pillar
-                    # Stone walls blocking shortcuts (breakable)
-                    _s(_hwall(12, 16, 5)),            # gap in upper divider
-                    _s(_vwall(14, 6, 9)),             # centre pillar (breakable)
+                    # Upper divider: doorways at col 6 and col 22
+                    _r(_hwall(1, 5, 5)),
+                    _r(_hwall(7, 21, 5)),
+                    _r(_hwall(23, 28, 5)),
+                    # Lower divider: doorways at col 6 and col 22
+                    _r(_hwall(1, 5, 10)),
+                    _r(_hwall(7, 21, 10)),
+                    _r(_hwall(23, 28, 10)),
+                    # Stone walls blocking shortcut through centre
+                    _s(_vwall(14, 6, 9)),
                 ),
                 'enemy_starts': [(27, 8)],
                 'patrol_enemies': [
@@ -259,14 +265,19 @@ ACT2_LEVELS = [
             },
             'forge': {
                 'walls': _typed_walls(
-                    # Reinforced room structure
-                    _r(_vwall(8, 1, 14)),             # left chamber wall
-                    _r(_vwall(20, 1, 14)),            # right chamber wall
-                    _r(_hwall(9, 19, 5)),             # upper cross wall
-                    _r(_hwall(9, 19, 10)),            # lower cross wall
-                    # Wooden barriers (easy to break through)
-                    _w([(12, 5)]),                    # gap in upper cross
-                    _w([(16, 10)]),                   # gap in lower cross
+                    # Left/right walls with doorways at row 7
+                    _r(_vwall(8, 1, 6)),
+                    _r(_vwall(8, 8, 14)),
+                    _r(_vwall(20, 1, 6)),
+                    _r(_vwall(20, 8, 14)),
+                    # Cross walls with gaps at col 14
+                    _r(_hwall(9, 13, 5)),
+                    _r(_hwall(15, 19, 5)),
+                    _r(_hwall(9, 13, 10)),
+                    _r(_hwall(15, 19, 10)),
+                    # Wooden barriers in the gaps
+                    _w([(14, 5)]),
+                    _w([(14, 10)]),
                 ),
                 'enemy_starts': [(14, 8)],
                 'treasures': [
@@ -297,15 +308,17 @@ ACT2_LEVELS = [
         'rooms': {
             'gate': {
                 'walls': _typed_walls(
-                    # Reinforced structure: two chambers divided by a thick wall
+                    # Centre divider with gap for red door at row 7
                     _r(_vwall(14, 1, 6)),
                     _r(_vwall(14, 9, 14)),
-                    # Upper chamber walls
-                    _r(_hwall(1, 13, 4)),
-                    _r(_hwall(15, 28, 4)),
-                    # Lower chamber walls
-                    _r(_hwall(1, 13, 11)),
-                    _r(_hwall(15, 28, 11)),
+                    # Upper shelves: doorway at col 3 (left) and col 24 (right)
+                    _r(_hwall(4, 13, 4)),
+                    _r(_hwall(15, 23, 4)),
+                    _r(_hwall(25, 28, 4)),
+                    # Lower shelves: doorway at col 3 (left) and col 24 (right)
+                    _r(_hwall(4, 13, 11)),
+                    _r(_hwall(15, 23, 11)),
+                    _r(_hwall(25, 28, 11)),
                     # Pillars
                     _r([(7, 7)]), _r([(7, 8)]),
                     _r([(21, 7)]), _r([(21, 8)]),
@@ -336,18 +349,23 @@ ACT2_LEVELS = [
             },
             'vault': {
                 'walls': _typed_walls(
-                    # Reinforced vault structure (gap at 6,7 for blue door)
+                    # Outer walls (gap at 6,7 for blue door; gap at 22,7)
                     _r(_vwall(6, 1, 6)),
                     _r(_vwall(6, 8, 14)),
-                    _r(_vwall(22, 1, 14)),
-                    _r(_hwall(7, 21, 4)),
-                    _r(_hwall(7, 21, 11)),
-                    # Inner alcoves
-                    _r(_vwall(12, 5, 10)),
-                    _r(_vwall(16, 5, 10)),
-                    # Wooden barriers inside
+                    _r(_vwall(22, 1, 6)),
+                    _r(_vwall(22, 8, 14)),
+                    # Cross walls with doorway at col 14
+                    _r(_hwall(7, 13, 4)),
+                    _r(_hwall(15, 21, 4)),
+                    _r(_hwall(7, 13, 11)),
+                    _r(_hwall(15, 21, 11)),
+                    # Inner alcove walls with wooden barriers
+                    _r(_vwall(12, 5, 6)),
+                    _r(_vwall(12, 8, 10)),
+                    _r(_vwall(16, 5, 6)),
+                    _r(_vwall(16, 8, 10)),
                     _w([(12, 7)]),
-                    _w([(16, 8)]),
+                    _w([(16, 7)]),
                 ),
                 'enemy_starts': [(14, 3)],
                 'treasures': [
@@ -373,6 +391,7 @@ ACT2_LEVELS = [
             },
         },
     },
+
     # 13 ── "The Mechanism" ── 2 rooms ───────────────────────────────────────
     #
     # Pushable blocks and pressure plates + gates. The main puzzle: push
@@ -383,13 +402,18 @@ ACT2_LEVELS = [
         'rooms': {
             'entry': {
                 'walls': _typed_walls(
-                    # Reinforced structure
-                    _r(_hwall(1, 28, 5)),
+                    # Upper divider: doorway at col 5
+                    _r(_hwall(1, 4, 5)),
+                    _r(_hwall(6, 13, 5)),
+                    _r(_hwall(16, 28, 5)),
+                    # Lower divider: doorway at col 24
                     _r(_hwall(1, 13, 10)),
-                    _r(_hwall(16, 28, 10)),
-                    _r(_vwall(14, 1, 4)),
-                    _r(_vwall(14, 11, 14)),
-                    # Stone partitions
+                    _r(_hwall(16, 23, 10)),
+                    _r(_hwall(25, 28, 10)),
+                    # Centre divider (gates in it)
+                    _r(_vwall(14, 1, 5)),
+                    _r(_vwall(14, 10, 14)),
+                    # Stone partition in corridor
                     _s([(14, 7)]),
                     _s([(14, 8)]),
                 ),
@@ -420,11 +444,16 @@ ACT2_LEVELS = [
             },
             'puzzle': {
                 'walls': _typed_walls(
-                    # Reinforced chamber
-                    _r(_vwall(7, 1, 14)),
-                    _r(_vwall(21, 1, 14)),
-                    _r(_hwall(8, 20, 4)),
-                    _r(_hwall(8, 20, 11)),
+                    # Outer walls with doorways at row 7
+                    _r(_vwall(7, 1, 6)),
+                    _r(_vwall(7, 8, 14)),
+                    _r(_vwall(21, 1, 6)),
+                    _r(_vwall(21, 8, 14)),
+                    # Cross walls with doorway at col 14
+                    _r(_hwall(8, 13, 4)),
+                    _r(_hwall(15, 20, 4)),
+                    _r(_hwall(8, 13, 11)),
+                    _r(_hwall(15, 20, 11)),
                 ),
                 'enemy_starts': [(14, 2)],
                 'patrol_enemies': [
