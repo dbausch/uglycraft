@@ -775,20 +775,27 @@ def draw_pushable_block(size=TILE):
 
 
 def draw_open_door(color, size=TILE):
-    """Opened door — floor tile with a visible coloured threshold."""
+    """Opened door — worn carpet tile in the door's colour."""
     s = _surf(size, alpha=False)
-    s.fill((8, 8, 12))  # floor base
-    m = 5
-    # Filled coloured threshold (like a stone slab set into the floor)
-    slab = tuple(max(0, c // 3 + 15) for c in color)
-    pygame.draw.rect(s, slab, (m, m, size - 2 * m, size - 2 * m))
-    # Bright coloured border on the slab
-    pygame.draw.rect(s, tuple(min(255, c // 2 + 30) for c in color),
-                     (m, m, size - 2 * m, size - 2 * m), 1)
-    # Two small hinge dots suggesting where the door was mounted
-    hinge = tuple(min(255, c // 2 + 60) for c in color)
-    pygame.draw.circle(s, hinge, (m + 1, size // 3), 2)
-    pygame.draw.circle(s, hinge, (m + 1, size * 2 // 3), 2)
+    s.fill((14, 12, 18))
+    m = 2
+    # Carpet body — visible but muted
+    carpet = tuple(max(20, c // 3 + 8) for c in color)
+    pygame.draw.rect(s, carpet, (m, m, size - 2 * m, size - 2 * m))
+    # Fringed border
+    fringe = tuple(max(30, c // 2 + 10) for c in color)
+    pygame.draw.rect(s, fringe, (m, m, size - 2 * m, size - 2 * m), 2)
+    # Bold diamond pattern
+    cx, cy = size // 2, size // 2
+    r = size // 3
+    pattern = tuple(min(255, c // 2 + 40) for c in color)
+    pts = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
+    pygame.draw.polygon(s, pattern, pts, 2)
+    r2 = r // 2
+    pts2 = [(cx, cy - r2), (cx + r2, cy), (cx, cy + r2), (cx - r2, cy)]
+    pygame.draw.polygon(s, pattern, pts2, 1)
+    # Centre dot
+    pygame.draw.circle(s, pattern, (cx, cy), 2)
     return s
 
 
