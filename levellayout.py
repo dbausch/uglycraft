@@ -307,11 +307,25 @@ def validate_push_puzzles(room_data, tile_owner):
     if not gates_list or not plates or not blocks:
         return errors
 
-    # Build set of passable tiles (not reinforced walls)
+    locked_doors = room_data.get('locked_doors', [])
+
+    # Build set of passable tiles: exclude reinforced walls, locked doors,
+    # gates (closed), and other blocks — matching what the game does
+    all_obstacles = set()
+    for pos, wt in walls.items():
+        if wt == WALL_REINFORCED:
+            all_obstacles.add(pos)
+    for dc, dr, _ in locked_doors:
+        all_obstacles.add((dc, dr))
+    for gc, gr, _ in gates_list:
+        all_obstacles.add((gc, gr))
+    for bpos in blocks:
+        all_obstacles.add(bpos)
+
     passable = set()
     for c in range(MIN_C, MAX_C + 1):
         for r in range(MIN_R, MAX_R + 1):
-            if (c, r) not in walls or walls[(c, r)] != WALL_REINFORCED:
+            if (c, r) not in all_obstacles:
                 passable.add((c, r))
 
     # Map gate_id → plate position
@@ -353,7 +367,7 @@ def validate_push_puzzles(room_data, tile_owner):
                 room_tiles.add(pos)
 
         # Sokoban BFS: can ANY block reach the plate?
-        if _can_push_block_to(room_blocks, plate_pos, room_tiles, walls):
+        if _can_push_block_to(room_blocks, plate_pos, passable):
             continue
 
         errors.append(f"Gate {gate_id}: no block can be pushed to plate at {plate_pos}")
@@ -361,15 +375,17 @@ def validate_push_puzzles(room_data, tile_owner):
     return errors
 
 
-def _can_push_block_to(block_positions, target, room_tiles, walls):
+def _can_push_block_to(block_positions, target, passable):
     """Check if any block can be pushed to the target.
 
     Tries each block independently with a proper Sokoban BFS.
+    The block being tested is temporarily added back to passable
+    (since it will move), but other blocks remain as obstacles.
     """
-    passable = {pos for pos in room_tiles
-                if walls.get(pos) != WALL_REINFORCED}
     for block_start in block_positions:
-        if _sokoban_bfs(block_start, target, passable):
+        # This block's start position needs to be passable (it will move)
+        p = passable | {block_start}
+        if _sokoban_bfs(block_start, target, p):
             return True
     return False
 
@@ -536,10 +552,39 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None):
             keys.append((*p, key_colour))
 
     blocks = []
+    floor_set = set(placed_node.floor_tiles) - set(walls.keys())
     for _ in node.blocks:
-        p = _next()
-        if p:
-            blocks.append(p)
+        # Blocks must have at least 2 pushable directions (free on
+        # both sides of at least one axis) so they're not stuck
+        best = None
+        for p in floor:
+            if p in used:
+                continue
+            free_dirs = 0
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                push_from = (p[0] - dc, p[1] - dr)
+                push_to = (p[0] + dc, p[1] + dr)
+                if push_from in floor_set and push_to in floor_set:
+                    free_dirs += 1
+            if free_dirs >= 2:
+                best = p
+                break
+        if best is None:
+            # Fallback: any tile with at least 1 pushable direction
+            for p in floor:
+                if p in used:
+                    continue
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    push_from = (p[0] - dc, p[1] - dr)
+                    push_to = (p[0] + dc, p[1] + dr)
+                    if push_from in floor_set and push_to in floor_set:
+                        best = p
+                        break
+                if best:
+                    break
+        if best:
+            used.add(best)
+            blocks.append(best)
 
     plates = []
     for (gate_id,) in node.plates:
