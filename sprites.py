@@ -1080,8 +1080,7 @@ def create_sprites():
         **{f'flame_r_{p}_{i}': draw_flame(i / 8, p)
            for i in range(9) for p in ('first', 'mid', 'last')},
         **{f'flame_l_{p}_{i}': pygame.transform.flip(
-               draw_flame(i / 8, {'first': 'last', 'last': 'first', 'mid': 'mid'}[p]),
-               True, False)
+               draw_flame(i / 8, p), True, False)
            for i in range(9) for p in ('first', 'mid', 'last')},
         **{f'flame_d_{p}_{i}': pygame.transform.rotate(draw_flame(i / 8, p), 90)
            for i in range(9) for p in ('first', 'mid', 'last')},
