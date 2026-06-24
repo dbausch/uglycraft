@@ -56,6 +56,20 @@ by per-level feature sets.
 | `items` | list | Treasures, materials, keys, blocks, plates, enemies |
 | `is_start` | bool | Player starts here |
 
+Enemies belong to a node and **never leave their room**. The game engine
+confines each enemy's movement to the floor tiles of its owning node.
+This requires a **tile ownership map**: every floor tile knows which
+graph node it belongs to. The layout produces this map alongside the
+wall dict. The game uses it to constrain enemy pathfinding — an enemy's
+BFS or greedy movement only considers tiles belonging to its room.
+
+**Enemy behaviour depends on whether the player is in the same room:**
+- **Same room**: chase the player (BFS/greedy, as in Act 1).
+- **Different room**: wander randomly within the room. Each movement
+  tick, pick a random passable adjacent tile within the room and step
+  there (or stay put). This prevents enemies from clustering at the
+  doorway waiting for the player to enter.
+
 Size ranges (width × height of floor area):
 - `CLOSET`: 3-4 × 3-4
 - `ROOM`: 5-8 × 4-6
