@@ -620,12 +620,12 @@ def _generate_flame_jets(placed_node, walls, rng):
     if pn.w < 4 and pn.h < 4:
         return []
 
-    # Candidate source walls: wall tiles adjacent to the room's floor
+    # Candidate source walls: reinforced wall tiles adjacent to room floor
     candidates = []
     for fc, fr in pn.floor_tiles:
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             wc, wr = fc - dc, fr - dr
-            if (wc, wr) in walls and (wc, wr) not in pn.floor_tiles:
+            if walls.get((wc, wr)) == WALL_REINFORCED and (wc, wr) not in pn.floor_tiles:
                 candidates.append(((wc, wr), (dc, dr)))
 
     if not candidates:

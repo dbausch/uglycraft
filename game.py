@@ -159,6 +159,8 @@ class Game:
                 return True
         if (col, row) in self._room_blocks.get(rk, []):
             return True
+        if (col, row) in getattr(self, '_water_tiles', set()):
+            return True
         return False
 
     def _register_bump(self, key, col, row):
@@ -1181,11 +1183,13 @@ class Game:
                 src_key = f'flame_source_{d}'
                 if src_key in sp:
                     self.surf.blit(sp[src_key], (sc * TILE, sr * TILE))
+                n = len(jet['tiles'])
                 for idx, (fc, fr) in enumerate(jet['tiles']):
                     intensity = _flame_tile_intensity(
                         jet, idx, self._flame_timer)
                     frame = min(8, int(intensity * 8))
-                    self.surf.blit(sp[f'flame_{frame}'],
+                    pos = 'first' if idx == 0 else ('last' if idx == n - 1 else 'mid')
+                    self.surf.blit(sp[f'flame_{d}_{pos}_{frame}'],
                                    (fc * TILE, fr * TILE))
             for dc, dr, door_color in self._room_doors.get(rk, []):
                 o = self._door_orient(dc, dr)
