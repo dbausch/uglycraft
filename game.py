@@ -214,6 +214,9 @@ class Game:
             self.treasure_pos = None
             self._opened_doors = set()
             self._tile_owner = {}
+            self._room_blocks_initial = {
+                rk: list(self._room_blocks[rk])
+                for rk in self._room_blocks}
             self._enter_room(self._current_room)
         else:
             self._level_walls = parse_level_walls(data['walls'])
@@ -820,6 +823,17 @@ class Game:
         else:
             data = LEVELS[self.level - 1]
             self.player.col, self.player.row = data['player_start']
+            if self._is_multiroom:
+                self._reset_blocks()
+
+    def _reset_blocks(self):
+        """Reset all pushable blocks to their starting positions and close
+        any gates that were held open by blocks on plates."""
+        for rk, initial in self._room_blocks_initial.items():
+            self._room_blocks[rk] = list(initial)
+        self._gate_open.clear()
+        if self._is_multiroom:
+            self._build_walls_multiroom()
 
     def _respawn_enemy(self, enemy):
         """Teleport enemy to a tile at significant BFS distance from the player."""
