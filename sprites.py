@@ -780,81 +780,67 @@ def draw_bridge_tile(size=TILE):
     return s
 
 
-def draw_flame(intensity, pos='mid', size=TILE):
-    """Flame tile flowing left-to-right at a given intensity (0-1).
+def draw_flame_at(surf, x, y, intensity, connected, size=TILE):
+    """Draw a flame tile directly onto surf at pixel position (x, y).
 
-    pos: 'first' (exits source wall, open on right/top/bottom),
-         'mid'   (connected left and right, open on top/bottom),
-         'last'  (connected on left, tapers off on right/top/bottom).
-
-    Fire blobs sit along the horizontal centre line, reaching the
-    left and right edges for connectivity. Top and bottom sides are
-    open — fire tongues flicker upward/downward but don't touch the
-    perpendicular edges.
+    connected: set of sides that have adjacent fire or nozzle.
+               e.g. {'l', 'r'} for a horizontal mid tile.
+    Draws fire blobs at connected edges and flickering tongues on
+    open sides. Does not fill the whole tile — dark floor visible.
     """
-    s = _surf(size, alpha=False)
-    s.fill((8, 8, 12))
-
     if intensity <= 0.0:
-        pygame.draw.circle(s, (20, 15, 10), (size // 3, size // 2), 3)
-        pygame.draw.circle(s, (20, 15, 10), (size * 2 // 3, size // 2), 2)
-        return s
+        pygame.draw.circle(surf, (20, 15, 10), (x + size // 3, y + size // 2), 3)
+        pygame.draw.circle(surf, (20, 15, 10), (x + size * 2 // 3, y + size // 2), 2)
+        return
 
     t = min(1.0, intensity)
-    cx, cy = size // 2, size // 2
+    cx, cy = x + size // 2, y + size // 2
+    er = int(3 + t * 3)
 
-    # Glow
-    glow = _surf(size)
-    pygame.draw.circle(glow, (200, 60, 0, int(25 + t * 45)), (cx, cy),
-                       int(5 + t * 7))
-    s.blit(glow, (0, 0))
-
-    # Fire blobs along the flow axis (horizontal centre line).
-    # Edge connectors use identical positions so adjacent tiles match.
-    er = int(3 + t * 3)  # edge blob radius (shared between tiles)
+    # Centre blob
     blobs = [(cx, cy, int(4 + t * 4))]
 
-    # Left edge connector — always present (first tile connects to nozzle,
-    # mid/last tiles connect to the previous flame tile)
-    blobs.append((0, cy, er))
-    blobs.append((0, cy - 4, int(1 + t * 2)))
+    # Edge connectors — only where adjacent fire exists
+    if 'l' in connected:
+        blobs.append((x, cy, er))
+        blobs.append((x, cy - 4, int(1 + t * 2)))
+        blobs.append((x + 5, cy, int(2 + t * 2)))
+    if 'r' in connected:
+        blobs.append((x + size - 1, cy, er))
+        blobs.append((x + size - 1, cy - 4, int(1 + t * 2)))
+        blobs.append((x + size - 6, cy, int(2 + t * 2)))
+    if 'u' in connected:
+        blobs.append((cx, y, er))
+        blobs.append((cx - 4, y, int(1 + t * 2)))
+        blobs.append((cx, y + 5, int(2 + t * 2)))
+    if 'd' in connected:
+        blobs.append((cx, y + size - 1, er))
+        blobs.append((cx - 4, y + size - 1, int(1 + t * 2)))
+        blobs.append((cx, y + size - 6, int(2 + t * 2)))
 
-    # Right edge connector (shared shape with the next tile's left edge)
-    if pos != 'last':
-        blobs.append((size - 1, cy, er))
-        blobs.append((size - 1, cy - 4, int(1 + t * 2)))
-
-    # Bridge blobs between centre and edges for continuity
+    # Flickering tongues on open sides
     if t > 0.3:
-        blobs.append((cx - 6, cy, int(2 + t * 2)))
-        blobs.append((cx + 6, cy, int(2 + t * 2)))
+        if 'u' not in connected:
+            blobs.append((cx, cy - int(4 + t * 4), int(1 + t * 2)))
+        if 'd' not in connected:
+            blobs.append((cx, cy + int(4 + t * 4), int(1 + t * 2)))
+        if 'l' not in connected:
+            blobs.append((cx - int(4 + t * 4), cy, int(1 + t * 2)))
+        if 'r' not in connected:
+            blobs.append((cx + int(4 + t * 4), cy, int(1 + t * 2)))
 
-    # Flickering tongues upward/downward (don't reach perpendicular edges)
-    if t > 0.3:
-        blobs.append((cx, cy - int(4 + t * 4), int(1 + t * 2)))
-        blobs.append((cx, cy + int(4 + t * 4), int(1 + t * 2)))
-    if t > 0.6:
-        blobs.append((cx + 3, cy - int(3 + t * 3), int(1 + t)))
-        blobs.append((cx - 3, cy + int(3 + t * 3), int(1 + t)))
-
-    outer_r = int(180 + 50 * t)
-    outer_g = int(50 + 50 * t)
-    inner_r = int(230 + 25 * t)
-    inner_g = int(140 + 70 * t)
-    inner_b = int(t * 60)
+    outer = (int(180 + 50 * t), int(50 + 50 * t), 5)
+    inner = (int(230 + 25 * t), int(140 + 70 * t), int(t * 60))
 
     for fx, fy, fr in blobs:
-        fx = max(0, min(size - 1, fx))
-        fy = max(fr, min(size - 1 - fr, fy))
-        pygame.draw.circle(s, (outer_r, outer_g, 5), (fx, fy), fr)
+        fx = max(x, min(x + size - 1, fx))
+        fy = max(y, min(y + size - 1, fy))
+        pygame.draw.circle(surf, outer, (fx, fy), fr)
         if fr > 2:
-            pygame.draw.circle(s, (inner_r, inner_g, inner_b),
-                               (fx, fy), max(1, fr // 2))
+            pygame.draw.circle(surf, inner, (fx, fy), max(1, fr // 2))
 
     if t > 0.7:
-        pygame.draw.circle(s, (255, 230, 100), (cx, cy), max(2, int(t * 3)))
-
-    return s
+        pygame.draw.circle(surf, (255, 230, 100), (cx, cy), max(2, int(t * 3)))
 
 
 def draw_flame_source(size=TILE):
@@ -1077,15 +1063,6 @@ def create_sprites():
         'door_open_h':   _rotate_h(draw_open_door()),
         'water':          draw_water(),
         'bridge_tile':    draw_bridge_tile(),
-        **{f'flame_r_{p}_{i}': draw_flame(i / 8, p)
-           for i in range(9) for p in ('first', 'mid', 'last')},
-        **{f'flame_l_{p}_{i}': pygame.transform.flip(
-               draw_flame(i / 8, p), True, False)
-           for i in range(9) for p in ('first', 'mid', 'last')},
-        **{f'flame_d_{p}_{i}': pygame.transform.rotate(draw_flame(i / 8, p), 90)
-           for i in range(9) for p in ('first', 'mid', 'last')},
-        **{f'flame_u_{p}_{i}': pygame.transform.rotate(draw_flame(i / 8, p), -90)
-           for i in range(9) for p in ('first', 'mid', 'last')},
         'flame_source_r': draw_flame_source(),
         'flame_source_l': pygame.transform.flip(draw_flame_source(), True, False),
         'flame_source_d': pygame.transform.rotate(draw_flame_source(), 90),

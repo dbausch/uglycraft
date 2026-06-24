@@ -5,7 +5,7 @@ import random
 from collections import deque
 import pygame
 from constants import *
-from sprites import create_sprites
+from sprites import create_sprites, draw_flame_at
 from levels import LEVELS
 from entities import Player, Enemy, PatrolEnemy
 from hiscore import load_scores, save_score, qualifies
@@ -1183,14 +1183,22 @@ class Game:
                 src_key = f'flame_source_{d}'
                 if src_key in sp:
                     self.surf.blit(sp[src_key], (sc * TILE, sr * TILE))
-                n = len(jet['tiles'])
+                tile_set = jet['_tile_set']
+                source = jet.get('source')
                 for idx, (fc, fr) in enumerate(jet['tiles']):
                     intensity = _flame_tile_intensity(
                         jet, idx, self._flame_timer)
-                    frame = min(8, int(intensity * 8))
-                    pos = 'first' if idx == 0 else ('last' if idx == n - 1 else 'mid')
-                    self.surf.blit(sp[f'flame_{d}_{pos}_{frame}'],
-                                   (fc * TILE, fr * TILE))
+                    connected = set()
+                    if (fc - 1, fr) in tile_set or (fc - 1, fr) == source:
+                        connected.add('l')
+                    if (fc + 1, fr) in tile_set or (fc + 1, fr) == source:
+                        connected.add('r')
+                    if (fc, fr - 1) in tile_set or (fc, fr - 1) == source:
+                        connected.add('u')
+                    if (fc, fr + 1) in tile_set or (fc, fr + 1) == source:
+                        connected.add('d')
+                    draw_flame_at(self.surf, fc * TILE, fr * TILE,
+                                  intensity, connected)
             for dc, dr, door_color in self._room_doors.get(rk, []):
                 o = self._door_orient(dc, dr)
                 dkey = f'door_{door_color}_{o}'
