@@ -1076,10 +1076,8 @@ class Game:
                 dkey = f'door_{door_color}'
                 if dkey in sp:
                     self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
-            for dc, dr, door_color in self._opened_doors:
-                okey = f'door_open_{door_color}'
-                if okey in sp:
-                    self.surf.blit(sp[okey], (dc * TILE, dr * TILE))
+            for dc, dr, _color in self._opened_doors:
+                self.surf.blit(sp['door_open'], (dc * TILE, dr * TILE))
             for kc, kr, key_color in self._room_keys.get(rk, []):
                 kkey = f'key_{key_color}'
                 if kkey in sp:

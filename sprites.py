@@ -774,28 +774,22 @@ def draw_pushable_block(size=TILE):
     return s
 
 
-def draw_open_door(color, size=TILE):
-    """Opened door — worn carpet tile in the door's colour."""
+def draw_open_door(size=TILE):
+    """Opened door — floor with wooden door frame on left and right edges."""
     s = _surf(size, alpha=False)
-    s.fill((14, 12, 18))
-    m = 2
-    # Carpet body — visible but muted
-    carpet = tuple(max(20, c // 3 + 8) for c in color)
-    pygame.draw.rect(s, carpet, (m, m, size - 2 * m, size - 2 * m))
-    # Fringed border
-    fringe = tuple(max(30, c // 2 + 10) for c in color)
-    pygame.draw.rect(s, fringe, (m, m, size - 2 * m, size - 2 * m), 2)
-    # Bold diamond pattern
-    cx, cy = size // 2, size // 2
-    r = size // 3
-    pattern = tuple(min(255, c // 2 + 40) for c in color)
-    pts = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
-    pygame.draw.polygon(s, pattern, pts, 2)
-    r2 = r // 2
-    pts2 = [(cx, cy - r2), (cx + r2, cy), (cx, cy + r2), (cx - r2, cy)]
-    pygame.draw.polygon(s, pattern, pts2, 1)
-    # Centre dot
-    pygame.draw.circle(s, pattern, (cx, cy), 2)
+    s.fill((8, 8, 12))  # floor
+    wood = (100, 60, 22)
+    wood_hi = (130, 80, 32)
+    wood_dk = (65, 38, 12)
+    fw = 3  # frame width
+    # Left frame
+    pygame.draw.rect(s, wood, (0, 0, fw, size))
+    pygame.draw.line(s, wood_hi, (0, 0), (0, size - 1), 1)
+    pygame.draw.line(s, wood_dk, (fw - 1, 0), (fw - 1, size - 1), 1)
+    # Right frame
+    pygame.draw.rect(s, wood, (size - fw, 0, fw, size))
+    pygame.draw.line(s, wood_hi, (size - fw, 0), (size - fw, size - 1), 1)
+    pygame.draw.line(s, wood_dk, (size - 1, 0), (size - 1, size - 1), 1)
     return s
 
 
@@ -959,9 +953,7 @@ def create_sprites():
         'door_red':      draw_locked_door((220, 50, 50)),
         'door_blue':     draw_locked_door((80, 140, 255)),
         'door_green':    draw_locked_door((60, 200, 80)),
-        'door_open_red':   draw_open_door((220, 50, 50)),
-        'door_open_blue':  draw_open_door((80, 140, 255)),
-        'door_open_green': draw_open_door((60, 200, 80)),
+        'door_open':       draw_open_door(),
         'pushable_block': draw_pushable_block(),
         'pressure_plate': draw_pressure_plate(),
         'gate_closed':    draw_gate_closed(),
