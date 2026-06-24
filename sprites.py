@@ -814,10 +814,10 @@ def draw_flame(intensity, pos='mid', size=TILE):
     er = int(3 + t * 3)  # edge blob radius (shared between tiles)
     blobs = [(cx, cy, int(4 + t * 4))]
 
-    # Left edge connector (shared shape with the previous tile's right edge)
-    if pos != 'first':
-        blobs.append((0, cy, er))
-        blobs.append((0, cy - 4, int(1 + t * 2)))
+    # Left edge connector — always present (first tile connects to nozzle,
+    # mid/last tiles connect to the previous flame tile)
+    blobs.append((0, cy, er))
+    blobs.append((0, cy - 4, int(1 + t * 2)))
 
     # Right edge connector (shared shape with the next tile's left edge)
     if pos != 'last':
