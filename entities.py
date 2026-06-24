@@ -119,6 +119,14 @@ class Enemy(Entity):
             self.col, self.row = random.choice(candidates)
 
 
+class ForgeOgre(Enemy):
+    """Enemy that breaks player-placed walls in 2 bumps instead of 3."""
+
+    def __init__(self, col, row):
+        super().__init__(col, row)
+        self.wall_bump_power = 2  # breaks walls in 2 hits
+
+
 class PatrolEnemy(Enemy):
     """Enemy that walks a fixed back-and-forth path between waypoints."""
 

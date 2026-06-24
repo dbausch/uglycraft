@@ -7,7 +7,7 @@ import pygame
 from constants import *
 from sprites import create_sprites, draw_flame_at
 from levels import LEVELS
-from entities import Player, Enemy, PatrolEnemy
+from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from hiscore import load_scores, save_score, qualifies
 from sounds import SoundManager
 from rooms import RoomState, parse_level_walls, find_exit
@@ -344,7 +344,16 @@ class Game:
             else:
                 active = starts[:1]
                 active_patrols = patrols[:1] if patrols else []
-            self.enemies = [Enemy(ec, er) for ec, er in active]
+            self.enemies = []
+            for edata in active:
+                if len(edata) >= 3:
+                    ec, er, etype = edata[0], edata[1], edata[2]
+                else:
+                    ec, er, etype = edata[0], edata[1], 'chaser'
+                if etype == 'forge_ogre':
+                    self.enemies.append(ForgeOgre(ec, er))
+                else:
+                    self.enemies.append(Enemy(ec, er))
             for pdata in active_patrols:
                 pe = PatrolEnemy(pdata['start'][0], pdata['start'][1],
                                  pdata['waypoints'])
@@ -916,6 +925,19 @@ class Game:
         if self._is_multiroom:
             self._build_walls_multiroom()
 
+    def _forge_ogre_attack(self, enemy):
+        """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            tc, tr = enemy.col + dc, enemy.row + dr
+            if (tc, tr) in self._placed_walls:
+                hits = self._wall_hits.get((tc, tr), 0) + 1
+                if hits >= enemy.wall_bump_power:
+                    self._break_wall(tc, tr)
+                else:
+                    self._wall_hits[(tc, tr)] = hits
+                    self.sounds.play('bump')
+                return
+
     def _respawn_enemy(self, enemy):
         """Teleport enemy to a tile at significant BFS distance from the player.
         In Act 2, the enemy stays within its own room."""
@@ -1022,6 +1044,11 @@ class Game:
                         enemy.move_toward(self.player.col, self.player.row,
                                           self.walls, occupied=reserved)
                     reserved.add((enemy.col, enemy.row))
+            # Forge ogres damage adjacent player-placed walls
+            for enemy in self.enemies:
+                if isinstance(enemy, ForgeOgre):
+                    self._forge_ogre_attack(enemy)
+
             if not self._is_multiroom:
                 for enemy in self.enemies:
                     if (enemy.col, enemy.row) == self.treasure_pos:
@@ -1227,6 +1254,8 @@ class Game:
             for enemy in self.enemies:
                 if isinstance(enemy, PatrolEnemy):
                     self.surf.blit(sp['patrol_guard'], (enemy.col * TILE, enemy.row * TILE))
+                elif isinstance(enemy, ForgeOgre):
+                    self.surf.blit(sp['forge_ogre'], (enemy.col * TILE, enemy.row * TILE))
                 else:
                     self.surf.blit(sp[ekey], (enemy.col * TILE, enemy.row * TILE))
 

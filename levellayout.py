@@ -601,10 +601,10 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None):
             plates.append((*p, gate_id))
 
     enemy_starts = []
-    for _ in node.enemies:
+    for enemy_info in node.enemies:
         p = _next(min_dist_from_player=MIN_ENEMY_DIST)
         if p:
-            enemy_starts.append(p)
+            enemy_starts.append((*p, enemy_info[0]))
 
     return treasures, materials, keys, blocks, plates, enemy_starts
 

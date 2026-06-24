@@ -372,9 +372,15 @@ def _assign_items(graph, feature_set, rng):
                         if n != corridor_name and n not in puzzle_rooms]
     if not enemy_candidates:
         enemy_candidates = [n for n in all_nodes if n != corridor_name]
+    has_forge = feature_set.get('has_forge_ogre', False)
+    forge_placed = False
     for _ in range(e_count):
         target = rng.choice(enemy_candidates)
-        graph.nodes[target].enemies.append(('chaser',))
+        if has_forge and not forge_placed:
+            graph.nodes[target].enemies.append(('forge_ogre',))
+            forge_placed = True
+        else:
+            graph.nodes[target].enemies.append(('chaser',))
 
     # Ensure every room with enemies has at least one treasure (reward for risk)
     item_nos = list(range(1, 10))

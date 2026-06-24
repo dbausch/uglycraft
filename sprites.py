@@ -598,6 +598,46 @@ def draw_crown(size=TILE):
     return s
 
 
+def draw_forge_ogre(size=TILE):
+    """Forge ogre: orange ogre with anvil helmet — breaks placed walls faster."""
+    s = _surf(size)
+    skin = (200, 95, 28)
+    dark = (130, 55, 10)
+
+    # Ears
+    pygame.draw.polygon(s, skin, [(3, 10), (2, 17), (7, 13)])
+    pygame.draw.polygon(s, skin, [(29, 10), (30, 17), (25, 13)])
+
+    # Head
+    pygame.draw.rect(s, skin, (5, 6, 22, 20), border_radius=4)
+    pygame.draw.rect(s, dark, (5, 6, 22, 20), 1, border_radius=4)
+
+    # Anvil helmet (dark metal, flat top)
+    helmet = (70, 70, 82)
+    helmet_hi = (100, 100, 115)
+    pygame.draw.rect(s, helmet, (3, 2, 26, 10), border_radius=2)
+    pygame.draw.rect(s, helmet_hi, (3, 2, 26, 10), 1, border_radius=2)
+    pygame.draw.rect(s, (55, 55, 65), (6, 10, 20, 3))
+    # Anvil horn (small protrusion on right)
+    pygame.draw.rect(s, helmet, (27, 4, 4, 6))
+    pygame.draw.line(s, helmet_hi, (27, 4), (30, 4), 1)
+
+    # Angry eyes (red-tinted)
+    for ex in (12, 20):
+        pygame.draw.circle(s, (235, 195, 20), (ex, 15), 3)
+        pygame.draw.circle(s, (180, 40, 10), (ex, 15), 2)
+
+    # Brow ridge
+    pygame.draw.polygon(s, dark, [(5, 11), (14, 14), (27, 11), (27, 13), (14, 16), (5, 13)])
+
+    # Mouth with teeth
+    pygame.draw.rect(s, (15, 8, 3), (7, 22, 18, 5), border_radius=2)
+    for tx in (9, 13, 17, 21):
+        pygame.draw.rect(s, WHITE, (tx, 22, 2, 3))
+
+    return s
+
+
 def draw_patrol_guard(size=TILE):
     """Patrol enemy: ogre with lantern — walks a fixed path, doesn't chase."""
     s = _surf(size)
@@ -1057,6 +1097,7 @@ def create_sprites():
         'boss_3':        draw_boss_ogre(3),
         'shield':        draw_shield_overlay(),
         'patrol_guard':  draw_patrol_guard(),
+        'forge_ogre':    draw_forge_ogre(),
         'mat_rocks':     draw_rocks_pickup(),
         'mat_planks':    draw_planks_pickup(),
         'mat_metal':     draw_metal_pickup(),

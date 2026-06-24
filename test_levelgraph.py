@@ -620,7 +620,8 @@ class TestBuildLevelDict(unittest.TestCase):
                     if (nc, nr) in passable and (nc, nr) not in dist:
                         dist[(nc, nr)] = dist[(cx, cy)] + 1
                         q.append((nc, nr))
-            for ec, er in room.get('enemy_starts', []):
+            for edata in room.get('enemy_starts', []):
+                ec, er = edata[0], edata[1]
                 d = dist.get((ec, er), 0)
                 self.assertGreaterEqual(
                     d, MIN_ENEMY_DIST // 2,
