@@ -68,7 +68,9 @@ class Enemy(Entity):
             nc, nr = self.col + dc, self.row + dr
             return (0 <= nc < COLS and 0 <= nr < ROWS
                     and not walls[nc][nr]
-                    and (nc, nr) not in occupied)
+                    and (nc, nr) not in occupied
+                    and (self.room_tiles is None
+                         or (nc, nr) in self.room_tiles))
 
         def step(dc, dr):
             self.col += dc
@@ -104,6 +106,8 @@ class Enemy(Entity):
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nc, nr = self.col + dc, self.row + dr
             if (nc, nr) in occupied:
+                continue
+            if self.room_tiles is not None and (nc, nr) not in self.room_tiles:
                 continue
             d = dist.get((nc, nr), float('inf'))
             if d < best:
