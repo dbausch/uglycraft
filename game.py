@@ -1177,17 +1177,15 @@ class Game:
             for jet in self._flame_jets:
                 dc, dr = jet.get('dir', (1, 0))
                 d = _DIR_SUFFIX.get((dc, dr), 'r')
-                # Source wall with thrower nozzle
                 sc, sr = jet.get('source', jet['tiles'][0])
                 src_key = f'flame_source_{d}'
                 if src_key in sp:
                     self.surf.blit(sp[src_key], (sc * TILE, sr * TILE))
-                # Flame tiles
                 for idx, (fc, fr) in enumerate(jet['tiles']):
                     intensity = _flame_tile_intensity(
                         jet, idx, self._flame_timer)
                     frame = min(8, int(intensity * 8))
-                    self.surf.blit(sp[f'flame_{d}_{frame}'],
+                    self.surf.blit(sp[f'flame_{frame}'],
                                    (fc * TILE, fr * TILE))
             for dc, dr, door_color in self._room_doors.get(rk, []):
                 o = self._door_orient(dc, dr)
