@@ -775,20 +775,13 @@ def draw_pushable_block(size=TILE):
 
 
 def draw_open_door(color, size=TILE):
-    """Opened door — floor tile with corner brackets framing the opening."""
+    """Opened door — floor tile with a coloured threshold rectangle."""
     s = _surf(size, alpha=False)
     s.fill((8, 8, 12))  # floor base
-    frame = (120, 95, 55)
-    bk = 6  # bracket length
-    bw = 3  # bracket width
-    # Four corner brackets
-    for cx, cy, dx, dy in ((0, 0, 1, 1), (size - bw, 0, -1, 1),
-                            (0, size - bw, 1, -1), (size - bw, size - bw, -1, -1)):
-        pygame.draw.rect(s, frame, (cx, cy, bk, bw))   # horizontal arm
-        pygame.draw.rect(s, frame, (cx, cy, bw, bk))   # vertical arm
-    # Coloured threshold strip across the centre
-    dark = tuple(max(0, c - 60) for c in color)
-    pygame.draw.rect(s, dark, (bk, size // 2 - 1, size - 2 * bk, 2))
+    # Thin coloured rectangle inset from the edges — a doorstep
+    m = 4
+    dark = tuple(max(0, c - 80) for c in color)
+    pygame.draw.rect(s, dark, (m, m, size - 2 * m, size - 2 * m), 1)
     return s
 
 
