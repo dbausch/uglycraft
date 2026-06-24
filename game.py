@@ -132,7 +132,10 @@ class Game:
         self._wall_hits.pop((col, row), None)
         self._level_walls.pop((col, row), None)
         self._placed_walls.discard((col, row))
-        self._build_walls()
+        if self._is_multiroom:
+            self._build_walls_multiroom()
+        else:
+            self._build_walls()
         self.sounds.play('break')
         self._breaks_toward_credit += 1
         if self._breaks_toward_credit >= BREAKS_PER_CREDIT:
