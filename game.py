@@ -282,6 +282,41 @@ class Game:
         self._build_walls_multiroom()
         self._bump_consumed.clear()
         self._tag_enemies_with_rooms()
+        self._verify_blocks()
+
+    def _verify_blocks(self):
+        """Runtime check: every block must be pushable in ≥1 direction
+        using the ACTUAL game collision map."""
+        if not self._is_multiroom:
+            return
+        rk = self._current_room
+        for bc, br in self._room_blocks.get(rk, []):
+            push_dirs = 0
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                pf_c, pf_r = bc - dc, br - dr
+                pt_c, pt_r = bc + dc, br + dr
+                pf_ok = (0 < pf_c < COLS - 1 and 0 < pf_r < ROWS - 1
+                         and not self.walls[pf_c][pf_r])
+                pt_ok = (0 < pt_c < COLS - 1 and 0 < pt_r < ROWS - 1
+                         and not self.walls[pt_c][pt_r])
+                if pf_ok and pt_ok:
+                    push_dirs += 1
+            if push_dirs == 0:
+                import sys
+                print(f"BUG: block at ({bc},{br}) has 0 push directions "
+                      f"in game walls! Solver missed this.", file=sys.stderr)
+                # Dump the surroundings
+                for dr in range(-2, 3):
+                    row = ""
+                    for dc in range(-2, 3):
+                        c, r = bc + dc, br + dr
+                        if c == bc and r == br:
+                            row += "B"
+                        elif 0 <= c < COLS and 0 <= r < ROWS and self.walls[c][r]:
+                            row += "#"
+                        else:
+                            row += "."
+                    print(f"  {row}", file=sys.stderr)
 
     def _tag_enemies_with_rooms(self):
         """Assign each enemy to its room based on tile_owner map."""

@@ -309,12 +309,13 @@ def validate_push_puzzles(room_data, tile_owner):
 
     locked_doors = room_data.get('locked_doors', [])
 
-    # Build set of passable tiles: exclude reinforced walls, locked doors,
-    # gates (closed), and other blocks — matching what the game does
+    # Build set of passable tiles: exclude ALL walls (any type), locked
+    # doors, gates (closed), and other blocks — matching what the game does.
+    # Breakable walls (stone/wooden) ARE collision in the game until broken,
+    # and blocks can't be pushed through them.
     all_obstacles = set()
-    for pos, wt in walls.items():
-        if wt == WALL_REINFORCED:
-            all_obstacles.add(pos)
+    for pos in walls:
+        all_obstacles.add(pos)
     for dc, dr, _ in locked_doors:
         all_obstacles.add((dc, dr))
     for gc, gr, _ in gates_list:
@@ -552,39 +553,10 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None):
             keys.append((*p, key_colour))
 
     blocks = []
-    floor_set = set(placed_node.floor_tiles) - set(walls.keys())
     for _ in node.blocks:
-        # Blocks must have at least 2 pushable directions (free on
-        # both sides of at least one axis) so they're not stuck
-        best = None
-        for p in floor:
-            if p in used:
-                continue
-            free_dirs = 0
-            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                push_from = (p[0] - dc, p[1] - dr)
-                push_to = (p[0] + dc, p[1] + dr)
-                if push_from in floor_set and push_to in floor_set:
-                    free_dirs += 1
-            if free_dirs >= 2:
-                best = p
-                break
-        if best is None:
-            # Fallback: any tile with at least 1 pushable direction
-            for p in floor:
-                if p in used:
-                    continue
-                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    push_from = (p[0] - dc, p[1] - dr)
-                    push_to = (p[0] + dc, p[1] + dr)
-                    if push_from in floor_set and push_to in floor_set:
-                        best = p
-                        break
-                if best:
-                    break
-        if best:
-            used.add(best)
-            blocks.append(best)
+        p = _next()
+        if p:
+            blocks.append(p)
 
     plates = []
     for (gate_id,) in node.plates:
