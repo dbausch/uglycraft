@@ -66,8 +66,14 @@ BFS or greedy movement only considers tiles belonging to its room.
 **Spawn distance**: enemies must start at least 10 tiles (BFS distance)
 from the player. The layout's item placement must enforce this. After
 a catch, the respawn distance is also 10 tiles (currently 8 in Act 1;
-Act 2 raises it). If no tile at that distance exists within the enemy's
-room, fall back to the farthest available tile.
+Act 2 raises it).
+
+**Player spawn room**: the player's start node must be large enough to
+have at least one floor tile ≥10 BFS tiles from any enemy in that room.
+If a room is too small for both the player and an enemy at safe
+distance, it must not contain enemies — or the player must start in a
+different room. The graph generator enforces this: the start node never
+has enemies if its size category is too small (CLOSET).
 
 **Enemy behaviour depends on whether the player is in the same room:**
 - **Same room**: chase the player (BFS/greedy, as in Act 1).
