@@ -27,13 +27,22 @@ by per-level feature sets.
 ## Design Principles
 
 1. **The graph is the level.** The grid is a rendering concern.
-2. **Playability is a graph property.** For every not-yet-passable edge,
+2. **Edges are the only passages.** Two nodes that share an edge have
+   exactly one passage between them — the edge's connection tile. The
+   wall between them is otherwise complete and unbroken. Two nodes with
+   no edge between them have no passage at all, even if they are
+   physically adjacent on the grid. This is the fundamental invariant
+   that makes graph-level reasoning (playability, locks, gates) correct:
+   the physical layout faithfully represents the graph topology.
+3. **Playability is a graph property.** For every not-yet-passable edge,
    the condition that makes it passable must be achievable from the start.
-3. **Feature sets define levels.** Each level specifies which edge types,
+   Because edges are the only passages, validating the graph guarantees
+   the grid layout is also valid.
+4. **Feature sets define levels.** Each level specifies which edge types,
    node sizes, and architectural features the generator may use.
-4. **No hand-authored coordinates.** The layout algorithm places nodes and
+5. **No hand-authored coordinates.** The layout algorithm places nodes and
    derives walls automatically. Items are placed within their room's floor.
-5. **Output is unchanged.** The game engine receives the same dict format.
+6. **Output is unchanged.** The game engine receives the same dict format.
    No changes to `game.py`, `rooms.py`, or any rendering code.
 
 ## Graph Model
@@ -87,9 +96,15 @@ Feature sets → Graph → Items → Validate → Partition → Layout → Walls
 3. **Validate**: BFS from start node through progressively opened edges
 4. **Partition**: split into grid groups if needed; cross-grid edges become
    border exits or staircases
-5. **Layout**: arrange nodes spatially within 30×16, tight packing
-6. **Derive walls**: floor = room tiles; wall = everything else (reinforced);
-   edge tiles get their connection type (doorway/stone/locked/gate)
+5. **Layout**: arrange nodes spatially within 30×16, tight packing.
+   Every pair of nodes must be separated by at least one tile of wall
+   on every shared boundary. No two rooms may touch directly — there
+   is always wall between them.
+6. **Derive walls**: floor = room tiles; wall = everything else (reinforced).
+   For each edge in the graph, exactly one wall tile on the shared
+   boundary is converted to the edge's connection type (doorway, stone,
+   locked door, gate). All other shared-boundary tiles remain wall.
+   This guarantees the edge is the only passage between the two rooms.
 7. **Output**: game-format dict
 
 ## Level Feature Sets
@@ -129,11 +144,29 @@ Feature sets → Graph → Items → Validate → Partition → Layout → Walls
 | `levellayout.py` | Layout algorithm, wall derivation, game-format output |
 | `levels.py` | Feature set definitions, `generate_act2_levels()` |
 
+## Layout Invariant Checks
+
+After layout and wall derivation, the following must hold on the grid:
+
+1. **Separation**: for every pair of nodes (whether or not they share an
+   edge), their floor tiles are never adjacent without a wall between them.
+   No floor tile of node A is cardinally adjacent to a floor tile of node B.
+2. **Single passage**: for every edge in the graph, there is exactly one
+   non-wall tile on the shared boundary. That tile is the connection point.
+3. **No unintended passages**: for every pair of nodes with NO edge, there
+   is no non-wall tile on their shared boundary. The wall is complete.
+4. **Items inside rooms**: every placed item (treasure, material, key,
+   block, plate, enemy) is on a floor tile of its owning node.
+5. **Player start on floor**: the player start tile is floor.
+
+If any check fails, the layout is invalid and must be regenerated.
+
 ## Done when
 
 - [ ] `levelgraph.py` generates valid graphs from feature sets
 - [ ] Playability validation catches all unreachable/bypassed items
 - [ ] `levellayout.py` produces tight-packed floor plans on 30×16 grids
+- [ ] Layout invariant: edges are the only passages between rooms (unit-tested)
 - [ ] Generated levels are playable in `poe run --level N`
 - [ ] Restarting the game produces different layouts
 - [ ] Levels 1-10 remain byte-identical
