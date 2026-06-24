@@ -7,7 +7,8 @@ enemy_starts is a list of positions; EASY always uses only the first one,
 HARD uses all of them (1 enemy for levels 1-3, 2 for 4-6, 3 for 7-9).
 """
 from constants import COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN
-from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL, MAT_CRYSTAL
+from crafting import (MAT_ROCKS, MAT_PLANKS, MAT_METAL, MAT_CRYSTAL,
+                      KEY_RED, KEY_BLUE)
 
 
 def _hwall(x1, x2, y):
@@ -281,6 +282,94 @@ ACT2_LEVELS = [
                     (18, 3, MAT_PLANKS),
                 ],
                 'exits': {'left_7': 'hall'},
+            },
+        },
+    },
+
+    # 12 ── "The Gatehouse" ── 2 rooms ────────────────────────────────────────
+    #
+    # Locked doors and keys. The main room has a red-locked passage to a
+    # treasure chamber; the red key is in the second room behind a blue door.
+    # The blue key is in the main room. Teaches: find key → open door.
+    {
+        'start_room': 'gate',
+        'player_start': (2, 7),
+        'rooms': {
+            'gate': {
+                'walls': _typed_walls(
+                    # Reinforced structure: two chambers divided by a thick wall
+                    _r(_vwall(14, 1, 6)),
+                    _r(_vwall(14, 9, 14)),
+                    # Upper chamber walls
+                    _r(_hwall(1, 13, 4)),
+                    _r(_hwall(15, 28, 4)),
+                    # Lower chamber walls
+                    _r(_hwall(1, 13, 11)),
+                    _r(_hwall(15, 28, 11)),
+                    # Pillars
+                    _r([(7, 7)]), _r([(7, 8)]),
+                    _r([(21, 7)]), _r([(21, 8)]),
+                ),
+                'enemy_starts': [(12, 2), (20, 13)],
+                'patrol_enemies': [
+                    {'start': (4, 7),
+                     'waypoints': [(4, 7), (4, 13)]},
+                ],
+                'treasures': [
+                    (3, 2, 1),     # coin, upper-left
+                    (10, 2, 2),    # diamond, upper area
+                    (24, 13, 5),   # gold ingot, lower-right
+                ],
+                'materials': [
+                    (6, 2, MAT_ROCKS),
+                    (22, 2, MAT_ROCKS),
+                    (6, 13, MAT_ROCKS),
+                    (22, 13, MAT_PLANKS),
+                ],
+                'keys': [
+                    (26, 2, KEY_BLUE),   # blue key in upper-right
+                ],
+                'locked_doors': [
+                    (14, 7, KEY_RED),    # red door in centre divider
+                ],
+                'exits': {'right_7': 'vault'},
+            },
+            'vault': {
+                'walls': _typed_walls(
+                    # Reinforced vault structure (gap at 6,7 for blue door)
+                    _r(_vwall(6, 1, 6)),
+                    _r(_vwall(6, 8, 14)),
+                    _r(_vwall(22, 1, 14)),
+                    _r(_hwall(7, 21, 4)),
+                    _r(_hwall(7, 21, 11)),
+                    # Inner alcoves
+                    _r(_vwall(12, 5, 10)),
+                    _r(_vwall(16, 5, 10)),
+                    # Wooden barriers inside
+                    _w([(12, 7)]),
+                    _w([(16, 8)]),
+                ),
+                'enemy_starts': [(14, 3)],
+                'treasures': [
+                    (14, 7, 4),    # trophy, inner vault
+                    (14, 8, 8),    # lantern, inner vault
+                    (9, 7, 3),     # small gems, side alcove
+                    (19, 8, 6),    # platinum ingot, side alcove
+                    (14, 13, 9),   # emerald, bottom
+                ],
+                'materials': [
+                    (9, 3, MAT_ROCKS),
+                    (19, 3, MAT_PLANKS),
+                    (9, 12, MAT_METAL),
+                    (19, 12, MAT_METAL),
+                ],
+                'keys': [
+                    (14, 12, KEY_RED),   # red key in lower centre
+                ],
+                'locked_doors': [
+                    (6, 7, KEY_BLUE),    # blue door on left vault wall
+                ],
+                'exits': {'left_7': 'gate'},
             },
         },
     },

@@ -6,15 +6,18 @@ class RoomState:
     """Snapshot of a single room's mutable state."""
 
     __slots__ = ('level_walls', 'placed_walls', 'wall_hits',
-                 'enemies', 'collected_pickups')
+                 'enemies', 'treasures', 'materials', 'keys', 'doors')
 
-    def __init__(self, level_walls, placed_walls, wall_hits,
-                 enemies, collected_pickups):
+    def __init__(self, level_walls, placed_walls, wall_hits, enemies,
+                 treasures=None, materials=None, keys=None, doors=None):
         self.level_walls = level_walls
         self.placed_walls = placed_walls
         self.wall_hits = wall_hits
         self.enemies = enemies
-        self.collected_pickups = collected_pickups
+        self.treasures = treasures or []
+        self.materials = materials or []
+        self.keys = keys or []
+        self.doors = doors or []
 
 
 def parse_level_walls(raw):

@@ -13,7 +13,8 @@ from sounds import SoundManager
 from rooms import RoomState, parse_level_walls, find_exit
 from crafting import (Inventory, RECIPES, CRAFT_NAMES, CRAFT_ICONS,
                       CRAFT_STONE_WALL, MATERIAL_NAMES, MATERIAL_ICONS,
-                      TOOL_NAMES, TOOL_ICONS, MAT_ROCKS)
+                      TOOL_NAMES, TOOL_ICONS, MAT_ROCKS,
+                      KEY_NAMES, KEY_COLORS)
 
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
@@ -171,11 +172,15 @@ class Game:
             self._loot_collected = 0
             self._room_treasures = {}
             self._room_materials = {}
+            self._room_keys = {}
+            self._room_doors = {}
             for rkey, rdata in data['rooms'].items():
                 treasures = list(rdata.get('treasures', []))
                 self._room_treasures[rkey] = treasures
                 self._loot_total += len(treasures)
                 self._room_materials[rkey] = list(rdata.get('materials', []))
+                self._room_keys[rkey] = list(rdata.get('keys', []))
+                self._room_doors[rkey] = list(rdata.get('locked_doors', []))
             self._enter_room(self._current_room)
         else:
             self._level_walls = parse_level_walls(data['walls'])
@@ -232,10 +237,10 @@ class Game:
             self._placed_walls = st.placed_walls
             self._wall_hits = st.wall_hits
             self.enemies = st.enemies
-            if hasattr(st, '_treasures'):
-                self._room_treasures[room_key] = st._treasures
-            if hasattr(st, '_materials'):
-                self._room_materials[room_key] = st._materials
+            self._room_treasures[room_key] = st.treasures
+            self._room_materials[room_key] = st.materials
+            self._room_keys[room_key] = st.keys
+            self._room_doors[room_key] = st.doors
         else:
             self._level_walls = parse_level_walls(room_data['walls'])
             self._placed_walls = set()
@@ -253,21 +258,26 @@ class Game:
 
     def _save_room_state(self):
         """Snapshot the current room's mutable state before leaving."""
-        self._room_states[self._current_room] = RoomState(
+        rk = self._current_room
+        self._room_states[rk] = RoomState(
             level_walls=dict(self._level_walls),
             placed_walls=set(self._placed_walls),
             wall_hits=dict(self._wall_hits),
             enemies=list(self.enemies),
-            collected_pickups=set(),
+            treasures=list(self._room_treasures.get(rk, [])),
+            materials=list(self._room_materials.get(rk, [])),
+            keys=list(self._room_keys.get(rk, [])),
+            doors=list(self._room_doors.get(rk, [])),
         )
-        self._room_states[self._current_room]._treasures = \
-            list(self._room_treasures.get(self._current_room, []))
-        self._room_states[self._current_room]._materials = \
-            list(self._room_materials.get(self._current_room, []))
 
     def _build_walls_multiroom(self):
         """Build collision map for a multi-room level, opening exit tiles."""
         self._build_walls()
+        room_key = self._current_room
+        # Locked doors act as walls
+        for dc, dr, _color in self._room_doors.get(room_key, []):
+            self.walls[dc][dr] = True
+        # Open exit tiles in the border
         room_data = self._current_room_data
         for exit_key in room_data.get('exits', {}):
             side, pos_str = exit_key.rsplit('_', 1)
@@ -325,6 +335,38 @@ class Game:
                 self.sounds.play('collect')
                 materials.pop(i)
                 return
+
+    def _collect_keys(self):
+        """Check if the player is standing on a key pickup (Act 2)."""
+        if not self._is_multiroom:
+            return
+        pc, pr = self.player.col, self.player.row
+        room_key = self._current_room
+        keys = self._room_keys.get(room_key, [])
+        for i, (kc, kr, key_color) in enumerate(keys):
+            if pc == kc and pr == kr:
+                self.inventory.add_key(key_color)
+                self.sounds.play('collect')
+                keys.pop(i)
+                return
+
+    def _try_open_door(self):
+        """Try to open an adjacent locked door with a matching key."""
+        if not self._is_multiroom:
+            return
+        pc, pr = self.player.col, self.player.row
+        room_key = self._current_room
+        doors = self._room_doors.get(room_key, [])
+        for dc, dr in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+            nc, nr = pc + dc, pr + dr
+            for i, (door_c, door_r, door_color) in enumerate(doors):
+                if nc == door_c and nr == door_r:
+                    if self.inventory.use_key(door_color):
+                        doors.pop(i)
+                        self._build_walls_multiroom()
+                        self.sounds.play('break')
+                        return True
+        return False
 
     def _spawn_treasure(self):
         self.item_no += 1
@@ -555,7 +597,9 @@ class Game:
             self.sounds.play('place_wall')
 
     def _act2_place(self):
-        """SPACE in Act 2: place the active inventory item."""
+        """SPACE in Act 2: open adjacent door, or place the active item."""
+        if self._try_open_door():
+            return
         c, r = self.player.col, self.player.row
         active = self.inventory.active_item
         if active == CRAFT_STONE_WALL:
@@ -737,8 +781,9 @@ class Game:
                 self._on_caught(enemy)
                 return
 
-        # Material pickup (Act 2)
+        # Pickups (Act 2)
         self._collect_materials()
+        self._collect_keys()
 
         # Treasure collection
         if self._is_multiroom:
@@ -839,6 +884,22 @@ class Game:
             tz = self.treasure_item_no
             if tz in sp:
                 self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
+
+        # Locked doors (Act 2) — rendered on top of floor
+        if self._is_multiroom:
+            room_key = self._current_room
+            for dc, dr, door_color in self._room_doors.get(room_key, []):
+                dkey = f'door_{door_color}'
+                if dkey in sp:
+                    self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
+
+        # Key pickups (Act 2)
+        if self._is_multiroom:
+            room_key = self._current_room
+            for kc, kr, key_color in self._room_keys.get(room_key, []):
+                kkey = f'key_{key_color}'
+                if kkey in sp:
+                    self.surf.blit(sp[kkey], (kc * TILE, kr * TILE))
 
         # Material pickups (Act 2)
         if self._is_multiroom:
@@ -1001,6 +1062,27 @@ class Game:
             txt = self.font_small.render(name, True, col)
             self.surf.blit(txt, (name_x, panel_y + 2))
             panel_y += ROW
+
+        # ── Keys (below tools) ───────────────────────────────────────────
+        any_keys = any(v > 0 for v in inv.keys.values())
+        if any_keys:
+            panel_y += 8
+            header = self.font_small.render("Keys", True, GRAY)
+            self.surf.blit(header, (panel_x, panel_y))
+            panel_y += 22
+            for key_color, name in KEY_NAMES.items():
+                count = inv.keys.get(key_color, 0)
+                if count <= 0:
+                    continue
+                icon_key = f'icon_key_{key_color}'
+                if icon_key in sp:
+                    self.surf.blit(sp[icon_key], (panel_x, panel_y))
+                col = KEY_COLORS.get(key_color, WHITE)
+                txt = self.font_small.render(f"×{count}", True, col)
+                self.surf.blit(txt, (count_x, panel_y + 2))
+                nm = self.font_small.render(name, True, col)
+                self.surf.blit(nm, (name_x, panel_y + 2))
+                panel_y += ROW
 
         # ── Recipes (right panel) ─────────────────────────────────────────
         # Each recipe: [result icon] name  =  [ingredient icons] × count + ...

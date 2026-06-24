@@ -81,6 +81,25 @@ RECIPES = [
 ]
 
 
+# ── Key colours ───────────────────────────────────────────────────────────────
+
+KEY_RED   = 'red'
+KEY_BLUE  = 'blue'
+KEY_GREEN = 'green'
+
+KEY_COLORS = {
+    KEY_RED:   (220,  50,  50),
+    KEY_BLUE:  ( 80, 140, 255),
+    KEY_GREEN: ( 60, 200,  80),
+}
+
+KEY_NAMES = {
+    KEY_RED:   'Red Key',
+    KEY_BLUE:  'Blue Key',
+    KEY_GREEN: 'Green Key',
+}
+
+
 class Inventory:
     """Player inventory for Act 2: materials, tools, crafted items."""
 
@@ -92,6 +111,7 @@ class Inventory:
             MAT_CRYSTAL: 0,
         }
         self.tools = set()
+        self.keys = {}  # {key_color: count}
         self.crafted = {}  # {craft_type: count}
         self.active_item = CRAFT_STONE_WALL
 
@@ -101,6 +121,18 @@ class Inventory:
 
     def add_tool(self, tool_type):
         self.tools.add(tool_type)
+
+    def add_key(self, key_color):
+        self.keys[key_color] = self.keys.get(key_color, 0) + 1
+
+    def use_key(self, key_color):
+        if self.keys.get(key_color, 0) > 0:
+            self.keys[key_color] -= 1
+            return True
+        return False
+
+    def has_key(self, key_color):
+        return self.keys.get(key_color, 0) > 0
 
     def can_craft(self, recipe_idx):
         result, ingredients, tool = RECIPES[recipe_idx]

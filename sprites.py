@@ -677,6 +677,44 @@ def draw_crystal_pickup(size=TILE):
     return s
 
 
+def draw_key_pickup(color, size=TILE):
+    """Floor pickup: coloured key."""
+    s = _surf(size)
+    cx, cy = size // 2, size // 2
+    # Key head (circle)
+    pygame.draw.circle(s, color, (cx, cy - 4), 7)
+    pygame.draw.circle(s, (0, 0, 0, 0), (cx, cy - 4), 3)
+    pygame.draw.circle(s, color, (cx, cy - 4), 7, 2)
+    # Key shaft
+    pygame.draw.rect(s, color, (cx - 1, cy + 2, 3, 12))
+    # Key teeth
+    pygame.draw.rect(s, color, (cx + 2, cy + 8, 4, 2))
+    pygame.draw.rect(s, color, (cx + 2, cy + 12, 3, 2))
+    # Shine
+    bright = tuple(min(255, c + 80) for c in color)
+    pygame.draw.circle(s, bright, (cx - 2, cy - 6), 2)
+    return s
+
+
+def draw_locked_door(color, size=TILE):
+    """Wall tile: locked door with coloured indicator."""
+    s = _surf(size, alpha=False)
+    s.fill((50, 40, 30))
+    # Door panels
+    pygame.draw.rect(s, (90, 70, 45), (3, 2, size // 2 - 4, size - 4), border_radius=2)
+    pygame.draw.rect(s, (90, 70, 45), (size // 2 + 1, 2, size // 2 - 4, size - 4), border_radius=2)
+    # Frame
+    pygame.draw.rect(s, (120, 95, 55), (1, 0, size - 2, size), 2)
+    pygame.draw.line(s, (120, 95, 55), (size // 2, 0), (size // 2, size), 1)
+    # Coloured lock plate
+    lx, ly = size // 2 - 5, size // 2 - 4
+    pygame.draw.rect(s, color, (lx, ly, 10, 8), border_radius=2)
+    # Keyhole
+    pygame.draw.circle(s, (20, 15, 10), (size // 2, ly + 3), 2)
+    pygame.draw.rect(s, (20, 15, 10), (size // 2 - 1, ly + 4, 2, 3))
+    return s
+
+
 def draw_placed_wall(size=TILE):
     """Player-placed block — distinct from level walls"""
     s = _surf(size, alpha=False)
@@ -831,6 +869,15 @@ def create_sprites():
         'icon_barricade':   _icon(draw_craft_barricade_icon()),
         'icon_portal_pair': _icon(draw_craft_portal_icon()),
         'icon_compass':     _icon(draw_craft_compass_icon()),
+        'key_red':       draw_key_pickup((220, 50, 50)),
+        'key_blue':      draw_key_pickup((80, 140, 255)),
+        'key_green':     draw_key_pickup((60, 200, 80)),
+        'door_red':      draw_locked_door((220, 50, 50)),
+        'door_blue':     draw_locked_door((80, 140, 255)),
+        'door_green':    draw_locked_door((60, 200, 80)),
+        'icon_key_red':  _icon(draw_key_pickup((220, 50, 50))),
+        'icon_key_blue': _icon(draw_key_pickup((80, 140, 255))),
+        'icon_key_green':_icon(draw_key_pickup((60, 200, 80))),
         'icon_hammer':      _icon(draw_tool_hammer_icon()),
         'icon_chisel':      _icon(draw_tool_chisel_icon()),
         'icon_runestone':   _icon(draw_tool_runestone_icon()),
