@@ -12,7 +12,8 @@ from hiscore import load_scores, save_score, qualifies
 from sounds import SoundManager
 from rooms import RoomState, parse_level_walls, find_exit
 from crafting import (Inventory, RECIPES, CRAFT_NAMES, CRAFT_ICONS,
-                      CRAFT_STONE_WALL, MATERIAL_NAMES, MATERIAL_ICONS,
+                      CRAFT_STONE_WALL, CRAFT_BRIDGE,
+                      MATERIAL_NAMES, MATERIAL_ICONS,
                       TOOL_NAMES, TOOL_ICONS, MAT_ROCKS,
                       KEY_NAMES, KEY_COLORS)
 
@@ -208,7 +209,6 @@ class Game:
             self._room_blocks = {}
             self._room_plates = {}
             self._room_gates = {}
-            self._water_tiles = set()
             self._bridged_tiles = set()
             self._gate_open = set()  # set of currently open gate_ids
             for rkey, rdata in data['rooms'].items():
@@ -772,7 +772,9 @@ class Game:
         """SPACE in Act 2: place the active item."""
         c, r = self.player.col, self.player.row
         active = self.inventory.active_item
-        if active == CRAFT_STONE_WALL:
+        if active == CRAFT_BRIDGE:
+            self._place_bridge()
+        elif active == CRAFT_STONE_WALL:
             if not self.walls[c][r]:
                 if self.inventory.has_item(CRAFT_STONE_WALL):
                     self.inventory.use_item(CRAFT_STONE_WALL)
@@ -786,6 +788,22 @@ class Game:
                 else:
                     self._build_walls()
                 self.sounds.play('place_wall')
+
+    def _place_bridge(self):
+        """Place a bridge on an adjacent water tile."""
+        if not self.inventory.has_item(CRAFT_BRIDGE):
+            return
+        pc, pr = self.player.col, self.player.row
+        water = getattr(self, '_water_tiles', set())
+        bridged = getattr(self, '_bridged_tiles', set())
+        for dc, dr in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+            nc, nr = pc + dc, pr + dr
+            if (nc, nr) in water and (nc, nr) not in bridged:
+                self.inventory.use_item(CRAFT_BRIDGE)
+                self._bridged_tiles.add((nc, nr))
+                self._build_walls_multiroom()
+                self.sounds.play('place_wall')
+                return
 
     def _inventory_event(self, event):
         """Handle input in the inventory/crafting screen."""
