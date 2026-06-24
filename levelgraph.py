@@ -49,7 +49,8 @@ class Node:
         self.blocks = []          # pushable block count
         self.plates = []          # [(gate_id,)]
         self.enemies = []         # [(enemy_type, ...)]
-        self.patrol_waypoints = None  # [(col, row), ...] resolved during layout
+        self.has_flames = False   # room contains flame jets
+        self.patrol_waypoints = None
 
     def __repr__(self):
         return f"Node({self.name!r}, {self.size.name})"
@@ -380,3 +381,15 @@ def _assign_items(graph, feature_set, rng):
     for name, node in graph.nodes.items():
         if node.enemies and not node.treasures:
             node.treasures.append((rng.choice(item_nos),))
+
+    # Add flame jets to some rooms (if feature set allows)
+    if feature_set.get('has_flames'):
+        flame_candidates = [n for n in all_nodes
+                            if n != corridor_name
+                            and not graph.nodes[n].blocks
+                            and not graph.nodes[n].plates]
+        if flame_candidates:
+            target = rng.choice(flame_candidates)
+            graph.nodes[target].has_flames = True
+            if not graph.nodes[target].treasures:
+                graph.nodes[target].treasures.append((rng.choice(item_nos),))

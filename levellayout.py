@@ -609,6 +609,38 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None):
     return treasures, materials, keys, blocks, plates, enemy_starts
 
 
+def _generate_flame_jets(placed_node, walls, rng):
+    """Generate flame jet data for a room. A flame jet is a horizontal or
+    vertical line of tiles that cycles on/off.
+
+    Returns list of {'tiles': [(c,r),...], 'on_ms': int, 'off_ms': int}.
+    """
+    floor = sorted(t for t in placed_node.floor_tiles if t not in walls)
+    if len(floor) < 6:
+        return []
+
+    # Pick a row or column through the room for the flame line
+    pn = placed_node
+    mid_r = pn.row + pn.h // 2
+    mid_c = pn.col + pn.w // 2
+
+    if rng.random() < 0.5 and pn.w >= 4:
+        # Horizontal flame line at mid_r
+        tiles = [(c, mid_r) for c in range(pn.col + 1, pn.col + pn.w - 1)
+                 if (c, mid_r) not in walls]
+    elif pn.h >= 4:
+        # Vertical flame line at mid_c
+        tiles = [(mid_c, r) for r in range(pn.row + 1, pn.row + pn.h - 1)
+                 if (mid_c, r) not in walls]
+    else:
+        return []
+
+    if len(tiles) < 2:
+        return []
+
+    return [{'tiles': tiles, 'on_ms': 2000, 'off_ms': 2000}]
+
+
 # ── Game-format output ────────────────────────────────────────────────────────
 
 def build_level_dict(graph, rng=None):
@@ -632,13 +664,14 @@ def build_level_dict(graph, rng=None):
     pn = placed[start_name]
     player_start = (pn.col + 1, pn.row + pn.h // 2)
 
-    # Place items per room
+    # Place items and flame jets per room
     all_treasures = []
     all_materials = []
     all_keys = []
     all_blocks = []
     all_plates = []
     all_enemy_starts = []
+    all_flame_jets = []
 
     for name, node in graph.nodes.items():
         if name not in placed:
@@ -651,6 +684,9 @@ def build_level_dict(graph, rng=None):
         all_blocks.extend(b)
         all_plates.extend(pl)
         all_enemy_starts.extend(es)
+        if node.has_flames:
+            jets = _generate_flame_jets(placed[name], walls, rng)
+            all_flame_jets.extend(jets)
 
     # Locked doors, gates, and water tiles from edges
     all_locked_doors = []
@@ -706,6 +742,8 @@ def build_level_dict(graph, rng=None):
         room['gates'] = all_gates
     if water_tiles:
         room['water_tiles'] = water_tiles
+    if all_flame_jets:
+        room['flame_jets'] = all_flame_jets
 
     # Validate layout invariant
     errors = validate_layout(graph, placed, walls)

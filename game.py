@@ -309,6 +309,10 @@ class Game:
 
         self._tile_owner = room_data.get('tile_owner', {})
         self._water_tiles = set(tuple(t) for t in room_data.get('water_tiles', []))
+        self._flame_jets = room_data.get('flame_jets', [])
+        for jet in self._flame_jets:
+            jet['_tile_set'] = frozenset(tuple(t) for t in jet['tiles'])
+        self._flame_timer = 0
         self._build_walls_multiroom()
         self._bump_consumed.clear()
         self._tag_enemies_with_rooms()
@@ -1000,6 +1004,19 @@ class Game:
                 self._on_caught(enemy)
                 return
 
+        # Flame jets (Act 2)
+        if self._is_multiroom and self._flame_jets:
+            self._flame_timer += dt
+            pc, pr = self.player.col, self.player.row
+            for jet in self._flame_jets:
+                cycle = jet['on_ms'] + jet['off_ms']
+                phase = self._flame_timer % cycle
+                if phase < jet['on_ms']:
+                    if not self.shield and (pc, pr) in jet['_tile_set']:
+                        self.sounds.play('caught')
+                        self._lose_life()
+                        return
+
         # Pressure plates (Act 2)
         self._update_pressure_plates()
 
@@ -1112,6 +1129,13 @@ class Game:
                     self.surf.blit(sp['bridge_tile'], (wc * TILE, wr * TILE))
                 else:
                     self.surf.blit(sp['water'], (wc * TILE, wr * TILE))
+            for jet in self._flame_jets:
+                cycle = jet['on_ms'] + jet['off_ms']
+                phase = self._flame_timer % cycle
+                active = phase < jet['on_ms']
+                fkey = 'flame_on' if active else 'flame_off'
+                for fc, fr in jet['tiles']:
+                    self.surf.blit(sp[fkey], (fc * TILE, fr * TILE))
             for dc, dr, door_color in self._room_doors.get(rk, []):
                 o = self._door_orient(dc, dr)
                 dkey = f'door_{door_color}_{o}'

@@ -229,6 +229,18 @@ def _generate_act2():
             'material_count': (5, 8),
             'enemy_count': (2, 3),
         },
+        # Level 15: + flame jets
+        {
+            'room_count': (5, 7),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
+                           EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL, NodeSize.CLOSET],
+            'treasure_count': (8, 12),
+            'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
+            'material_count': (6, 10),
+            'enemy_count': (2, 4),
+            'has_flames': True,
+        },
     ]
 
     levels = []
