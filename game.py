@@ -174,6 +174,10 @@ class Game:
             self._room_materials = {}
             self._room_keys = {}
             self._room_doors = {}
+            self._room_blocks = {}
+            self._room_plates = {}
+            self._room_gates = {}
+            self._gate_open = set()  # set of currently open gate_ids
             for rkey, rdata in data['rooms'].items():
                 treasures = list(rdata.get('treasures', []))
                 self._room_treasures[rkey] = treasures
@@ -181,6 +185,10 @@ class Game:
                 self._room_materials[rkey] = list(rdata.get('materials', []))
                 self._room_keys[rkey] = list(rdata.get('keys', []))
                 self._room_doors[rkey] = list(rdata.get('locked_doors', []))
+                self._room_blocks[rkey] = list(rdata.get('pushable_blocks', []))
+                self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
+                self._room_gates[rkey] = {gid: (gc, gr)
+                                           for gc, gr, gid in rdata.get('gates', [])}
             self._enter_room(self._current_room)
         else:
             self._level_walls = parse_level_walls(data['walls'])
@@ -241,6 +249,7 @@ class Game:
             self._room_materials[room_key] = st.materials
             self._room_keys[room_key] = st.keys
             self._room_doors[room_key] = st.doors
+            self._room_blocks[room_key] = st.blocks
         else:
             self._level_walls = parse_level_walls(room_data['walls'])
             self._placed_walls = set()
@@ -268,6 +277,7 @@ class Game:
             materials=list(self._room_materials.get(rk, [])),
             keys=list(self._room_keys.get(rk, [])),
             doors=list(self._room_doors.get(rk, [])),
+            blocks=list(self._room_blocks.get(rk, [])),
         )
 
     def _build_walls_multiroom(self):
@@ -277,6 +287,13 @@ class Game:
         # Locked doors act as walls
         for dc, dr, _color in self._room_doors.get(room_key, []):
             self.walls[dc][dr] = True
+        # Pushable blocks act as walls
+        for bc, br in self._room_blocks.get(room_key, []):
+            self.walls[bc][br] = True
+        # Gates act as walls when closed
+        for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
+            if gate_id not in self._gate_open:
+                self.walls[gc][gr] = True
         # Open exit tiles in the border
         room_data = self._current_room_data
         for exit_key in room_data.get('exits', {}):
@@ -349,6 +366,50 @@ class Game:
                 self.sounds.play('collect')
                 keys.pop(i)
                 return
+
+    def _update_pressure_plates(self):
+        """Check pressure plates and open/close linked gates."""
+        if not self._is_multiroom:
+            return
+        room_key = self._current_room
+        plates = self._room_plates.get(room_key, [])
+        if not plates:
+            return
+
+        occupied = {(self.player.col, self.player.row)}
+        occupied.update((e.col, e.row) for e in self.enemies)
+        block_set = set(self._room_blocks.get(room_key, []))
+
+        changed = False
+        for pc, pr, gate_id in plates:
+            pressed = (pc, pr) in occupied or (pc, pr) in block_set
+            was_open = gate_id in self._gate_open
+            if pressed and not was_open:
+                self._gate_open.add(gate_id)
+                changed = True
+            elif not pressed and was_open:
+                self._gate_open.discard(gate_id)
+                changed = True
+        if changed:
+            self._build_walls_multiroom()
+
+    def _try_push_block(self, bc, br, dcol, drow):
+        """Try to push a block at (bc, br) in direction (dcol, drow)."""
+        if not self._is_multiroom:
+            return False
+        room_key = self._current_room
+        blocks = self._room_blocks.get(room_key, [])
+        for i, (bx, by) in enumerate(blocks):
+            if bx == bc and by == br:
+                nc, nr = bc + dcol, br + drow
+                if (0 < nc < COLS - 1 and 0 < nr < ROWS - 1
+                        and not self.walls[nc][nr]):
+                    blocks[i] = (nc, nr)
+                    self._build_walls_multiroom()
+                    self.sounds.play('bump')
+                    return True
+                return False
+        return False
 
     def _try_open_door(self):
         """Try to open an adjacent locked door with a matching key."""
@@ -586,7 +647,12 @@ class Game:
             tc = self.player.col + dcol
             tr = self.player.row + drow
             if 0 <= tc < COLS and 0 <= tr < ROWS and self.walls[tc][tr]:
-                self._register_bump(key, tc, tr)
+                if self._try_push_block(tc, tr, dcol, drow):
+                    self.player.col, self.player.row = tc, tr
+                    self._bump_consumed.discard(key)
+                    self.sounds.play('move')
+                else:
+                    self._register_bump(key, tc, tr)
 
     def _place_wall(self):
         c, r = self.player.col, self.player.row
@@ -781,6 +847,9 @@ class Game:
                 self._on_caught(enemy)
                 return
 
+        # Pressure plates (Act 2)
+        self._update_pressure_plates()
+
         # Pickups (Act 2)
         self._collect_materials()
         self._collect_keys()
@@ -884,6 +953,21 @@ class Game:
             tz = self.treasure_item_no
             if tz in sp:
                 self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
+
+        # Pressure plates and gates (Act 2) — rendered under blocks/entities
+        if self._is_multiroom:
+            room_key = self._current_room
+            for pc, pr, _gid in self._room_plates.get(room_key, []):
+                self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
+            for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
+                gkey = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
+                self.surf.blit(sp[gkey], (gc * TILE, gr * TILE))
+
+        # Pushable blocks (Act 2)
+        if self._is_multiroom:
+            room_key = self._current_room
+            for bc, br in self._room_blocks.get(room_key, []):
+                self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
 
         # Locked doors (Act 2) — rendered on top of floor
         if self._is_multiroom:

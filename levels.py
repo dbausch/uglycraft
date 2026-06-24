@@ -373,6 +373,88 @@ ACT2_LEVELS = [
             },
         },
     },
+    # 13 ── "The Mechanism" ── 2 rooms ───────────────────────────────────────
+    #
+    # Pushable blocks and pressure plates + gates. The main puzzle: push
+    # blocks onto plates to open gates blocking treasure chambers.
+    {
+        'start_room': 'entry',
+        'player_start': (2, 7),
+        'rooms': {
+            'entry': {
+                'walls': _typed_walls(
+                    # Reinforced structure
+                    _r(_hwall(1, 28, 5)),
+                    _r(_hwall(1, 13, 10)),
+                    _r(_hwall(16, 28, 10)),
+                    _r(_vwall(14, 1, 4)),
+                    _r(_vwall(14, 11, 14)),
+                    # Stone partitions
+                    _s([(14, 7)]),
+                    _s([(14, 8)]),
+                ),
+                'enemy_starts': [(26, 3), (26, 12)],
+                'treasures': [
+                    (3, 2, 1),     # coin
+                    (10, 2, 4),    # trophy
+                    (20, 3, 2),    # diamond (behind gate)
+                    (20, 12, 5),   # gold ingot (behind gate)
+                ],
+                'materials': [
+                    (6, 8, MAT_ROCKS),
+                    (10, 8, MAT_ROCKS),
+                    (22, 8, MAT_ROCKS),
+                ],
+                'pushable_blocks': [
+                    (8, 7), (12, 8),
+                ],
+                'pressure_plates': [
+                    (18, 3, 'gate_a'),
+                    (18, 12, 'gate_b'),
+                ],
+                'gates': [
+                    (14, 6, 'gate_a'),
+                    (14, 9, 'gate_b'),
+                ],
+                'exits': {'right_7': 'puzzle'},
+            },
+            'puzzle': {
+                'walls': _typed_walls(
+                    # Reinforced chamber
+                    _r(_vwall(7, 1, 14)),
+                    _r(_vwall(21, 1, 14)),
+                    _r(_hwall(8, 20, 4)),
+                    _r(_hwall(8, 20, 11)),
+                ),
+                'enemy_starts': [(14, 2)],
+                'patrol_enemies': [
+                    {'start': (14, 7),
+                     'waypoints': [(10, 7), (18, 7)]},
+                ],
+                'treasures': [
+                    (14, 7, 7),    # necklace, centre (risky!)
+                    (10, 13, 3),   # small gems
+                    (18, 13, 6),   # platinum ingot
+                    (14, 9, 9),    # emerald (behind gate)
+                ],
+                'materials': [
+                    (10, 6, MAT_PLANKS),
+                    (18, 6, MAT_PLANKS),
+                    (14, 13, MAT_METAL),
+                ],
+                'pushable_blocks': [
+                    (12, 6), (16, 6),
+                ],
+                'pressure_plates': [
+                    (14, 6, 'gate_c'),
+                ],
+                'gates': [
+                    (14, 10, 'gate_c'),
+                ],
+                'exits': {'left_7': 'entry'},
+            },
+        },
+    },
 ]
 
 LEVELS.extend(ACT2_LEVELS)

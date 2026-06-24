@@ -715,6 +715,65 @@ def draw_locked_door(color, size=TILE):
     return s
 
 
+def draw_pressure_plate(size=TILE):
+    """Floor tile with a pressure plate."""
+    s = _surf(size, alpha=False)
+    s.fill((8, 8, 12))  # floor base
+    m = 6
+    pygame.draw.rect(s, (60, 55, 45), (m, m, size - 2 * m, size - 2 * m), border_radius=2)
+    pygame.draw.rect(s, (80, 75, 60), (m, m, size - 2 * m, size - 2 * m), 1, border_radius=2)
+    pygame.draw.rect(s, (50, 45, 35), (m + 2, m + 2, size - 2 * m - 4, size - 2 * m - 4))
+    return s
+
+
+def draw_gate_closed(size=TILE):
+    """Gate (portcullis) — closed state, acts as wall."""
+    s = _surf(size, alpha=False)
+    s.fill((20, 20, 28))
+    bar_color = (100, 90, 70)
+    # Vertical bars
+    for bx in range(4, size - 2, 6):
+        pygame.draw.line(s, bar_color, (bx, 0), (bx, size), 2)
+    # Horizontal bars
+    for by in range(4, size - 2, 8):
+        pygame.draw.line(s, bar_color, (0, by), (size, by), 1)
+    # Rivets at intersections
+    for bx in range(4, size - 2, 6):
+        for by in range(4, size - 2, 8):
+            pygame.draw.circle(s, (130, 120, 95), (bx, by), 1)
+    return s
+
+
+def draw_gate_open(size=TILE):
+    """Gate (portcullis) — open state, passable floor with gate remnant at top."""
+    s = _surf(size, alpha=False)
+    s.fill((8, 8, 12))  # floor
+    bar_color = (80, 72, 55)
+    # Gate retracted to top 6 pixels
+    for bx in range(4, size - 2, 6):
+        pygame.draw.line(s, bar_color, (bx, 0), (bx, 5), 2)
+    pygame.draw.line(s, bar_color, (0, 4), (size, 4), 1)
+    return s
+
+
+def draw_pushable_block(size=TILE):
+    """Pushable block — grey stone, indestructible, player can push."""
+    s = _surf(size, alpha=False)
+    s.fill((70, 70, 80))
+    pygame.draw.rect(s, (95, 95, 108), (2, 2, size - 4, size - 4))
+    pygame.draw.rect(s, (120, 120, 135), (2, 2, size - 4, size - 4), 2)
+    # Chiselled cross pattern
+    mid = size // 2
+    pygame.draw.line(s, (75, 75, 88), (4, mid), (size - 4, mid), 1)
+    pygame.draw.line(s, (75, 75, 88), (mid, 4), (mid, size - 4), 1)
+    # Corner bevels
+    pygame.draw.line(s, (140, 140, 155), (3, 3), (10, 3), 1)
+    pygame.draw.line(s, (140, 140, 155), (3, 3), (3, 10), 1)
+    pygame.draw.line(s, (55, 55, 65), (size - 4, size - 4), (size - 11, size - 4), 1)
+    pygame.draw.line(s, (55, 55, 65), (size - 4, size - 4), (size - 4, size - 11), 1)
+    return s
+
+
 def draw_placed_wall(size=TILE):
     """Player-placed block — distinct from level walls"""
     s = _surf(size, alpha=False)
@@ -875,6 +934,10 @@ def create_sprites():
         'door_red':      draw_locked_door((220, 50, 50)),
         'door_blue':     draw_locked_door((80, 140, 255)),
         'door_green':    draw_locked_door((60, 200, 80)),
+        'pushable_block': draw_pushable_block(),
+        'pressure_plate': draw_pressure_plate(),
+        'gate_closed':    draw_gate_closed(),
+        'gate_open':      draw_gate_open(),
         'icon_key_red':  _icon(draw_key_pickup((220, 50, 50))),
         'icon_key_blue': _icon(draw_key_pickup((80, 140, 255))),
         'icon_key_green':_icon(draw_key_pickup((60, 200, 80))),
