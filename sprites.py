@@ -775,22 +775,25 @@ def draw_pushable_block(size=TILE):
 
 
 def draw_open_door(size=TILE):
-    """Opened door — floor with wooden door frame on left and right edges."""
+    """Opened door (vertical passage) — floor with wooden frames left/right."""
     s = _surf(size, alpha=False)
-    s.fill((8, 8, 12))  # floor
+    s.fill((8, 8, 12))
     wood = (100, 60, 22)
     wood_hi = (130, 80, 32)
     wood_dk = (65, 38, 12)
-    fw = 3  # frame width
-    # Left frame
+    fw = 3
     pygame.draw.rect(s, wood, (0, 0, fw, size))
     pygame.draw.line(s, wood_hi, (0, 0), (0, size - 1), 1)
     pygame.draw.line(s, wood_dk, (fw - 1, 0), (fw - 1, size - 1), 1)
-    # Right frame
     pygame.draw.rect(s, wood, (size - fw, 0, fw, size))
     pygame.draw.line(s, wood_hi, (size - fw, 0), (size - fw, size - 1), 1)
     pygame.draw.line(s, wood_dk, (size - 1, 0), (size - 1, size - 1), 1)
     return s
+
+
+def _rotate_h(surf):
+    """Rotate a vertical-passage sprite 90° to make a horizontal-passage variant."""
+    return pygame.transform.rotate(surf, 90)
 
 
 def draw_placed_wall(size=TILE):
@@ -950,14 +953,20 @@ def create_sprites():
         'key_red':       draw_key_pickup((220, 50, 50)),
         'key_blue':      draw_key_pickup((80, 140, 255)),
         'key_green':     draw_key_pickup((60, 200, 80)),
-        'door_red':      draw_locked_door((220, 50, 50)),
-        'door_blue':     draw_locked_door((80, 140, 255)),
-        'door_green':    draw_locked_door((60, 200, 80)),
-        'door_open':       draw_open_door(),
+        'door_red_v':    draw_locked_door((220, 50, 50)),
+        'door_blue_v':   draw_locked_door((80, 140, 255)),
+        'door_green_v':  draw_locked_door((60, 200, 80)),
+        'door_red_h':    _rotate_h(draw_locked_door((220, 50, 50))),
+        'door_blue_h':   _rotate_h(draw_locked_door((80, 140, 255))),
+        'door_green_h':  _rotate_h(draw_locked_door((60, 200, 80))),
+        'door_open_v':   draw_open_door(),
+        'door_open_h':   _rotate_h(draw_open_door()),
         'pushable_block': draw_pushable_block(),
         'pressure_plate': draw_pressure_plate(),
-        'gate_closed':    draw_gate_closed(),
-        'gate_open':      draw_gate_open(),
+        'gate_closed_v':  draw_gate_closed(),
+        'gate_closed_h':  _rotate_h(draw_gate_closed()),
+        'gate_open_v':    draw_gate_open(),
+        'gate_open_h':    _rotate_h(draw_gate_open()),
         'icon_key_red':  _icon(draw_key_pickup((220, 50, 50))),
         'icon_key_blue': _icon(draw_key_pickup((80, 140, 255))),
         'icon_key_green':_icon(draw_key_pickup((60, 200, 80))),

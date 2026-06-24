@@ -95,6 +95,15 @@ class Game:
     def _is_border(self, col, row):
         return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
 
+    def _door_orient(self, col, row):
+        """Detect orientation of a door/gate tile from surrounding walls.
+        'v' = vertical passage (wall left+right), 'h' = horizontal (wall above+below)."""
+        left  = col > 0 and self.walls[col - 1][row]
+        right = col < COLS - 1 and self.walls[col + 1][row]
+        if left or right:
+            return 'v'
+        return 'h'
+
     def _is_unbumpable(self, col, row):
         """Check if (col, row) is a door, gate, or pushable block."""
         if not self._is_multiroom:
@@ -1068,16 +1077,19 @@ class Game:
             for pc, pr, _gid in self._room_plates.get(rk, []):
                 self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
             for gate_id, (gc, gr) in self._room_gates.get(rk, {}).items():
-                gkey = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
-                self.surf.blit(sp[gkey], (gc * TILE, gr * TILE))
+                o = self._door_orient(gc, gr)
+                base = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
+                self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
             for bc, br in self._room_blocks.get(rk, []):
                 self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
             for dc, dr, door_color in self._room_doors.get(rk, []):
-                dkey = f'door_{door_color}'
+                o = self._door_orient(dc, dr)
+                dkey = f'door_{door_color}_{o}'
                 if dkey in sp:
                     self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
             for dc, dr, _color in self._opened_doors:
-                self.surf.blit(sp['door_open'], (dc * TILE, dr * TILE))
+                o = self._door_orient(dc, dr)
+                self.surf.blit(sp[f'door_open_{o}'], (dc * TILE, dr * TILE))
             for kc, kr, key_color in self._room_keys.get(rk, []):
                 kkey = f'key_{key_color}'
                 if kkey in sp:
