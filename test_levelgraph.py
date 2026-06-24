@@ -280,6 +280,20 @@ class TestGeneration(unittest.TestCase):
                     set(plate_rooms) & set(block_rooms),
                     f"Seed {seed}: plate in {plate_rooms}, block in {block_rooms} — not same room")
 
+    def test_all_feature_types_present(self):
+        """Every edge type in the feature set appears at least once."""
+        features = self._make_features(
+            edge_types=[EdgeType.OPEN, EdgeType.BREAKABLE,
+                        EdgeType.LOCKED, EdgeType.GATED])
+        for seed in range(20):
+            rng = random.Random(seed)
+            g = LevelGraph.generate(features, rng=rng)
+            present = {e.edge_type for e in g.edges}
+            for et in [EdgeType.OPEN, EdgeType.BREAKABLE,
+                       EdgeType.LOCKED, EdgeType.GATED]:
+                self.assertIn(et, present,
+                              f"Seed {seed}: {et.name} missing from graph")
+
     def test_respects_room_count(self):
         features = self._make_features(room_count=(3, 3))
         g = LevelGraph.generate(features)

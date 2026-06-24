@@ -218,17 +218,14 @@ class LevelGraph:
         edge_types = feature_set.get('edge_types', [EdgeType.OPEN])
         node_sizes = feature_set.get('node_sizes',
                                       [NodeSize.ROOM, NodeSize.HALL])
+        # Every distinct edge type in the feature set must appear at least once
+        required_types = list(dict.fromkeys(edge_types))
+
         room_min, room_max = feature_set.get('room_count', (4, 6))
-        room_count = rng.randint(room_min, room_max)
+        room_count = max(rng.randint(room_min, room_max), len(required_types))
 
         # Always create a corridor as the backbone
         corridor = graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
-
-        # Ensure at least one edge of each non-OPEN type in the feature set
-        required_types = [et for et in edge_types
-                          if et not in (EdgeType.OPEN, EdgeType.BREAKABLE)]
-        # Deduplicate
-        required_types = list(dict.fromkeys(required_types))
 
         # Attach rooms to the corridor
         room_names = []
