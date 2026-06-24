@@ -780,13 +780,13 @@ def draw_bridge_tile(size=TILE):
     return s
 
 
-def draw_flame_at(surf, x, y, intensity, connected, size=TILE):
+def draw_flame_at(surf, x, y, intensity, connected, nozzle_sides=frozenset(),
+                   size=TILE):
     """Draw a flame tile directly onto surf at pixel position (x, y).
 
-    connected: set of sides that have adjacent fire or nozzle.
-               e.g. {'l', 'r'} for a horizontal mid tile.
-    Draws fire blobs at connected edges and flickering tongues on
-    open sides. Does not fill the whole tile — dark floor visible.
+    connected: set of sides with adjacent fire or nozzle ('l','r','u','d').
+    nozzle_sides: subset of connected that are source nozzles — fire is
+                  drawn as a narrow tongue that doesn't cover the nozzle.
     """
     if intensity <= 0.0:
         pygame.draw.circle(surf, (20, 15, 10), (x + size // 3, y + size // 2), 3)
@@ -800,23 +800,45 @@ def draw_flame_at(surf, x, y, intensity, connected, size=TILE):
     # Centre blob
     blobs = [(cx, cy, int(4 + t * 4))]
 
-    # Edge connectors — only where adjacent fire exists
-    if 'l' in connected:
-        blobs.append((x, cy, er))
-        blobs.append((x, cy - 4, int(1 + t * 2)))
-        blobs.append((x + 5, cy, int(2 + t * 2)))
-    if 'r' in connected:
-        blobs.append((x + size - 1, cy, er))
-        blobs.append((x + size - 1, cy - 4, int(1 + t * 2)))
-        blobs.append((x + size - 6, cy, int(2 + t * 2)))
-    if 'u' in connected:
-        blobs.append((cx, y, er))
-        blobs.append((cx - 4, y, int(1 + t * 2)))
-        blobs.append((cx, y + 5, int(2 + t * 2)))
-    if 'd' in connected:
-        blobs.append((cx, y + size - 1, er))
-        blobs.append((cx - 4, y + size - 1, int(1 + t * 2)))
-        blobs.append((cx, y + size - 6, int(2 + t * 2)))
+    # Edge connectors — only where adjacent fire exists.
+    # 'nozzle' flag: use a narrow tongue that doesn't cover the nozzle.
+    def _add_edge(side):
+        is_nozzle = side in nozzle_sides
+        if side == 'l':
+            if is_nozzle:
+                blobs.append((x + 4, cy, int(2 + t * 2)))
+                blobs.append((x + 3, cy - 2, int(1 + t)))
+            else:
+                blobs.append((x, cy, er))
+                blobs.append((x, cy - 4, int(1 + t * 2)))
+                blobs.append((x + 5, cy, int(2 + t * 2)))
+        elif side == 'r':
+            if is_nozzle:
+                blobs.append((x + size - 5, cy, int(2 + t * 2)))
+                blobs.append((x + size - 4, cy - 2, int(1 + t)))
+            else:
+                blobs.append((x + size - 1, cy, er))
+                blobs.append((x + size - 1, cy - 4, int(1 + t * 2)))
+                blobs.append((x + size - 6, cy, int(2 + t * 2)))
+        elif side == 'u':
+            if is_nozzle:
+                blobs.append((cx, y + 4, int(2 + t * 2)))
+                blobs.append((cx - 2, y + 3, int(1 + t)))
+            else:
+                blobs.append((cx, y, er))
+                blobs.append((cx - 4, y, int(1 + t * 2)))
+                blobs.append((cx, y + 5, int(2 + t * 2)))
+        elif side == 'd':
+            if is_nozzle:
+                blobs.append((cx, y + size - 5, int(2 + t * 2)))
+                blobs.append((cx - 2, y + size - 4, int(1 + t)))
+            else:
+                blobs.append((cx, y + size - 1, er))
+                blobs.append((cx - 4, y + size - 1, int(1 + t * 2)))
+                blobs.append((cx, y + size - 6, int(2 + t * 2)))
+
+    for side in connected:
+        _add_edge(side)
 
     # Flickering tongues on open sides
     if t > 0.3:

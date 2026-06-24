@@ -1189,16 +1189,17 @@ class Game:
                     intensity = _flame_tile_intensity(
                         jet, idx, self._flame_timer)
                     connected = set()
-                    if (fc - 1, fr) in tile_set or (fc - 1, fr) == source:
-                        connected.add('l')
-                    if (fc + 1, fr) in tile_set or (fc + 1, fr) == source:
-                        connected.add('r')
-                    if (fc, fr - 1) in tile_set or (fc, fr - 1) == source:
-                        connected.add('u')
-                    if (fc, fr + 1) in tile_set or (fc, fr + 1) == source:
-                        connected.add('d')
+                    nozzle = set()
+                    for side, (dc, dr) in (('l', (-1, 0)), ('r', (1, 0)),
+                                            ('u', (0, -1)), ('d', (0, 1))):
+                        adj = (fc + dc, fr + dr)
+                        if adj in tile_set:
+                            connected.add(side)
+                        elif adj == source:
+                            connected.add(side)
+                            nozzle.add(side)
                     draw_flame_at(self.surf, fc * TILE, fr * TILE,
-                                  intensity, connected)
+                                  intensity, connected, nozzle_sides=nozzle)
             for dc, dr, door_color in self._room_doors.get(rk, []):
                 o = self._door_orient(dc, dr)
                 dkey = f'door_{door_color}_{o}'
