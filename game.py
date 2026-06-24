@@ -36,6 +36,47 @@ NUM_LEVELS  = len(LEVELS)
 ACT1_BOSS_LEVEL = 10
 
 
+def _flame_tile_intensity(jet, tile_idx, timer_ms):
+    """Compute flame intensity (0.0-1.0) for a tile in a jet.
+
+    The flame sweeps from tile 0 to the last tile during the on phase,
+    then fades from the last tile back during the off phase.
+    Each tile's ignition is staggered by a delay proportional to its
+    position in the jet.
+    """
+    n = len(jet['tiles'])
+    on_ms = jet['on_ms']
+    off_ms = jet['off_ms']
+    cycle = on_ms + off_ms
+    phase = timer_ms % cycle
+
+    # Time each tile takes to ignite/fade (stagger across the on/off period)
+    sweep_ms = on_ms * 0.6       # 60% of on-time used for sweep
+    sustain_ms = on_ms - sweep_ms  # remaining time at full intensity
+    tile_delay = (sweep_ms / max(1, n)) * tile_idx
+
+    if phase < on_ms:
+        # On phase: tiles ignite with staggered delay
+        tile_phase = phase - tile_delay
+        if tile_phase < 0:
+            return 0.0
+        if tile_phase < sweep_ms / max(1, n):
+            return min(1.0, tile_phase / (sweep_ms / max(1, n) * 0.5))
+        return 1.0
+    else:
+        # Off phase: tiles fade from last to first (reverse sweep)
+        fade_phase = phase - on_ms
+        reverse_idx = n - 1 - tile_idx
+        tile_delay_fade = (off_ms * 0.6 / max(1, n)) * reverse_idx
+        tile_phase = fade_phase - tile_delay_fade
+        if tile_phase < 0:
+            return 1.0
+        fade_dur = off_ms * 0.4 / max(1, n)
+        if fade_dur <= 0:
+            return 0.0
+        return max(0.0, 1.0 - tile_phase / fade_dur)
+
+
 class Game:
     def __init__(self, surface: pygame.Surface):
         self.surf = surface
@@ -1007,15 +1048,18 @@ class Game:
         # Flame jets (Act 2)
         if self._is_multiroom and self._flame_jets:
             self._flame_timer += dt
-            pc, pr = self.player.col, self.player.row
-            for jet in self._flame_jets:
-                cycle = jet['on_ms'] + jet['off_ms']
-                phase = self._flame_timer % cycle
-                if phase < jet['on_ms']:
-                    if not self.shield and (pc, pr) in jet['_tile_set']:
-                        self.sounds.play('caught')
-                        self._lose_life()
-                        return
+            if not self.shield:
+                pc, pr = self.player.col, self.player.row
+                for jet in self._flame_jets:
+                    tiles = jet['tiles']
+                    for idx, (fc, fr) in enumerate(tiles):
+                        if fc == pc and fr == pr:
+                            intensity = _flame_tile_intensity(
+                                jet, idx, self._flame_timer)
+                            if intensity > 0.3:
+                                self.sounds.play('caught')
+                                self._lose_life()
+                                return
 
         # Pressure plates (Act 2)
         self._update_pressure_plates()
@@ -1130,12 +1174,13 @@ class Game:
                 else:
                     self.surf.blit(sp['water'], (wc * TILE, wr * TILE))
             for jet in self._flame_jets:
-                cycle = jet['on_ms'] + jet['off_ms']
-                phase = self._flame_timer % cycle
-                active = phase < jet['on_ms']
-                fkey = 'flame_on' if active else 'flame_off'
-                for fc, fr in jet['tiles']:
-                    self.surf.blit(sp[fkey], (fc * TILE, fr * TILE))
+                tiles = jet['tiles']
+                for idx, (fc, fr) in enumerate(tiles):
+                    intensity = _flame_tile_intensity(
+                        jet, idx, self._flame_timer)
+                    frame = min(8, int(intensity * 8))
+                    self.surf.blit(sp[f'flame_{frame}'],
+                                   (fc * TILE, fr * TILE))
             for dc, dr, door_color in self._room_doors.get(rk, []):
                 o = self._door_orient(dc, dr)
                 dkey = f'door_{door_color}_{o}'
