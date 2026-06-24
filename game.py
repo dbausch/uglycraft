@@ -11,8 +11,9 @@ from entities import Player, Enemy, PatrolEnemy
 from hiscore import load_scores, save_score, qualifies
 from sounds import SoundManager
 from rooms import RoomState, parse_level_walls, find_exit
-from crafting import (Inventory, RECIPES, CRAFT_NAMES, CRAFT_STONE_WALL,
-                      MATERIAL_NAMES, TOOL_NAMES, MAT_ROCKS)
+from crafting import (Inventory, RECIPES, CRAFT_NAMES, CRAFT_ICONS,
+                      CRAFT_STONE_WALL, MATERIAL_NAMES, MATERIAL_ICONS,
+                      TOOL_NAMES, TOOL_ICONS, MAT_ROCKS)
 
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
@@ -942,92 +943,170 @@ class Game:
             self.surf.blit(simg, (LOGICAL_W // 2 - simg.get_width() // 2, by + 58))
 
     def _render_inventory(self):
-        """Draw the inventory/crafting overlay (pauses game)."""
+        """Draw the inventory/crafting overlay — icon-driven for kids."""
         overlay = pygame.Surface((LOGICAL_W, ROWS * TILE), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
+        overlay.fill((0, 0, 0, 210))
         self.surf.blit(overlay, (0, 0))
 
+        sp = self.sprites
         inv = self.inventory
-        lx = 40   # left column x
-        rx = 340  # right column x
-        y = 30
+        ICO = 20  # icon size
 
-        # Title
+        # ── Title ─────────────────────────────────────────────────────────
         title = self.font_big.render("INVENTORY", True, GOLD)
-        self.surf.blit(title, (LOGICAL_W // 2 - title.get_width() // 2, y))
-        y += 50
+        self.surf.blit(title, (LOGICAL_W // 2 - title.get_width() // 2, 14))
 
-        # Materials
-        mat_title = self.font_med.render("Materials", True, WHITE)
-        self.surf.blit(mat_title, (lx, y))
-        y += 28
-        for mat_type, name in MATERIAL_NAMES.items():
+        # ── Materials (left panel) ────────────────────────────────────────
+        # 2×2 grid of material icons with counts
+        panel_x, panel_y = 30, 60
+        header = self.font_small.render("Materials", True, GRAY)
+        self.surf.blit(header, (panel_x, panel_y))
+        panel_y += 22
+
+        mat_list = list(MATERIAL_NAMES.items())
+        for idx, (mat_type, name) in enumerate(mat_list):
+            col_off = (idx % 2) * 130
+            row_off = (idx // 2) * 32
+            x = panel_x + col_off
+            y = panel_y + row_off
             count = inv.materials.get(mat_type, 0)
+
+            icon_key = MATERIAL_ICONS.get(mat_type)
+            if icon_key and icon_key in sp:
+                self.surf.blit(sp[icon_key], (x, y))
+
             col = WHITE if count > 0 else DKGRAY
-            txt = self.font_small.render(f"  {name}: {count}", True, col)
-            self.surf.blit(txt, (lx, y))
-            y += 20
+            txt = self.font_small.render(f"×{count}", True, col)
+            self.surf.blit(txt, (x + ICO + 4, y + 2))
+            nm = self.font_small.render(name, True, col)
+            self.surf.blit(nm, (x + ICO + 4 + txt.get_width() + 6, y + 2))
 
-        # Tools
-        y += 10
-        tool_title = self.font_med.render("Tools", True, WHITE)
-        self.surf.blit(tool_title, (lx, y))
-        y += 28
-        if inv.tools:
-            for tool_type in inv.tools:
-                name = TOOL_NAMES.get(tool_type, tool_type)
-                txt = self.font_small.render(f"  {name}", True, LTGREEN)
-                self.surf.blit(txt, (lx, y))
-                y += 20
-        else:
-            txt = self.font_small.render("  (none found)", True, DKGRAY)
-            self.surf.blit(txt, (lx, y))
+        # ── Tools (below materials) ───────────────────────────────────────
+        tool_y = panel_y + 76
+        header = self.font_small.render("Tools", True, GRAY)
+        self.surf.blit(header, (panel_x, tool_y))
+        tool_y += 22
 
-        # Recipes (right column)
-        ry = 80
-        rec_title = self.font_med.render("Recipes  [Enter]=craft  [Space]=select", True, WHITE)
-        self.surf.blit(rec_title, (rx, ry))
-        ry += 28
+        all_tools = list(TOOL_NAMES.items())
+        for idx, (tool_type, name) in enumerate(all_tools):
+            x = panel_x + idx * 100
+            y = tool_y
+            has = tool_type in inv.tools
+            icon_key = TOOL_ICONS.get(tool_type)
+            if icon_key and icon_key in sp:
+                icon = sp[icon_key]
+                if not has:
+                    dark = icon.copy()
+                    dark.fill((60, 60, 60, 180), special_flags=pygame.BLEND_RGBA_MULT)
+                    self.surf.blit(dark, (x, y))
+                else:
+                    self.surf.blit(icon, (x, y))
+            col = LTGREEN if has else DKGRAY
+            txt = self.font_small.render(name, True, col)
+            self.surf.blit(txt, (x + ICO + 4, y + 2))
 
+        # ── Recipes (right panel) ─────────────────────────────────────────
+        # Each recipe: [result icon] name  =  [ingredient icons] × count + ...
+        rx = 360
+        ry = 60
+        header = self.font_small.render("Recipes", True, GRAY)
+        self.surf.blit(header, (rx, ry))
+        ry += 24
+
+        ROW_H = 36
         for i, (result, ingredients, tool) in enumerate(RECIPES):
             is_selected = (i == self._inv_cursor)
             can = inv.can_craft(i)
+            locked = tool and tool not in inv.tools
+            y = ry + i * ROW_H
 
+            # Selection highlight
             if is_selected:
-                pygame.draw.rect(self.surf, (50, 50, 80),
-                                 (rx - 4, ry - 2, 600, 22))
+                pygame.draw.rect(self.surf, (40, 40, 70),
+                                 (rx - 4, y - 2, LOGICAL_W - rx - 10, ROW_H - 2),
+                                 border_radius=4)
+                pygame.draw.rect(self.surf, GOLD if can else GRAY,
+                                 (rx - 4, y - 2, LOGICAL_W - rx - 10, ROW_H - 2),
+                                 1, border_radius=4)
 
+            # Active item marker
+            if inv.active_item == result:
+                pygame.draw.polygon(self.surf, GOLD,
+                                    [(rx - 14, y + 4), (rx - 6, y + 10),
+                                     (rx - 14, y + 16)])
+
+            # Result icon
+            res_icon = CRAFT_ICONS.get(result)
+            if res_icon and res_icon in sp:
+                icon = sp[res_icon]
+                if locked:
+                    icon = icon.copy()
+                    icon.fill((60, 60, 60, 180), special_flags=pygame.BLEND_RGBA_MULT)
+                self.surf.blit(icon, (rx, y))
+
+            # Result name + count
             name = CRAFT_NAMES.get(result, result)
-            parts = []
+            crafted_n = inv.crafted.get(result, 0)
+            if crafted_n > 0:
+                name += f" ×{crafted_n}"
+            col = LTGREEN if can else (DKGRAY if locked else GRAY)
+            txt = self.font_small.render(name, True, col)
+            self.surf.blit(txt, (rx + ICO + 4, y + 2))
+
+            # "=" separator
+            eq = self.font_small.render("=", True, DKGRAY)
+            eq_x = rx + ICO + 4 + txt.get_width() + 8
+            self.surf.blit(eq, (eq_x, y + 2))
+
+            # Ingredient icons with multipliers
+            ix = eq_x + eq.get_width() + 8
+            first = True
             for mat, count in ingredients.items():
-                mname = MATERIAL_NAMES.get(mat, mat)
-                parts.append(f"{count}x {mname}")
-            recipe_str = " + ".join(parts)
+                if not first:
+                    plus = self.font_small.render("+", True, DKGRAY)
+                    self.surf.blit(plus, (ix, y + 2))
+                    ix += plus.get_width() + 4
+                first = False
 
-            if tool and tool not in inv.tools:
-                col = DKGRAY
-                lock = f" [needs {TOOL_NAMES.get(tool, tool)}]"
-            elif can:
-                col = LTGREEN
-                lock = ""
-            else:
-                col = GRAY
-                lock = ""
+                mat_icon = MATERIAL_ICONS.get(mat)
+                if mat_icon and mat_icon in sp:
+                    self.surf.blit(sp[mat_icon], (ix, y))
+                ix += ICO + 2
 
-            count_str = ""
-            if inv.crafted.get(result, 0) > 0:
-                count_str = f" ({inv.crafted[result]})"
+                have = inv.materials.get(mat, 0)
+                enough = have >= count
+                cnt_col = LTGREEN if enough else RED
+                cnt = self.font_small.render(f"×{count}", True, cnt_col)
+                self.surf.blit(cnt, (ix, y + 2))
+                ix += cnt.get_width() + 6
 
-            active = " *" if inv.active_item == result else ""
-            line = f"{name}{count_str}: {recipe_str}{lock}{active}"
-            txt = self.font_small.render(line, True, col)
-            self.surf.blit(txt, (rx, ry))
-            ry += 22
+            # Lock icon for missing tool
+            if locked:
+                tool_icon = TOOL_ICONS.get(tool)
+                if tool_icon and tool_icon in sp:
+                    dark_tool = sp[tool_icon].copy()
+                    dark_tool.fill((80, 80, 80, 180), special_flags=pygame.BLEND_RGBA_MULT)
+                    self.surf.blit(dark_tool, (ix, y))
+                    ix += ICO + 4
+                need_txt = self.font_small.render(f"need {TOOL_NAMES.get(tool, '?')}",
+                                                   True, DKGRAY)
+                self.surf.blit(need_txt, (ix, y + 2))
 
-        # Footer
-        footer = self.font_small.render("[Tab/Esc] close   [Arrows] navigate", True, DKGRAY)
-        self.surf.blit(footer, (LOGICAL_W // 2 - footer.get_width() // 2,
-                                ROWS * TILE - 30))
+        # ── Footer ────────────────────────────────────────────────────────
+        fy = ROWS * TILE - 34
+        hints = [
+            ("[Tab]", "close"),
+            ("[Up/Dn]", "navigate"),
+            ("[Enter]", "craft"),
+            ("[Space]", "select"),
+        ]
+        fx = 200
+        for key, desc in hints:
+            ki = self.font_small.render(key, True, HUD_KEY)
+            di = self.font_small.render(f" {desc}", True, DKGRAY)
+            self.surf.blit(ki, (fx, fy))
+            self.surf.blit(di, (fx + ki.get_width(), fy))
+            fx += ki.get_width() + di.get_width() + 16
 
     def _render_red_flash(self):
         alpha = min(180, int(self._flash_timer * 0.3))

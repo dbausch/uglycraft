@@ -16,6 +16,13 @@ MATERIAL_NAMES = {
     MAT_CRYSTAL: 'Forge Crystal',
 }
 
+MATERIAL_ICONS = {
+    MAT_ROCKS:   'icon_rocks',
+    MAT_PLANKS:  'icon_planks',
+    MAT_METAL:   'icon_metal',
+    MAT_CRYSTAL: 'icon_crystal',
+}
+
 # ── Tool types ────────────────────────────────────────────────────────────────
 
 TOOL_HAMMER    = 'hammer'
@@ -26,6 +33,12 @@ TOOL_NAMES = {
     TOOL_HAMMER:    'Hammer',
     TOOL_CHISEL:    'Chisel',
     TOOL_RUNESTONE: 'Runestone',
+}
+
+TOOL_ICONS = {
+    TOOL_HAMMER:    'icon_hammer',
+    TOOL_CHISEL:    'icon_chisel',
+    TOOL_RUNESTONE: 'icon_runestone',
 }
 
 # ── Craftable item types ──────────────────────────────────────────────────────
@@ -44,6 +57,15 @@ CRAFT_NAMES = {
     CRAFT_BARRICADE:   'Barricade',
     CRAFT_PORTAL_PAIR: 'Portal Pair',
     CRAFT_COMPASS:     'Compass',
+}
+
+CRAFT_ICONS = {
+    CRAFT_STONE_WALL:  'icon_stone_wall',
+    CRAFT_BRIDGE:      'icon_bridge',
+    CRAFT_BELL:        'icon_bell',
+    CRAFT_BARRICADE:   'icon_barricade',
+    CRAFT_PORTAL_PAIR: 'icon_portal_pair',
+    CRAFT_COMPASS:     'icon_compass',
 }
 
 # ── Recipes ───────────────────────────────────────────────────────────────────

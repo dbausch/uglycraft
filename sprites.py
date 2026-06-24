@@ -697,6 +697,105 @@ def draw_shield_overlay(size=TILE):
     return s
 
 
+def _icon(surf, icon_size=20):
+    """Scale a TILE-sized surface down to icon_size for inventory display."""
+    return pygame.transform.smoothscale(surf, (icon_size, icon_size))
+
+
+def draw_craft_bridge_icon(size=TILE):
+    """Craftable item icon: wooden bridge plank."""
+    s = _surf(size)
+    for i, y in enumerate([10, 15, 20]):
+        shade = 12 * (i % 2)
+        pygame.draw.rect(s, (130 + shade, 75 + shade, 22), (4, y, 24, 4))
+        pygame.draw.rect(s, (90, 50, 12), (4, y, 24, 4), 1)
+    pygame.draw.line(s, (100, 55, 15), (8, 8), (8, 24), 2)
+    pygame.draw.line(s, (100, 55, 15), (24, 8), (24, 24), 2)
+    return s
+
+
+def draw_craft_bell_icon(size=TILE):
+    """Craftable item icon: metal bell / noise lure."""
+    s = _surf(size)
+    cx = size // 2
+    pygame.draw.polygon(s, SILVER, [(cx - 8, 6), (cx + 8, 6),
+                                     (cx + 10, 22), (cx - 10, 22)])
+    pygame.draw.rect(s, DKSILVER, (cx - 10, 22, 20, 3))
+    pygame.draw.circle(s, DKSILVER, (cx, 27), 2)
+    pygame.draw.rect(s, (220, 220, 235), (cx - 2, 3, 4, 4), border_radius=1)
+    pygame.draw.line(s, (230, 230, 245), (cx - 5, 9), (cx - 3, 18), 1)
+    return s
+
+
+def draw_craft_barricade_icon(size=TILE):
+    """Craftable item icon: reinforced barricade (stone + wood frame)."""
+    s = _surf(size, alpha=False)
+    s.fill((55, 55, 70))
+    pygame.draw.rect(s, (100, 55, 18), (2, 2, size - 4, 4))
+    pygame.draw.rect(s, (100, 55, 18), (2, size - 6, size - 4, 4))
+    pygame.draw.rect(s, (100, 55, 18), (2, 2, 4, size - 4))
+    pygame.draw.rect(s, (100, 55, 18), (size - 6, 2, 4, size - 4))
+    pygame.draw.rect(s, (80, 80, 100), (6, 6, size - 12, size - 12))
+    pygame.draw.line(s, (110, 110, 130), (7, 7), (11, 7), 1)
+    return s
+
+
+def draw_craft_portal_icon(size=TILE):
+    """Craftable item icon: portal pair (two linked swirls)."""
+    s = _surf(size)
+    for cx, cy in ((size // 3, size // 2), (size * 2 // 3, size // 2)):
+        pygame.draw.circle(s, (80, 60, 200, 80), (cx, cy), 8)
+        pygame.draw.circle(s, (120, 100, 255), (cx, cy), 6, 2)
+        pygame.draw.circle(s, (200, 180, 255), (cx, cy), 2)
+    pygame.draw.line(s, (120, 100, 255, 140), (size // 3 + 6, size // 2),
+                     (size * 2 // 3 - 6, size // 2), 1)
+    return s
+
+
+def draw_craft_compass_icon(size=TILE):
+    """Craftable item icon: compass."""
+    s = _surf(size)
+    cx, cy = size // 2, size // 2
+    pygame.draw.circle(s, (50, 50, 60), (cx, cy), 10)
+    pygame.draw.circle(s, SILVER, (cx, cy), 10, 2)
+    pygame.draw.polygon(s, RED, [(cx, cy - 8), (cx + 3, cy), (cx, cy + 2), (cx - 3, cy)])
+    pygame.draw.polygon(s, WHITE, [(cx, cy + 8), (cx + 3, cy), (cx, cy - 2), (cx - 3, cy)])
+    pygame.draw.circle(s, GOLD, (cx, cy), 2)
+    return s
+
+
+def draw_tool_hammer_icon(size=TILE):
+    """Tool icon: hammer."""
+    s = _surf(size)
+    pygame.draw.rect(s, (100, 60, 18), (13, 14, 4, 16))
+    pygame.draw.rect(s, (140, 140, 155), (8, 6, 16, 10), border_radius=2)
+    pygame.draw.rect(s, (170, 170, 185), (8, 6, 16, 10), 1, border_radius=2)
+    pygame.draw.line(s, (200, 200, 215), (10, 8), (22, 8), 1)
+    return s
+
+
+def draw_tool_chisel_icon(size=TILE):
+    """Tool icon: chisel."""
+    s = _surf(size)
+    pygame.draw.rect(s, (100, 60, 18), (14, 8, 3, 18))
+    pygame.draw.polygon(s, (160, 160, 175), [(12, 6), (19, 6), (17, 8), (14, 8)])
+    pygame.draw.polygon(s, (160, 160, 175), [(13, 26), (18, 26), (16, 30), (15, 30)])
+    return s
+
+
+def draw_tool_runestone_icon(size=TILE):
+    """Tool icon: runestone."""
+    s = _surf(size)
+    cx, cy = size // 2, size // 2
+    pts = [(cx, 4), (cx + 10, cy + 4), (cx, size - 2), (cx - 10, cy + 4)]
+    pygame.draw.polygon(s, (60, 60, 80), pts)
+    pygame.draw.polygon(s, (100, 100, 130), pts, 2)
+    pygame.draw.line(s, (120, 140, 255), (cx, 10), (cx, 24), 2)
+    pygame.draw.line(s, (120, 140, 255), (cx - 5, 16), (cx + 5, 18), 1)
+    pygame.draw.line(s, (120, 140, 255), (cx - 4, 22), (cx + 4, 20), 1)
+    return s
+
+
 def create_sprites():
     return {
         'border_wall':   draw_border_wall(),
@@ -721,6 +820,20 @@ def create_sprites():
         'mat_planks':    draw_planks_pickup(),
         'mat_metal':     draw_metal_pickup(),
         'mat_crystal':   draw_crystal_pickup(),
+        # Inventory icons (20×20)
+        'icon_rocks':    _icon(draw_rocks_pickup()),
+        'icon_planks':   _icon(draw_planks_pickup()),
+        'icon_metal':    _icon(draw_metal_pickup()),
+        'icon_crystal':  _icon(draw_crystal_pickup()),
+        'icon_stone_wall':  _icon(draw_placed_wall()),
+        'icon_bridge':      _icon(draw_craft_bridge_icon()),
+        'icon_bell':        _icon(draw_craft_bell_icon()),
+        'icon_barricade':   _icon(draw_craft_barricade_icon()),
+        'icon_portal_pair': _icon(draw_craft_portal_icon()),
+        'icon_compass':     _icon(draw_craft_compass_icon()),
+        'icon_hammer':      _icon(draw_tool_hammer_icon()),
+        'icon_chisel':      _icon(draw_tool_chisel_icon()),
+        'icon_runestone':   _icon(draw_tool_runestone_icon()),
         1:               draw_coin(),
         2:               draw_big_diamond(),
         3:               draw_small_gems(),
