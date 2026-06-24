@@ -189,6 +189,7 @@ class Game:
                 self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
                 self._room_gates[rkey] = {gid: (gc, gr)
                                            for gc, gr, gid in rdata.get('gates', [])}
+            self._tile_owner = {}
             self._enter_room(self._current_room)
         else:
             self._level_walls = parse_level_walls(data['walls'])
@@ -262,8 +263,30 @@ class Game:
                                  pdata['waypoints'])
                 self.enemies.append(pe)
 
+        self._tile_owner = room_data.get('tile_owner', {})
         self._build_walls_multiroom()
         self._bump_consumed.clear()
+        self._tag_enemies_with_rooms()
+
+    def _tag_enemies_with_rooms(self):
+        """Assign each enemy to its room based on tile_owner map."""
+        if not self._tile_owner:
+            return
+        room_tiles_cache = {}
+        for enemy in self.enemies:
+            room = self._tile_owner.get((enemy.col, enemy.row))
+            if room:
+                enemy.room_name = room
+                if room not in room_tiles_cache:
+                    room_tiles_cache[room] = frozenset(
+                        pos for pos, name in self._tile_owner.items()
+                        if name == room)
+                enemy.room_tiles = room_tiles_cache[room]
+
+    def _player_room(self):
+        """Return the graph node name the player is currently in, or None."""
+        return self._tile_owner.get(
+            (self.player.col, self.player.row))
 
     def _save_room_state(self):
         """Snapshot the current room's mutable state before leaving."""
@@ -814,15 +837,18 @@ class Game:
         self._enemy_timer += dt
         if self._enemy_timer >= self.enemy_ms:
             self._enemy_timer -= self.enemy_ms
-            # reserved tracks tiles claimed by enemies that have already moved
-            # this tick; each enemy vacates its old tile before moving.
             reserved = {(e.col, e.row) for e in self.enemies}
+            player_room = self._player_room() if self._is_multiroom else None
+
             if self.difficulty == HARD:
                 dist = self._bfs_from(self.player.col, self.player.row)
                 for enemy in self.enemies:
                     reserved.discard((enemy.col, enemy.row))
                     if isinstance(enemy, PatrolEnemy):
                         enemy.move_patrol(self.walls, occupied=reserved)
+                    elif (player_room and enemy.room_name
+                          and enemy.room_name != player_room):
+                        enemy.wander(self.walls, occupied=reserved)
                     else:
                         enemy.move_bfs(dist, occupied=reserved)
                     reserved.add((enemy.col, enemy.row))
@@ -831,6 +857,9 @@ class Game:
                     reserved.discard((enemy.col, enemy.row))
                     if isinstance(enemy, PatrolEnemy):
                         enemy.move_patrol(self.walls, occupied=reserved)
+                    elif (player_room and enemy.room_name
+                          and enemy.room_name != player_room):
+                        enemy.wander(self.walls, occupied=reserved)
                     else:
                         enemy.move_toward(self.player.col, self.player.row,
                                           self.walls, occupied=reserved)

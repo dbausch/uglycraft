@@ -4,7 +4,8 @@ import unittest
 from constants import COLS, ROWS, WALL_REINFORCED, WALL_STONE, WALL_WOODEN
 from levelgraph import LevelGraph, Node, Edge, NodeSize, EdgeType, SIZE_RANGES
 from levellayout import (layout_graph, derive_walls, build_level_dict,
-                          PlacedNode, _find_connection_tile)
+                          PlacedNode, _find_connection_tile,
+                          validate_layout, build_tile_owner, MIN_ENEMY_DIST)
 from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
 
 
@@ -322,6 +323,89 @@ class TestLayout(unittest.TestCase):
             self.assertNotIn((c, r), walls, f"Floor tile ({c},{r}) is a wall")
 
 
+class TestLayoutInvariant(unittest.TestCase):
+    """Edges must be the only passages between rooms."""
+
+    def test_no_adjacent_floor_tiles(self):
+        """No two rooms share adjacent floor tiles without a wall."""
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('a', NodeSize.ROOM)
+        g.add_node('b', NodeSize.ROOM)
+        g.add_edge('corridor', 'a', EdgeType.OPEN)
+        g.add_edge('corridor', 'b', EdgeType.OPEN)
+        placed = layout_graph(g, rng=random.Random(0))
+        walls = derive_walls(g, placed)
+        errors = validate_layout(g, placed, walls)
+        self.assertEqual(errors, [], f"Invariant errors: {errors}")
+
+    def test_single_passage_per_edge(self):
+        """Each edge produces exactly one passage in the wall."""
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('room', NodeSize.ROOM)
+        g.add_edge('corridor', 'room', EdgeType.OPEN)
+        placed = layout_graph(g, rng=random.Random(0))
+        walls = derive_walls(g, placed)
+        errors = validate_layout(g, placed, walls)
+        self.assertEqual(errors, [])
+
+    def test_invariant_holds_across_seeds(self):
+        """Layout invariant holds for many random graphs."""
+        features = {
+            'room_count': (4, 5),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE, EdgeType.LOCKED],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
+            'treasure_count': (4, 6),
+            'material_types': [MAT_ROCKS],
+            'material_count': (2, 4),
+            'enemy_count': (1, 2),
+        }
+        for seed in range(15):
+            rng = random.Random(seed)
+            g = LevelGraph.generate(features, rng=rng)
+            if g.validate_playability():
+                continue  # skip invalid graphs
+            placed = layout_graph(g, rng=rng)
+            walls = derive_walls(g, placed)
+            errors = validate_layout(g, placed, walls)
+            self.assertEqual(errors, [],
+                             f"Seed {seed}: {errors}")
+
+
+class TestTileOwnership(unittest.TestCase):
+
+    def test_room_floor_has_owner(self):
+        """Every room's floor tile has an owner. Doorway tiles (wall
+        removed for edges) are not owned — they're transitions."""
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('room', NodeSize.ROOM)
+        g.add_edge('corridor', 'room', EdgeType.OPEN)
+        placed = layout_graph(g, rng=random.Random(0))
+        owner = build_tile_owner(placed)
+        for name, pn in placed.items():
+            for tile in pn.floor_tiles:
+                self.assertIn(tile, owner,
+                              f"Room {name} floor tile {tile} has no owner")
+                self.assertEqual(owner[tile], name)
+
+    def test_no_tile_has_two_owners(self):
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('a', NodeSize.ROOM)
+        g.add_node('b', NodeSize.ROOM)
+        g.add_edge('corridor', 'a', EdgeType.OPEN)
+        g.add_edge('corridor', 'b', EdgeType.OPEN)
+        placed = layout_graph(g, rng=random.Random(0))
+        seen = {}
+        for name, pn in placed.items():
+            for tile in pn.floor_tiles:
+                self.assertNotIn(tile, seen,
+                    f"Tile {tile} owned by both {seen.get(tile)} and {name}")
+                seen[tile] = name
+
+
 class TestBuildLevelDict(unittest.TestCase):
 
     def test_output_format(self):
@@ -362,6 +446,57 @@ class TestBuildLevelDict(unittest.TestCase):
         room = level['rooms'][level['start_room']]
         self.assertNotIn((pc, pr), room['walls'],
                          "Player start is on a wall")
+
+    def test_tile_owner_in_output(self):
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('room', NodeSize.ROOM)
+        g.add_edge('corridor', 'room', EdgeType.OPEN)
+        level = build_level_dict(g)
+        room = level['rooms'][level['start_room']]
+        self.assertIn('tile_owner', room)
+        self.assertIsInstance(room['tile_owner'], dict)
+
+    def test_enemies_far_from_player(self):
+        """Enemies must be placed far from the player start."""
+        from collections import deque
+        features = {
+            'room_count': (3, 4),
+            'edge_types': [EdgeType.OPEN],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
+            'treasure_count': (4, 6),
+            'material_types': [MAT_ROCKS],
+            'material_count': (2, 3),
+            'enemy_count': (2, 3),
+        }
+        for seed in range(10):
+            rng = random.Random(seed)
+            g = LevelGraph.generate(features, rng=rng)
+            if g.validate_playability():
+                continue
+            level = build_level_dict(g, rng=rng)
+            room = level['rooms']['main']
+            pc, pr = level['player_start']
+            walls = room['walls']
+            passable = set()
+            for c in range(1, COLS - 1):
+                for r in range(1, ROWS - 1):
+                    if (c, r) not in walls:
+                        passable.add((c, r))
+            dist = {(pc, pr): 0}
+            q = deque([(pc, pr)])
+            while q:
+                cx, cy = q.popleft()
+                for dc, dr in ((1,0),(-1,0),(0,1),(0,-1)):
+                    nc, nr = cx+dc, cy+dr
+                    if (nc, nr) in passable and (nc, nr) not in dist:
+                        dist[(nc, nr)] = dist[(cx, cy)] + 1
+                        q.append((nc, nr))
+            for ec, er in room.get('enemy_starts', []):
+                d = dist.get((ec, er), 0)
+                self.assertGreaterEqual(
+                    d, MIN_ENEMY_DIST // 2,
+                    f"Seed {seed}: enemy at ({ec},{er}) only {d} tiles from player")
 
     def test_multiple_seeds_produce_different_layouts(self):
         g1 = LevelGraph.generate({

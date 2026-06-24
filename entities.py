@@ -39,6 +39,25 @@ class Player(Entity):
 class Enemy(Entity):
     """Enemy with two movement modes: greedy (EASY) and BFS (HARD)."""
 
+    def __init__(self, col, row):
+        super().__init__(col, row)
+        self.room_name = None       # graph node this enemy belongs to
+        self.room_tiles = None      # set of (col, row) tiles in this room
+
+    def wander(self, walls, occupied=frozenset()):
+        """Move to a random adjacent tile within this enemy's room."""
+        options = []
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nc, nr = self.col + dc, self.row + dr
+            if (0 <= nc < COLS and 0 <= nr < ROWS
+                    and not walls[nc][nr]
+                    and (nc, nr) not in occupied
+                    and (self.room_tiles is None
+                         or (nc, nr) in self.room_tiles)):
+                options.append((nc, nr))
+        if options:
+            self.col, self.row = random.choice(options)
+
     def move_toward(self, px, py, walls, occupied=frozenset()):
         dx = px - self.col
         dy = py - self.row
