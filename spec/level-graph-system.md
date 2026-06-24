@@ -63,6 +63,12 @@ graph node it belongs to. The layout produces this map alongside the
 wall dict. The game uses it to constrain enemy pathfinding — an enemy's
 BFS or greedy movement only considers tiles belonging to its room.
 
+**Spawn distance**: enemies must start at least 10 tiles (BFS distance)
+from the player. The layout's item placement must enforce this. After
+a catch, the respawn distance is also 10 tiles (currently 8 in Act 1;
+Act 2 raises it). If no tile at that distance exists within the enemy's
+room, fall back to the farthest available tile.
+
 **Enemy behaviour depends on whether the player is in the same room:**
 - **Same room**: chase the player (BFS/greedy, as in Act 1).
 - **Different room**: wander randomly within the room. Each movement
