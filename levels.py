@@ -223,14 +223,19 @@ def _generate_act2():
     levels = []
     for i, features in enumerate(feature_sets):
         rng = _rnd.Random(seed + i)
-        for attempt in range(20):
+        for attempt in range(50):
             graph = LevelGraph.generate(features, rng=rng)
             errors = graph.validate_playability()
-            if not errors:
+            if errors:
+                rng = _rnd.Random(seed + i + (attempt + 1) * 1000)
+                continue
+            try:
                 level_dict = build_level_dict(graph, rng=rng)
                 levels.append(level_dict)
                 break
-            rng = _rnd.Random(seed + i + (attempt + 1) * 1000)
+            except ValueError:
+                rng = _rnd.Random(seed + i + (attempt + 1) * 1000)
+                continue
         else:
             raise RuntimeError(f"Failed to generate valid level {11 + i}")
     return levels

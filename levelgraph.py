@@ -288,11 +288,10 @@ def _assign_items(graph, feature_set, rng):
         target = rng.choice(candidates)
         graph.nodes[target].keys.append((colour,))
 
-    # For each gated edge, place plate AND block in the SAME room
-    # (the room on the start side of the gate, so the player can push
-    # the block onto the plate without crossing rooms)
+    # For each gated edge, place plate AND block in the SAME room.
+    # Never in the corridor — it's too narrow for pushing.
     for gate_id, edge in needed_gates.items():
-        candidates = [corridor_name]
+        candidates = []
         for name, _ in graph.neighbors(corridor_name):
             if name == edge.node_b:
                 continue
@@ -300,6 +299,8 @@ def _assign_items(graph, feature_set, rng):
                           if n == name][0]
             if other_edge.edge_type in (EdgeType.OPEN, EdgeType.BREAKABLE):
                 candidates.append(name)
+        if not candidates:
+            candidates = [corridor_name]  # last resort
         target = rng.choice(candidates)
         graph.nodes[target].plates.append((gate_id,))
         graph.nodes[target].blocks.append(1)
