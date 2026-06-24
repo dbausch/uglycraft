@@ -774,6 +774,21 @@ def draw_pushable_block(size=TILE):
     return s
 
 
+def draw_open_door(color, size=TILE):
+    """Opened door — floor tile with door frame and swung-open panel."""
+    s = _surf(size, alpha=False)
+    s.fill((8, 8, 12))  # floor base
+    # Door frame (left and right posts)
+    pygame.draw.rect(s, (120, 95, 55), (0, 0, 3, size))
+    pygame.draw.rect(s, (120, 95, 55), (size - 3, 0, 3, size))
+    # Threshold strip
+    pygame.draw.rect(s, (80, 60, 35), (3, size // 2 - 1, size - 6, 2))
+    # Swung-open door panel (thin, against the left frame)
+    pygame.draw.rect(s, color, (3, 2, 3, size - 4))
+    pygame.draw.rect(s, tuple(max(0, c - 40) for c in color), (3, 2, 3, size - 4), 1)
+    return s
+
+
 def draw_placed_wall(size=TILE):
     """Player-placed block — distinct from level walls"""
     s = _surf(size, alpha=False)
@@ -934,6 +949,9 @@ def create_sprites():
         'door_red':      draw_locked_door((220, 50, 50)),
         'door_blue':     draw_locked_door((80, 140, 255)),
         'door_green':    draw_locked_door((60, 200, 80)),
+        'door_open_red':   draw_open_door((220, 50, 50)),
+        'door_open_blue':  draw_open_door((80, 140, 255)),
+        'door_open_green': draw_open_door((60, 200, 80)),
         'pushable_block': draw_pushable_block(),
         'pressure_plate': draw_pressure_plate(),
         'gate_closed':    draw_gate_closed(),

@@ -119,8 +119,10 @@ class Game:
         wall_type = self._level_walls.get((col, row))
         if wall_type == WALL_REINFORCED:
             return  # indestructible interior wall
+        if self._try_auto_open_door(col, row):
+            return  # door opened by bumping with matching key
         if self._is_unbumpable(col, row):
-            return  # doors, gates, and blocks are not breakable by bumping
+            return  # gates and blocks are not breakable by bumping
         self._bump_consumed.add(key)
         hits_needed = WALL_BUMPS.get(wall_type, WALL_HITS_TO_BREAK)
         hits = self._wall_hits.get((col, row), 0) + 1
@@ -210,6 +212,7 @@ class Game:
                 self._room_gates[rkey] = {gid: (gc, gr)
                                            for gc, gr, gid in rdata.get('gates', [])}
             self.treasure_pos = None
+            self._opened_doors = set()
             self._tile_owner = {}
             self._enter_room(self._current_room)
         else:
@@ -495,22 +498,22 @@ class Game:
                 return False
         return False
 
-    def _try_open_door(self):
-        """Try to open an adjacent locked door with a matching key."""
+    def _try_auto_open_door(self, col, row):
+        """Open a locked door at (col, row) if the player has the key."""
         if not self._is_multiroom:
-            return
-        pc, pr = self.player.col, self.player.row
+            return False
         room_key = self._current_room
         doors = self._room_doors.get(room_key, [])
-        for dc, dr in ((0, -1), (0, 1), (-1, 0), (1, 0)):
-            nc, nr = pc + dc, pr + dr
-            for i, (door_c, door_r, door_color) in enumerate(doors):
-                if nc == door_c and nr == door_r:
-                    if self.inventory.use_key(door_color):
-                        doors.pop(i)
-                        self._build_walls_multiroom()
-                        self.sounds.play('break')
-                        return True
+        for i, (door_c, door_r, door_color) in enumerate(doors):
+            if door_c == col and door_r == row:
+                if self.inventory.has_key(door_color):
+                    self.inventory.use_key(door_color)
+                    doors.pop(i)
+                    self._opened_doors.add((col, row, door_color))
+                    self._build_walls_multiroom()
+                    self.sounds.play('break')
+                    return True
+                return False
         return False
 
     def _spawn_treasure(self):
@@ -747,9 +750,7 @@ class Game:
             self.sounds.play('place_wall')
 
     def _act2_place(self):
-        """SPACE in Act 2: open adjacent door, or place the active item."""
-        if self._try_open_door():
-            return
+        """SPACE in Act 2: place the active item."""
         c, r = self.player.col, self.player.row
         active = self.inventory.active_item
         if active == CRAFT_STONE_WALL:
@@ -1056,6 +1057,10 @@ class Game:
                 dkey = f'door_{door_color}'
                 if dkey in sp:
                     self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
+            for dc, dr, door_color in self._opened_doors:
+                okey = f'door_open_{door_color}'
+                if okey in sp:
+                    self.surf.blit(sp[okey], (dc * TILE, dr * TILE))
             for kc, kr, key_color in self._room_keys.get(rk, []):
                 kkey = f'key_{key_color}'
                 if kkey in sp:
