@@ -610,35 +610,47 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None):
 
 
 def _generate_flame_jets(placed_node, walls, rng):
-    """Generate flame jet data for a room. A flame jet is a horizontal or
-    vertical line of tiles that cycles on/off.
+    """Generate a flame jet originating from a wall into the room.
 
-    Returns list of {'tiles': [(c,r),...], 'on_ms': int, 'off_ms': int}.
+    The jet starts at a wall tile (the source/thrower) and extends
+    inward across floor tiles. Returns list of jet dicts with 'tiles',
+    'source', 'dir', 'on_ms', 'off_ms'.
     """
-    floor = sorted(t for t in placed_node.floor_tiles if t not in walls)
-    if len(floor) < 6:
-        return []
-
-    # Pick a row or column through the room for the flame line
     pn = placed_node
-    mid_r = pn.row + pn.h // 2
-    mid_c = pn.col + pn.w // 2
-
-    if rng.random() < 0.5 and pn.w >= 4:
-        # Horizontal flame line at mid_r
-        tiles = [(c, mid_r) for c in range(pn.col + 1, pn.col + pn.w - 1)
-                 if (c, mid_r) not in walls]
-    elif pn.h >= 4:
-        # Vertical flame line at mid_c
-        tiles = [(mid_c, r) for r in range(pn.row + 1, pn.row + pn.h - 1)
-                 if (mid_c, r) not in walls]
-    else:
+    if pn.w < 4 and pn.h < 4:
         return []
 
-    if len(tiles) < 2:
+    # Candidate source walls: wall tiles adjacent to the room's floor
+    candidates = []
+    for fc, fr in pn.floor_tiles:
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            wc, wr = fc - dc, fr - dr
+            if (wc, wr) in walls and (wc, wr) not in pn.floor_tiles:
+                candidates.append(((wc, wr), (dc, dr)))
+
+    if not candidates:
         return []
 
-    return [{'tiles': tiles, 'on_ms': 2000, 'off_ms': 2000}]
+    # Pick a source wall and direction
+    rng.shuffle(candidates)
+    for source, (dc, dr) in candidates:
+        tiles = []
+        c, r = source[0] + dc, source[1] + dr
+        while ((c, r) in pn.floor_tiles and (c, r) not in walls
+               and len(tiles) < 6):
+            tiles.append((c, r))
+            c += dc
+            r += dr
+        if len(tiles) >= 2:
+            return [{
+                'source': source,
+                'dir': (dc, dr),
+                'tiles': tiles,
+                'on_ms': 2000,
+                'off_ms': 2000,
+            }]
+
+    return []
 
 
 # ── Game-format output ────────────────────────────────────────────────────────
