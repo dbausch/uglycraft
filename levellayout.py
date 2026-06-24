@@ -174,27 +174,57 @@ def derive_walls(graph, placed):
             if (c, r) not in floor:
                 walls[(c, r)] = WALL_REINFORCED
 
-    # Process edges: find the shared-boundary wall tile, convert it
+    # Process edges: find the shared-boundary wall tile(s), convert them
+    water_tiles = []
     for edge in graph.edges:
         if edge.node_a not in placed or edge.node_b not in placed:
             continue
         pa = placed[edge.node_a]
         pb = placed[edge.node_b]
-        conn = _find_connection_tile(pa, pb, walls)
-        if conn is None:
-            continue
 
-        if edge.edge_type == EdgeType.OPEN:
-            walls.pop(conn, None)
-        elif edge.edge_type == EdgeType.BREAKABLE:
-            wt = edge.params.get('wall_type', 'stone')
-            walls[conn] = WALL_STONE if wt == 'stone' else WALL_WOODEN
-        elif edge.edge_type == EdgeType.WATER:
-            walls.pop(conn, None)
-        elif edge.edge_type in (EdgeType.LOCKED, EdgeType.GATED, EdgeType.STAIRS):
-            walls.pop(conn, None)
+        if edge.edge_type == EdgeType.WATER:
+            stream = _build_water_stream(pa, pb, walls)
+            for wt in stream:
+                walls.pop(wt, None)
+            water_tiles.extend(stream)
+        else:
+            conn = _find_connection_tile(pa, pb, walls)
+            if conn is None:
+                continue
+            if edge.edge_type == EdgeType.OPEN:
+                walls.pop(conn, None)
+            elif edge.edge_type == EdgeType.BREAKABLE:
+                wtype = edge.params.get('wall_type', 'stone')
+                walls[conn] = WALL_STONE if wtype == 'stone' else WALL_WOODEN
+            elif edge.edge_type in (EdgeType.LOCKED, EdgeType.GATED,
+                                     EdgeType.STAIRS):
+                walls.pop(conn, None)
 
-    return walls
+    return walls, water_tiles
+
+
+def _build_water_stream(pa, pb, walls):
+    """Build a multi-tile water stream along the shared boundary.
+
+    Returns a list of (col, row) tiles forming the stream. The stream
+    runs along the entire shared boundary between two rooms — all wall
+    tiles that are adjacent to both rooms' floor areas.
+    """
+    candidates = []
+    for pos in list(walls.keys()):
+        adj_a = any((pos[0] + dc, pos[1] + dr) in pa.floor_tiles
+                     for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+        adj_b = any((pos[0] + dc, pos[1] + dr) in pb.floor_tiles
+                     for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+        if adj_a and adj_b:
+            candidates.append(pos)
+
+    if not candidates:
+        return []
+
+    # Sort by position for consistent flow direction
+    candidates.sort()
+    return candidates
 
 
 def _find_connection_tile(pa, pb, walls):
@@ -235,10 +265,10 @@ def validate_layout(graph, placed, walls):
     Returns list of error strings (empty = valid).
     """
     errors = []
-    edge_set = set()
+    edge_set = {}
     for edge in graph.edges:
-        edge_set.add((edge.node_a, edge.node_b))
-        edge_set.add((edge.node_b, edge.node_a))
+        edge_set[(edge.node_a, edge.node_b)] = edge.edge_type
+        edge_set[(edge.node_b, edge.node_a)] = edge.edge_type
 
     names = list(placed.keys())
     for i, name_a in enumerate(names):
@@ -271,9 +301,13 @@ def validate_layout(graph, placed, walls):
                     if adj_a and adj_b:
                         passages.append((c, r))
 
-            has_edge = (name_a, name_b) in edge_set
-            if has_edge:
-                if len(passages) != 1:
+            edge_type = edge_set.get((name_a, name_b))
+            if edge_type is not None:
+                if edge_type == EdgeType.WATER:
+                    if len(passages) < 1:
+                        errors.append(
+                            f"Water edge {name_a!r}<->{name_b!r} has 0 passages")
+                elif len(passages) != 1:
                     errors.append(
                         f"Edge {name_a!r}<->{name_b!r} has {len(passages)} "
                         f"passages (expected 1): {passages}")
@@ -586,7 +620,7 @@ def build_level_dict(graph, rng=None):
     rng = rng or random.Random()
 
     placed = layout_graph(graph, rng=rng)
-    walls = derive_walls(graph, placed)
+    walls, water_tiles = derive_walls(graph, placed)
     tile_owner = build_tile_owner(placed)
 
     # Find player start
@@ -646,7 +680,7 @@ def build_level_dict(graph, rng=None):
         elif edge.edge_type == EdgeType.GATED:
             all_gates.append((*conn, edge.params['gate_id']))
         elif edge.edge_type == EdgeType.WATER:
-            all_water_tiles.append(conn)
+            pass  # water tiles already collected by derive_walls
 
     # Build room dict
     grid_name = 'main'
@@ -670,8 +704,8 @@ def build_level_dict(graph, rng=None):
         room['pressure_plates'] = all_plates
     if all_gates:
         room['gates'] = all_gates
-    if all_water_tiles:
-        room['water_tiles'] = all_water_tiles
+    if water_tiles:
+        room['water_tiles'] = water_tiles
 
     # Validate layout invariant
     errors = validate_layout(graph, placed, walls)

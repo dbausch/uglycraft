@@ -344,7 +344,7 @@ class TestLayout(unittest.TestCase):
         """Every interior tile is either floor, wall, or a doorway."""
         g = self._simple_graph()
         placed = layout_graph(g, rng=random.Random(0))
-        walls = derive_walls(g, placed)
+        walls, _water = derive_walls(g, placed)
         floor = set()
         for pn in placed.values():
             floor.update(pn.floor_tiles)
@@ -382,7 +382,7 @@ class TestLayoutInvariant(unittest.TestCase):
         g.add_edge('corridor', 'a', EdgeType.OPEN)
         g.add_edge('corridor', 'b', EdgeType.OPEN)
         placed = layout_graph(g, rng=random.Random(0))
-        walls = derive_walls(g, placed)
+        walls, _water = derive_walls(g, placed)
         errors = validate_layout(g, placed, walls)
         self.assertEqual(errors, [], f"Invariant errors: {errors}")
 
@@ -393,7 +393,7 @@ class TestLayoutInvariant(unittest.TestCase):
         g.add_node('room', NodeSize.ROOM)
         g.add_edge('corridor', 'room', EdgeType.OPEN)
         placed = layout_graph(g, rng=random.Random(0))
-        walls = derive_walls(g, placed)
+        walls, _water = derive_walls(g, placed)
         errors = validate_layout(g, placed, walls)
         self.assertEqual(errors, [])
 
@@ -414,7 +414,7 @@ class TestLayoutInvariant(unittest.TestCase):
             if g.validate_playability():
                 continue  # skip invalid graphs
             placed = layout_graph(g, rng=rng)
-            walls = derive_walls(g, placed)
+            walls, _water = derive_walls(g, placed)
             errors = validate_layout(g, placed, walls)
             self.assertEqual(errors, [],
                              f"Seed {seed}: {errors}")
