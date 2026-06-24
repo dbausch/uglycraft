@@ -836,23 +836,28 @@ class Game:
             self._build_walls_multiroom()
 
     def _respawn_enemy(self, enemy):
-        """Teleport enemy to a tile at significant BFS distance from the player."""
+        """Teleport enemy to a tile at significant BFS distance from the player.
+        In Act 2, the enemy stays within its own room."""
         dist = self._bfs_from(self.player.col, self.player.row)
         others = {(e.col, e.row) for e in self.enemies if e is not enemy}
         excl = {self.treasure_pos} if self.treasure_pos else set()
-        candidates = [
-            pos for pos, d in dist.items()
-            if d >= 8
-            and pos not in excl
-            and pos not in others
-        ]
+        room = enemy.room_tiles
+
+        def _valid(pos, min_dist):
+            if dist.get(pos, 0) < min_dist:
+                return False
+            if pos in excl or pos in others:
+                return False
+            if room is not None and pos not in room:
+                return False
+            return True
+
+        candidates = [p for p in dist if _valid(p, 8)]
         if not candidates:
-            candidates = [
-                pos for pos, d in dist.items()
-                if d >= 4
-                and pos not in excl
-                and pos not in others
-            ]
+            candidates = [p for p in dist if _valid(p, 4)]
+        if not candidates and room is not None:
+            candidates = [p for p in room
+                          if not self.walls[p[0]][p[1]] and p not in others]
         if candidates:
             enemy.col, enemy.row = random.choice(candidates)
 
