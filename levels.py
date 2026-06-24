@@ -348,16 +348,14 @@ ACT2_LEVELS = [
         'rooms': {
             'gate': {
                 'walls': _typed_walls(
-                    # Corridor north wall (row 5): door at col 5
+                    # Corridor north wall (row 5): door at col 5 only
                     _r(_hwall(1, 4, 5)),
-                    _r(_hwall(6, 10, 5)),
-                    # gap at col 11 for red door
-                    _r(_hwall(12, 28, 5)),
+                    _r(_hwall(6, 28, 5)),
                     # Corridor south wall (row 9): doors at col 4 and col 16
                     _r(_hwall(1, 3, 9)),
                     _r(_hwall(5, 15, 9)),
                     _r(_hwall(17, 28, 9)),
-                    # Guard Room | Secure Wing divider (gap at row 4 for door access)
+                    # Guard Room | Secure Wing divider; red door at (11,4)
                     _r(_vwall(11, 1, 3)),
                     # Key Room | Armoury divider with door at row 11
                     _r(_vwall(11, 9, 10)),
@@ -383,20 +381,21 @@ ACT2_LEVELS = [
                     (3, 12, KEY_BLUE),
                 ],
                 'locked_doors': [
-                    (11, 5, KEY_RED),    # red door in corridor north wall
+                    (11, 4, KEY_RED),    # red door in divider wall
                 ],
                 'exits': {'right_7': 'vault'},
             },
             'vault': {
                 'walls': _typed_walls(
-                    # East nook walls
-                    _r(_vwall(22, 1, 3)),   # upper nook west wall
-                    _r(_hwall(24, 28, 5)),  # upper nook floor (door at col 23)
-                    _r(_vwall(22, 5, 6)),   # wall segment
+                    # East nook walls — col 22 fully sealed except blue door at row 7
+                    _r(_vwall(22, 1, 6)),   # upper section
                     # gap at (22, 7) for blue door
-                    _r(_vwall(22, 8, 9)),   # wall segment
-                    _r(_hwall(24, 28, 10)), # lower nook ceiling (door at col 23)
-                    _r(_vwall(22, 11, 14)), # lower nook west wall
+                    _r(_vwall(22, 8, 14)),  # lower section
+                    # Nook shelves with doorways at col 25
+                    _r(_hwall(23, 24, 5)),  # upper nook floor
+                    _r(_hwall(26, 28, 5)),
+                    _r(_hwall(23, 24, 10)), # lower nook ceiling
+                    _r(_hwall(26, 28, 10)),
                 ),
                 'enemy_starts': [(10, 4)],
                 'treasures': [
@@ -461,18 +460,15 @@ ACT2_LEVELS = [
             'entry': {
                 'walls': _typed_walls(
                     # Corridor walls: row 5 (door at col 5) and row 10 (door at col 5)
+                    # Continuous — no gap at divider column
                     _r(_hwall(1, 4, 5)),
-                    _r(_hwall(6, 12, 5)),
-                    # gap at 13 for gate_a column
-                    _r(_hwall(15, 28, 5)),
+                    _r(_hwall(6, 28, 5)),
                     _r(_hwall(1, 4, 10)),
-                    _r(_hwall(6, 12, 10)),
-                    # gap at 13 for gate_b column
-                    _r(_hwall(15, 28, 10)),
-                    # Workshop | Treasure A divider (single wall, gate at row 3)
+                    _r(_hwall(6, 28, 10)),
+                    # Workshop | Treasure A divider: gate at row 3
                     _r(_vwall(13, 1, 2)),
                     _r(_vwall(13, 4, 5)),
-                    # Machine | Vault B divider (single wall, gate at row 12)
+                    # Machine | Vault B divider: gate at row 12
                     _r(_vwall(13, 10, 11)),
                     _r(_vwall(13, 13, 14)),
                 ),
@@ -513,12 +509,15 @@ ACT2_LEVELS = [
                     _r(_vwall(6, 12, 14)),
                     _r(_vwall(22, 10, 10)),
                     _r(_vwall(22, 12, 14)),
-                    # Inner walls forming upper/lower halls
-                    _r(_hwall(7, 21, 5)),
-                    _r(_hwall(7, 21, 10)),
-                    # Lower hall divider with gate at row 11
+                    # Inner walls forming upper/lower halls (doors at col 10 and col 18)
+                    _r(_hwall(7, 9, 5)),
+                    _r(_hwall(11, 17, 5)),
+                    _r(_hwall(19, 21, 5)),
+                    _r(_hwall(7, 9, 10)),
+                    _r(_hwall(11, 22, 10)),
+                    # Lower hall divider: gate at row 11, sealed rows 10,12-14
                     _r(_vwall(14, 10, 10)),
-                    _r(_vwall(14, 13, 14)),
+                    _r(_vwall(14, 12, 14)),
                 ),
                 'enemy_starts': [(14, 2)],
                 'patrol_enemies': [
@@ -529,7 +528,7 @@ ACT2_LEVELS = [
                     (3, 2, 7),     # necklace in left upper nook
                     (25, 2, 3),    # small gems in right upper nook
                     (14, 7, 6),    # platinum in open area (risky!)
-                    (14, 12, 9),   # emerald behind gate_c
+                    (16, 12, 9),   # emerald behind gate_c (right side)
                 ],
                 'materials': [
                     (3, 12, MAT_PLANKS),
