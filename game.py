@@ -1045,28 +1045,22 @@ class Game:
 
             if self.difficulty == HARD:
                 dist = self._bfs_from(self.player.col, self.player.row)
-                for enemy in self.enemies:
-                    reserved.discard((enemy.col, enemy.row))
-                    if isinstance(enemy, PatrolEnemy):
-                        enemy.move_patrol(self.walls, occupied=reserved)
-                    elif (player_room and enemy.room_name
-                          and enemy.room_name != player_room):
-                        enemy.wander(self.walls, occupied=reserved)
-                    else:
-                        enemy.move_bfs(dist, occupied=reserved)
-                    reserved.add((enemy.col, enemy.row))
             else:
-                for enemy in self.enemies:
-                    reserved.discard((enemy.col, enemy.row))
-                    if isinstance(enemy, PatrolEnemy):
-                        enemy.move_patrol(self.walls, occupied=reserved)
-                    elif (player_room and enemy.room_name
-                          and enemy.room_name != player_room):
-                        enemy.wander(self.walls, occupied=reserved)
+                dist = None
+            for enemy in self.enemies:
+                reserved.discard((enemy.col, enemy.row))
+                if isinstance(enemy, PatrolEnemy):
+                    enemy.move_patrol(self.walls, occupied=reserved)
+                elif (enemy.room_name and
+                      player_room == enemy.room_name):
+                    if dist is not None:
+                        enemy.move_bfs(dist, occupied=reserved)
                     else:
                         enemy.move_toward(self.player.col, self.player.row,
                                           self.walls, occupied=reserved)
-                    reserved.add((enemy.col, enemy.row))
+                else:
+                    enemy.wander(self.walls, occupied=reserved)
+                reserved.add((enemy.col, enemy.row))
             # Forge ogres damage adjacent player-placed walls
             for enemy in self.enemies:
                 if isinstance(enemy, ForgeOgre):
