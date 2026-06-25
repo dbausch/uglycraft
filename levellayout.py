@@ -1044,6 +1044,20 @@ def _build_multi_grid(graph, rng, strategies):
     room_a['exits'] = {f'right_{exit_row}': 'grid_b'}
     room_b['exits'] = {f'left_{exit_row}': 'grid_a'}
 
+    # Place barrier (door/gate) at the exit tile on grid A's side
+    barrier = border_edge.params.get('barrier', 'open')
+    exit_tile = (COLS - 1, exit_row)
+    if barrier == 'locked':
+        colour = border_edge.params['key_colour']
+        doors = room_a.get('locked_doors', [])
+        doors.append((*exit_tile, colour))
+        room_a['locked_doors'] = doors
+    elif barrier == 'gated':
+        gate_id = border_edge.params['gate_id']
+        gates = room_a.get('gates', [])
+        gates.append((*exit_tile, gate_id))
+        room_a['gates'] = gates
+
     return {
         'start_room': 'grid_a',
         'player_start': dict_a['player_start'],

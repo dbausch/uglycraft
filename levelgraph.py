@@ -140,7 +140,12 @@ class LevelGraph:
                     if id(edge) in opened_edges:
                         continue
                     if edge.edge_type in (EdgeType.OPEN, EdgeType.BREAKABLE,
-                                          EdgeType.STAIRS, EdgeType.BORDER):
+                                          EdgeType.STAIRS):
+                        reachable.add(neighbor)
+                        opened_edges.add(id(edge))
+                        frontier.append(neighbor)
+                    elif (edge.edge_type == EdgeType.BORDER
+                          and edge.params.get('barrier', 'open') == 'open'):
                         reachable.add(neighbor)
                         opened_edges.add(id(edge))
                         frontier.append(neighbor)
@@ -207,6 +212,38 @@ class LevelGraph:
                         _expand({new_node})
                         changed = True
 
+                elif edge.edge_type == EdgeType.BORDER:
+                    barrier = edge.params.get('barrier', 'open')
+                    if barrier == 'locked':
+                        colour = edge.params.get('key_colour')
+                        has_key = any(
+                            colour in [k for k, in node.keys]
+                            for name, node in self.nodes.items()
+                            if name in reachable
+                        )
+                        if has_key:
+                            opened_edges.add(id(edge))
+                            new_node = edge.node_b if a_reachable else edge.node_a
+                            _expand({new_node})
+                            changed = True
+                    elif barrier == 'gated':
+                        gate_id = edge.params.get('gate_id')
+                        has_plate = any(
+                            gate_id in [g for g, in node.plates]
+                            for name, node in self.nodes.items()
+                            if name in reachable
+                        )
+                        has_block = any(
+                            node.blocks
+                            for name, node in self.nodes.items()
+                            if name in reachable
+                        )
+                        if has_plate and has_block:
+                            opened_edges.add(id(edge))
+                            new_node = edge.node_b if a_reachable else edge.node_a
+                            _expand({new_node})
+                            changed = True
+
         for name, node in self.nodes.items():
             if name not in reachable:
                 if node.treasures or node.materials or node.keys:
@@ -251,7 +288,22 @@ class LevelGraph:
         corridor = graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
         if grid_count >= 2:
             graph.add_node('corridor_b', NodeSize.CORRIDOR)
-            graph.add_edge('corridor', 'corridor_b', EdgeType.BORDER)
+            # The border transition can optionally have a barrier
+            border_params = {}
+            barrier_options = ['open']
+            if EdgeType.LOCKED in edge_types:
+                barrier_options.append('locked')
+            if EdgeType.GATED in edge_types:
+                barrier_options.append('gated')
+            barrier = rng.choice(barrier_options)
+            if barrier == 'locked':
+                border_params['barrier'] = 'locked'
+                border_params['key_colour'] = rng.choice(['red', 'blue', 'green'])
+            elif barrier == 'gated':
+                border_params['barrier'] = 'gated'
+                border_params['gate_id'] = 'border_gate'
+            graph.add_edge('corridor', 'corridor_b', EdgeType.BORDER,
+                           **border_params)
 
         # Split rooms between corridors
         room_names = []
@@ -297,7 +349,15 @@ def _assign_items(graph, feature_set, rng):
 
     # Find all freely reachable rooms (via OPEN, BREAKABLE, BORDER edges)
     # from the start corridor — these are valid for placing keys/plates
-    _free_types = (EdgeType.OPEN, EdgeType.BREAKABLE, EdgeType.BORDER)
+    _free_types = (EdgeType.OPEN, EdgeType.BREAKABLE)
+    def _is_free_edge(edge):
+        if edge.edge_type in _free_types:
+            return True
+        if (edge.edge_type == EdgeType.BORDER
+                and edge.params.get('barrier', 'open') == 'open'):
+            return True
+        return False
+
     def _freely_reachable(exclude_edge=None):
         """Rooms reachable without crossing locked/gated/water edges."""
         reached = {corridor_name}
@@ -309,7 +369,7 @@ def _assign_items(graph, feature_set, rng):
                     continue
                 if exclude_edge is not None and id(edge) == id(exclude_edge):
                     continue
-                if edge.edge_type in _free_types:
+                if _is_free_edge(edge):
                     reached.add(name)
                     frontier.append(name)
         return list(reached)
@@ -328,6 +388,14 @@ def _assign_items(graph, feature_set, rng):
         elif edge.edge_type == EdgeType.WATER:
             water_id = edge.params.get('water_id', f'water_{id(edge)}')
             needed_water[water_id] = edge
+        elif edge.edge_type == EdgeType.BORDER:
+            barrier = edge.params.get('barrier', 'open')
+            if barrier == 'locked':
+                colour = edge.params['key_colour']
+                needed_keys.append((colour, edge))
+            elif barrier == 'gated':
+                gate_id = edge.params['gate_id']
+                needed_gates[gate_id] = edge
 
     # For each locked edge, place a key on the reachable side
     for colour, edge in needed_keys:
