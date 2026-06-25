@@ -48,11 +48,11 @@ def find_exit(col, row, room_data):
         side, pos_str = exit_key.rsplit('_', 1)
         pos = int(pos_str)
         if side == 'left' and col == 0 and row == pos:
-            return (target, COLS - 2, row)
+            return (target, COLS - 1, row)
         elif side == 'right' and col == COLS - 1 and row == pos:
-            return (target, 1, row)
+            return (target, 0, row)
         elif side == 'top' and row == 0 and col == pos:
-            return (target, col, ROWS - 2)
+            return (target, col, ROWS - 1)
         elif side == 'bottom' and row == ROWS - 1 and col == pos:
-            return (target, col, 1)
+            return (target, col, 0)
     return None

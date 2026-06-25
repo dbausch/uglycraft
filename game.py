@@ -812,12 +812,15 @@ class Game:
         if moved:
             self._bump_consumed.discard(key)
             self.sounds.play('move')
-            if self._is_multiroom:
-                self._try_room_transition()
         else:
             tc = self.player.col + dcol
             tr = self.player.row + drow
-            if 0 <= tc < COLS and 0 <= tr < ROWS and self.walls[tc][tr]:
+            # Off-screen: grid transition if at an exit
+            if not (0 <= tc < COLS and 0 <= tr < ROWS):
+                if self._is_multiroom:
+                    self._try_room_transition()
+                return
+            if self.walls[tc][tr]:
                 if self._try_push_block(tc, tr, dcol, drow):
                     self.player.col, self.player.row = tc, tr
                     self._bump_consumed.discard(key)
