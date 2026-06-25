@@ -258,9 +258,13 @@ class LevelGraph:
 
     @classmethod
     def generate(cls, feature_set, rng=None):
-        """Generate a random level graph from a feature set.
+        """Generate a level graph from a feature set using LevelGraphBuilder.
 
-        feature_set: dict with keys:
+        Each challenge addition (locked room, gated room, water room) atomically
+        places its prerequisite item in the already-reachable set, so
+        validate_playability() is guaranteed to pass without retries.
+
+        feature_set keys:
             'room_count': (min, max)
             'edge_types': [EdgeType, ...]  — allowed edge types
             'node_sizes': [NodeSize, ...]  — allowed node sizes
@@ -268,79 +272,302 @@ class LevelGraph:
             'material_types': [mat_type, ...]
             'material_count': (min, max)
             'enemy_count': (min, max)
+            'grid_count': 1 or 2
+            'has_flames': bool
+            'has_forge_ogre': bool
         """
         rng = rng or random.Random()
-        graph = cls(rng=rng)
+        b = LevelGraphBuilder(rng)
 
-        edge_types = feature_set.get('edge_types', [EdgeType.OPEN])
-        node_sizes = feature_set.get('node_sizes',
-                                      [NodeSize.ROOM, NodeSize.HALL])
-        # Every distinct edge type in the feature set must appear at least once
-        required_types = list(dict.fromkeys(edge_types))
+        edge_types  = feature_set.get('edge_types',  [EdgeType.OPEN])
+        node_sizes  = feature_set.get('node_sizes',  [NodeSize.ROOM, NodeSize.HALL])
+        grid_count  = feature_set.get('grid_count',  1)
+        required    = list(dict.fromkeys(edge_types))  # ordered, deduplicated
 
         room_min, room_max = feature_set.get('room_count', (4, 6))
-        room_count = max(rng.randint(room_min, room_max), len(required_types))
+        room_count  = max(rng.randint(room_min, room_max), len(required))
+        grid_a_count = room_count // 2 if grid_count >= 2 else room_count
 
-        grid_count = feature_set.get('grid_count', 1)
+        gate_counter = 0
 
-        # Create corridor(s). Multi-grid levels have two corridors
-        # connected by a BORDER edge.
-        corridor = graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        def _add_room(et, i):
+            nonlocal gate_counter
+            size = rng.choice(node_sizes)
+            if et == EdgeType.OPEN:
+                b.add_open_room(size=size)
+            elif et == EdgeType.BREAKABLE:
+                b.add_breakable_room(rng.choice(['stone', 'wooden']), size=size)
+            elif et == EdgeType.LOCKED:
+                b.add_locked_room(rng.choice(['red', 'blue', 'green']), size=size)
+            elif et == EdgeType.GATED:
+                b.add_gated_room(f'gate_{gate_counter}', size=size)
+                gate_counter += 1
+            elif et == EdgeType.WATER:
+                b.add_water_room(size=size)
+
+        for i in range(grid_a_count):
+            et = required[i] if i < len(required) else rng.choice(edge_types)
+            _add_room(et, i)
+
         if grid_count >= 2:
-            graph.add_node('corridor_b', NodeSize.CORRIDOR)
-            # The border transition can optionally have a barrier
-            border_params = {}
             barrier_options = ['open']
             if EdgeType.LOCKED in edge_types:
                 barrier_options.append('locked')
             if EdgeType.GATED in edge_types:
                 barrier_options.append('gated')
             barrier = rng.choice(barrier_options)
+            kw = {}
             if barrier == 'locked':
-                border_params['barrier'] = 'locked'
-                border_params['key_colour'] = rng.choice(['red', 'blue', 'green'])
+                kw = {'barrier': 'locked',
+                      'key_colour': rng.choice(['red', 'blue', 'green'])}
             elif barrier == 'gated':
-                border_params['barrier'] = 'gated'
-                border_params['gate_id'] = 'border_gate'
-            graph.add_edge('corridor', 'corridor_b', EdgeType.BORDER,
-                           **border_params)
+                kw = {'barrier': 'gated', 'gate_id': 'border_gate'}
+            b.start_second_grid(**kw)
 
-        # Split rooms between corridors
-        room_names = []
-        for i in range(room_count):
-            name = f'room_{i}'
-            size = rng.choice(node_sizes)
-            graph.add_node(name, size)
-            room_names.append(name)
+            for j in range(room_count - grid_a_count):
+                i = grid_a_count + j
+                et = required[i] if i < len(required) else rng.choice(edge_types)
+                _add_room(et, i)
 
-            # Which corridor does this room attach to?
-            if grid_count >= 2 and i >= room_count // 2:
-                parent = 'corridor_b'
+        t_min, t_max = feature_set.get('treasure_count', (6, 10))
+        b.add_treasures(rng.randint(t_min, t_max))
+
+        mat_types = list(feature_set.get('material_types', []))
+        m_min, m_max = feature_set.get('material_count', (4, 8))
+        b.add_materials(mat_types, rng.randint(m_min, m_max))
+
+        e_min, e_max = feature_set.get('enemy_count', (1, 3))
+        b._has_forge = feature_set.get('has_forge_ogre', False)
+        b.add_enemies(max(1, rng.randint(e_min, e_max)))
+
+        if feature_set.get('has_flames'):
+            b.add_flames()
+
+        return b.build()
+
+
+# ── Level graph builder ───────────────────────────────────────────────────────
+
+class LevelGraphBuilder:
+    """Construct a LevelGraph by adding challenges one at a time.
+
+    Each add_*_room() method maintains the invariant:
+        self._graph.validate_playability() == []
+
+    This is guaranteed because each method atomically places the prerequisite
+    item (key, plate+block, planks) in a node that is already in _reachable
+    BEFORE the new node joins _reachable.
+    """
+
+    def __init__(self, rng):
+        self._graph = LevelGraph(rng)
+        self._rng   = rng
+        self._idx   = 0
+        self._current_corridor = 'corridor'
+        self._has_water  = False
+        self._has_forge  = False
+        self._graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        self._reachable  = {'corridor'}
+
+    # ── Internal helpers ──────────────────────────────────────────────────
+
+    def _new_name(self):
+        name = f'room_{self._idx}'
+        self._idx += 1
+        return name
+
+    def _room_candidates(self):
+        """Reachable non-corridor rooms."""
+        return [n for n in self._reachable
+                if self._graph.nodes[n].size != NodeSize.CORRIDOR]
+
+    def _current_grid_rooms(self):
+        """Rooms directly attached to the current corridor (same subgraph)."""
+        return {name for name, edge in self._graph.neighbors(self._current_corridor)
+                if edge.edge_type != EdgeType.BORDER}
+
+    def _puzzle_candidates(self):
+        """Reachable rooms on the current grid suitable for a Sokoban puzzle.
+
+        Only returns rooms directly attached to the current corridor so that
+        plates always land in the same subgraph as their gate.  Returning []
+        signals add_gated_room() to auto-add an open room first.
+        """
+        def eligible(n):
+            node = self._graph.nodes[n]
+            return (node.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET)
+                    and not node.blocks
+                    and not node.plates)
+
+        return [n for n in self._current_grid_rooms()
+                if n in self._reachable and eligible(n)]
+
+    def _pick(self, candidates, fallback=None):
+        """Choose a random candidate, falling back to _reachable if empty."""
+        pool = candidates or fallback or list(self._reachable)
+        return self._rng.choice(pool)
+
+    def _add_node_and_edge(self, size, et, parent, **params):
+        name = self._new_name()
+        self._graph.add_node(name, size)
+        self._graph.add_edge(parent or self._current_corridor, name, et, **params)
+        self._reachable.add(name)
+        return name
+
+    # ── Challenge additions ───────────────────────────────────────────────
+
+    def add_open_room(self, size=None, parent=None) -> str:
+        size = size or self._rng.choice([NodeSize.ROOM, NodeSize.HALL])
+        return self._add_node_and_edge(size, EdgeType.OPEN, parent)
+
+    def add_breakable_room(self, wall_type='stone', size=None, parent=None) -> str:
+        size = size or self._rng.choice([NodeSize.ROOM, NodeSize.HALL])
+        return self._add_node_and_edge(size, EdgeType.BREAKABLE, parent,
+                                       wall_type=wall_type)
+
+    def add_locked_room(self, colour, size=None, parent=None) -> str:
+        """Add room behind LOCKED edge. Places key in an already-reachable room."""
+        size = size or self._rng.choice([NodeSize.ROOM, NodeSize.HALL])
+        name = self._new_name()
+        self._graph.add_node(name, size)
+        self._graph.add_edge(parent or self._current_corridor, name,
+                             EdgeType.LOCKED, key_colour=colour)
+        # Key goes in a non-corridor reachable room, or corridor as last resort
+        key_room = self._pick(self._room_candidates())
+        self._graph.nodes[key_room].keys.append((colour,))
+        self._reachable.add(name)
+        return name
+
+    def add_gated_room(self, gate_id, size=None, parent=None) -> str:
+        """Add room behind GATED edge. Places plate+block in a suitable
+        already-reachable room on the same grid.
+
+        If no eligible room exists on the current grid yet, an open room is
+        added automatically to serve as the puzzle room — this keeps the
+        plate within the same subgraph as the gate (required for multi-grid
+        levels where each grid is laid out independently).
+        """
+        size = size or NodeSize.ROOM
+        name = self._new_name()
+        self._graph.add_node(name, size)
+        self._graph.add_edge(parent or self._current_corridor, name,
+                             EdgeType.GATED, gate_id=gate_id)
+
+        candidates = self._puzzle_candidates()
+        if not candidates:
+            # No eligible room on this grid yet; add one so the puzzle stays
+            # within the subgraph.
+            self.add_open_room()
+            candidates = self._puzzle_candidates()
+
+        puzzle_room = self._pick(candidates, fallback=self._room_candidates())
+        self._graph.nodes[puzzle_room].plates.append((gate_id,))
+        self._graph.nodes[puzzle_room].blocks.append(1)
+        self._reachable.add(name)
+        return name
+
+    def add_water_room(self, size=None, parent=None) -> str:
+        """Add room behind WATER edge. Places 2 planks in an already-reachable room."""
+        size = size or self._rng.choice([NodeSize.ROOM, NodeSize.HALL])
+        name = self._new_name()
+        self._graph.add_node(name, size)
+        self._graph.add_edge(parent or self._current_corridor, name, EdgeType.WATER)
+        planks_room = self._pick(list(self._reachable))
+        self._graph.nodes[planks_room].materials.append(('planks',))
+        self._graph.nodes[planks_room].materials.append(('planks',))
+        self._has_water = True
+        self._reachable.add(name)
+        return name
+
+    # ── Multi-grid ────────────────────────────────────────────────────────
+
+    def start_second_grid(self, barrier=None, key_colour=None, gate_id=None):
+        """Add corridor_b and a BORDER edge. If a barrier is given, places its
+        prerequisite item in the current (grid-A) reachable set first.
+        Switches the default parent for subsequent add_*_room calls to corridor_b."""
+        self._graph.add_node('corridor_b', NodeSize.CORRIDOR)
+        params = {}
+        if barrier == 'locked' and key_colour:
+            params = {'barrier': 'locked', 'key_colour': key_colour}
+            key_room = self._pick(list(self._reachable))
+            self._graph.nodes[key_room].keys.append((key_colour,))
+        elif barrier == 'gated' and gate_id:
+            params = {'barrier': 'gated', 'gate_id': gate_id}
+            puzzle_room = self._pick(self._puzzle_candidates(),
+                                     fallback=self._room_candidates())
+            self._graph.nodes[puzzle_room].plates.append((gate_id,))
+            self._graph.nodes[puzzle_room].blocks.append(1)
+        self._graph.add_edge('corridor', 'corridor_b', EdgeType.BORDER, **params)
+        self._reachable.add('corridor_b')
+        self._current_corridor = 'corridor_b'
+
+    # ── Content distribution ──────────────────────────────────────────────
+
+    def add_treasures(self, count) -> None:
+        all_nodes = list(self._graph.nodes.keys())
+        item_nos  = list(range(1, 10))
+        for _ in range(count):
+            t = self._rng.choice(all_nodes)
+            self._graph.nodes[t].treasures.append((self._rng.choice(item_nos),))
+
+    def add_materials(self, mat_types, count) -> None:
+        if not mat_types:
+            return
+        mats = list(mat_types)
+        if self._has_water and 'planks' in mats:
+            mats = [m for m in mats if m != 'planks']
+        if not mats:
+            return
+        all_nodes = list(self._graph.nodes.keys())
+        for _ in range(count):
+            t = self._rng.choice(all_nodes)
+            self._graph.nodes[t].materials.append((self._rng.choice(mats),))
+
+    def add_enemies(self, count) -> None:
+        item_nos   = list(range(1, 10))
+        candidates = [
+            n for n, node in self._graph.nodes.items()
+            if node.size in (NodeSize.ROOM, NodeSize.HALL)
+            and not node.blocks
+            and not node.plates
+            and not node.has_flames
+        ]
+        if not candidates:
+            return
+        forge_placed = False
+        for _ in range(count):
+            t = self._rng.choice(candidates)
+            if self._has_forge and not forge_placed:
+                self._graph.nodes[t].enemies.append(('forge_ogre',))
+                forge_placed = True
             else:
-                parent = 'corridor'
+                self._graph.nodes[t].enemies.append(('chaser',))
+            if not self._graph.nodes[t].treasures:
+                self._graph.nodes[t].treasures.append(
+                    (self._rng.choice(item_nos),))
 
-            # First rooms satisfy required types, rest are random
-            if i < len(required_types):
-                et = required_types[i]
-            else:
-                et = rng.choice(edge_types)
-            params = {}
-            if et == EdgeType.LOCKED:
-                params['key_colour'] = rng.choice(['red', 'blue', 'green'])
-            elif et == EdgeType.GATED:
-                params['gate_id'] = f'gate_{i}'
-            elif et == EdgeType.WATER:
-                params['water_id'] = f'water_{i}'
-            elif et == EdgeType.BREAKABLE:
-                params['wall_type'] = rng.choice(['stone', 'wooden'])
-            graph.add_edge(parent, name, et, **params)
+    def add_flames(self) -> None:
+        item_nos   = list(range(1, 10))
+        candidates = [
+            n for n, node in self._graph.nodes.items()
+            if n != 'corridor'
+            and not node.blocks
+            and not node.plates
+        ]
+        if not candidates:
+            return
+        t = self._rng.choice(candidates)
+        self._graph.nodes[t].has_flames = True
+        if not self._graph.nodes[t].treasures:
+            self._graph.nodes[t].treasures.append((self._rng.choice(item_nos),))
 
-        # Place items to satisfy playability
-        _assign_items(graph, feature_set, rng)
+    # ── Finalise ──────────────────────────────────────────────────────────
 
-        return graph
+    def build(self) -> 'LevelGraph':
+        return self._graph
 
 
+# (formerly _assign_items — replaced by LevelGraphBuilder)
 def _assign_items(graph, feature_set, rng):
     """Distribute treasures, materials, keys, blocks, plates across nodes."""
 
