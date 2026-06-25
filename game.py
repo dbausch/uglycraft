@@ -174,6 +174,8 @@ class Game:
             return  # indestructible interior wall
         if self._try_auto_open_door(col, row):
             return  # door opened by bumping with matching key
+        if self._try_auto_bridge(col, row):
+            return  # bridge built on water tile
         if self._is_unbumpable(col, row):
             return  # gates and blocks are not breakable by bumping
         self._bump_consumed.add(key)
@@ -267,6 +269,10 @@ class Game:
                                            for gc, gr, gid in rdata.get('gates', [])}
             self.treasure_pos = None
             self._opened_doors = set()
+            # Count water edges for bridge limit (one bridge per edge)
+            self._bridges_remaining = sum(
+                1 for rdata in data['rooms'].values()
+                if rdata.get('water_tiles'))
             self._tile_owner = {}
             self._room_blocks_initial = {
                 rk: list(self._room_blocks[rk])
@@ -831,9 +837,7 @@ class Game:
         """SPACE in Act 2: place the active item."""
         c, r = self.player.col, self.player.row
         active = self.inventory.active_item
-        if active == CRAFT_BRIDGE:
-            self._place_bridge()
-        elif active == CRAFT_STONE_WALL:
+        if active == CRAFT_STONE_WALL:
             if not self.walls[c][r]:
                 if self.inventory.has_item(CRAFT_STONE_WALL):
                     self.inventory.use_item(CRAFT_STONE_WALL)
@@ -848,21 +852,6 @@ class Game:
                     self._build_walls()
                 self.sounds.play('place_wall')
 
-    def _place_bridge(self):
-        """Place a bridge on an adjacent water tile."""
-        if not self.inventory.has_item(CRAFT_BRIDGE):
-            return
-        pc, pr = self.player.col, self.player.row
-        water = getattr(self, '_water_tiles', set())
-        bridged = getattr(self, '_bridged_tiles', set())
-        for dc, dr in ((0, -1), (0, 1), (-1, 0), (1, 0)):
-            nc, nr = pc + dc, pr + dr
-            if (nc, nr) in water and (nc, nr) not in bridged:
-                self.inventory.use_item(CRAFT_BRIDGE)
-                self._bridged_tiles.add((nc, nr))
-                self._build_walls_multiroom()
-                self.sounds.play('place_wall')
-                return
 
     def _inventory_event(self, event):
         """Handle input in the inventory/crafting screen."""
@@ -927,6 +916,37 @@ class Game:
         self._gate_open.clear()
         if self._is_multiroom:
             self._build_walls_multiroom()
+
+    def _try_auto_bridge(self, col, row):
+        """Build a bridge on a water tile when the player bumps it.
+
+        Only builds if: player has a bridge item, this stream hasn't
+        been bridged yet (one bridge per water edge), and the tile
+        connects to open floor on the opposite side.
+        """
+        if not self._is_multiroom:
+            return False
+        water = getattr(self, '_water_tiles', set())
+        bridged = getattr(self, '_bridged_tiles', set())
+        if (col, row) not in water or (col, row) in bridged:
+            return False
+        if not self.inventory.has_item(CRAFT_BRIDGE):
+            return False
+        if self._bridges_remaining <= 0:
+            return False
+        # Check that the opposite side has open floor (not wall/water)
+        pc, pr = self.player.col, self.player.row
+        dc, dr = col - pc, row - pr
+        far_c, far_r = col + dc, row + dr
+        if (0 < far_c < COLS - 1 and 0 < far_r < ROWS - 1
+                and not self.walls[far_c][far_r]):
+            self.inventory.use_item(CRAFT_BRIDGE)
+            self._bridged_tiles.add((col, row))
+            self._bridges_remaining -= 1
+            self._build_walls_multiroom()
+            self.sounds.play('place_wall')
+            return True
+        return False
 
     def _forge_ogre_attack(self, enemy):
         """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""
@@ -1201,11 +1221,16 @@ class Game:
                 self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
             for bc, br in self._room_blocks.get(rk, []):
                 self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
+            # Detect water orientation: if any neighbor up/down is also
+            # water, the stream is vertical; otherwise horizontal.
             for wc, wr in self._water_tiles:
+                vert = ((wc, wr - 1) in self._water_tiles or
+                        (wc, wr + 1) in self._water_tiles)
+                o = 'v' if vert else 'h'
                 if (wc, wr) in self._bridged_tiles:
-                    self.surf.blit(sp['bridge_tile'], (wc * TILE, wr * TILE))
+                    self.surf.blit(sp[f'bridge_{o}'], (wc * TILE, wr * TILE))
                 else:
-                    self.surf.blit(sp['water'], (wc * TILE, wr * TILE))
+                    self.surf.blit(sp[f'water_{o}'], (wc * TILE, wr * TILE))
             _DIR_SUFFIX = {(1,0): 'r', (-1,0): 'l', (0,1): 'd', (0,-1): 'u'}
             for jet in self._flame_jets:
                 dc, dr = jet.get('dir', (1, 0))

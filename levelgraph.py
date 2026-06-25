@@ -353,8 +353,11 @@ def _assign_items(graph, feature_set, rng):
         item_no = rng.choice(item_nos)
         graph.nodes[target].treasures.append((item_no,))
 
-    # Distribute materials
-    mat_types = feature_set.get('material_types', [])
+    # Distribute materials (exclude planks if water edges exist — planks
+    # are placed precisely for bridge crafting)
+    mat_types = list(feature_set.get('material_types', []))
+    if needed_water and 'planks' in mat_types:
+        mat_types = [m for m in mat_types if m != 'planks']
     m_min, m_max = feature_set.get('material_count', (4, 8))
     m_count = rng.randint(m_min, m_max)
     for _ in range(m_count):

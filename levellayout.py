@@ -762,47 +762,65 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None):
 
 
 def _generate_flame_jets(placed_node, walls, rng):
-    """Generate a flame jet originating from a wall into the room.
+    """Generate a flame jet that spans wall-to-wall across the room.
 
-    The jet starts at a wall tile (the source/thrower) and extends
-    inward across floor tiles. Returns list of jet dicts with 'tiles',
-    'source', 'dir', 'on_ms', 'off_ms'.
+    The jet splits the room into two sections. It must cross the room
+    (not run parallel to a wall) so there are floor tiles on both sides.
+    Returns list of jet dicts with 'tiles', 'source', 'dir', 'on_ms',
+    'off_ms', and 'far_tiles' (floor tiles beyond the jet).
     """
     pn = placed_node
     if pn.w < 4 and pn.h < 4:
         return []
 
-    # Candidate source walls: reinforced wall tiles adjacent to room floor
+    # Try horizontal and vertical cross-cuts through the room
     candidates = []
-    for fc, fr in pn.floor_tiles:
-        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            wc, wr = fc - dc, fr - dr
-            if walls.get((wc, wr)) == WALL_REINFORCED and (wc, wr) not in pn.floor_tiles:
-                candidates.append(((wc, wr), (dc, dr)))
+
+    # Horizontal jet (left→right or right→left) at various rows
+    for r in range(pn.row + 1, pn.row + pn.h - 1):
+        tiles = [(c, r) for c in range(pn.col, pn.col + pn.w)
+                 if (c, r) in pn.floor_tiles and (c, r) not in walls]
+        if len(tiles) < 3:
+            continue
+        # Check there are floor tiles above AND below the jet row
+        above = [(c, r2) for c, r2 in pn.floor_tiles
+                 if r2 < r and (c, r2) not in walls]
+        below = [(c, r2) for c, r2 in pn.floor_tiles
+                 if r2 > r and (c, r2) not in walls]
+        if above and below:
+            # Source wall: leftmost wall tile adjacent to the first flame tile
+            sc, sr = tiles[0][0] - 1, tiles[0][1]
+            if walls.get((sc, sr)) == WALL_REINFORCED:
+                candidates.append((tiles, (sc, sr), (1, 0), below))
+
+    # Vertical jet (top→bottom or bottom→top) at various columns
+    for c in range(pn.col + 1, pn.col + pn.w - 1):
+        tiles = [(c, r) for r in range(pn.row, pn.row + pn.h)
+                 if (c, r) in pn.floor_tiles and (c, r) not in walls]
+        if len(tiles) < 3:
+            continue
+        left = [(c2, r) for c2, r in pn.floor_tiles
+                if c2 < c and (c2, r) not in walls]
+        right = [(c2, r) for c2, r in pn.floor_tiles
+                 if c2 > c and (c2, r) not in walls]
+        if left and right:
+            sc, sr = tiles[0][0], tiles[0][1] - 1
+            if walls.get((sc, sr)) == WALL_REINFORCED:
+                candidates.append((tiles, (sc, sr), (0, 1), right))
 
     if not candidates:
         return []
 
-    # Pick a source wall and direction
     rng.shuffle(candidates)
-    for source, (dc, dr) in candidates:
-        tiles = []
-        c, r = source[0] + dc, source[1] + dr
-        while ((c, r) in pn.floor_tiles and (c, r) not in walls
-               and len(tiles) < 6):
-            tiles.append((c, r))
-            c += dc
-            r += dr
-        if len(tiles) >= 2:
-            return [{
-                'source': source,
-                'dir': (dc, dr),
-                'tiles': tiles,
-                'on_ms': 2000,
-                'off_ms': 2000,
-            }]
-
-    return []
+    tiles, source, direction, far_tiles = candidates[0]
+    return [{
+        'source': source,
+        'dir': direction,
+        'tiles': tiles,
+        'on_ms': 2000,
+        'off_ms': 2000,
+        'far_tiles': [t for t in far_tiles],
+    }]
 
 
 # ── Game-format output ────────────────────────────────────────────────────────
@@ -831,29 +849,53 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     pn = placed[start_name]
     player_start = (pn.col + 1, pn.row + pn.h // 2)
 
-    # Place items and flame jets per room
+    # Generate flame jets first so we can exclude their tiles from items
+    all_flame_jets = []
+    flame_tile_set = set()
+    for name, node in graph.nodes.items():
+        if name not in placed or not node.has_flames:
+            continue
+        jets = _generate_flame_jets(placed[name], walls, rng)
+        for jet in jets:
+            flame_tile_set.update(jet['tiles'])
+            flame_tile_set.add(jet['source'])
+        all_flame_jets.extend(jets)
+
+    # Place items per room (excluding flame tiles)
     all_treasures = []
     all_materials = []
     all_keys = []
     all_blocks = []
     all_plates = []
     all_enemy_starts = []
-    all_flame_jets = []
 
     for name, node in graph.nodes.items():
         if name not in placed:
             continue
+        # Merge flame tiles into walls for item placement so nothing
+        # lands on fire
+        item_walls = dict(walls)
+        for ft in flame_tile_set:
+            item_walls[ft] = WALL_REINFORCED
         t, m, k, b, pl, es = _place_items_in_room(
-            node, placed[name], walls, rng, player_pos=player_start)
+            node, placed[name], item_walls, rng, player_pos=player_start)
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
         all_blocks.extend(b)
         all_plates.extend(pl)
         all_enemy_starts.extend(es)
-        if node.has_flames:
-            jets = _generate_flame_jets(placed[name], walls, rng)
-            all_flame_jets.extend(jets)
+
+    # Place a treasure on the far side of each flame jet
+    import random as _rnd_mod
+    item_nos = list(range(1, 10))
+    for jet in all_flame_jets:
+        far = jet.get('far_tiles', [])
+        far_free = [t for t in far if t not in flame_tile_set
+                    and t not in walls]
+        if far_free:
+            pos = rng.choice(far_free)
+            all_treasures.append((*pos, rng.choice(item_nos)))
 
     # Locked doors, gates, and water tiles from edges
     all_locked_doors = []
