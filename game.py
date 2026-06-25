@@ -138,10 +138,15 @@ class Game:
         return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
 
     def _door_orient(self, col, row):
-        """Detect orientation of a door/gate tile from surrounding walls.
-        'v' = vertical passage (wall left+right), 'h' = horizontal (wall above+below)."""
-        left  = col > 0 and self.walls[col - 1][row]
-        right = col < COLS - 1 and self.walls[col + 1][row]
+        """Detect orientation from adjacent reinforced walls only.
+        'v' = vertical passage (reinforced wall left or right),
+        'h' = horizontal (reinforced wall above or below)."""
+        def _is_reinforced(c, r):
+            if c == 0 or c == COLS - 1 or r == 0 or r == ROWS - 1:
+                return True  # border is always reinforced
+            return self._level_walls.get((c, r)) == WALL_REINFORCED
+        left  = col > 0 and _is_reinforced(col - 1, row)
+        right = col < COLS - 1 and _is_reinforced(col + 1, row)
         if left or right:
             return 'v'
         return 'h'
