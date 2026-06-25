@@ -976,93 +976,58 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
 
 
 def _build_multi_grid(graph, rng, strategies):
-    """Build a level spanning two 30×16 grids connected by border exits.
+    """Build a level spanning two 30x16 grids connected by border exits.
 
-    Splits the graph: corridor + half the rooms go in grid A, the other
-    half get a new corridor in grid B. An edge connecting the two halves
-    becomes a border exit (right edge of A → left edge of B).
+    Uses the BORDER edge in the graph to determine the partition.
+    Each side of the BORDER edge becomes a separate grid.
     """
     from levelgraph import LevelGraph, NodeSize, EdgeType
 
-    corridor_name = None
-    for name, node in graph.nodes.items():
-        if node.size == NodeSize.CORRIDOR:
-            corridor_name = name
-            break
-
-    room_names = [n for n in graph.nodes if n != corridor_name]
-    rng.shuffle(room_names)
-    mid = max(2, len(room_names) // 2)
-    group_a_rooms = room_names[:mid]
-    group_b_rooms = room_names[mid:]
-
-    # Build sub-graph A: corridor + group_a rooms
-    graph_a = LevelGraph(rng=rng)
-    graph_a.add_node(corridor_name, graph.nodes[corridor_name].size,
-                     is_start=True)
-    for name in group_a_rooms:
-        n = graph.nodes[name]
-        node = graph_a.add_node(name, n.size)
-        node.treasures = list(n.treasures)
-        node.materials = list(n.materials)
-        node.keys = list(n.keys)
-        node.blocks = list(n.blocks)
-        node.plates = list(n.plates)
-        node.enemies = list(n.enemies)
-        node.has_flames = n.has_flames
-
+    # Find the BORDER edge and the two corridors it connects
+    border_edge = None
     for edge in graph.edges:
-        if edge.node_a in graph_a.nodes and edge.node_b in graph_a.nodes:
-            graph_a.add_edge(edge.node_a, edge.node_b, edge.edge_type,
-                             **edge.params)
+        if edge.edge_type == EdgeType.BORDER:
+            border_edge = edge
+            break
+    if border_edge is None:
+        raise ValueError("Multi-grid level has no BORDER edge")
 
-    # Build sub-graph B: new corridor + group_b rooms
-    cor_b_name = 'corridor_b'
-    graph_b = LevelGraph(rng=rng)
-    graph_b.add_node(cor_b_name, NodeSize.CORRIDOR, is_start=True)
-    for name in group_b_rooms:
-        n = graph.nodes[name]
-        node = graph_b.add_node(name, n.size)
-        node.treasures = list(n.treasures)
-        node.materials = list(n.materials)
-        node.keys = list(n.keys)
-        node.blocks = list(n.blocks)
-        node.plates = list(n.plates)
-        node.enemies = list(n.enemies)
-        node.has_flames = n.has_flames
-        graph_b.add_edge(cor_b_name, name, EdgeType.OPEN)
+    cor_a = border_edge.node_a
+    cor_b = border_edge.node_b
 
-    # No enemies in corridors or in rooms adjacent to them — the
-    # corridor is the grid-connecting element, and rooms off it near
-    # the border exit should be safe transition zones on both sides.
-    graph_a.nodes[corridor_name].enemies.clear()
-    graph_b.nodes[cor_b_name].enemies.clear()
-    # Last room in grid_a (closest to right exit)
-    a_neighbors = graph_a.neighbors(corridor_name)
-    if a_neighbors:
-        graph_a.nodes[a_neighbors[-1][0]].enemies.clear()
-    # First room in grid_b (closest to left entry)
-    b_neighbors = graph_b.neighbors(cor_b_name)
-    if b_neighbors:
-        graph_b.nodes[b_neighbors[0][0]].enemies.clear()
+    # Partition: each corridor and its connected rooms form a grid
+    def _build_subgraph(corridor):
+        sub = LevelGraph(rng=rng)
+        sub.add_node(corridor, graph.nodes[corridor].size, is_start=True)
+        for name, edge in graph.neighbors(corridor):
+            if edge.edge_type == EdgeType.BORDER:
+                continue
+            n = graph.nodes[name]
+            node = sub.add_node(name, n.size)
+            node.treasures = list(n.treasures)
+            node.materials = list(n.materials)
+            node.keys = list(n.keys)
+            node.blocks = list(n.blocks)
+            node.plates = list(n.plates)
+            node.enemies = list(n.enemies)
+            node.has_flames = n.has_flames
+            sub.add_edge(corridor, name, edge.edge_type, **edge.params)
+        return sub
 
-    # Build each grid independently
+    graph_a = _build_subgraph(cor_a)
+    graph_b = _build_subgraph(cor_b)
+
     dict_a = build_level_dict(graph_a, rng=rng, strategies=strategies,
                                grid_count=1)
     dict_b = build_level_dict(graph_b, rng=rng, strategies=strategies,
                                grid_count=1)
 
-    # Connect via border exits: A's right edge → B's left edge
     room_a = dict_a['rooms']['main']
     room_b = dict_b['rooms']['main']
 
     exit_row = 7
     room_a['exits'] = {'right_7': 'grid_b'}
     room_b['exits'] = {'left_7': 'grid_a'}
-
-    # Override grid_b player_start to entry point from grid_a,
-    # so enemies in grid_b are placed far from where the player enters
-    dict_b['player_start'] = (0, exit_row)
 
     return {
         'start_room': 'grid_a',
