@@ -65,6 +65,8 @@ def layout_graph(graph, rng=None, strategies=None):
         return _layout_vertical(corridor_name, room_names, rng)
     elif strategy == 'off_centre':
         return _layout_off_centre(corridor_name, room_names, rng)
+    elif strategy == 'chain':
+        return _layout_chain(corridor_name, room_names, rng)
     else:
         return _layout_horizontal(corridor_name, room_names, rng)
 
@@ -161,6 +163,61 @@ def _layout_off_centre(corridor_name, room_names, rng):
     _pack_band(placed, room_names[big_count:], rng,
                band_col=MIN_C, band_row=cor_row + cor_h + 1,
                band_w=INT_W, band_h=below_h)
+
+    return placed
+
+
+def _layout_chain(corridor_name, room_names, rng):
+    """Rooms arranged in a grid pattern — no dominant corridor.
+
+    The corridor is placed as a small room. All nodes are arranged
+    in a grid of cells filling the 30×16 space.
+    """
+    all_names = [corridor_name] + list(room_names)
+    rng.shuffle(all_names)
+    # Put corridor first (it's the start)
+    all_names.remove(corridor_name)
+    all_names.insert(0, corridor_name)
+
+    n = len(all_names)
+    # Determine grid dimensions: try to make roughly square
+    if n <= 4:
+        cols_n, rows_n = 2, 2
+    elif n <= 6:
+        cols_n, rows_n = 3, 2
+    elif n <= 9:
+        cols_n, rows_n = 3, 3
+    else:
+        cols_n, rows_n = 4, 3
+
+    placed = {}
+    idx = 0
+    for gr in range(rows_n):
+        for gc in range(cols_n):
+            if idx >= n:
+                break
+            name = all_names[idx]
+            idx += 1
+
+            cell_w = INT_W // cols_n
+            cell_h = INT_H // rows_n
+            col = MIN_C + gc * cell_w
+            row = MIN_R + gr * cell_h
+            # Leave 1 tile wall between cells
+            w = cell_w - 1
+            h = cell_h - 1
+            if gc == cols_n - 1:
+                w = MIN_C + INT_W - col - 1
+            if gr == rows_n - 1:
+                h = MIN_R + INT_H - row - 1
+
+            if w >= 3 and h >= 2:
+                placed[name] = PlacedNode(name, col, row, w, h)
+
+    # Ensure corridor is placed
+    if corridor_name not in placed:
+        placed[corridor_name] = PlacedNode(
+            corridor_name, MIN_C, MIN_R, INT_W, 2)
 
     return placed
 

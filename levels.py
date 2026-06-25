@@ -272,7 +272,7 @@ def _generate_act2():
             'enemy_count': (3, 5),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
             'grid_count': 2,
         },
         # Level 18: 2 grids, heavier
@@ -287,7 +287,7 @@ def _generate_act2():
             'enemy_count': (4, 6),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
             'grid_count': 2,
         },
         # Level 19: 2 grids, gauntlet
@@ -302,7 +302,7 @@ def _generate_act2():
             'enemy_count': (5, 7),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
             'grid_count': 2,
         },
         # Level 20: boss level, 2 grids
@@ -317,7 +317,7 @@ def _generate_act2():
             'enemy_count': (4, 6),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
             'grid_count': 2,
         },
     ]

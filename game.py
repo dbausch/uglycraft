@@ -1133,7 +1133,8 @@ class Game:
         elif self.state == WIN:
             self._render_field()
             self._render_hud()
-            self._render_overlay_text("YOU  WON!", sub=f"Final score: {self._final_score}", color=YELLOW)
+            win_msg = "THE  FORGE  IS  DEFEATED!" if self._final_level >= 20 else "YOU  WON!"
+            self._render_overlay_text(win_msg, sub=f"Final score: {self._final_score}", color=YELLOW)
         elif self.state == PLAY_AGAIN:
             self._render_field()
             self._render_hud()
