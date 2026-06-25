@@ -1,3 +1,5 @@
 pygame>=2.0
 numpy
 pyinstaller
+pytest
+hypothesis
