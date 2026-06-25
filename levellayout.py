@@ -1032,6 +1032,15 @@ def _build_multi_grid(graph, rng, strategies):
         node.has_flames = n.has_flames
         graph_b.add_edge(cor_b_name, name, EdgeType.OPEN)
 
+    # No enemies in corridors or in the first room of each grid
+    # (the room closest to the border exit — safe transition zone)
+    graph_a.nodes[corridor_name].enemies.clear()
+    graph_b.nodes[cor_b_name].enemies.clear()
+    # First room in grid_b: the room the player enters after the corridor
+    if graph_b.neighbors(cor_b_name):
+        first_b = graph_b.neighbors(cor_b_name)[0][0]
+        graph_b.nodes[first_b].enemies.clear()
+
     # Build each grid independently
     dict_a = build_level_dict(graph_a, rng=rng, strategies=strategies,
                                grid_count=1)
@@ -1042,9 +1051,13 @@ def _build_multi_grid(graph, rng, strategies):
     room_a = dict_a['rooms']['main']
     room_b = dict_b['rooms']['main']
 
-    exit_row = 7  # corridor height, middle of grid
+    exit_row = 7
     room_a['exits'] = {'right_7': 'grid_b'}
     room_b['exits'] = {'left_7': 'grid_a'}
+
+    # Override grid_b player_start to entry point from grid_a,
+    # so enemies in grid_b are placed far from where the player enters
+    dict_b['player_start'] = (0, exit_row)
 
     return {
         'start_room': 'grid_a',
