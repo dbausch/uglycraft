@@ -680,15 +680,17 @@ def _bfs_dist(start, passable):
     return dist
 
 
-def _place_items_in_room(node, placed_node, walls, rng, player_pos=None):
+def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
+                          global_used=None):
     """Pick floor positions for a node's items.
 
-    Enemies are placed at least MIN_ENEMY_DIST BFS tiles from player_pos
-    (if player_pos is in this room).
+    global_used: shared set across all rooms — no two items on the same tile.
     """
+    if global_used is None:
+        global_used = set()
     floor = sorted(t for t in placed_node.floor_tiles if t not in walls)
     rng.shuffle(floor)
-    used = set()
+    used = global_used
 
     # Pre-compute distance from player if in this room
     player_dist = None
@@ -861,24 +863,26 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
             flame_tile_set.add(jet['source'])
         all_flame_jets.extend(jets)
 
-    # Place items per room (excluding flame tiles)
+    # Place items per room (excluding flame tiles).
+    # Global used set prevents any two items on the same tile.
     all_treasures = []
     all_materials = []
     all_keys = []
     all_blocks = []
     all_plates = []
     all_enemy_starts = []
+    global_used = set()
+
+    item_walls = dict(walls)
+    for ft in flame_tile_set:
+        item_walls[ft] = WALL_REINFORCED
 
     for name, node in graph.nodes.items():
         if name not in placed:
             continue
-        # Merge flame tiles into walls for item placement so nothing
-        # lands on fire
-        item_walls = dict(walls)
-        for ft in flame_tile_set:
-            item_walls[ft] = WALL_REINFORCED
         t, m, k, b, pl, es = _place_items_in_room(
-            node, placed[name], item_walls, rng, player_pos=player_start)
+            node, placed[name], item_walls, rng,
+            player_pos=player_start, global_used=global_used)
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
@@ -887,14 +891,14 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
         all_enemy_starts.extend(es)
 
     # Place a treasure on the far side of each flame jet
-    import random as _rnd_mod
     item_nos = list(range(1, 10))
     for jet in all_flame_jets:
         far = jet.get('far_tiles', [])
         far_free = [t for t in far if t not in flame_tile_set
-                    and t not in walls]
+                    and t not in walls and t not in global_used]
         if far_free:
             pos = rng.choice(far_free)
+            global_used.add(pos)
             all_treasures.append((*pos, rng.choice(item_nos)))
 
     # Locked doors, gates, and water tiles from edges

@@ -366,13 +366,13 @@ def _assign_items(graph, feature_set, rng):
             mat = rng.choice(mat_types)
             graph.nodes[target].materials.append((mat,))
 
-    # Distribute enemies (never in corridor, never in rooms with push puzzles)
+    # Distribute enemies (never in corridor, puzzle rooms, or flame rooms)
     e_min, e_max = feature_set.get('enemy_count', (1, 3))
     e_count = max(1, rng.randint(e_min, e_max))
-    puzzle_rooms = {n for n, node in graph.nodes.items()
-                    if node.blocks or node.plates}
+    hazard_rooms = {n for n, node in graph.nodes.items()
+                    if node.blocks or node.plates or node.has_flames}
     enemy_candidates = [n for n in all_nodes
-                        if n != corridor_name and n not in puzzle_rooms]
+                        if n != corridor_name and n not in hazard_rooms]
     if not enemy_candidates:
         enemy_candidates = [n for n in all_nodes if n != corridor_name]
     has_forge = feature_set.get('has_forge_ogre', False)
