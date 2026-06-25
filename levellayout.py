@@ -65,8 +65,6 @@ def layout_graph(graph, rng=None, strategies=None):
         return _layout_vertical(corridor_name, room_names, rng)
     elif strategy == 'off_centre':
         return _layout_off_centre(corridor_name, room_names, rng)
-    elif strategy == 'chain':
-        return _layout_chain(corridor_name, room_names, rng)
     else:
         return _layout_horizontal(corridor_name, room_names, rng)
 
@@ -163,61 +161,6 @@ def _layout_off_centre(corridor_name, room_names, rng):
     _pack_band(placed, room_names[big_count:], rng,
                band_col=MIN_C, band_row=cor_row + cor_h + 1,
                band_w=INT_W, band_h=below_h)
-
-    return placed
-
-
-def _layout_chain(corridor_name, room_names, rng):
-    """Rooms arranged in a grid pattern — no dominant corridor.
-
-    The corridor is placed as a small room. All nodes are arranged
-    in a grid of cells filling the 30×16 space.
-    """
-    all_names = [corridor_name] + list(room_names)
-    rng.shuffle(all_names)
-    # Put corridor first (it's the start)
-    all_names.remove(corridor_name)
-    all_names.insert(0, corridor_name)
-
-    n = len(all_names)
-    # Determine grid dimensions: try to make roughly square
-    if n <= 4:
-        cols_n, rows_n = 2, 2
-    elif n <= 6:
-        cols_n, rows_n = 3, 2
-    elif n <= 9:
-        cols_n, rows_n = 3, 3
-    else:
-        cols_n, rows_n = 4, 3
-
-    placed = {}
-    idx = 0
-    for gr in range(rows_n):
-        for gc in range(cols_n):
-            if idx >= n:
-                break
-            name = all_names[idx]
-            idx += 1
-
-            cell_w = INT_W // cols_n
-            cell_h = INT_H // rows_n
-            col = MIN_C + gc * cell_w
-            row = MIN_R + gr * cell_h
-            # Leave 1 tile wall between cells
-            w = cell_w - 1
-            h = cell_h - 1
-            if gc == cols_n - 1:
-                w = MIN_C + INT_W - col - 1
-            if gr == rows_n - 1:
-                h = MIN_R + INT_H - row - 1
-
-            if w >= 3 and h >= 2:
-                placed[name] = PlacedNode(name, col, row, w, h)
-
-    # Ensure corridor is placed
-    if corridor_name not in placed:
-        placed[corridor_name] = PlacedNode(
-            corridor_name, MIN_C, MIN_R, INT_W, 2)
 
     return placed
 
@@ -342,7 +285,13 @@ def derive_walls(graph, placed):
         else:
             conn = _find_connection_tile(pa, pb, walls)
             if conn is None:
-                continue
+                raise ValueError(
+                    f"Edge {edge.node_a!r}<->{edge.node_b!r} has no shared "
+                    f"boundary tile. "
+                    f"{pa.name} at col={pa.col} row={pa.row} "
+                    f"w={pa.w} h={pa.h}; "
+                    f"{pb.name} at col={pb.col} row={pb.row} "
+                    f"w={pb.w} h={pb.h}")
             if edge.edge_type == EdgeType.OPEN:
                 walls.pop(conn, None)
             elif edge.edge_type == EdgeType.BREAKABLE:
@@ -943,8 +892,17 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
         all_plates.extend(pl)
         all_enemy_starts.extend(es)
 
-    # Pass 2: compute dead squares from actual plate positions, then
-    # place blocks only on non-dead tiles
+    # Pass 2: place each block at a guaranteed-solvable "1-push position"
+    # relative to its plate.
+    #
+    # A 1-push position T satisfies: block at T, player at T+D (plate+2D),
+    # and a single move of the player in direction -D pushes the block to
+    # the plate.  Both T and T+D must be passable in item_walls (all walls,
+    # not just permanent ones), which avoids the dead-square/all-walls
+    # mismatch that caused spurious Sokoban failures.
+    #
+    # Dead squares are still computed (with permanent walls) for the floor
+    # visual indicator but no longer control block placement.
     all_blocks = []
     dead_squares = set()
     if all_plates:
@@ -956,18 +914,81 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
         targets = [(pc, pr) for pc, pr, _ in all_plates]
         dead_squares = _compute_dead_squares(perm_passable, targets)
 
+    # Build an index: plate_pos → gate_id for fast lookup
+    plate_index = {(pc, pr): gid for pc, pr, gid in all_plates}
+
+    # Board-wide tiles that are not walls or closed gates/locked-doors.
+    # Gate and locked-door tiles are popped from walls by derive_walls so they
+    # look passable in item_walls, but the player cannot traverse them until
+    # they are opened.  This matches validate_push_puzzles semantics.
+    all_floor_tiles = set().union(*(pn.floor_tiles for pn in placed.values()))
+    _orig_walls_set = ({(c, r) for c in range(MIN_C, MAX_C + 1)
+                        for r in range(MIN_R, MAX_R + 1)}
+                       - all_floor_tiles)
+    gate_and_lock_tiles = set()
+    for _edge in graph.edges:
+        if (_edge.node_a not in placed or _edge.node_b not in placed):
+            continue
+        if _edge.edge_type in (EdgeType.LOCKED, EdgeType.GATED):
+            _conn = _find_connection_tile(
+                placed[_edge.node_a], placed[_edge.node_b], _orig_walls_set)
+            if _conn:
+                gate_and_lock_tiles.add(_conn)
+
+    board_walkable = ({(c, r) for c in range(MIN_C, MAX_C + 1)
+                       for r in range(MIN_R, MAX_R + 1)}
+                      - set(item_walls.keys())
+                      - gate_and_lock_tiles)
+
     for name, node in graph.nodes.items():
         if name not in placed or not node.blocks:
             continue
         pn = placed[name]
-        floor = sorted(t for t in pn.floor_tiles
-                       if t not in item_walls and t not in global_used
-                       and t not in dead_squares)
-        rng.shuffle(floor)
+
+        # Tiles in this room that can hold a block (free of walls and already
+        # placed blocks; items like treasures are not obstacles for blocks).
+        room_block_passable = (set(pn.floor_tiles)
+                               - set(item_walls.keys())
+                               - {b for b in all_blocks})
+
+        claimed_plates = set()
         for _ in node.blocks:
-            if floor:
-                pos = floor.pop()
-                global_used.add(pos)
+            # Find a plate in this room not yet claimed by a block in this pass
+            plate_pos = next(
+                (pos for pos in plate_index
+                 if tile_owner.get(pos) == name and pos not in claimed_plates),
+                None)
+            if plate_pos is not None:
+                claimed_plates.add(plate_pos)
+
+            pos = None
+            if plate_pos is not None:
+                # Collect all 1-push positions for this plate.
+                # block_cand must be in the room (can't push a block placed
+                # outside its puzzle room).  player_cand only needs to be
+                # board-walkable (player can approach through corridors).
+                push_candidates = []
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    block_cand  = (plate_pos[0] + dc, plate_pos[1] + dr)
+                    player_cand = (plate_pos[0] + 2*dc, plate_pos[1] + 2*dr)
+                    if (block_cand  in room_block_passable
+                            and player_cand in board_walkable
+                            and block_cand != plate_pos):
+                        push_candidates.append(block_cand)
+
+                if push_candidates:
+                    pos = rng.choice(push_candidates)
+
+            if pos is None:
+                # Fallback: any non-dead passable tile in the room
+                floor = sorted(room_block_passable - dead_squares)
+                if floor:
+                    pos = rng.choice(floor)
+                elif room_block_passable:
+                    pos = rng.choice(sorted(room_block_passable))
+
+            if pos is not None:
+                room_block_passable.discard(pos)
                 all_blocks.append(pos)
 
     # Place a treasure on the far side of each flame jet
