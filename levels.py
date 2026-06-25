@@ -272,7 +272,7 @@ def _generate_act2():
             'enemy_count': (3, 5),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
             'grid_count': 2,
         },
         # Level 18: 2 grids, heavier
@@ -287,7 +287,7 @@ def _generate_act2():
             'enemy_count': (4, 6),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
             'grid_count': 2,
         },
         # Level 19: 2 grids, gauntlet
@@ -302,7 +302,7 @@ def _generate_act2():
             'enemy_count': (5, 7),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
             'grid_count': 2,
         },
         # Level 20: boss level, 2 grids
@@ -317,7 +317,7 @@ def _generate_act2():
             'enemy_count': (4, 6),
             'has_flames': True,
             'has_forge_ogre': True,
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
             'grid_count': 2,
         },
     ]
@@ -325,25 +325,12 @@ def _generate_act2():
     levels = []
     for i, features in enumerate(feature_sets):
         rng = _rnd.Random(seed + i)
-        for attempt in range(50):
-            graph = LevelGraph.generate(features, rng=rng)
-            errors = graph.validate_playability()
-            if errors:
-                rng = _rnd.Random(seed + i + (attempt + 1) * 1000)
-                continue
-            try:
-                strats = features.get('layout_strategies')
-                grids = features.get('grid_count', 1)
-                level_dict = build_level_dict(graph, rng=rng,
-                                               strategies=strats,
-                                               grid_count=grids)
-                levels.append(level_dict)
-                break
-            except ValueError:
-                rng = _rnd.Random(seed + i + (attempt + 1) * 1000)
-                continue
-        else:
-            raise RuntimeError(f"Failed to generate valid level {11 + i}")
+        graph = LevelGraph.generate(features, rng=rng)
+        strats = features.get('layout_strategies')
+        grids  = features.get('grid_count', 1)
+        level_dict = build_level_dict(graph, rng=rng, strategies=strats,
+                                      grid_count=grids)
+        levels.append(level_dict)
     return levels
 
 
