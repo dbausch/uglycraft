@@ -1017,32 +1017,27 @@ def _build_multi_grid(graph, rng, strategies):
     graph_a = _build_subgraph(cor_a)
     graph_b = _build_subgraph(cor_b)
 
-    # Force both grids to use 'horizontal' layout so corridors are at
-    # a predictable row, then find the shared exit row.
-    dict_a = build_level_dict(graph_a, rng=rng,
-                               strategies=['horizontal'], grid_count=1)
-    dict_b = build_level_dict(graph_b, rng=rng,
-                               strategies=['horizontal'], grid_count=1)
+    dict_a = build_level_dict(graph_a, rng=rng, strategies=strategies,
+                               grid_count=1)
+    dict_b = build_level_dict(graph_b, rng=rng, strategies=strategies,
+                               grid_count=1)
 
     room_a = dict_a['rooms']['main']
     room_b = dict_b['rooms']['main']
 
-    # Find exit row: a row that is corridor floor on both grids
-    def _corridor_rows(room_dict, corridor_name):
-        owner = room_dict.get('tile_owner', {})
-        return {r for (c, r), name in owner.items() if name == corridor_name}
+    # Find a connection row: any row where both grids have floor
+    # adjacent to the border. Can be corridor↔corridor, corridor↔room,
+    # or room↔room.
+    rows_a = {r for (c, r) in room_a['tile_owner'] if c == COLS - 2}
+    rows_b = {r for (c, r) in room_b['tile_owner'] if c == 1}
+    shared = sorted(rows_a & rows_b)
 
-    rows_a = _corridor_rows(room_a, cor_a)
-    rows_b = _corridor_rows(room_b, cor_b)
-    shared = rows_a & rows_b
-    if shared:
-        exit_row = sorted(shared)[len(shared) // 2]
-    elif rows_a:
-        exit_row = sorted(rows_a)[len(rows_a) // 2]
-    else:
-        exit_row = 7
+    if not shared:
+        raise ValueError("No shared floor row between grids")
 
-    # Ensure the border-adjacent tiles on both grids are floor
+    exit_row = shared[len(shared) // 2]
+
+    # Clear any wall at the border-adjacent tile on each side
     room_a['walls'].pop((COLS - 2, exit_row), None)
     room_b['walls'].pop((1, exit_row), None)
 
