@@ -172,15 +172,14 @@ class Game:
         """Called when the player walks into wall (col, row) via direction key."""
         if key in self._bump_consumed:
             return  # key not released since last hit — ignore
-        if self._is_border(col, row):
-            return  # indestructible
-        wall_type = self._level_walls.get((col, row))
-        if wall_type == WALL_REINFORCED:
-            return  # indestructible interior wall
+        # Doors and bridges can be on border tiles (grid transitions)
         if self._try_auto_open_door(col, row):
-            return  # door opened by bumping with matching key
+            return
         if self._try_auto_bridge(col, row):
-            return  # bridge built on water tile
+            return
+        if self._is_border(col, row):
+            return  # indestructible border (no door/bridge here)
+        wall_type = self._level_walls.get((col, row))
         if self._is_unbumpable(col, row):
             return  # gates and blocks are not breakable by bumping
         self._bump_consumed.add(key)
@@ -453,24 +452,10 @@ class Game:
         )
 
     def _build_walls_multiroom(self):
-        """Build collision map for a multi-room level, opening exit tiles."""
+        """Build collision map for a multi-room level."""
         self._build_walls()
         room_key = self._current_room
-        # Locked doors act as walls
-        for dc, dr, _color in self._room_doors.get(room_key, []):
-            self.walls[dc][dr] = True
-        # Pushable blocks act as walls
-        for bc, br in self._room_blocks.get(room_key, []):
-            self.walls[bc][br] = True
-        # Unbridged water tiles act as walls
-        for wc, wr in getattr(self, '_water_tiles', set()):
-            if (wc, wr) not in getattr(self, '_bridged_tiles', set()):
-                self.walls[wc][wr] = True
-        # Gates act as walls when closed
-        for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
-            if gate_id not in self._gate_open:
-                self.walls[gc][gr] = True
-        # Open exit tiles in the border
+        # Open exit tiles in the border FIRST
         room_data = self._current_room_data
         for exit_key in room_data.get('exits', {}):
             side, pos_str = exit_key.rsplit('_', 1)
@@ -483,6 +468,17 @@ class Game:
                 self.walls[pos][0] = False
             elif side == 'bottom':
                 self.walls[pos][ROWS - 1] = False
+        # Then apply obstacles on top (doors/gates can block exits)
+        for dc, dr, _color in self._room_doors.get(room_key, []):
+            self.walls[dc][dr] = True
+        for bc, br in self._room_blocks.get(room_key, []):
+            self.walls[bc][br] = True
+        for wc, wr in getattr(self, '_water_tiles', set()):
+            if (wc, wr) not in getattr(self, '_bridged_tiles', set()):
+                self.walls[wc][wr] = True
+        for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
+            if gate_id not in self._gate_open:
+                self.walls[gc][gr] = True
 
     def _try_room_transition(self):
         """Check if the player is on an exit tile and transition if so."""
