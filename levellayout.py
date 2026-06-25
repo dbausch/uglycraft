@@ -564,17 +564,52 @@ def validate_push_puzzles(room_data, tile_owner):
     return errors
 
 
+def _compute_dead_squares(passable, targets):
+    """Pre-compute dead squares using reverse-reachability from targets.
+
+    A dead square is a passable tile from which a block can NEVER be
+    pushed to any target. Uses reverse BFS: from each target, simulate
+    pulling (reverse-pushing) the block to find all tiles it could have
+    come from. Tiles not reached by any target's pull-BFS are dead.
+
+    A reverse-push from position P in direction D means: the block was
+    at P+D and got pushed to P. For this to be valid, both P+D (where
+    the block was) and P-D (where the player stood) must be passable.
+    """
+    alive = set()
+    for target in targets:
+        # Reverse-BFS: from the target, find all tiles a block could
+        # have been pushed FROM to eventually reach the target.
+        # A forward push in direction D: player at P, block at P+D,
+        # block moves to P+2D. So reverse from position Q: the block
+        # came from Q-D (origin), pushed by player at Q-2D.
+        visited = {target}
+        queue = deque([target])
+        while queue:
+            bx, by = queue.popleft()
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                origin = (bx - dc, by - dr)       # block came from here
+                player_was = (bx - 2*dc, by - 2*dr)  # player stood here
+                if (origin in passable and player_was in passable
+                        and origin not in visited):
+                    visited.add(origin)
+                    queue.append(origin)
+        alive.update(visited)
+    return passable - alive
+
+
 def _can_push_block_to(block_positions, target, passable):
     """Check if any block can be pushed to the target.
 
-    Tries each block independently with a proper Sokoban BFS.
-    The block being tested is temporarily added back to passable
-    (since it will move), but other blocks remain as obstacles.
+    Uses dead square detection + Sokoban BFS.
     """
+    dead = _compute_dead_squares(passable, [target])
+
     for block_start in block_positions:
-        # This block's start position needs to be passable (it will move)
+        if block_start in dead:
+            continue
         p = passable | {block_start}
-        if _sokoban_bfs(block_start, target, p):
+        if _sokoban_bfs(block_start, target, p, dead):
             return True
     return False
 
@@ -582,9 +617,9 @@ def _can_push_block_to(block_positions, target, passable):
 def _player_reachable(player_start, block_pos, passable):
     """BFS for player movement, treating block_pos as impassable."""
     visited = {player_start}
-    frontier = [player_start]
+    frontier = deque([player_start])
     while frontier:
-        c, r = frontier.pop()
+        c, r = frontier.popleft()
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nc, nr = c + dc, r + dr
             if ((nc, nr) in passable and (nc, nr) not in visited
@@ -595,33 +630,24 @@ def _player_reachable(player_start, block_pos, passable):
 
 
 def _normalize_player(player_pos, block_pos, passable):
-    """Reduce player position to a canonical representative of its
-    connected component (with block as obstacle). This collapses
-    equivalent states where the player is in the same region."""
+    """Canonical representative of the player's connected component."""
     reach = _player_reachable(player_pos, block_pos, passable)
     return min(reach)
 
 
-def _sokoban_bfs(block_start, target, passable):
-    """Proper Sokoban solver for a single block.
+def _sokoban_bfs(block_start, target, passable, dead_squares):
+    """Sokoban BFS for a single block with dead square pruning.
 
-    State: (block_pos, player_zone) where player_zone is the canonical
-    tile of the player's connected component (with the block as wall).
-
-    Transitions: the player walks to a push position (adjacent to block,
-    opposite side of push direction), then pushes. After pushing, the
-    player stands at the block's old position.
+    State: (block_pos, player_zone).
+    Rejects any state where the block is on a dead square.
     """
     if block_start == target:
         return True
 
-    # Find ANY passable starting position for the player (not the block)
     player_candidates = [p for p in passable if p != block_start]
     if not player_candidates:
         return False
 
-    # The player could start anywhere in the room that isn't the block.
-    # Try each connected component.
     tried_starts = set()
     for ps in player_candidates:
         norm = _normalize_player(ps, block_start, passable)
@@ -629,15 +655,12 @@ def _sokoban_bfs(block_start, target, passable):
             continue
         tried_starts.add(norm)
 
-        # BFS: state = (block_pos, player_zone_canonical)
         start_state = (block_start, norm)
         visited = {start_state}
         queue = deque([start_state])
 
         while queue:
             (bx, by), p_zone = queue.popleft()
-
-            # Player can reach any tile in their zone
             p_reach = _player_reachable(p_zone, (bx, by), passable)
 
             for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -648,11 +671,12 @@ def _sokoban_bfs(block_start, target, passable):
                     continue
                 if push_to not in passable:
                     continue
+                if push_to in dead_squares:
+                    continue
 
                 if push_to == target:
                     return True
 
-                # After push: block at push_to, player at (bx, by)
                 new_p_zone = _normalize_player(
                     (bx, by), push_to, passable)
                 new_state = (push_to, new_p_zone)

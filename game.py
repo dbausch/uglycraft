@@ -386,8 +386,8 @@ class Game:
         self._verify_blocks()
 
     def _verify_blocks(self):
-        """Debug-only check: every block must be pushable in ≥1 direction."""
-        if not self._is_multiroom or not self._debug:
+        """Check blocks are pushable. Regenerate level if any are stuck."""
+        if not self._is_multiroom:
             return
         rk = self._current_room
         for bc, br in self._room_blocks.get(rk, []):
@@ -402,21 +402,10 @@ class Game:
                 if pf_ok and pt_ok:
                     push_dirs += 1
             if push_dirs == 0:
-                import sys
-                print(f"BUG: block at ({bc},{br}) has 0 push directions "
-                      f"in game walls! Solver missed this.", file=sys.stderr)
-                # Dump the surroundings
-                for dr in range(-2, 3):
-                    row = ""
-                    for dc in range(-2, 3):
-                        c, r = bc + dc, br + dr
-                        if c == bc and r == br:
-                            row += "B"
-                        elif 0 <= c < COLS and 0 <= r < ROWS and self.walls[c][r]:
-                            row += "#"
-                        else:
-                            row += "."
-                    print(f"  {row}", file=sys.stderr)
+                from levels import regenerate_act2
+                regenerate_act2()
+                self._start_level(self.level)
+                return
 
     def _tag_enemies_with_rooms(self):
         """Assign each enemy to its room based on tile_owner map."""
