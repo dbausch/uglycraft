@@ -346,10 +346,10 @@ def _find_connection_tile(pa, pb, walls):
     if not candidates:
         return None
 
-    # Prefer centre of shared boundary
+    # Prefer centre of shared boundary; (col, row) breaks ties deterministically
     avg_c = sum(c for c, r in candidates) / len(candidates)
     avg_r = sum(r for c, r in candidates) / len(candidates)
-    candidates.sort(key=lambda t: abs(t[0] - avg_c) + abs(t[1] - avg_r))
+    candidates.sort(key=lambda t: (abs(t[0] - avg_c) + abs(t[1] - avg_r), t[0], t[1]))
     return candidates[0]
 
 
