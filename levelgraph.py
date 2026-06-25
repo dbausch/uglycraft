@@ -463,24 +463,15 @@ def _assign_items(graph, feature_set, rng):
     # - flame rooms
     e_min, e_max = feature_set.get('enemy_count', (1, 3))
     e_count = max(1, rng.randint(e_min, e_max))
-    # Border zone: nodes on the BORDER edge AND their immediate neighbors
-    border_zone = set()
-    for edge in graph.edges:
-        if edge.edge_type == EdgeType.BORDER:
-            border_zone.add(edge.node_a)
-            border_zone.add(edge.node_b)
-            for neighbor, _ in graph.neighbors(edge.node_a):
-                border_zone.add(neighbor)
-            for neighbor, _ in graph.neighbors(edge.node_b):
-                border_zone.add(neighbor)
     hazard_rooms = {n for n, node in graph.nodes.items()
                     if node.blocks or node.plates or node.has_flames}
     corridors = {n for n, node in graph.nodes.items()
                  if node.size == NodeSize.CORRIDOR}
-    excluded = corridors | border_zone | hazard_rooms
+    excluded = corridors | hazard_rooms
     enemy_candidates = [n for n in all_nodes if n not in excluded]
     if not enemy_candidates:
-        enemy_candidates = [n for n in all_nodes if n != corridor_name]
+        enemy_candidates = [n for n in all_nodes
+                            if n not in corridors]
     has_forge = feature_set.get('has_forge_ogre', False)
     forge_placed = False
     for _ in range(e_count):
