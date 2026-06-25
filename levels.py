@@ -347,4 +347,11 @@ def _generate_act2():
     return levels
 
 
+_ACT1_COUNT = len(LEVELS)
 LEVELS.extend(_generate_act2())
+
+
+def regenerate_act2():
+    """Replace Act 2 levels with freshly generated ones (new seed)."""
+    del LEVELS[_ACT1_COUNT:]
+    LEVELS.extend(_generate_act2())

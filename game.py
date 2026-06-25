@@ -209,6 +209,8 @@ class Game:
     # ── Game initialisation ───────────────────────────────────────────────────
 
     def _full_reset(self):
+        from levels import regenerate_act2
+        regenerate_act2()
         self.score        = 0
         self.lives        = STARTING_LIVES
         self.level        = 0
