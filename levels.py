@@ -260,6 +260,66 @@ def _generate_act2():
             'has_forge_ogre': True,
             'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
         },
+        # Level 17: 2 grids, all mechanics
+        {
+            'room_count': (6, 8),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
+                           EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL, NodeSize.CLOSET],
+            'treasure_count': (10, 14),
+            'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
+            'material_count': (8, 12),
+            'enemy_count': (3, 5),
+            'has_flames': True,
+            'has_forge_ogre': True,
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'grid_count': 2,
+        },
+        # Level 18: 2 grids, heavier
+        {
+            'room_count': (7, 9),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
+                           EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL, NodeSize.CLOSET],
+            'treasure_count': (12, 16),
+            'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
+            'material_count': (8, 14),
+            'enemy_count': (4, 6),
+            'has_flames': True,
+            'has_forge_ogre': True,
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'grid_count': 2,
+        },
+        # Level 19: 2 grids, gauntlet
+        {
+            'room_count': (8, 10),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
+                           EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL, NodeSize.CLOSET],
+            'treasure_count': (14, 18),
+            'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
+            'material_count': (10, 16),
+            'enemy_count': (5, 7),
+            'has_flames': True,
+            'has_forge_ogre': True,
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'grid_count': 2,
+        },
+        # Level 20: boss level, 2 grids
+        {
+            'room_count': (6, 8),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
+                           EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
+            'treasure_count': (10, 14),
+            'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
+            'material_count': (8, 12),
+            'enemy_count': (4, 6),
+            'has_flames': True,
+            'has_forge_ogre': True,
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
+            'grid_count': 2,
+        },
     ]
 
     levels = []
@@ -273,7 +333,10 @@ def _generate_act2():
                 continue
             try:
                 strats = features.get('layout_strategies')
-                level_dict = build_level_dict(graph, rng=rng, strategies=strats)
+                grids = features.get('grid_count', 1)
+                level_dict = build_level_dict(graph, rng=rng,
+                                               strategies=strats,
+                                               grid_count=grids)
                 levels.append(level_dict)
                 break
             except ValueError:

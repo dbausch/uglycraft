@@ -750,13 +750,16 @@ def _generate_flame_jets(placed_node, walls, rng):
 
 # ── Game-format output ────────────────────────────────────────────────────────
 
-def build_level_dict(graph, rng=None, strategies=None):
+def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     """Generate the complete level dict that game.py expects.
 
-    Includes a 'tile_owner' map in the room data: {(col, row): node_name}
-    for every floor tile, used by the game to confine enemies to their room.
+    grid_count=1: single grid (default).
+    grid_count=2: split the graph across two grids connected by a border exit.
     """
     rng = rng or random.Random()
+
+    if grid_count >= 2:
+        return _build_multi_grid(graph, rng, strategies)
 
     placed = layout_graph(graph, rng=rng, strategies=strategies)
     walls, water_tiles = derive_walls(graph, placed)
@@ -866,4 +869,85 @@ def build_level_dict(graph, rng=None, strategies=None):
         'start_room': grid_name,
         'player_start': player_start,
         'rooms': {grid_name: room},
+    }
+
+
+def _build_multi_grid(graph, rng, strategies):
+    """Build a level spanning two 30×16 grids connected by border exits.
+
+    Splits the graph: corridor + half the rooms go in grid A, the other
+    half get a new corridor in grid B. An edge connecting the two halves
+    becomes a border exit (right edge of A → left edge of B).
+    """
+    from levelgraph import LevelGraph, NodeSize, EdgeType
+
+    corridor_name = None
+    for name, node in graph.nodes.items():
+        if node.size == NodeSize.CORRIDOR:
+            corridor_name = name
+            break
+
+    room_names = [n for n in graph.nodes if n != corridor_name]
+    rng.shuffle(room_names)
+    mid = max(2, len(room_names) // 2)
+    group_a_rooms = room_names[:mid]
+    group_b_rooms = room_names[mid:]
+
+    # Build sub-graph A: corridor + group_a rooms
+    graph_a = LevelGraph(rng=rng)
+    graph_a.add_node(corridor_name, graph.nodes[corridor_name].size,
+                     is_start=True)
+    for name in group_a_rooms:
+        n = graph.nodes[name]
+        node = graph_a.add_node(name, n.size)
+        node.treasures = list(n.treasures)
+        node.materials = list(n.materials)
+        node.keys = list(n.keys)
+        node.blocks = list(n.blocks)
+        node.plates = list(n.plates)
+        node.enemies = list(n.enemies)
+        node.has_flames = n.has_flames
+
+    for edge in graph.edges:
+        if edge.node_a in graph_a.nodes and edge.node_b in graph_a.nodes:
+            graph_a.add_edge(edge.node_a, edge.node_b, edge.edge_type,
+                             **edge.params)
+
+    # Build sub-graph B: new corridor + group_b rooms
+    cor_b_name = 'corridor_b'
+    graph_b = LevelGraph(rng=rng)
+    graph_b.add_node(cor_b_name, NodeSize.CORRIDOR, is_start=True)
+    for name in group_b_rooms:
+        n = graph.nodes[name]
+        node = graph_b.add_node(name, n.size)
+        node.treasures = list(n.treasures)
+        node.materials = list(n.materials)
+        node.keys = list(n.keys)
+        node.blocks = list(n.blocks)
+        node.plates = list(n.plates)
+        node.enemies = list(n.enemies)
+        node.has_flames = n.has_flames
+        graph_b.add_edge(cor_b_name, name, EdgeType.OPEN)
+
+    # Build each grid independently
+    dict_a = build_level_dict(graph_a, rng=rng, strategies=strategies,
+                               grid_count=1)
+    dict_b = build_level_dict(graph_b, rng=rng, strategies=strategies,
+                               grid_count=1)
+
+    # Connect via border exits: A's right edge → B's left edge
+    room_a = dict_a['rooms']['main']
+    room_b = dict_b['rooms']['main']
+
+    exit_row = 7  # corridor height, middle of grid
+    room_a['exits'] = {'right_7': 'grid_b'}
+    room_b['exits'] = {'left_7': 'grid_a'}
+
+    return {
+        'start_room': 'grid_a',
+        'player_start': dict_a['player_start'],
+        'rooms': {
+            'grid_a': room_a,
+            'grid_b': room_b,
+        },
     }
