@@ -37,16 +37,13 @@ class PlacedNode:
         )
 
 
-# ── Layout ────────────────────────────────────────────────────────────────────
+# ── Layout strategies ─────────────────────────────────────────────────────────
 
-def layout_graph(graph, rng=None):
-    """Arrange graph nodes onto a 30×16 grid.
+STRATEGIES = ['horizontal', 'vertical', 'off_centre']
 
-    Strategy:
-    - Corridor runs full interior width, 2-3 tiles tall, vertically centred.
-    - 1 tile of wall separates the corridor from the room bands above/below.
-    - Rooms fill the bands, each separated by 1 tile of wall.
-    - Every room is therefore fully enclosed by wall (or border).
+
+def layout_graph(graph, rng=None, strategies=None):
+    """Arrange graph nodes onto a 30×16 grid using a random strategy.
 
     Returns {node_name: PlacedNode}.
     """
@@ -61,14 +58,21 @@ def layout_graph(graph, rng=None):
         raise ValueError("Graph has no CORRIDOR node")
 
     room_names = [n for n in graph.nodes if n != corridor_name]
+    available = strategies or STRATEGIES
+    strategy = rng.choice(available)
 
-    # Corridor: full width, 2-3 tiles tall
+    if strategy == 'vertical':
+        return _layout_vertical(corridor_name, room_names, rng)
+    elif strategy == 'off_centre':
+        return _layout_off_centre(corridor_name, room_names, rng)
+    else:
+        return _layout_horizontal(corridor_name, room_names, rng)
+
+
+def _layout_horizontal(corridor_name, room_names, rng):
+    """Corridor runs left-right, rooms above and below."""
     cor_h = rng.randint(2, 3)
-
-    # Reserve 1 row of wall above and below the corridor.
-    # Remaining space splits into room bands.
-    #   above_band_h + 1 (wall) + cor_h + 1 (wall) + below_band_h = INT_H
-    remaining = INT_H - cor_h - 2  # subtract corridor and 2 wall rows
+    remaining = INT_H - cor_h - 2
     above_h = remaining // 2
     below_h = remaining - above_h
     if above_h < 3:
@@ -78,32 +82,123 @@ def layout_graph(graph, rng=None):
         below_h = 3
         above_h = remaining - below_h
 
-    # Positions (all 1-indexed interior coords)
-    above_row = MIN_R                      # rooms above start here
-    wall_above_row = MIN_R + above_h       # wall row between above rooms and corridor
-    cor_row = wall_above_row + 1           # corridor starts here
-    wall_below_row = cor_row + cor_h       # wall row between corridor and below rooms
-    below_row = wall_below_row + 1         # rooms below start here
-
+    cor_row = MIN_R + above_h + 1
     placed = {}
     placed[corridor_name] = PlacedNode(
         corridor_name, MIN_C, cor_row, INT_W, cor_h)
 
-    # Split rooms above/below
     rng.shuffle(room_names)
     mid = (len(room_names) + 1) // 2
-    above = room_names[:mid]
-    below = room_names[mid:]
 
-    _pack_band(placed, above, rng,
-               band_col=MIN_C, band_row=above_row,
+    _pack_band(placed, room_names[:mid], rng,
+               band_col=MIN_C, band_row=MIN_R,
                band_w=INT_W, band_h=above_h)
-
-    _pack_band(placed, below, rng,
-               band_col=MIN_C, band_row=below_row,
+    _pack_band(placed, room_names[mid:], rng,
+               band_col=MIN_C, band_row=cor_row + cor_h + 1,
                band_w=INT_W, band_h=below_h)
 
     return placed
+
+
+def _layout_vertical(corridor_name, room_names, rng):
+    """Corridor runs top-bottom, rooms left and right."""
+    cor_w = rng.randint(2, 3)
+    remaining = INT_W - cor_w - 2
+    left_w = remaining // 2
+    right_w = remaining - left_w
+    if left_w < 5:
+        left_w = 5
+        right_w = remaining - left_w
+    if right_w < 5:
+        right_w = 5
+        left_w = remaining - right_w
+
+    cor_col = MIN_C + left_w + 1
+    placed = {}
+    placed[corridor_name] = PlacedNode(
+        corridor_name, cor_col, MIN_R, cor_w, INT_H)
+
+    rng.shuffle(room_names)
+    mid = (len(room_names) + 1) // 2
+
+    _pack_band_vertical(placed, room_names[:mid], rng,
+                         band_col=MIN_C, band_row=MIN_R,
+                         band_w=left_w, band_h=INT_H)
+    _pack_band_vertical(placed, room_names[mid:], rng,
+                         band_col=cor_col + cor_w + 1, band_row=MIN_R,
+                         band_w=right_w, band_h=INT_H)
+
+    return placed
+
+
+def _layout_off_centre(corridor_name, room_names, rng):
+    """Corridor shifted up or down, asymmetric room bands."""
+    cor_h = rng.randint(2, 3)
+    remaining = INT_H - cor_h - 2
+    # Shift: one band gets 60-80% of the space
+    split = rng.uniform(0.3, 0.7)
+    above_h = max(3, int(remaining * split))
+    below_h = max(3, remaining - above_h)
+    if above_h + below_h > remaining:
+        above_h = remaining - below_h
+
+    cor_row = MIN_R + above_h + 1
+    placed = {}
+    placed[corridor_name] = PlacedNode(
+        corridor_name, MIN_C, cor_row, INT_W, cor_h)
+
+    rng.shuffle(room_names)
+    # Put more rooms in the bigger band
+    if above_h >= below_h:
+        big_count = (len(room_names) + 1) * 2 // 3
+    else:
+        big_count = len(room_names) // 3
+    big_count = max(1, min(len(room_names) - 1, big_count))
+
+    _pack_band(placed, room_names[:big_count], rng,
+               band_col=MIN_C, band_row=MIN_R,
+               band_w=INT_W, band_h=above_h)
+    _pack_band(placed, room_names[big_count:], rng,
+               band_col=MIN_C, band_row=cor_row + cor_h + 1,
+               band_w=INT_W, band_h=below_h)
+
+    return placed
+
+
+def _pack_band_vertical(placed, room_names, rng,
+                         band_col, band_row, band_w, band_h):
+    """Pack rooms into a vertical band (left or right of a vertical corridor)."""
+    if not room_names:
+        return
+
+    n = len(room_names)
+    walls_between = n - 1
+    usable = band_h - walls_between
+    if usable < n * 3:
+        base = 3
+    else:
+        base = usable // n
+
+    heights = [base] * n
+    leftover = usable - base * n
+    for i in range(max(0, leftover)):
+        heights[i % n] += 1
+    rng.shuffle(heights)
+
+    row = band_row
+    for i, name in enumerate(room_names):
+        h = heights[i]
+        w = band_w
+
+        if row + h > MAX_R + 1:
+            h = MAX_R + 1 - row
+        if band_col + w > MAX_C + 1:
+            w = MAX_C + 1 - band_col
+
+        if w >= 3 and h >= 2:
+            placed[name] = PlacedNode(name, band_col, row, w, h)
+
+        row += h + 1
 
 
 def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h):
@@ -655,7 +750,7 @@ def _generate_flame_jets(placed_node, walls, rng):
 
 # ── Game-format output ────────────────────────────────────────────────────────
 
-def build_level_dict(graph, rng=None):
+def build_level_dict(graph, rng=None, strategies=None):
     """Generate the complete level dict that game.py expects.
 
     Includes a 'tile_owner' map in the room data: {(col, row): node_name}
@@ -663,7 +758,7 @@ def build_level_dict(graph, rng=None):
     """
     rng = rng or random.Random()
 
-    placed = layout_graph(graph, rng=rng)
+    placed = layout_graph(graph, rng=rng, strategies=strategies)
     walls, water_tiles = derive_walls(graph, placed)
     tile_owner = build_tile_owner(placed)
 

@@ -148,10 +148,38 @@ Feature sets → Graph → Items → Validate → Partition → Layout → Walls
 
 | Level | Allowed node sizes | Grid count | Shapes |
 |-------|-------------------|------------|--------|
-| 11-12 | ROOM, HALL, CORRIDOR | 1 | rectangular |
-| 13-14 | + CLOSET | 1 | rectangular |
-| 15-16 | + L-shaped rooms | 2 (staircases) | rectangular + L |
-| 17+ | all | 2-3 | all |
+| 11-12 | ROOM, HALL, CORRIDOR | 1 | horizontal, vertical |
+| 13-14 | + CLOSET | 1 | + off-centre, short-corridor |
+| 15-16 | + L-shaped rooms | 1-2 (staircases) | + L-shape, chain |
+| 17+ | all | 2-3 | all strategies |
+
+### Layout strategies
+
+The layout algorithm randomly picks a floor plan strategy to arrange
+graph nodes on the 30×16 grid. This creates visual variety — not every
+level looks the same.
+
+| Strategy | Description |
+|----------|-------------|
+| `horizontal` | Corridor runs left-right, rooms above/below (current default) |
+| `vertical` | Corridor runs top-bottom, rooms left/right |
+| `L-shape` | Corridor turns a corner |
+| `off-centre` | Corridor shifted up or down, asymmetric room bands |
+| `short-corridor` | Corridor doesn't span full width, rooms wrap ends |
+| `chain` | No central corridor — rooms connected in sequence |
+
+Higher levels unlock more strategies. Early levels use only horizontal
+and vertical. Later levels can use L-shapes and chains.
+
+### Multi-grid worlds
+
+Levels 15+ can span multiple 30×16 grids. The graph is partitioned
+into grid-sized groups. Cross-grid edges become:
+- **Border exits**: opening in the border wall at the corridor endpoint
+- **Staircases**: a tile inside a room that transitions to another grid
+
+Each grid has its own corridor. The player transitions between grids
+by walking onto exit/staircase tiles.
 
 ### Difficulty parameters
 

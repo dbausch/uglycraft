@@ -196,6 +196,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS],
             'material_count': (4, 6),
             'enemy_count': (1, 2),
+            'layout_strategies': ['horizontal', 'vertical'],
         },
         # Level 12: + locked doors
         {
@@ -206,6 +207,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (4, 8),
             'enemy_count': (1, 3),
+            'layout_strategies': ['horizontal', 'vertical'],
         },
         # Level 13: + gates
         {
@@ -217,6 +219,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (5, 8),
             'enemy_count': (2, 3),
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
         },
         # Level 14: + water streams
         {
@@ -228,6 +231,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (5, 8),
             'enemy_count': (2, 3),
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
         },
         # Level 15: + flame jets
         {
@@ -240,6 +244,7 @@ def _generate_act2():
             'material_count': (6, 10),
             'enemy_count': (2, 4),
             'has_flames': True,
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
         },
         # Level 16: + forge ogre
         {
@@ -253,6 +258,7 @@ def _generate_act2():
             'enemy_count': (3, 4),
             'has_flames': True,
             'has_forge_ogre': True,
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre'],
         },
     ]
 
@@ -266,7 +272,8 @@ def _generate_act2():
                 rng = _rnd.Random(seed + i + (attempt + 1) * 1000)
                 continue
             try:
-                level_dict = build_level_dict(graph, rng=rng)
+                strats = features.get('layout_strategies')
+                level_dict = build_level_dict(graph, rng=rng, strategies=strats)
                 levels.append(level_dict)
                 break
             except ValueError:

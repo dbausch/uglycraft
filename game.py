@@ -342,7 +342,10 @@ class Game:
                 active = starts
                 active_patrols = patrols
             else:
-                active = starts[:1]
+                # EASY: keep all special enemies + up to 1 regular chaser
+                special = [s for s in starts if len(s) >= 3 and s[2] != 'chaser']
+                regular = [s for s in starts if len(s) < 3 or s[2] == 'chaser']
+                active = special + regular[:1]
                 active_patrols = patrols[:1] if patrols else []
             self.enemies = []
             for edata in active:
