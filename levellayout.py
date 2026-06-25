@@ -599,29 +599,26 @@ def _compute_dead_squares(passable, targets):
 
 
 def compute_dead_squares_for_room(room_data):
-    """Compute dead squares for a room: tiles where a block can never
-    reach any pressure plate."""
+    """Compute dead squares: tiles where a block can never reach any
+    pressure plate, considering only PERMANENT obstacles (reinforced
+    walls and borders). Temporary obstacles (doors, gates, breakable
+    walls, other blocks) are ignored — they'll be removed during play."""
     walls = room_data.get('walls', {})
     plates = room_data.get('pressure_plates', [])
-    blocks = room_data.get('pushable_blocks', [])
-    gates = room_data.get('gates', [])
-    locked_doors = room_data.get('locked_doors', [])
 
     if not plates:
         return set()
 
-    all_obstacles = set(walls.keys())
-    for dc, dr, _ in locked_doors:
-        all_obstacles.add((dc, dr))
-    for gc, gr, _ in gates:
-        all_obstacles.add((gc, gr))
-    for bpos in blocks:
-        all_obstacles.add(bpos)
+    # Only reinforced walls are permanent obstacles
+    permanent = set()
+    for pos, wt in walls.items():
+        if wt == WALL_REINFORCED:
+            permanent.add(pos)
 
     passable = set()
     for c in range(MIN_C, MAX_C + 1):
         for r in range(MIN_R, MAX_R + 1):
-            if (c, r) not in all_obstacles:
+            if (c, r) not in permanent:
                 passable.add((c, r))
 
     targets = [(pc, pr) for pc, pr, _ in plates]
@@ -917,12 +914,14 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
             flame_tile_set.add(jet['source'])
         all_flame_jets.extend(jets)
 
-    # Place items per room (excluding flame tiles).
-    # Global used set prevents any two items on the same tile.
+    # Place items in two passes:
+    # Pass 1: place everything EXCEPT blocks (treasures, materials,
+    #          keys, plates, enemies)
+    # Pass 2: compute dead squares from plate positions, then place
+    #          blocks only on non-dead tiles
     all_treasures = []
     all_materials = []
     all_keys = []
-    all_blocks = []
     all_plates = []
     all_enemy_starts = []
     global_used = set()
@@ -940,9 +939,36 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
-        all_blocks.extend(b)
+        # blocks placed in pass 2 below
         all_plates.extend(pl)
         all_enemy_starts.extend(es)
+
+    # Pass 2: compute dead squares from actual plate positions, then
+    # place blocks only on non-dead tiles
+    all_blocks = []
+    dead_squares = set()
+    if all_plates:
+        permanent = {pos for pos, wt in walls.items()
+                     if wt == WALL_REINFORCED}
+        perm_passable = {(c, r) for c in range(MIN_C, MAX_C + 1)
+                         for r in range(MIN_R, MAX_R + 1)
+                         if (c, r) not in permanent}
+        targets = [(pc, pr) for pc, pr, _ in all_plates]
+        dead_squares = _compute_dead_squares(perm_passable, targets)
+
+    for name, node in graph.nodes.items():
+        if name not in placed or not node.blocks:
+            continue
+        pn = placed[name]
+        floor = sorted(t for t in pn.floor_tiles
+                       if t not in item_walls and t not in global_used
+                       and t not in dead_squares)
+        rng.shuffle(floor)
+        for _ in node.blocks:
+            if floor:
+                pos = floor.pop()
+                global_used.add(pos)
+                all_blocks.append(pos)
 
     # Place a treasure on the far side of each flame jet
     item_nos = list(range(1, 10))
@@ -1017,14 +1043,14 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     if errors:
         raise ValueError(f"Layout invariant violated: {errors}")
 
-    # Validate push puzzles are solvable and compute dead squares
+    # Validate push puzzles are solvable
     push_errors = validate_push_puzzles(room, tile_owner)
     if push_errors:
         raise ValueError(f"Unsolvable push puzzle: {push_errors}")
 
-    dead = compute_dead_squares_for_room(room)
-    if dead:
-        room['dead_squares'] = list(dead)
+    # Store dead squares (already computed before block placement)
+    if dead_squares:
+        room['dead_squares'] = list(dead_squares)
 
     return {
         'start_room': grid_name,

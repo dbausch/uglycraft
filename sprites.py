@@ -123,14 +123,19 @@ def draw_floor(size=TILE):
 
 
 def draw_dead_floor(size=TILE):
-    """Floor tile with subtle scratch marks — block can't be pushed here."""
+    """Floor tile with rough stone texture — block can't be pushed here."""
     s = _surf(size, alpha=False)
-    s.fill((8, 8, 12))
-    mark = (16, 14, 18)
-    cx, cy = size // 2, size // 2
-    r = size // 4
-    pygame.draw.line(s, mark, (cx - r, cy - r), (cx + r, cy + r), 1)
-    pygame.draw.line(s, mark, (cx + r, cy - r), (cx - r, cy + r), 1)
+    s.fill((10, 9, 14))
+    # Scattered tiny speckles simulating rough, uneven stone
+    speckle_dark = (6, 6, 9)
+    speckle_light = (14, 13, 18)
+    for i in range(size):
+        for j in range(size):
+            v = ((i * 7 + j * 13 + 5) * 31) % 97
+            if v < 12:
+                s.set_at((i, j), speckle_dark)
+            elif v < 20:
+                s.set_at((i, j), speckle_light)
     return s
 
 
