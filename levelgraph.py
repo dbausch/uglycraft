@@ -283,13 +283,13 @@ def _assign_items(graph, feature_set, rng):
     corridor_name = 'corridor'
 
     # Collect which keys, gates, and water crossings are needed
-    needed_keys = {}   # {colour: edge}
-    needed_gates = {}  # {gate_id: edge}
-    needed_water = {}  # {water_id: edge}
+    needed_keys = []     # [(colour, edge), ...]  one per locked edge
+    needed_gates = {}    # {gate_id: edge}
+    needed_water = {}    # {water_id: edge}
     for edge in graph.edges:
         if edge.edge_type == EdgeType.LOCKED:
             colour = edge.params['key_colour']
-            needed_keys[colour] = edge
+            needed_keys.append((colour, edge))
         elif edge.edge_type == EdgeType.GATED:
             gate_id = edge.params['gate_id']
             needed_gates[gate_id] = edge
@@ -298,7 +298,7 @@ def _assign_items(graph, feature_set, rng):
             needed_water[water_id] = edge
 
     # For each locked edge, place a key on the start side
-    for colour, edge in needed_keys.items():
+    for colour, edge in needed_keys:
         # The key must be in a room reachable without crossing this edge.
         # Since all rooms connect to the corridor, and the corridor is the
         # start, place the key in the corridor or another freely-accessible room.
