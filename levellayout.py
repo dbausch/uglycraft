@@ -598,6 +598,36 @@ def _compute_dead_squares(passable, targets):
     return passable - alive
 
 
+def compute_dead_squares_for_room(room_data):
+    """Compute dead squares for a room: tiles where a block can never
+    reach any pressure plate."""
+    walls = room_data.get('walls', {})
+    plates = room_data.get('pressure_plates', [])
+    blocks = room_data.get('pushable_blocks', [])
+    gates = room_data.get('gates', [])
+    locked_doors = room_data.get('locked_doors', [])
+
+    if not plates:
+        return set()
+
+    all_obstacles = set(walls.keys())
+    for dc, dr, _ in locked_doors:
+        all_obstacles.add((dc, dr))
+    for gc, gr, _ in gates:
+        all_obstacles.add((gc, gr))
+    for bpos in blocks:
+        all_obstacles.add(bpos)
+
+    passable = set()
+    for c in range(MIN_C, MAX_C + 1):
+        for r in range(MIN_R, MAX_R + 1):
+            if (c, r) not in all_obstacles:
+                passable.add((c, r))
+
+    targets = [(pc, pr) for pc, pr, _ in plates]
+    return _compute_dead_squares(passable, targets)
+
+
 def _can_push_block_to(block_positions, target, passable):
     """Check if any block can be pushed to the target.
 
@@ -987,10 +1017,14 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     if errors:
         raise ValueError(f"Layout invariant violated: {errors}")
 
-    # Validate push puzzles are solvable
+    # Validate push puzzles are solvable and compute dead squares
     push_errors = validate_push_puzzles(room, tile_owner)
     if push_errors:
         raise ValueError(f"Unsolvable push puzzle: {push_errors}")
+
+    dead = compute_dead_squares_for_room(room)
+    if dead:
+        room['dead_squares'] = list(dead)
 
     return {
         'start_room': grid_name,

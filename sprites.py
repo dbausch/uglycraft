@@ -122,6 +122,18 @@ def draw_floor(size=TILE):
     return s
 
 
+def draw_dead_floor(size=TILE):
+    """Floor tile with subtle scratch marks — block can't be pushed here."""
+    s = _surf(size, alpha=False)
+    s.fill((8, 8, 12))
+    mark = (16, 14, 18)
+    cx, cy = size // 2, size // 2
+    r = size // 4
+    pygame.draw.line(s, mark, (cx - r, cy - r), (cx + r, cy + r), 1)
+    pygame.draw.line(s, mark, (cx + r, cy - r), (cx - r, cy + r), 1)
+    return s
+
+
 # ── Characters ────────────────────────────────────────────────────────────────
 
 def draw_player(size=TILE):
@@ -1087,6 +1099,7 @@ def create_sprites():
         'crack1':        draw_damage_cracks(1),
         'crack2':        draw_damage_cracks(2),
         'floor':         draw_floor(),
+        'dead_floor':    draw_dead_floor(),
         'player':        draw_player(),
         'enemy_1':       draw_ogre_1(),
         'enemy_2':       draw_ogre_2(),

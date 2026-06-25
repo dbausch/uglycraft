@@ -376,6 +376,7 @@ class Game:
 
         self._tile_owner = room_data.get('tile_owner', {})
         self._water_tiles = set(tuple(t) for t in room_data.get('water_tiles', []))
+        self._dead_squares = set(tuple(t) for t in room_data.get('dead_squares', []))
         self._flame_jets = room_data.get('flame_jets', [])
         for jet in self._flame_jets:
             jet['_tile_set'] = frozenset(tuple(t) for t in jet['tiles'])
@@ -566,7 +567,8 @@ class Game:
             if bx == bc and by == br:
                 nc, nr = bc + dcol, br + drow
                 if (0 < nc < COLS - 1 and 0 < nr < ROWS - 1
-                        and not self.walls[nc][nr]):
+                        and not self.walls[nc][nr]
+                        and (nc, nr) not in self._dead_squares):
                     blocks[i] = (nc, nr)
                     self._build_walls_multiroom()
                     self.sounds.play('bump')
@@ -1184,7 +1186,10 @@ class Game:
                             if hits:
                                 self.surf.blit(sp[f'crack{hits}'], (x, y))
                 else:
-                    self.surf.blit(sp['floor'], (x, y))
+                    if (c, r) in getattr(self, '_dead_squares', set()):
+                        self.surf.blit(sp['dead_floor'], (x, y))
+                    else:
+                        self.surf.blit(sp['floor'], (x, y))
 
         # Treasure
         if self._is_multiroom:
