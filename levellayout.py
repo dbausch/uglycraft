@@ -1061,37 +1061,45 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
         if name not in placed or not node.has_flames:
             continue
         jets = _generate_flame_jets(placed[name], walls, rng)
-        # Recompute far_tiles via BFS from the room's entry tiles.
-        # Entry tiles are floor tiles of the flame room adjacent to the
-        # shared boundary wall tile with each connected neighbour.
-        # Far tiles = non-jet floor tiles NOT reachable from any entry tile
-        # when jet tiles are treated as walls.
+        # Recompute far_tiles geometrically.
+        # The jet divides the room into two halves: near (entry side) and far.
+        # BFS from the entry tile fails when the jet is parallel to the entry
+        # wall, because the entry row/column can coincide with the jet and the
+        # flood then has no valid seed.  Instead we use the connection wall
+        # tile's coordinates to determine which half is near, then the far half
+        # is simply the opposite geometric side of the jet axis.
         if jets:
-            entry_tiles: set = set()
+            conn_tile = None
             for nb_name, _ in graph.neighbors(name):
                 if nb_name not in placed:
                     continue
-                conn = _find_connection_tile(placed[name], placed[nb_name], walls)
-                if conn:
-                    for dc2, dr2 in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                        adj = (conn[0] + dc2, conn[1] + dr2)
-                        if adj in placed[name].floor_tiles:
-                            entry_tiles.add(adj)
+                conn_tile = _find_connection_tile(placed[name], placed[nb_name], walls)
+                if conn_tile:
+                    break
+            wall_set = set(walls.keys())
             for jet in jets:
                 jet_set = set(jet['tiles']) | {jet['source']}
-                passable = placed[name].floor_tiles - set(walls.keys()) - jet_set
-                near: set = set(entry_tiles & passable)
-                frontier = list(near)
-                while frontier:
-                    next_f = []
-                    for t in frontier:
-                        for dc2, dr2 in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                            nb = (t[0] + dc2, t[1] + dr2)
-                            if nb in passable and nb not in near:
-                                near.add(nb)
-                                next_f.append(nb)
-                    frontier = next_f
-                jet['far_tiles'] = list(passable - near)
+                floor_minus_jet = [t for t in placed[name].floor_tiles
+                                   if t not in wall_set and t not in jet_set]
+                if conn_tile is None:
+                    jet['far_tiles'] = floor_minus_jet
+                    continue
+                if jet['dir'] == (1, 0):   # horizontal jet — splits by row
+                    jet_row = jet['tiles'][0][1]
+                    if conn_tile[1] < jet_row:   # entry is above the jet
+                        jet['far_tiles'] = [t for t in floor_minus_jet
+                                            if t[1] > jet_row]
+                    else:                         # entry is below (or at) the jet
+                        jet['far_tiles'] = [t for t in floor_minus_jet
+                                            if t[1] < jet_row]
+                else:                      # vertical jet — splits by column
+                    jet_col = jet['tiles'][0][0]
+                    if conn_tile[0] < jet_col:   # entry is left of the jet
+                        jet['far_tiles'] = [t for t in floor_minus_jet
+                                            if t[0] > jet_col]
+                    else:                         # entry is right (or at) the jet
+                        jet['far_tiles'] = [t for t in floor_minus_jet
+                                            if t[0] < jet_col]
         for jet in jets:
             flame_tile_set.update(jet['tiles'])
             flame_tile_set.add(jet['source'])
