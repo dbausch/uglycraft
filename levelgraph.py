@@ -556,6 +556,7 @@ class LevelGraphBuilder:
             if n != 'corridor'
             and not node.blocks
             and not node.plates
+            and not node.enemies
         ]
         if not candidates:
             return
