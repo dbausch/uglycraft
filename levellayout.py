@@ -578,13 +578,14 @@ def _can_push_block_to(block_positions, target, passable):
     """Check if any block can be pushed to the target.
 
     Uses dead square detection + Sokoban BFS.
+    Dead squares are computed with the block's starting tile included in
+    passable: once the block moves away that tile is accessible to the player.
     """
-    dead = _compute_dead_squares(passable, [target])
-
     for block_start in block_positions:
+        p = passable | {block_start}  # block's start tile becomes walkable after move
+        dead = _compute_dead_squares(p, [target])
         if block_start in dead:
             continue
-        p = passable | {block_start}
         if _sokoban_bfs(block_start, target, p, dead):
             return True
     return False
@@ -664,7 +665,218 @@ def _sokoban_bfs(block_start, target, passable, dead_squares):
     return False
 
 
-# ── Item placement ────────────────────────────────────────────────────────────
+# ── Push puzzle placement ─────────────────────────────────────────────────────
+
+_CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+def _puzzle_candidates(plate, room_floor, passable, excluded):
+    """Reverse BFS from plate: find all room_floor tiles a block can start on
+    and still reach plate via push sequences.
+
+    Returns dict {pos: (parent_pos, push_dir)} for path reconstruction.
+    push_dir is the direction D such that the block moves in direction D
+    from pos toward parent_pos (i.e. block goes pos → parent_pos in one push).
+
+    Tiles in excluded are treated as permanently blocked.
+    """
+    valid = {}    # pos → (parent_pos, push_dir)
+    invalid = set()
+    queue = deque()
+
+    px, py = plate
+    for dc, dr in _CARDINAL:
+        A = (px - dc, py - dr)   # block was here, pushed in direction (dc,dr) to plate
+        Q = (px - 2*dc, py - 2*dr)   # player stood here
+        if (A in room_floor and A not in excluded and A in passable
+                and Q in passable and A not in valid):
+            valid[A] = (plate, (dc, dr))
+            queue.append(A)
+        elif A in room_floor and A in passable and A not in excluded and A not in valid:
+            invalid.add(A)
+
+    while queue:
+        T = queue.popleft()
+        tx, ty = T
+        for dc, dr in _CARDINAL:
+            S = (tx - dc, ty - dr)   # block was here, pushed in direction (dc,dr) to T
+            R = (tx - 2*dc, ty - 2*dr)   # player stood here
+            if S in valid or S in invalid or S in excluded:
+                continue
+            if S not in room_floor or S not in passable or S == plate:
+                continue
+            if R in passable:
+                valid[S] = (T, (dc, dr))
+                queue.append(S)
+            else:
+                invalid.add(S)
+
+    return valid
+
+
+def _puzzle_solution_tiles(block, plate, candidates):
+    """Trace the shortest push path from block to plate using candidates parent pointers.
+
+    Returns the set of tiles that must remain free for this puzzle to be solvable:
+    the block's trajectory and the player's push-from positions at each step,
+    plus the plate (where the block finally rests).
+    """
+    tiles = set()
+    current = block
+    while current != plate:
+        next_pos, (dc, dr) = candidates[current]
+        player_pos = (current[0] - dc, current[1] - dr)
+        tiles.add(current)      # block position before this push
+        tiles.add(player_pos)   # player push-from position
+        current = next_pos
+    tiles.add(plate)            # block's final position
+    return tiles
+
+
+def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
+                  prior_puzzles=()):
+    """Atomically select a (plate, block) pair for gate_id in room_name.
+
+    plate and block are chosen via a backward Sokoban BFS from the plate.
+    The BFS tracks (block_pos, player_zone) states, so each configuration is
+    visited at most once and player reachability between pushes is guaranteed.
+    The block is constrained to room_floor tiles; the player can use the full
+    passable set.
+
+    prior_puzzles: iterable of (plate_pos, block_pos) for already-placed
+    puzzles.  Their blocks are treated as permanent obstacles — matching
+    validate_push_puzzles which checks all puzzles simultaneously.
+
+    Cross-puzzle non-interference is enforced structurally: the new block and
+    plate must not land on any tile in `excluded` (the solution tiles of every
+    prior puzzle), so prior solutions remain executable.
+
+    Returns (plate_pos, block_pos, solution_tiles).
+    Raises ValueError if no valid pair exists in the room.
+    """
+    room_floor = placed[room_name].floor_tiles
+    # Prior blocks are permanent obstacles (validate_push_puzzles treats all
+    # blocks as simultaneous obstacles when verifying solvability).
+    prior_block_set = {b for _, b in prior_puzzles}
+    effective_pass = passable - prior_block_set
+
+    # Precompute connected-component maps for effective_pass minus each unique
+    # block position that might appear in the BFS (plate + room_floor tiles).
+    # comp_map[block_pos][player_pos] → zone representative (min tile in component).
+    # One O(board) BFS per unique block; avoids O(board) per zone lookup.
+    comp_cache: dict = {}
+
+    def _comp_map(block_pos):
+        if block_pos not in comp_cache:
+            space = effective_pass - {block_pos}
+            comp: dict = {}
+            for start in sorted(space):
+                if start in comp:
+                    continue
+                # BFS to find one connected component.
+                q: deque = deque([start])
+                members: list = []
+                while q:
+                    pos = q.popleft()
+                    if pos in comp:
+                        continue
+                    comp[pos] = None   # placeholder
+                    members.append(pos)
+                    for dc2, dr2 in _CARDINAL:
+                        nb = (pos[0] + dc2, pos[1] + dr2)
+                        if nb in space and nb not in comp:
+                            q.append(nb)
+                rep = min(members)
+                for m in members:
+                    comp[m] = rep
+            comp_cache[block_pos] = comp
+        return comp_cache[block_pos]
+
+    def get_zone(player_pos, block_pos):
+        cm = _comp_map(block_pos)
+        return cm.get(player_pos)   # None if player_pos == block_pos (shouldn't happen)
+
+    pairs = []   # (P, B, sol_tiles)
+
+    for P in sorted(room_floor):
+        if P not in effective_pass or P in excluded:
+            continue
+
+        # --- Backward Sokoban BFS from P, block confined to room_floor ---
+        # Initial states: block at P, player in any zone of effective_pass-{P}.
+        cm_P = _comp_map(P)
+        init_zones: set = set()
+        init_states: list = []
+        for tile in sorted(effective_pass - {P}):
+            z = cm_P.get(tile)
+            if z is not None and z not in init_zones:
+                init_zones.add(z)
+                init_states.append((P, z))
+
+        visited: dict = {}   # state → (parent_state, push_dir) | None
+        bfs_q: deque = deque()
+        for s in init_states:
+            if s not in visited:
+                visited[s] = None
+                bfs_q.append(s)
+
+        found: dict = {}  # block_start → state (for path reconstruction)
+
+        while bfs_q:
+            curr_block, curr_zone = bfs_q.popleft()
+
+            for dc, dr in _CARDINAL:
+                old_block = (curr_block[0] - dc, curr_block[1] - dr)
+                push_from = (curr_block[0] - 2 * dc, curr_block[1] - 2 * dr)
+
+                # Block must stay in room_floor and not be excluded.
+                if old_block not in room_floor or old_block in excluded:
+                    continue
+                if push_from not in effective_pass:
+                    continue
+
+                # After the push the player is at old_block — must be in curr_zone.
+                if get_zone(old_block, curr_block) != curr_zone:
+                    continue
+
+                # Before the push: block at old_block, player at push_from.
+                new_zone = get_zone(push_from, old_block)
+                new_state = (old_block, new_zone)
+
+                if new_state in visited:
+                    continue
+
+                visited[new_state] = ((curr_block, curr_zone), (dc, dr))
+                bfs_q.append(new_state)
+
+                if old_block not in found:
+                    found[old_block] = new_state
+
+        # Reconstruct solution tiles for each valid block start.
+        for B, first_state in found.items():
+            tiles: set = set()
+            state = first_state
+            while True:
+                info = visited.get(state)
+                if info is None:
+                    tiles.add(state[0])   # plate
+                    break
+                parent_state, (dc, dr) = info
+                bpos = state[0]
+                tiles.add(bpos)
+                tiles.add((bpos[0] - dc, bpos[1] - dr))  # player push-from
+                state = parent_state
+            pairs.append((P, B, frozenset(tiles)))
+
+    if not pairs:
+        raise ValueError(
+            f"No solvable puzzle placement in room {room_name!r} for gate {gate_id!r}")
+
+    P, B, sol = rng.choice(pairs)
+    return P, B, sol
+
+
+# ── Item placement ─────────────────────────────────────────────────────────────
 
 def _bfs_dist(start, passable):
     """BFS distance from start within passable tile set."""
@@ -742,25 +954,13 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
         if p:
             keys.append((*p, key_colour))
 
-    blocks = []
-    for _ in node.blocks:
-        p = _next()
-        if p:
-            blocks.append(p)
-
-    plates = []
-    for (gate_id,) in node.plates:
-        p = _next()
-        if p:
-            plates.append((*p, gate_id))
-
     enemy_starts = []
     for enemy_info in node.enemies:
         p = _next(min_dist_from_player=MIN_ENEMY_DIST)
         if p:
             enemy_starts.append((*p, enemy_info[0]))
 
-    return treasures, materials, keys, blocks, plates, enemy_starts
+    return treasures, materials, keys, enemy_starts
 
 
 def _generate_flame_jets(placed_node, walls, rng):
@@ -863,17 +1063,80 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
             flame_tile_set.add(jet['source'])
         all_flame_jets.extend(jets)
 
-    # Place items in two passes:
-    # Pass 1: place everything EXCEPT blocks (treasures, materials,
-    #          keys, plates, enemies)
-    # Pass 2: compute dead squares from plate positions, then place
-    #          blocks only on non-dead tiles
+    # Compute gate and lock tile positions.  These tiles were removed from
+    # walls by derive_walls but are still obstacles until opened.  They are
+    # needed both for puzzle_passable and later for all_gates/all_locked_doors.
+    all_floor_tiles = set().union(*(pn.floor_tiles for pn in placed.values()))
+    orig_walls = {(c, r): WALL_REINFORCED
+                  for c in range(MIN_C, MAX_C + 1)
+                  for r in range(MIN_R, MAX_R + 1)
+                  if (c, r) not in all_floor_tiles}
+    gate_tiles = set()
+    lock_tiles = set()
+    for _edge in graph.edges:
+        if _edge.node_a not in placed or _edge.node_b not in placed:
+            continue
+        if _edge.edge_type == EdgeType.GATED:
+            _conn = _find_connection_tile(
+                placed[_edge.node_a], placed[_edge.node_b], orig_walls)
+            if _conn:
+                gate_tiles.add(_conn)
+        elif _edge.edge_type == EdgeType.LOCKED:
+            _conn = _find_connection_tile(
+                placed[_edge.node_a], placed[_edge.node_b], orig_walls)
+            if _conn:
+                lock_tiles.add(_conn)
+
+    # The only information needed to place a solvable push puzzle.
+    puzzle_passable = ({(c, r) for c in range(MIN_C, MAX_C + 1)
+                        for r in range(MIN_R, MAX_R + 1)}
+                       - set(walls.keys())
+                       - gate_tiles
+                       - lock_tiles)
+
+    # Place push puzzles atomically: choose (plate, block) together so the
+    # block is reachable from the plate via the reverse BFS and confirmed
+    # solvable by the full Sokoban BFS.  Earlier puzzles' solution tiles are
+    # excluded when placing later puzzles.
+    all_plates = []
+    all_blocks = []
+    global_used = set()
+    excluded = set()
+    prior_puzzles = []   # (plate, block) for all already-placed puzzles
+
+    for name, node in graph.nodes.items():
+        if name not in placed or not node.plates:
+            continue
+        for (gate_id,) in node.plates:
+            plate, block, sol = _place_puzzle(
+                name, gate_id, placed, puzzle_passable, excluded, rng,
+                prior_puzzles=prior_puzzles)
+            all_plates.append((*plate, gate_id))
+            all_blocks.append(block)
+            global_used.update({plate, block})
+            excluded.update(sol)
+            puzzle_passable = puzzle_passable - {plate}
+            prior_puzzles.append((plate, block))
+
+    # Dead squares for floor visual indicator (permanent walls only; not used
+    # for block placement — placement is guaranteed solvable by construction).
+    dead_squares = set()
+    if all_plates:
+        permanent = {pos for pos, wt in walls.items() if wt == WALL_REINFORCED}
+        perm_passable = frozenset(
+            (c, r) for c in range(MIN_C, MAX_C + 1)
+            for r in range(MIN_R, MAX_R + 1)
+            if (c, r) not in permanent)
+        targets = [(pc, pr) for pc, pr, _ in all_plates]
+        dead_squares = _compute_dead_squares(perm_passable, targets)
+
+    # Place other items (treasures, materials, keys, enemies).
+    # Plates and blocks are already placed above; global_used carries their
+    # positions so _place_items_in_room does not collide with them.
     all_treasures = []
     all_materials = []
     all_keys = []
-    all_plates = []
     all_enemy_starts = []
-    global_used = set()
 
     item_walls = dict(walls)
     for ft in flame_tile_set:
@@ -882,114 +1145,13 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     for name, node in graph.nodes.items():
         if name not in placed:
             continue
-        t, m, k, b, pl, es = _place_items_in_room(
+        t, m, k, es = _place_items_in_room(
             node, placed[name], item_walls, rng,
             player_pos=player_start, global_used=global_used)
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
-        # blocks placed in pass 2 below
-        all_plates.extend(pl)
         all_enemy_starts.extend(es)
-
-    # Pass 2: place each block at a guaranteed-solvable "1-push position"
-    # relative to its plate.
-    #
-    # A 1-push position T satisfies: block at T, player at T+D (plate+2D),
-    # and a single move of the player in direction -D pushes the block to
-    # the plate.  Both T and T+D must be passable in item_walls (all walls,
-    # not just permanent ones), which avoids the dead-square/all-walls
-    # mismatch that caused spurious Sokoban failures.
-    #
-    # Dead squares are still computed (with permanent walls) for the floor
-    # visual indicator but no longer control block placement.
-    all_blocks = []
-    dead_squares = set()
-    if all_plates:
-        permanent = {pos for pos, wt in walls.items()
-                     if wt == WALL_REINFORCED}
-        perm_passable = {(c, r) for c in range(MIN_C, MAX_C + 1)
-                         for r in range(MIN_R, MAX_R + 1)
-                         if (c, r) not in permanent}
-        targets = [(pc, pr) for pc, pr, _ in all_plates]
-        dead_squares = _compute_dead_squares(perm_passable, targets)
-
-    # Build an index: plate_pos → gate_id for fast lookup
-    plate_index = {(pc, pr): gid for pc, pr, gid in all_plates}
-
-    # Board-wide tiles that are not walls or closed gates/locked-doors.
-    # Gate and locked-door tiles are popped from walls by derive_walls so they
-    # look passable in item_walls, but the player cannot traverse them until
-    # they are opened.  This matches validate_push_puzzles semantics.
-    all_floor_tiles = set().union(*(pn.floor_tiles for pn in placed.values()))
-    _orig_walls_set = ({(c, r) for c in range(MIN_C, MAX_C + 1)
-                        for r in range(MIN_R, MAX_R + 1)}
-                       - all_floor_tiles)
-    gate_and_lock_tiles = set()
-    for _edge in graph.edges:
-        if (_edge.node_a not in placed or _edge.node_b not in placed):
-            continue
-        if _edge.edge_type in (EdgeType.LOCKED, EdgeType.GATED):
-            _conn = _find_connection_tile(
-                placed[_edge.node_a], placed[_edge.node_b], _orig_walls_set)
-            if _conn:
-                gate_and_lock_tiles.add(_conn)
-
-    board_walkable = ({(c, r) for c in range(MIN_C, MAX_C + 1)
-                       for r in range(MIN_R, MAX_R + 1)}
-                      - set(item_walls.keys())
-                      - gate_and_lock_tiles)
-
-    for name, node in graph.nodes.items():
-        if name not in placed or not node.blocks:
-            continue
-        pn = placed[name]
-
-        # Tiles in this room that can hold a block (free of walls and already
-        # placed blocks; items like treasures are not obstacles for blocks).
-        room_block_passable = (set(pn.floor_tiles)
-                               - set(item_walls.keys())
-                               - {b for b in all_blocks})
-
-        claimed_plates = set()
-        for _ in node.blocks:
-            # Find a plate in this room not yet claimed by a block in this pass
-            plate_pos = next(
-                (pos for pos in plate_index
-                 if tile_owner.get(pos) == name and pos not in claimed_plates),
-                None)
-            if plate_pos is not None:
-                claimed_plates.add(plate_pos)
-
-            pos = None
-            if plate_pos is not None:
-                # Collect all 1-push positions for this plate.
-                # block_cand must be in the room (can't push a block placed
-                # outside its puzzle room).  player_cand only needs to be
-                # board-walkable (player can approach through corridors).
-                push_candidates = []
-                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    block_cand  = (plate_pos[0] + dc, plate_pos[1] + dr)
-                    player_cand = (plate_pos[0] + 2*dc, plate_pos[1] + 2*dr)
-                    if (block_cand  in room_block_passable
-                            and player_cand in board_walkable
-                            and block_cand != plate_pos):
-                        push_candidates.append(block_cand)
-
-                if push_candidates:
-                    pos = rng.choice(push_candidates)
-
-            if pos is None:
-                # Fallback: any non-dead passable tile in the room
-                floor = sorted(room_block_passable - dead_squares)
-                if floor:
-                    pos = rng.choice(floor)
-                elif room_block_passable:
-                    pos = rng.choice(sorted(room_block_passable))
-
-            if pos is not None:
-                room_block_passable.discard(pos)
-                all_blocks.append(pos)
 
     # Place a treasure on the far side of each flame jet
     item_nos = list(range(1, 10))
@@ -1003,17 +1165,10 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
             all_treasures.append((*pos, rng.choice(item_nos)))
 
     # Locked doors, gates, and water tiles from edges
+    # (orig_walls already computed above for puzzle_passable)
     all_locked_doors = []
     all_gates = []
     all_water_tiles = []
-    orig_walls = {}
-    floor = set()
-    for pnode in placed.values():
-        floor.update(pnode.floor_tiles)
-    for c in range(MIN_C, MAX_C + 1):
-        for r in range(MIN_R, MAX_R + 1):
-            if (c, r) not in floor:
-                orig_walls[(c, r)] = WALL_REINFORCED
 
     for edge in graph.edges:
         if edge.node_a not in placed or edge.node_b not in placed:
