@@ -556,6 +556,8 @@ class LevelGraphBuilder:
             and not node.blocks
             and not node.plates
             and not node.enemies
+            and not any(e.edge_type == EdgeType.WATER
+                        for _, e in self._graph.neighbors(n))
         ]
         if not candidates:
             return
