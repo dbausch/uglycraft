@@ -368,6 +368,7 @@ class LevelGraphBuilder:
         self._has_forge  = False
         self._graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
         self._reachable  = {'corridor'}
+        self._water_rooms: set = set()
 
     # ── Internal helpers ──────────────────────────────────────────────────
 
@@ -472,11 +473,13 @@ class LevelGraphBuilder:
         name = self._new_name()
         self._graph.add_node(name, size)
         self._graph.add_edge(parent or self._current_corridor, name, EdgeType.WATER)
-        planks_room = self._pick(list(self._reachable))
+        dry = [r for r in self._reachable if r not in self._water_rooms]
+        planks_room = self._pick(dry)
         self._graph.nodes[planks_room].materials.append(('planks',))
         self._graph.nodes[planks_room].materials.append(('planks',))
         self._has_water = True
         self._reachable.add(name)
+        self._water_rooms.add(name)
         return name
 
     # ── Multi-grid ────────────────────────────────────────────────────────
