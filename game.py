@@ -587,7 +587,7 @@ class Game:
                 if self.inventory.has_key(door_color):
                     self.inventory.use_key(door_color)
                     doors.pop(i)
-                    self._opened_doors.add((col, row, door_color))
+                    self._opened_doors.add((room_key, col, row, door_color))
                     self._build_walls_multiroom()
                     self.sounds.play('break')
                     return True
@@ -1255,7 +1255,9 @@ class Game:
                 dkey = f'door_{door_color}_{o}'
                 if dkey in sp:
                     self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
-            for dc, dr, _color in self._opened_doors:
+            for ok, dc, dr, _color in self._opened_doors:
+                if ok != rk:
+                    continue
                 o = self._door_orient(dc, dr)
                 self.surf.blit(sp[f'door_open_{o}'], (dc * TILE, dr * TILE))
             for kc, kr, key_color in self._room_keys.get(rk, []):
