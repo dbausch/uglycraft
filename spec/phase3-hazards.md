@@ -84,6 +84,49 @@ a block onto the source tile.
 ]
 ```
 
+## Placement rules
+
+These rules govern how flame jets and water edges are distributed by the
+level-graph builder.  They are structural invariants that must hold for every
+generated level.
+
+### Flame room rules
+
+**R-F1 — No fire and enemies in the same room.**
+A node with `has_flames = True` must have no enemies, and a node that already
+has enemies must not receive `has_flames`.  `add_flames()` filters out nodes
+with enemies; `add_enemies()` filters out nodes with `has_flames`.
+
+**R-F2 — Flame rooms are never behind a WATER edge.**
+`add_flames()` excludes any node that has an incident WATER edge.  This
+guarantees the entry to the flame room is a plain dry doorway, making the
+BFS for near/far tile splitting reliable.
+
+**R-F3 — The jet is never placed at the entry row or column.**
+`_generate_flame_jets()` receives the entry tile and skips any jet row (for
+horizontal jets) or jet column (for vertical jets) that coincides with the
+entry tile's row or column.  This ensures the entry tile is never inside a jet,
+so the BFS flood from the entry tile always has a valid starting position.
+
+**R-F4 — Award items in a flame room are only on the far side of the jet.**
+Far side = tiles not reachable from the entry tile when jet tiles are treated
+as walls (BFS flood).  `_place_items_in_room()` skips `node.treasures` for
+flame rooms entirely; the far-tiles pass in `build_level_dict()` places exactly
+one treasure per jet into `jet['far_tiles']`.
+
+**R-F5 — Flame placement happens before enemy distribution.**
+`LevelGraph.generate()` calls `add_flames()` before `add_treasures()`,
+`add_materials()`, and `add_enemies()`.  This prevents enemy saturation from
+filling every eligible room and leaving no candidates for flame placement.
+
+### Water edge rules
+
+**R-W1 — Each WATER edge supplies exactly 2 planks on the player's side.**
+`add_water_room()` places two plank items.  Each plank is placed independently
+in a room chosen from `_dry = [r for r in _reachable if r not in _water_rooms]`.
+This prevents circular dependencies where planks land behind an earlier water
+edge.
+
 ## Feature sets
 
 Level 14: + WATER edge type, planks, bridge crafting
