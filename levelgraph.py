@@ -329,6 +329,9 @@ class LevelGraph:
                 et = required[i] if i < len(required) else rng.choice(edge_types)
                 _add_room(et, i)
 
+        if feature_set.get('has_flames'):
+            b.add_flames()
+
         t_min, t_max = feature_set.get('treasure_count', (6, 10))
         b.add_treasures(rng.randint(t_min, t_max))
 
@@ -339,9 +342,6 @@ class LevelGraph:
         e_min, e_max = feature_set.get('enemy_count', (1, 3))
         b._has_forge = feature_set.get('has_forge_ogre', False)
         b.add_enemies(max(1, rng.randint(e_min, e_max)))
-
-        if feature_set.get('has_flames'):
-            b.add_flames()
 
         return b.build()
 
