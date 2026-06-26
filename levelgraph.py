@@ -550,7 +550,6 @@ class LevelGraphBuilder:
                     (self._rng.choice(item_nos),))
 
     def add_flames(self) -> None:
-        item_nos   = list(range(1, 10))
         candidates = [
             n for n, node in self._graph.nodes.items()
             if n != 'corridor'
@@ -562,8 +561,6 @@ class LevelGraphBuilder:
             return
         t = self._rng.choice(candidates)
         self._graph.nodes[t].has_flames = True
-        if not self._graph.nodes[t].treasures:
-            self._graph.nodes[t].treasures.append((self._rng.choice(item_nos),))
 
     # ── Finalise ──────────────────────────────────────────────────────────
 

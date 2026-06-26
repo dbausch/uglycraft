@@ -936,11 +936,14 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
                 return best
         return None
 
+    # Flame-room treasures are placed on far tiles only (see far-tiles pass
+    # in build_level_dict); skip them here so nothing lands on the near side.
     treasures = []
-    for (item_no,) in node.treasures:
-        p = _next()
-        if p:
-            treasures.append((*p, item_no))
+    if not node.has_flames:
+        for (item_no,) in node.treasures:
+            p = _next()
+            if p:
+                treasures.append((*p, item_no))
 
     materials = []
     for (mat_type,) in node.materials:
