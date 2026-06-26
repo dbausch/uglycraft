@@ -49,55 +49,8 @@ Pushing a block into water: the block fills the water tile permanently
 
 ```python
 'water_tiles': [(col, row, flow_dc, flow_dr), ...]
-'bridged_tiles': set()  # grows as player places bridges / blocks fall in
+'bridged_tiles': set()  # grows as player places bridges
 ```
-
-### Implementation notes
-
-**Flow direction** is set by `_build_water_stream` in `levellayout.py`.
-The stream tiles lie on the wall row or column shared between node_a (near
-side) and node_b (far side). The flow direction pushes the player back toward
-node_a:
-
-- Horizontal stream (wall runs left→right, rooms above/below): flow is
-  (0, ±1) pointing toward node_a's floor tiles.
-- Vertical stream (wall runs top→bottom, rooms left/right): flow is
-  (±1, 0) pointing toward node_a's floor tiles.
-
-`_build_water_stream` returns `[(col, row, flow_dc, flow_dr), ...]`.
-The `derive_walls` call already removes water tiles from the wall dict, so
-they remain passable in `self.walls`.
-
-**`_build_walls_multiroom` changes**:
-Remove the block that adds unbridged water tiles to `self.walls`.  Water
-tiles must NOT be walls — they are passable but trigger the carry mechanic.
-
-**Carry mechanic** (`game.py`):
-- `self._water_tiles` becomes `{(col, row): (flow_dc, flow_dr)}` (dict
-  instead of set), populated from `[(col, row, dc, dr)]` tuples.
-- After player moves to `(col, row)`, check if it is in `_water_tiles`.
-  If so and not bridged: move player one step in flow direction each update
-  tick until on a non-water, non-wall tile. No input is accepted during carry.
-- Carry state: `self._water_carry_dir = (dc, dr) | None` and
-  `self._water_carry_timer = 0`.  Carry speed: 1 tile per `WATER_CARRY_MS`
-  (e.g. 150 ms, similar to enemy speed).
-
-**Bridge placement** (`game.py`):
-`_try_auto_bridge` stays as-is (bump-to-bridge) for now;
-bridge places on the water tile the player bumped and adds it to
-`_bridged_tiles`.
-
-**Block into water** (`game.py`, `_try_push_block`):
-After the walls-don't-include-water change, the `not self.walls[nc][nr]`
-check would allow pushing a block onto a water tile.  After placing the block,
-add `(nc, nr)` to `_bridged_tiles` (treated identically to a bridge).  Remove
-the block from `_room_blocks` so it doesn't render or block anything.
-
-**Flame source blockable** (`game.py`, `_try_push_block`):
-After pushing a block, check whether `(nc, nr)` is a flame jet source.
-If so, mark that jet as permanently blocked: add its index to
-`self._blocked_jets` (a set).  In the render loop and collision check, skip
-jets whose index is in `_blocked_jets`.
 
 ## Flame Jets
 
