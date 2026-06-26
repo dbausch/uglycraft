@@ -966,13 +966,17 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
     return treasures, materials, keys, enemy_starts
 
 
-def _generate_flame_jets(placed_node, walls, rng):
+def _generate_flame_jets(placed_node, walls, rng, entry=None):
     """Generate a flame jet that spans wall-to-wall across the room.
 
     The jet splits the room into two sections. It must cross the room
     (not run parallel to a wall) so there are floor tiles on both sides.
     Returns list of jet dicts with 'tiles', 'source', 'dir', 'on_ms',
     'off_ms', and 'far_tiles' (floor tiles beyond the jet).
+
+    entry: the room's entry tile (col, row).  Jets whose axis coincides with
+    the entry row (horizontal) or entry column (vertical) are skipped so the
+    entry tile is never on the jet and the BFS seed is always valid.
     """
     pn = placed_node
     if pn.w < 4 and pn.h < 4:
@@ -983,6 +987,8 @@ def _generate_flame_jets(placed_node, walls, rng):
 
     # Horizontal jet (left→right or right→left) at various rows
     for r in range(pn.row + 1, pn.row + pn.h - 1):
+        if entry and r == entry[1]:
+            continue
         tiles = [(c, r) for c in range(pn.col, pn.col + pn.w)
                  if (c, r) in pn.floor_tiles and (c, r) not in walls]
         if len(tiles) < 3:
@@ -1000,6 +1006,8 @@ def _generate_flame_jets(placed_node, walls, rng):
 
     # Vertical jet (top→bottom or bottom→top) at various columns
     for c in range(pn.col + 1, pn.col + pn.w - 1):
+        if entry and c == entry[0]:
+            continue
         tiles = [(c, r) for r in range(pn.row, pn.row + pn.h)
                  if (c, r) in pn.floor_tiles and (c, r) not in walls]
         if len(tiles) < 3:
@@ -1060,29 +1068,30 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     for name, node in graph.nodes.items():
         if name not in placed or not node.has_flames:
             continue
-        jets = _generate_flame_jets(placed[name], walls, rng)
-        # Recompute far_tiles via BFS from the room's entry tile.
-        # Flame rooms are never behind a water edge (enforced in the graph
-        # builder), so the entry is always a plain dry doorway — a single
-        # floor tile clearly on one side of the jet.  The jet goes wall-to-wall
-        # and is therefore a complete barrier; BFS from the entry tile floods
-        # only the near half and the remainder is the far side.
-        if jets:
-            entry_tiles: set = set()
-            for nb_name, _ in graph.neighbors(name):
-                if nb_name not in placed:
-                    continue
-                conn = _find_connection_tile(placed[name], placed[nb_name], walls)
-                if conn:
-                    for dc2, dr2 in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                        adj = (conn[0] + dc2, conn[1] + dr2)
-                        if adj in placed[name].floor_tiles:
-                            entry_tiles.add(adj)
+        # Find the room's entry tile before generating jets so the jet
+        # generator can exclude the conflicting row/column.
+        entry_tile = None
+        for nb_name, _ in graph.neighbors(name):
+            if nb_name not in placed:
+                continue
+            conn = _find_connection_tile(placed[name], placed[nb_name], walls)
+            if conn:
+                for dc2, dr2 in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    adj = (conn[0] + dc2, conn[1] + dr2)
+                    if adj in placed[name].floor_tiles:
+                        entry_tile = adj
+                        break
+            if entry_tile:
+                break
+
+        jets = _generate_flame_jets(placed[name], walls, rng, entry=entry_tile)
+
+        if jets and entry_tile:
             for jet in jets:
                 jet_set = set(jet['tiles']) | {jet['source']}
                 passable = placed[name].floor_tiles - set(walls.keys()) - jet_set
-                near: set = set(entry_tiles & passable)
-                frontier = list(near)
+                near: set = {entry_tile}
+                frontier = [entry_tile]
                 while frontier:
                     next_f = []
                     for t in frontier:
