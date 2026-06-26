@@ -2,14 +2,14 @@
 
 ## Status
 
-- [ ] `_puzzle_candidates(plate, room_floor, passable, excluded)` — reverse BFS
-- [ ] `_puzzle_solution_tiles(block, plate, candidates)` — shortest-path reconstruction
-- [ ] `_place_puzzle(room_name, gate_id, placed, passable, excluded, rng)` — atomic placement
-- [ ] `build_level_dict()` places puzzles atomically before other items
-- [ ] `_place_items_in_room()` no longer places plates or blocks
-- [ ] Pass-2 block placement loop removed
-- [ ] Multi-puzzle exclusion: second puzzle cannot overlap first puzzle's solution tiles
-- [ ] `validate_push_puzzles()` always passes (sanity check, never a corrective mechanism)
+- [x] `_puzzle_candidates(plate, room_floor, passable, excluded)` — reverse BFS
+- [x] `_puzzle_solution_tiles(block, plate, candidates)` — shortest-path reconstruction
+- [x] `_place_puzzle(room_name, gate_id, placed, passable, excluded, rng)` — atomic placement
+- [x] `build_level_dict()` places puzzles atomically before other items
+- [x] `_place_items_in_room()` no longer places plates or blocks
+- [x] Pass-2 block placement loop removed
+- [x] Multi-puzzle exclusion: second puzzle cannot overlap first puzzle's solution tiles
+- [x] `validate_push_puzzles()` always passes (sanity check, never a corrective mechanism)
 
 ---
 
