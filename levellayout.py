@@ -770,60 +770,58 @@ def _layout_l(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
 def _nest_closets(placed, closet_rooms, graph, rng):
     """Reposition closet rooms into a corner of their parent room.
 
-    ``closet_rooms`` is a dict {child_name: parent_name}.  For each pair,
-    a notch of size (b_w+2)×(b_h+2) is cut from the parent's floor_tiles.
-    The child occupies the inner b_w×b_h area, surrounded on all four sides
-    by a 1-tile wall strip that keeps it separate from the parent.
+    The closet shares two outer walls with the parent (it sits at a true
+    corner).  The notch is (b_w+1)×(b_h+1): one added vertical wall and
+    one added horizontal wall separate the closet from the parent interior.
     """
     for child_name, parent_name in closet_rooms.items():
         if parent_name not in placed:
             continue
         pn_a = placed[parent_name]
 
-        # Closet floor dimensions; notch is 2 tiles wider/taller (1-tile wall ring)
-        b_w = min(4, max(1, pn_a.w // 5))
-        b_h = min(3, max(1, pn_a.h // 4))
-        notch_w = b_w + 2
-        notch_h = b_h + 2
+        b_w = min(4, max(2, pn_a.w // 5))
+        b_h = min(3, max(2, pn_a.h // 3))
+        notch_w = b_w + 1   # 1 added vertical wall
+        notch_h = b_h + 1   # 1 added horizontal wall
 
-        # Parent must be large enough to leave at least 1 col/row of A outside notch
         if pn_a.w < notch_w + 1 or pn_a.h < notch_h + 1:
             _place_closet_adjacent(placed, child_name, pn_a, b_w, b_h)
             continue
 
         a_floor = pn_a.floor_tiles
 
-        # Try the four corners; pick first that keeps A connected
+        # Four corners: (notch_col, notch_row, closet_col, closet_row)
+        # Closet occupies the corner of the notch, sharing the outer walls.
         corners = [
-            (pn_a.col,                       pn_a.row),
-            (pn_a.col + pn_a.w - notch_w,    pn_a.row),
-            (pn_a.col,                       pn_a.row + pn_a.h - notch_h),
-            (pn_a.col + pn_a.w - notch_w,    pn_a.row + pn_a.h - notch_h),
+            (pn_a.col,                    pn_a.row,
+             pn_a.col,                    pn_a.row),
+            (pn_a.col + pn_a.w - notch_w, pn_a.row,
+             pn_a.col + pn_a.w - b_w,     pn_a.row),
+            (pn_a.col,                    pn_a.row + pn_a.h - notch_h,
+             pn_a.col,                    pn_a.row + pn_a.h - b_h),
+            (pn_a.col + pn_a.w - notch_w, pn_a.row + pn_a.h - notch_h,
+             pn_a.col + pn_a.w - b_w,     pn_a.row + pn_a.h - b_h),
         ]
         rng.shuffle(corners)
 
         placed_ok = False
-        for nc, nr in corners:
+        for nc_notch, nr_notch, nc, nr in corners:
             notch = frozenset((c, r)
-                              for c in range(nc, nc + notch_w)
-                              for r in range(nr, nr + notch_h))
+                              for c in range(nc_notch, nc_notch + notch_w)
+                              for r in range(nr_notch, nr_notch + notch_h))
             new_a = a_floor - notch
-            if not new_a:
-                continue
-            if not _floor_connected(new_a):
+            if not new_a or not _floor_connected(new_a):
                 continue
 
-            # Closet floor is 1 tile inside the notch boundary on all sides
             b_floor = frozenset((c, r)
-                                for c in range(nc + 1, nc + 1 + b_w)
-                                for r in range(nr + 1, nr + 1 + b_h))
+                                for c in range(nc, nc + b_w)
+                                for r in range(nr, nr + b_h))
             if not b_floor:
                 continue
 
             placed[parent_name] = PlacedNode(parent_name, pn_a.col, pn_a.row,
                                               pn_a.w, pn_a.h, floor_tiles=new_a)
-            placed[child_name] = PlacedNode(child_name,
-                                             nc + 1, nr + 1, b_w, b_h,
+            placed[child_name] = PlacedNode(child_name, nc, nr, b_w, b_h,
                                              floor_tiles=b_floor)
             placed_ok = True
             break
