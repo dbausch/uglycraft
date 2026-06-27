@@ -208,9 +208,12 @@ Zone C: cols 1–16, rows 10–14.  Zone D: cols 22–28, rows 10–14.
 ## 6. Z-corridor  (four variants)
 
 A single corridor stroke with two turns — three connected segments.  The two
-segments on the outer edges exit at two different grid borders each; the
-connector between them is a narrow perpendicular strip.  The corridor shape
-divides the grid into two large room zones.
+outer arms and the perpendicular connector between them create two primary
+room zones (A and B) on opposite sides of the connector.  When the outer arms
+have inner endpoints (not at the borders), two additional zones open up at
+the arm ends (C at the top-arm end, D at the bottom-arm end), giving up to
+four zones total.  Tip rooms can be placed at any arm end that stops short of
+the border.
 
 ### 6a. z_h — Z shape, horizontal segments
 
@@ -253,6 +256,39 @@ Gap row 3 (top arm ended, Zone B not yet).  Gap row 12 (Zone A ended, bottom arm
 
 **Exits:** top + left (top arm hits row 1 and col 1) + bottom + right (bottom
 arm hits row 14 and col 28).
+
+**Zone C and D (arm endpoints inside the grid):**
+When `c_left > MIN_C`, Zone C sits at cols `MIN_C..c_left-2`, rows `MIN_R..arm_th`
+— accessible via the top arm's left face (door at col `c_left-1`).
+When `c_right < MAX_C`, Zone D sits at cols `c_right+2..MAX_C`, rows `MAX_R-arm_th+1..MAX_R`
+— accessible via the bottom arm's right face (door at col `c_right+1`).
+These zones receive one enlarged tip room each that fills the available area.
+
+**Example with inner endpoints:** `c_break = 12`, `arm_th = 2`, `arm_w = 2`,
+`c_left = 4`, `c_right = 25`
+
+Zone C: cols 1–2, rows 1–2.  Zone D: cols 27–28, rows 13–14.
+
+```
+ 0 ##############################
+ 1 #CC#          #AAAAAAAAAAAAAA#
+ 2 #CC#          #AAAAAAAAAAAAAA#
+ 3 ############  #AAAAAAAAAAAAAA#
+ 4 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 5 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 6 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 7 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 8 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 9 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+10 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+11 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+12 #BBBBBBBBBB#  ################
+13 #BBBBBBBBBB#              #DD#
+14 #BBBBBBBBBB#              #DD#
+15 ##############################
+```
+
+Gap col 3 (Zone C / top arm).  Gap col 26 (bottom arm / Zone D).
 
 ### 6b. s_h — S shape, horizontal segments  (mirror of z_h)
 
@@ -322,6 +358,12 @@ Gap row 6.  Gap row 9.
 ```
 
 **Exits:** top + left (left arm) + bottom + right (right arm).
+
+**Zone C and D (arm endpoints inside the grid):**
+When `r_top < MIN_R+arm_th` (left arm ends above the bottom): space above the
+left arm becomes Zone C at rows `MIN_R..r_top-2`, cols `MIN_C..arm_th`.
+When `r_bot > MAX_R-arm_th` (right arm starts below the top): space below the
+right arm becomes Zone D at rows `r_bot+2..MAX_R`, cols `MAX_C-arm_th+1..MAX_C`.
 
 ### 6d. s_v — S shape, vertical segments  (mirror of z_v)
 
@@ -412,45 +454,35 @@ Zone C: cols 9–28, rows 11–14.  Empty corner: cols 1–4, rows 11–14.
 Gap col 5 (between Zone B and v-arm).  Gap col 8 (between v-arm and Zones A/C).
 Gap row 10 (between h-arm and Zone C).
 
-**Virtual tip rooms (spec 0019 Fix B)**
+**Tip rooms (spec 0019 Fix B)**
 
-At the junction two virtual extensions exist — where each arm would continue
-if it went straight through instead of turning.  Each defines a small "tip
-room" that can be enlarged into the empty corner by removing the separating
-wall.
+A tip room is a room whose door sits on the **short face** of the junction —
+the end-face of whichever arm continues into the empty quadrant.  An enlarged
+tip room expands to fill the available corner area.  Both corner-adjacent
+areas are always filled.
 
 Tip 1 — v-arm continues **downward** past the junction:
-cols 6–7, rows 11–14 (after gap row 10).
-Connected to corridor via door through row 10 into h-arm (rows 8–9).
-Enlarge **leftward** into corner (cols 1–4) by removing wall at col 5
-→ room at cols 1–7, rows 11–14.
+door at gap row 10, cols 6–7.  Room: cols 6–7, rows 11–14.
+
+Tip 2 — h-arm continues **leftward** past the junction:
+door at gap col 5, rows 8–9 (Zone B's existing door).
+Extend Zone B's bottommost room through gap row 10 into rows 11–14 at cols 1–4.
+
+After filling both tips the empty quadrant is fully occupied:
 
 ```
 10 ##############################
-11 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
-12 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
-13 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
-14 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+11 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
+12 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
+13 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
+14 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
 ```
 
-Tip 2 — h-arm continues **leftward** past the junction:
-cols 1–4, rows 8–9 (left of gap col 5; this is Zone B's bottommost floor).
-Already connected to corridor via door through col 5 into v-arm (cols 6–7).
-Enlarge **downward** into corner (rows 11–14) by removing wall at row 10
-→ room at cols 1–4, rows 8–14 (or: extend Zone B's bottommost room to row 14).
+(Cols 1–4 = Zone B extended; col 5 = gap; cols 6–7 = Tip 1 room;
+col 8 = gap; cols 9–28 = Zone C.)
 
-```
-10 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-11 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-12 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-13 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-14 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-```
-
-Either tip may be used; randomly choose one.  In general, a tip room can
-be enlarged toward any adjacent empty area (one or both corners if the
-corridor configuration leaves multiple empty quadrants, e.g. when a stem
-is a dead end rather than a border exit).
+When a stem is a dead end rather than a border exit, a third tip may exist
+at the arm's far end — place a room there as well.
 
 ---
 
@@ -481,8 +513,10 @@ Zone C: cols 1–20, rows 11–14.  Empty corner: cols 25–28, rows 11–14.
 15 ##############################
 ```
 
-**Corner fill candidates:** Candidate A extends Zone B into cols 25–28, rows
-11–14.  Candidate B places tip room cols 22–28, rows 11–14.
+**Tip rooms:** Tip 1 (v-arm extension downward, door at row 10 cols 22–23)
+fills cols 22–23, rows 11–14.  Tip 2 (h-arm extension rightward, door at
+col 24 rows 8–9) extends Zone B through row 10 into cols 25–28, rows 11–14.
+Both always filled.
 
 ---
 
@@ -513,8 +547,10 @@ Zone C: cols 9–28, rows 1–3.    Empty corner: cols 1–4, rows 1–3.
 15 ##############################
 ```
 
-**Corner fill candidates:** Candidate A extends Zone B's topmost room into
-cols 1–4, rows 1–3.  Candidate B places tip room cols 1–7, rows 1–3.
+**Tip rooms:** Tip 1 (v-arm extension upward, door at row 4 cols 6–7) fills
+cols 6–7, rows 1–3.  Tip 2 (h-arm extension leftward, door at col 5 rows
+5–6) extends Zone B through row 4 into cols 1–4, rows 1–3.  Both always
+filled.
 
 ---
 
@@ -545,8 +581,10 @@ Zone C: cols 1–20, rows 1–3.    Empty corner: cols 25–28, rows 1–3.
 15 ##############################
 ```
 
-**Corner fill candidates:** Candidate A extends Zone B's topmost room into
-cols 25–28, rows 1–3.  Candidate B places tip room cols 22–28, rows 1–3.
+**Tip rooms:** Tip 1 (v-arm extension upward, door at row 4 cols 22–23) fills
+cols 22–23, rows 1–3.  Tip 2 (h-arm extension rightward, door at col 24
+rows 5–6) extends Zone B through row 4 into cols 25–28, rows 1–3.  Both
+always filled.
 
 ---
 
