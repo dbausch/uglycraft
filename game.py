@@ -1187,6 +1187,11 @@ class Game:
                     else:
                         self.surf.blit(sp['floor'], (x, y))
 
+        # Level entrance sprite at the start-grid entry border tile
+        if 'entrance' in self._current_room_data:
+            ec, er = self._current_room_data['entrance']
+            self.surf.blit(sp['level_entrance'], (ec * TILE, er * TILE))
+
         # Staircase sprite at grid border exits
         if self._is_multiroom:
             for exit_key in self._current_room_data.get('exits', {}):
