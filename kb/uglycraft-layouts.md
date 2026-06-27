@@ -391,21 +391,61 @@ the four-zone Z/S shape described here (spec 0019 Fix C).
 
 ---
 
-## 7. L-corridor  (four orientations)
+## 7. L-corridor  (eight variants)
 
-L-shaped corridor: one **v-arm** (vertical) + one **h-arm** (horizontal)
-meeting at a junction.  The fourth quadrant has no corridor tiles.  Rooms
-placed there would be unreachable — this quadrant is filled as a corner
+L-shaped corridor: one **v-arm** (vertical) and one **h-arm** (horizontal),
+each of cross-section `arm_w × arm_h`, meeting at a junction.  Each arm can
+be placed at **any position along its exit border** — the junction column
+`jc` (v-arm left col) and junction row `jr` (h-arm top row) are free
+parameters.  The empty quadrant opposite the junction is filled as a corner
 extension (spec 0019 Fix B).
 
-Orientation name = position of the junction corner within the grid:
+There are **eight variants**: four exit pairs × two tip strategies.
 
-| Name | v-arm exits | h-arm exits | junction at      |
-|------|-------------|-------------|------------------|
-| `bl` | top         | right       | bottom-left area |
-| `br` | top         | left        | bottom-right     |
-| `tl` | bottom      | right       | top-left         |
-| `tr` | bottom      | left        | top-right        |
+| Name | v-arm exits | h-arm exits |
+|------|-------------|-------------|
+| `bl` | top         | right       |
+| `br` | top         | left        |
+| `tl` | bottom      | right       |
+| `tr` | bottom      | left        |
+
+---
+
+### Corner fill — two tip strategies
+
+Two potential tip rooms exist at any junction: one at the **v-arm base** (the
+arm end away from its exit border) and one at the **h-arm base**.  Exactly
+one is enlarged into the empty corner; the other's tile range is absorbed into
+the adjacent zone instead of becoming a separate room.
+
+**Standard** — v-arm base tip enlarged:
+- Zone T = v-arm base extended toward the far border (leftward for bl/tl,
+  rightward for br/tr)
+- Zone B spans the full h-arm row range, absorbing the h-arm base tiles
+
+**Transposed** — h-arm base tip enlarged:
+- Zone B = h-arm base extended toward the far border (downward for bl/br,
+  upward for tl/tr)
+- Zone C spans the full v-arm col range below/above the junction, absorbing
+  the v-arm base tiles
+
+Either strategy is structurally valid; the choice follows naturally from the
+junction position.
+
+**Corner room constraint (all eight variants):**
+The corridor-facing gap of the corner-filling zone only spans the rows or
+cols where the corridor actually exists (the junction edge).  Any room packed
+entirely into the corner portion — past the junction edge — has no
+corridor-adjacent face and is unreachable.  Every room assigned to the corner
+portion must extend far enough toward the junction to include at least one
+tile adjacent to the corridor-facing gap.  The direction of this constraint
+rotates and swaps with the variant: extend toward the **junction row** for
+bl/br standard and transposed tl/tr; toward the **junction col** for tl/tr
+standard and transposed bl/br.
+
+---
+
+### 7a–7d. Standard tip strategy examples
 
 All four examples use `arm_w = 2`, `arm_h = 2`.
 
@@ -559,6 +599,54 @@ Zone C (cols 1–20) must not be extended into Zone T's area.
 
 ---
 
+### 7e. Transposed bl — exits: top + right
+
+`cor_col = 22`, `cor_row = 8`  (junction near right border)
+
+v-arm: cols 22–23, rows 1–8.   h-arm: cols 22–28, rows 8–9.
+Zone A: cols 25–28, rows 1–6.   Zone B: cols 1–20, rows 1–14.
+Zone C: cols 22–28, rows 11–14.
+
+```
+ 0 ##############################
+ 1 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 2 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 3 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 4 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 5 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 6 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 7 #BBBBBBBBBBBBBBBBBBBB#  ######
+ 8 #BBBBBBBBBBBBBBBBBBBB#       #
+ 9 #BBBBBBBBBBBBBBBBBBBB#       #
+10 #BBBBBBBBBBBBBBBBBBBB#########
+11 #BBBBBBBBBBBBBBBBBBBB#CCCCCCC#
+12 #BBBBBBBBBBBBBBBBBBBB#CCCCCCC#
+13 #BBBBBBBBBBBBBBBBBBBB#CCCCCCC#
+14 #BBBBBBBBBBBBBBBBBBBB#CCCCCCC#
+15 ##############################
+```
+
+Gap col 21 (between Zone B and v-arm/h-arm).  Gap row 10 (between h-arm and Zone C).
+
+**Zone B (h-arm base tip enlarged downward):** cols 1–20, rows 1–14.
+Door at gap col 21, rows 1–9 (v-arm left face + h-arm left face).
+Zone B absorbs the h-arm base tiles (cols 1–20, rows 8–9) and extends
+into the corner (rows 10–14).
+
+**Corner room constraint for Zone B:** gap col 21 faces the corridor only at
+rows 1–9.  Any room placed entirely in rows 10–14 of Zone B has no
+corridor-adjacent face and is unreachable.  Every room assigned to the corner
+rows must extend upward to row 9 or above.
+
+**Zone C (v-arm base tiles absorbed):** cols 22–28, rows 11–14.
+Door at gap row 10, cols 22–28.  The v-arm base col range (cols 22–23) is
+merged into Zone C rather than becoming a separate tip room.
+
+Transposed `br`, `tl`, `tr` follow the same pattern with rows and columns
+rotated and mirrored accordingly.
+
+---
+
 ## Strategy selection
 
 | Required exits       | Must use                        | Cannot use                      |
@@ -580,10 +668,8 @@ spec 0019).  If no required exits: random orientation.
 | arm_h / cor_h     | 2–3                      | all            |
 | cor_w             | 2–3                      | vertical       |
 | arm_w             | 2–3                      | L              |
-| cor_col (bl/tl)   | 20–30 % of INT_W         | L              |
-| cor_col (br/tr)   | 70–80 % of INT_W         | L              |
-| cor_row (bl/br)   | 55–70 % of INT_H         | L              |
-| cor_row (tl/tr)   | 25–40 % of INT_H         | L              |
+| cor_col           | 15–85 % of INT_W         | L (any pos.)   |
+| cor_row           | 20–80 % of INT_H         | L (any pos.)   |
 | bridge_w          | 3–5                      | Z              |
 | offset (z_h/s_h)  | **≥ 4** after Fix C      | Z horizontal   |
 | offset (z_v/s_v)  | 3–5                      | Z vertical     |
