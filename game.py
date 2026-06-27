@@ -297,13 +297,9 @@ class Game:
         # Speed scaling
         if level_num >= ACT2_START_LEVEL:
             act2_last = 20
-            if level_num == act2_last:
-                self.enemy_ms = ACT2_BOSS_MOVE_MS
-                self.move_ms  = ACT2_BASE_MOVE_MS
-            else:
-                factor = 1.05 ** (act2_last - level_num)
-                self.enemy_ms = round(ACT2_BASE_ENEMY_MS * factor)
-                self.move_ms  = round(ACT2_BASE_MOVE_MS  * factor)
+            factor = 1.05 ** (act2_last - level_num)   # 1.0 at level 20
+            self.enemy_ms = round(ACT2_BASE_ENEMY_MS * factor)
+            self.move_ms  = round(ACT2_BASE_MOVE_MS  * factor)
         elif level_num == ACT1_BOSS_LEVEL:
             self.enemy_ms = BOSS_MOVE_MS
             self.move_ms  = BASE_MOVE_MS

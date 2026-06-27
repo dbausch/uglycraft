@@ -50,8 +50,7 @@ WALL_BUMPS = {
 # ── Act 2 constants ──────────────────────────────────────────────────────────
 ACT2_START_LEVEL = 11
 ACT2_BASE_MOVE_MS  = 80
-ACT2_BASE_ENEMY_MS = 160
-ACT2_BOSS_MOVE_MS  = 78
+ACT2_BASE_ENEMY_MS = 200
 LIFE_PENALTY = 500         # flat points lost on death
 
 # Points awarded when treasure item_no is collected (item_no 1 yields 0, 2→100, …)
