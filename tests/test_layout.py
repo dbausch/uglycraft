@@ -41,6 +41,7 @@ from hypothesis import given, settings, strategies as st
 from levelgraph import LevelGraph, EdgeType, NodeSize
 from levellayout import (
     layout_graph, derive_walls, validate_layout, PlacedNode, build_level_dict,
+    MIN_C, MAX_C, MIN_R, MAX_R,
 )
 from tests.conftest import FS_ALL, FS_OPEN, FS_LOCKED, FS_GATED, ALL_FEATURE_SETS
 
@@ -140,3 +141,156 @@ def test_invariant_l_all_feature_sets(fs, seed):
     walls, _ = derive_walls(graph, placed)
     errors = validate_layout(graph, placed, walls)
     assert errors == [], f"fs={fs['edge_types']}, seed={seed}: {errors}"
+
+
+# ── Fix A: L-corridor orientation ─────────────────────────────────────────────
+
+@pytest.mark.parametrize('required_exits,expected_sides', [
+    (frozenset({'top',    'right'}), {'top',    'right'}),
+    (frozenset({'top',    'left'}),  {'top',    'left'}),
+    (frozenset({'bottom', 'right'}), {'bottom', 'right'}),
+    (frozenset({'bottom', 'left'}),  {'bottom', 'left'}),
+])
+def test_l_orientation_matches_required_exits(required_exits, expected_sides):
+    """L-corridor floor tiles must touch the correct pair of grid borders."""
+    for seed in range(5):
+        rng = random.Random(seed)
+        graph = LevelGraph.generate(FS_OPEN, rng=rng)
+        placed = layout_graph(graph, rng=random.Random(seed),
+                              strategies=['l'],
+                              required_exits=required_exits)
+        corridor_name = next(
+            n for n, node in graph.nodes.items()
+            if node.size == NodeSize.CORRIDOR)
+        tiles = placed[corridor_name].floor_tiles
+
+        for side in expected_sides:
+            if side == 'top':
+                assert any(r == MIN_R for (c, r) in tiles), \
+                    f"seed={seed}, exits={required_exits}: no top exit"
+            elif side == 'bottom':
+                assert any(r == MAX_R for (c, r) in tiles), \
+                    f"seed={seed}, exits={required_exits}: no bottom exit"
+            elif side == 'left':
+                assert any(c == MIN_C for (c, r) in tiles), \
+                    f"seed={seed}, exits={required_exits}: no left exit"
+            elif side == 'right':
+                assert any(c == MAX_C for (c, r) in tiles), \
+                    f"seed={seed}, exits={required_exits}: no right exit"
+
+
+# ── Fix C: Z-corridor single-stroke shape ─────────────────────────────────────
+
+@pytest.mark.parametrize('seed', range(10))
+def test_z_corridor_not_full_width_arm(seed):
+    """Z-corridor must not produce a full-width or full-height arm."""
+    rng = random.Random(seed)
+    graph = LevelGraph.generate(FS_OPEN, rng=rng)
+    placed = layout_graph(graph, rng=random.Random(seed), strategies=['z'])
+    corridor_name = next(
+        n for n, node in graph.nodes.items()
+        if node.size == NodeSize.CORRIDOR)
+    tiles = placed[corridor_name].floor_tiles
+
+    all_interior_cols = set(range(MIN_C, MAX_C + 1))
+    all_interior_rows = set(range(MIN_R, MAX_R + 1))
+
+    for row in range(MIN_R, MAX_R + 1):
+        row_cols = {c for (c, r) in tiles if r == row}
+        assert row_cols != all_interior_cols, \
+            f"seed={seed}: row {row} fully covered (H-shape arm)"
+
+    for col in range(MIN_C, MAX_C + 1):
+        col_rows = {r for (c, r) in tiles if c == col}
+        assert col_rows != all_interior_rows, \
+            f"seed={seed}: col {col} fully covered (I-shape arm)"
+
+
+# ── Spec 0021: Room-count-driven strategy selection ───────────────────────────
+
+class TestStrategyMaxZones:
+    def test_constant_exists(self):
+        from levellayout import _STRATEGY_MAX_ZONES
+        assert isinstance(_STRATEGY_MAX_ZONES, dict)
+
+    def test_simple_strategies_have_max_2(self):
+        from levellayout import _STRATEGY_MAX_ZONES
+        for s in ['horizontal', 'vertical', 'off_centre']:
+            assert _STRATEGY_MAX_ZONES[s] == 2, f"{s} should have max_zones=2"
+
+    def test_t_has_max_3(self):
+        from levellayout import _STRATEGY_MAX_ZONES
+        assert _STRATEGY_MAX_ZONES['t'] == 3
+
+    def test_heavy_strategies_have_max_4(self):
+        from levellayout import _STRATEGY_MAX_ZONES
+        for s in ['double_t', 'z', 'l']:
+            assert _STRATEGY_MAX_ZONES[s] == 4, f"{s} should have max_zones=4"
+
+    def test_all_strategies_covered(self):
+        from levellayout import _STRATEGY_MAX_ZONES, STRATEGIES
+        for s in STRATEGIES:
+            assert s in _STRATEGY_MAX_ZONES, f"{s} missing from _STRATEGY_MAX_ZONES"
+
+
+class TestPickStrategyRoomCount:
+    def test_n_rooms_2_never_picks_4zone(self):
+        from levellayout import _pick_strategy, _STRATEGY_MAX_ZONES, STRATEGIES
+        for seed in range(200):
+            result = _pick_strategy(frozenset(), STRATEGIES, random.Random(seed), n_rooms=2)
+            assert _STRATEGY_MAX_ZONES.get(result, 2) <= 2, \
+                f"seed={seed}: picked {result!r} (max_zones={_STRATEGY_MAX_ZONES.get(result)}) for n_rooms=2"
+
+    def test_n_rooms_3_allows_t_not_4zone(self):
+        from levellayout import _pick_strategy, _STRATEGY_MAX_ZONES, STRATEGIES
+        results = {_pick_strategy(frozenset(), STRATEGIES, random.Random(s), n_rooms=3)
+                   for s in range(200)}
+        assert 't' in results, "t (max_zones=3) should be chosen with n_rooms=3"
+        for r in results:
+            assert _STRATEGY_MAX_ZONES.get(r, 2) <= 3, \
+                f"picked {r!r} (max_zones={_STRATEGY_MAX_ZONES.get(r)}) for n_rooms=3"
+
+    def test_n_rooms_4_allows_heavy_strategies(self):
+        from levellayout import _pick_strategy, STRATEGIES
+        results = {_pick_strategy(frozenset(), STRATEGIES, random.Random(s), n_rooms=4)
+                   for s in range(200)}
+        assert 'double_t' in results or 'z' in results or 'l' in results, \
+            "4-zone strategies should be eligible with n_rooms=4"
+
+    def test_single_strategy_override_not_filtered(self):
+        """len(available)==1 passes through without room-count filtering."""
+        from levellayout import _pick_strategy
+        result = _pick_strategy(frozenset(), ['double_t'], random.Random(0), n_rooms=2)
+        assert result == 'double_t'
+
+
+@pytest.mark.parametrize('seed', range(20))
+def test_layout_graph_2room_no_heavy_strategy(seed):
+    """With 2 regular rooms and the full strategy pool, layout_graph must not
+    pick a strategy with max_zones > 2 (which would leave empty wall zones)."""
+    from levellayout import _STRATEGY_MAX_ZONES, STRATEGIES
+    graph = LevelGraph()
+    graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+    graph.add_node('r0', NodeSize.ROOM)
+    graph.add_node('r1', NodeSize.ROOM)
+    graph.add_edge('corridor', 'r0', EdgeType.OPEN)
+    graph.add_edge('corridor', 'r1', EdgeType.OPEN)
+
+    placed = layout_graph(graph, rng=random.Random(seed))
+    walls, _ = derive_walls(graph, placed)
+    errors = validate_layout(graph, placed, walls)
+    assert errors == [], f"seed={seed}: {errors}"
+
+    corridor_name = next(
+        n for n, node in graph.nodes.items() if node.size == NodeSize.CORRIDOR)
+    corridor_tiles = placed[corridor_name].floor_tiles
+
+    # Infer which strategy was chosen by checking whether the corridor's
+    # floor touches all four border rows/cols — a necessary consequence of
+    # double_t / z / l being chosen, which would be invalid for n_rooms=2.
+    touches_all_lr = (any(c == MIN_C for (c, r) in corridor_tiles) and
+                      any(c == MAX_C for (c, r) in corridor_tiles))
+    touches_all_tb = (any(r == MIN_R for (c, r) in corridor_tiles) and
+                      any(r == MAX_R for (c, r) in corridor_tiles))
+    assert not (touches_all_lr and touches_all_tb), \
+        f"seed={seed}: corridor touches all 4 borders — double_t/z chosen for 2-room graph"
