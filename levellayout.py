@@ -61,9 +61,116 @@ def _l_shape_tiles(col, row, w, h, rng):
     return frozenset(full - cut)
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _floor_connected(floor_tiles):
+    """Return True if all floor tiles form a single 4-connected component."""
+    if not floor_tiles:
+        return True
+    start = next(iter(floor_tiles))
+    visited = {start}
+    queue = deque([start])
+    while queue:
+        c, r = queue.popleft()
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = (c + dc, r + dr)
+            if nb in floor_tiles and nb not in visited:
+                visited.add(nb)
+                queue.append(nb)
+    return len(visited) == len(floor_tiles)
+
+
+def _try_l_pair(placed, name_i, name_j, col, band_row, band_h, w_i, w_j, band_end, rng):
+    """Place two rooms as a horizontal L-pair.
+
+    A (name_i) gets full-width-top + left-bottom (L-shape).
+    B (name_j) gets top-right rectangle.
+    There is always exactly one shared boundary wall tile between them.
+
+    Returns consumed columns (combined_w + 1 gap) on success, 0 on failure.
+    """
+    combined_w = w_i + 1 + w_j   # wall column at col+w_i
+    if col + combined_w > band_end or band_h < 4:
+        return 0
+
+    split_min = band_row + max(1, band_h // 3)
+    split_max = band_row + max(1, (2 * band_h) // 3)
+    if split_min >= split_max:
+        split_row = split_min
+    else:
+        split_row = rng.randint(split_min, split_max)
+
+    # Need at least 1 row of B (rows band_row..split_row-1)
+    # and at least 1 row of A-bottom (rows split_row+1..band_row+band_h-1)
+    if split_row <= band_row or split_row >= band_row + band_h - 1:
+        return 0
+
+    a_tiles = (
+        frozenset((c, r) for c in range(col, col + w_i)
+                         for r in range(band_row, split_row + 1))
+      | frozenset((c, r) for c in range(col, col + combined_w)
+                         for r in range(split_row + 1, band_row + band_h))
+    )
+    b_tiles = frozenset(
+        (c, r) for c in range(col + w_i + 1, col + combined_w)
+               for r in range(band_row, split_row)
+    )
+
+    if not a_tiles or not b_tiles:
+        return 0
+
+    placed[name_i] = PlacedNode(name_i, col, band_row, combined_w, band_h,
+                                 floor_tiles=a_tiles)
+    placed[name_j] = PlacedNode(name_j, col + w_i + 1, band_row, w_j,
+                                 split_row - band_row, floor_tiles=b_tiles)
+    return combined_w + 1
+
+
+def _try_l_pair_vertical(placed, name_i, name_j, row, band_col, band_w, h_i, h_j, row_end, rng):
+    """Place two rooms as a vertical L-pair (transpose of the horizontal version).
+
+    A gets top-full-height + right-bottom extension.
+    B gets left-bottom rectangle.
+    Returns consumed rows + 1 gap on success, 0 on failure.
+    """
+    combined_h = h_i + 1 + h_j   # wall row at row+h_i
+    if row + combined_h > row_end or band_w < 4:
+        return 0
+
+    split_min = band_col + max(1, band_w // 3)
+    split_max = band_col + max(1, (2 * band_w) // 3)
+    if split_min >= split_max:
+        split_col = split_min
+    else:
+        split_col = rng.randint(split_min, split_max)
+
+    if split_col <= band_col or split_col >= band_col + band_w - 1:
+        return 0
+
+    a_tiles = (
+        frozenset((c, r) for c in range(band_col, band_col + band_w)
+                         for r in range(row, row + h_i))
+      | frozenset((c, r) for c in range(split_col + 1, band_col + band_w)
+                         for r in range(row + h_i + 1, row + combined_h))
+    )
+    b_tiles = frozenset(
+        (c, r) for c in range(band_col, split_col)
+               for r in range(row + h_i + 1, row + combined_h)
+    )
+
+    if not a_tiles or not b_tiles:
+        return 0
+
+    placed[name_i] = PlacedNode(name_i, band_col, row, band_w, combined_h,
+                                 floor_tiles=a_tiles)
+    placed[name_j] = PlacedNode(name_j, band_col, row + h_i + 1,
+                                 split_col - band_col, h_j, floor_tiles=b_tiles)
+    return combined_h + 1
+
+
 # ── Layout strategies ─────────────────────────────────────────────────────────
 
-STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain']
+STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain', 'l']
 
 
 def layout_graph(graph, rng=None, strategies=None):
@@ -81,25 +188,62 @@ def layout_graph(graph, rng=None, strategies=None):
     if corridor_name is None:
         raise ValueError("Graph has no CORRIDOR node")
 
-    room_names = [n for n in graph.nodes if n != corridor_name]
+    # Build flat edge map: (a, b) → EdgeType (both directions)
+    edge_map = {}
+    for edge in graph.edges:
+        edge_map[(edge.node_a, edge.node_b)] = edge.edge_type
+        edge_map[(edge.node_b, edge.node_a)] = edge.edge_type
+
+    node_sizes = {name: node.size for name, node in graph.nodes.items()}
+
+    # Rooms that have no direct corridor edge are nested (closets inside parents)
+    all_room_names = [n for n in graph.nodes if n != corridor_name]
+    closet_rooms = {}   # {child_name: parent_name}
+    regular_rooms = []
+    for name in all_room_names:
+        has_corridor_edge = any(nb == corridor_name
+                                for nb, _ in graph.neighbors(name))
+        if not has_corridor_edge:
+            # Identify parent: first non-corridor neighbor
+            parent = next(
+                (nb for nb, _ in graph.neighbors(name) if nb != corridor_name),
+                None,
+            )
+            if parent is not None:
+                closet_rooms[name] = parent
+            else:
+                regular_rooms.append(name)
+        else:
+            regular_rooms.append(name)
+
     available = strategies or STRATEGIES
     strategy = rng.choice(available)
 
+    em = edge_map if edge_map else None
+    ns = node_sizes if node_sizes else None
+
     if strategy == 'vertical':
-        return _layout_vertical(corridor_name, room_names, rng)
+        placed = _layout_vertical(corridor_name, regular_rooms, rng, em, ns)
     elif strategy == 'off_centre':
-        return _layout_off_centre(corridor_name, room_names, rng)
+        placed = _layout_off_centre(corridor_name, regular_rooms, rng, em, ns)
     elif strategy == 'cross':
-        return _layout_cross(corridor_name, room_names, rng)
+        placed = _layout_cross(corridor_name, regular_rooms, rng, em, ns)
     elif strategy == 't':
-        return _layout_t(corridor_name, room_names, rng)
+        placed = _layout_t(corridor_name, regular_rooms, rng, em, ns)
     elif strategy == 'chain':
-        return _layout_chain(corridor_name, room_names, rng)
+        placed = _layout_chain(corridor_name, regular_rooms, rng, em, ns)
+    elif strategy == 'l':
+        placed = _layout_l(corridor_name, regular_rooms, rng, em, ns)
     else:
-        return _layout_horizontal(corridor_name, room_names, rng)
+        placed = _layout_horizontal(corridor_name, regular_rooms, rng, em, ns)
+
+    if closet_rooms:
+        _nest_closets(placed, closet_rooms, graph, rng)
+
+    return placed
 
 
-def _layout_horizontal(corridor_name, room_names, rng):
+def _layout_horizontal(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
     """Corridor runs left-right, rooms above and below."""
     cor_h = rng.randint(2, 3)
     remaining = INT_H - cor_h - 2
@@ -122,15 +266,17 @@ def _layout_horizontal(corridor_name, room_names, rng):
 
     _pack_band(placed, room_names[:mid], rng,
                band_col=MIN_C, band_row=MIN_R,
-               band_w=INT_W, band_h=above_h)
+               band_w=INT_W, band_h=above_h,
+               edge_map=edge_map, node_sizes=node_sizes)
     _pack_band(placed, room_names[mid:], rng,
                band_col=MIN_C, band_row=cor_row + cor_h + 1,
-               band_w=INT_W, band_h=below_h)
+               band_w=INT_W, band_h=below_h,
+               edge_map=edge_map, node_sizes=node_sizes)
 
     return placed
 
 
-def _layout_vertical(corridor_name, room_names, rng):
+def _layout_vertical(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
     """Corridor runs top-bottom, rooms left and right."""
     cor_w = rng.randint(2, 3)
     remaining = INT_W - cor_w - 2
@@ -153,15 +299,17 @@ def _layout_vertical(corridor_name, room_names, rng):
 
     _pack_band_vertical(placed, room_names[:mid], rng,
                          band_col=MIN_C, band_row=MIN_R,
-                         band_w=left_w, band_h=INT_H)
+                         band_w=left_w, band_h=INT_H,
+                         edge_map=edge_map, node_sizes=node_sizes)
     _pack_band_vertical(placed, room_names[mid:], rng,
                          band_col=cor_col + cor_w + 1, band_row=MIN_R,
-                         band_w=right_w, band_h=INT_H)
+                         band_w=right_w, band_h=INT_H,
+                         edge_map=edge_map, node_sizes=node_sizes)
 
     return placed
 
 
-def _layout_off_centre(corridor_name, room_names, rng):
+def _layout_off_centre(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
     """Corridor shifted up or down, asymmetric room bands."""
     cor_h = rng.randint(2, 3)
     remaining = INT_H - cor_h - 2
@@ -187,15 +335,17 @@ def _layout_off_centre(corridor_name, room_names, rng):
 
     _pack_band(placed, room_names[:big_count], rng,
                band_col=MIN_C, band_row=MIN_R,
-               band_w=INT_W, band_h=above_h)
+               band_w=INT_W, band_h=above_h,
+               edge_map=edge_map, node_sizes=node_sizes)
     _pack_band(placed, room_names[big_count:], rng,
                band_col=MIN_C, band_row=cor_row + cor_h + 1,
-               band_w=INT_W, band_h=below_h)
+               band_w=INT_W, band_h=below_h,
+               edge_map=edge_map, node_sizes=node_sizes)
 
     return placed
 
 
-def _layout_cross(corridor_name, room_names, rng):
+def _layout_cross(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
     """Corridor = horizontal arm ∪ vertical arm (+ shape). Rooms in 4 corner quadrants."""
     arm_h = rng.randint(2, 3)
     arm_w = rng.randint(2, 3)
@@ -223,11 +373,12 @@ def _layout_cross(corridor_name, room_names, rng):
     for (qc, qr, qw, qh), names in zip(quads, per_quad):
         if names and qw >= 3 and qh >= 2:
             _pack_band(placed, names, rng,
-                       band_col=qc, band_row=qr, band_w=qw, band_h=qh)
+                       band_col=qc, band_row=qr, band_w=qw, band_h=qh,
+                       edge_map=edge_map, node_sizes=node_sizes)
     return placed
 
 
-def _layout_t(corridor_name, room_names, rng):
+def _layout_t(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
     """T-shaped corridor in any of 4 orientations. Rooms in 3 zones.
 
     Zone boundaries are chosen so that no room is directly adjacent to the spine
@@ -287,7 +438,8 @@ def _layout_t(corridor_name, room_names, rng):
         for (zc, zr, zw, zh), fn, names in zip([z1, z2, z3], zone_fns, per_zone):
             if names and zw >= 3 and zh >= 2:
                 fn(placed, names, rng,
-                   band_col=zc, band_row=zr, band_w=zw, band_h=zh)
+                   band_col=zc, band_row=zr, band_w=zw, band_h=zh,
+                   edge_map=edge_map, node_sizes=node_sizes)
 
     else:  # right or left
         # Spine: full-height vertical arm; stem: horizontal arm on one side.
@@ -334,12 +486,13 @@ def _layout_t(corridor_name, room_names, rng):
         for (zc, zr, zw, zh), names in zip([z1, z2, z3], per_zone):
             if names and zw >= 3 and zh >= 2:
                 _pack_band_vertical(placed, names, rng,
-                                    band_col=zc, band_row=zr, band_w=zw, band_h=zh)
+                                    band_col=zc, band_row=zr, band_w=zw, band_h=zh,
+                                    edge_map=edge_map, node_sizes=node_sizes)
 
     return placed
 
 
-def _layout_chain(corridor_name, room_names, rng):
+def _layout_chain(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
     """Compact rectangular hub with rooms in 4 linear bands (above, below, left, right)."""
     cor_w = rng.randint(4, 8)
     cor_h = rng.randint(3, 5)
@@ -367,12 +520,14 @@ def _layout_chain(corridor_name, room_names, rng):
         per_band[i % 4].append(name)
     for (bc, br, bw, bh, fn), names in zip(bands, per_band):
         if names and bw >= 3 and bh >= 2:
-            fn(placed, names, rng, band_col=bc, band_row=br, band_w=bw, band_h=bh)
+            fn(placed, names, rng, band_col=bc, band_row=br, band_w=bw, band_h=bh,
+               edge_map=edge_map, node_sizes=node_sizes)
     return placed
 
 
 def _pack_band_vertical(placed, room_names, rng,
-                         band_col, band_row, band_w, band_h):
+                         band_col, band_row, band_w, band_h,
+                         edge_map=None, node_sizes=None):
     """Pack rooms into a vertical band (left or right of a vertical corridor)."""
     if not room_names:
         return
@@ -393,13 +548,33 @@ def _pack_band_vertical(placed, room_names, rng,
 
     band_end = band_row + band_h
     row = band_row
-    for i, name in enumerate(room_names):
-        if row + 2 > band_end:  # not enough band space for minimum-height room
+    i = 0
+    while i < n:
+        name = room_names[i]
+        if row + 2 > band_end:
             break
+
+        # Try vertical L-pair for adjacent OPEN-edge rooms
+        if (edge_map is not None and i + 1 < n and band_w >= 5 and rng.random() < 0.25):
+            name_j = room_names[i + 1]
+            et = edge_map.get((name, name_j)) or edge_map.get((name_j, name))
+            if et == EdgeType.OPEN:
+                h_i = max(2, heights[i])
+                h_j = max(2, heights[i + 1])
+                if h_i + h_j + 1 >= 8:
+                    consumed = _try_l_pair_vertical(
+                        placed, name, name_j,
+                        row=row, band_col=band_col, band_w=band_w,
+                        h_i=h_i, h_j=h_j, row_end=band_end, rng=rng,
+                    )
+                    if consumed:
+                        row += consumed
+                        i += 2
+                        continue
+
         h = heights[i]
         w = band_w
 
-        # Clamp to band bottom edge and grid boundaries
         h = min(h, band_end - row, MAX_R + 1 - row)
         if band_col + w > MAX_C + 1:
             w = MAX_C + 1 - band_col
@@ -412,16 +587,16 @@ def _pack_band_vertical(placed, room_names, rng,
                 placed[name] = PlacedNode(name, band_col, row, w, h)
 
         row += h + 1
+        i += 1
 
 
-def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h):
+def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h,
+               edge_map=None, node_sizes=None):
     """Pack rooms into a horizontal band with 1-tile wall between each."""
     if not room_names:
         return
 
     n = len(room_names)
-    # n rooms need (n-1) wall tiles between them.
-    # Remaining width is distributed among rooms.
     walls_between = n - 1
     usable = band_w - walls_between
     if usable < n * 3:
@@ -437,13 +612,33 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h):
 
     band_end = band_col + band_w
     col = band_col
-    for i, name in enumerate(room_names):
-        if col + 3 > band_end:  # not enough band space for minimum-width room
+    i = 0
+    while i < n:
+        name = room_names[i]
+        if col + 3 > band_end:
             break
+
+        # Try horizontal L-pair for adjacent OPEN-edge rooms
+        if (edge_map is not None and i + 1 < n and band_h >= 4 and rng.random() < 0.25):
+            name_j = room_names[i + 1]
+            et = edge_map.get((name, name_j)) or edge_map.get((name_j, name))
+            if et == EdgeType.OPEN:
+                w_i = max(3, widths[i])
+                w_j = max(2, widths[i + 1])
+                if w_i + w_j + 1 >= 10:
+                    consumed = _try_l_pair(
+                        placed, name, name_j,
+                        col=col, band_row=band_row, band_h=band_h,
+                        w_i=w_i, w_j=w_j, band_end=band_end, rng=rng,
+                    )
+                    if consumed:
+                        col += consumed
+                        i += 2
+                        continue
+
         w = widths[i]
         h = band_h
 
-        # Clamp to band right edge and grid boundaries
         w = min(w, band_end - col, MAX_C + 1 - col)
         if band_row + h > MAX_R + 1:
             h = MAX_R + 1 - band_row
@@ -455,7 +650,203 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h):
             else:
                 placed[name] = PlacedNode(name, col, band_row, w, h)
 
-        col += widths[i] + 1  # advance by original width to preserve spacing
+        col += widths[i] + 1
+        i += 1
+
+
+def _layout_l(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
+    """Corridor is L-shaped; four orientations (bl, br, tl, tr).
+
+    Three zones receive rooms packed round-robin.
+    """
+    orientation = rng.choice(['bl', 'br', 'tl', 'tr'])
+    arm_h = rng.randint(2, 3)
+    arm_w = rng.randint(2, 3)
+
+    # v-arm column: 20-30% or 70-80% from the chosen side
+    if orientation in ('bl', 'tl'):
+        frac = rng.uniform(0.20, 0.30)
+    else:
+        frac = rng.uniform(0.70, 0.80)
+    cor_col = MIN_C + int(INT_W * frac)
+    cor_col = max(MIN_C + arm_w + 2, min(cor_col, MAX_C - arm_w - 3))
+
+    # h-arm row: similar to _layout_horizontal (60-70% or 30-40%)
+    if orientation in ('bl', 'br'):
+        frac_r = rng.uniform(0.55, 0.70)
+    else:
+        frac_r = rng.uniform(0.25, 0.40)
+    cor_row = MIN_R + int(INT_H * frac_r)
+    cor_row = max(MIN_R + arm_h + 2, min(cor_row, MAX_R - arm_h - 2))
+
+    if orientation == 'bl':
+        v_tiles = frozenset((c, r) for c in range(cor_col, cor_col + arm_w)
+                                   for r in range(MIN_R, cor_row + arm_h))
+        h_tiles = frozenset((c, r) for c in range(cor_col, MAX_C + 1)
+                                   for r in range(cor_row, cor_row + arm_h))
+        zones = [
+            # Zone A: above h-arm, right of v-arm
+            (cor_col + arm_w + 1, MIN_R,
+             MAX_C - cor_col - arm_w, cor_row - MIN_R - 1,
+             _pack_band),
+            # Zone B: left of v-arm, spans v-arm height (vertical band)
+            (MIN_C, MIN_R,
+             cor_col - MIN_C - 1, cor_row + arm_h - MIN_R,
+             _pack_band_vertical),
+            # Zone C: open quadrant — below h-arm, right of v-arm
+            (cor_col + arm_w + 1, cor_row + arm_h + 1,
+             MAX_C - cor_col - arm_w, MAX_R - cor_row - arm_h,
+             _pack_band),
+        ]
+    elif orientation == 'br':
+        v_tiles = frozenset((c, r) for c in range(cor_col, cor_col + arm_w)
+                                   for r in range(MIN_R, cor_row + arm_h))
+        h_tiles = frozenset((c, r) for c in range(MIN_C, cor_col + arm_w)
+                                   for r in range(cor_row, cor_row + arm_h))
+        zones = [
+            # Zone A: above h-arm, left of v-arm
+            (MIN_C, MIN_R,
+             cor_col - MIN_C - 1, cor_row - MIN_R - 1,
+             _pack_band),
+            # Zone B: right of v-arm, spans v-arm height (vertical band)
+            (cor_col + arm_w + 1, MIN_R,
+             MAX_C - cor_col - arm_w, cor_row + arm_h - MIN_R,
+             _pack_band_vertical),
+            # Zone C: open quadrant — below h-arm, left of v-arm
+            (MIN_C, cor_row + arm_h + 1,
+             cor_col - MIN_C - 1, MAX_R - cor_row - arm_h,
+             _pack_band),
+        ]
+    elif orientation == 'tl':
+        v_tiles = frozenset((c, r) for c in range(cor_col, cor_col + arm_w)
+                                   for r in range(cor_row, MAX_R + 1))
+        h_tiles = frozenset((c, r) for c in range(cor_col, MAX_C + 1)
+                                   for r in range(cor_row, cor_row + arm_h))
+        zones = [
+            # Zone A: below h-arm, right of v-arm
+            (cor_col + arm_w + 1, cor_row + arm_h + 1,
+             MAX_C - cor_col - arm_w, MAX_R - cor_row - arm_h,
+             _pack_band),
+            # Zone B: left of v-arm, from h-arm down (vertical band)
+            (MIN_C, cor_row,
+             cor_col - MIN_C - 1, MAX_R - cor_row + 1,
+             _pack_band_vertical),
+            # Zone C: open quadrant — above h-arm, right of v-arm
+            (cor_col + arm_w + 1, MIN_R,
+             MAX_C - cor_col - arm_w, cor_row - MIN_R - 1,
+             _pack_band),
+        ]
+    else:  # tr
+        v_tiles = frozenset((c, r) for c in range(cor_col, cor_col + arm_w)
+                                   for r in range(cor_row, MAX_R + 1))
+        h_tiles = frozenset((c, r) for c in range(MIN_C, cor_col + arm_w)
+                                   for r in range(cor_row, cor_row + arm_h))
+        zones = [
+            # Zone A: below h-arm, left of v-arm
+            (MIN_C, cor_row + arm_h + 1,
+             cor_col - MIN_C - 1, MAX_R - cor_row - arm_h,
+             _pack_band),
+            # Zone B: right of v-arm, from h-arm down (vertical band)
+            (cor_col + arm_w + 1, cor_row,
+             MAX_C - cor_col - arm_w, MAX_R - cor_row + 1,
+             _pack_band_vertical),
+            # Zone C: open quadrant — above h-arm, left of v-arm
+            (MIN_C, MIN_R,
+             cor_col - MIN_C - 1, cor_row - MIN_R - 1,
+             _pack_band),
+        ]
+
+    cor_tiles = v_tiles | h_tiles
+    placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R,
+                                         INT_W, INT_H, floor_tiles=cor_tiles)}
+
+    per_zone = [[], [], []]
+    rooms_copy = list(room_names)
+    rng.shuffle(rooms_copy)
+    for k, name in enumerate(rooms_copy):
+        per_zone[k % 3].append(name)
+
+    for (zc, zr, zw, zh, fn), zone_rooms in zip(zones, per_zone):
+        if zone_rooms and zw >= 3 and zh >= 2:
+            fn(placed, zone_rooms, rng,
+               band_col=zc, band_row=zr, band_w=zw, band_h=zh,
+               edge_map=edge_map, node_sizes=node_sizes)
+
+    return placed
+
+
+def _nest_closets(placed, closet_rooms, graph, rng):
+    """Reposition closet rooms into a corner of their parent room.
+
+    ``closet_rooms`` is a dict {child_name: parent_name}.  For each pair,
+    a notch of size (b_w+2)×(b_h+2) is cut from the parent's floor_tiles.
+    The child occupies the inner b_w×b_h area, surrounded on all four sides
+    by a 1-tile wall strip that keeps it separate from the parent.
+    """
+    for child_name, parent_name in closet_rooms.items():
+        if parent_name not in placed:
+            continue
+        pn_a = placed[parent_name]
+
+        # Closet floor dimensions; notch is 2 tiles wider/taller (1-tile wall ring)
+        b_w = min(4, max(1, pn_a.w // 5))
+        b_h = min(3, max(1, pn_a.h // 4))
+        notch_w = b_w + 2
+        notch_h = b_h + 2
+
+        # Parent must be large enough to leave at least 1 col/row of A outside notch
+        if pn_a.w < notch_w + 1 or pn_a.h < notch_h + 1:
+            _place_closet_adjacent(placed, child_name, pn_a, b_w, b_h)
+            continue
+
+        a_floor = pn_a.floor_tiles
+
+        # Try the four corners; pick first that keeps A connected
+        corners = [
+            (pn_a.col,                       pn_a.row),
+            (pn_a.col + pn_a.w - notch_w,    pn_a.row),
+            (pn_a.col,                       pn_a.row + pn_a.h - notch_h),
+            (pn_a.col + pn_a.w - notch_w,    pn_a.row + pn_a.h - notch_h),
+        ]
+        rng.shuffle(corners)
+
+        placed_ok = False
+        for nc, nr in corners:
+            notch = frozenset((c, r)
+                              for c in range(nc, nc + notch_w)
+                              for r in range(nr, nr + notch_h))
+            new_a = a_floor - notch
+            if not new_a:
+                continue
+            if not _floor_connected(new_a):
+                continue
+
+            # Closet floor is 1 tile inside the notch boundary on all sides
+            b_floor = frozenset((c, r)
+                                for c in range(nc + 1, nc + 1 + b_w)
+                                for r in range(nr + 1, nr + 1 + b_h))
+            if not b_floor:
+                continue
+
+            placed[parent_name] = PlacedNode(parent_name, pn_a.col, pn_a.row,
+                                              pn_a.w, pn_a.h, floor_tiles=new_a)
+            placed[child_name] = PlacedNode(child_name,
+                                             nc + 1, nr + 1, b_w, b_h,
+                                             floor_tiles=b_floor)
+            placed_ok = True
+            break
+
+        if not placed_ok:
+            _place_closet_adjacent(placed, child_name, pn_a, b_w, b_h)
+
+
+def _place_closet_adjacent(placed, child_name, pn_a, b_w, b_h):
+    """Fallback: place closet as a small rectangle just below parent."""
+    c = pn_a.col
+    r = pn_a.row + pn_a.h + 1
+    r = min(r, MAX_R - b_h + 1)
+    c = min(c, MAX_C - b_w + 1)
+    placed[child_name] = PlacedNode(child_name, c, r, b_w, b_h)
 
 
 # ── Tile ownership map ────────────────────────────────────────────────────────
