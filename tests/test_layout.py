@@ -232,6 +232,10 @@ class TestStrategyMaxZones:
         for s in STRATEGIES:
             assert s in _STRATEGY_MAX_ZONES, f"{s} missing from _STRATEGY_MAX_ZONES"
 
+    def test_full_border_max_zones_is_1(self):
+        from levellayout import _STRATEGY_MAX_ZONES
+        assert _STRATEGY_MAX_ZONES.get('full_border') == 1
+
 
 class TestPickStrategyRoomCount:
     def test_n_rooms_2_never_picks_4zone(self):
@@ -257,11 +261,77 @@ class TestPickStrategyRoomCount:
         assert 'double_t' in results or 'z' in results or 'l' in results, \
             "4-zone strategies should be eligible with n_rooms=4"
 
-    def test_single_strategy_override_not_filtered(self):
-        """len(available)==1 passes through without room-count filtering."""
+    def test_pick_strategy_single_available_is_filtered(self):
+        """_pick_strategy has no len(available)==1 guard — room-count filter
+        always runs, falling back to full_border when filtered is empty."""
         from levellayout import _pick_strategy
         result = _pick_strategy(frozenset(), ['double_t'], random.Random(0), n_rooms=2)
-        assert result == 'double_t'
+        assert result == 'full_border'
+
+
+class TestFullBorderFallback:
+    """full_border is chosen when all exit-compatible strategies are over-zoned."""
+
+    def _one_room_graph(self):
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('r0', NodeSize.ROOM)
+        g.add_edge('corridor', 'r0', EdgeType.OPEN)
+        return g
+
+    def _is_full_border(self, placed, graph):
+        """True when the corridor covers every row in the left column —
+        full_border fills the whole perimeter; other strategies only touch
+        the left edge at the band/stem rows (2–3 tiles, not all 14)."""
+        cor = next(n for n, nd in graph.nodes.items() if nd.size == NodeSize.CORRIDOR)
+        tiles = placed[cor].floor_tiles
+        left_col_rows = {r for c, r in tiles if c == MIN_C}
+        return left_col_rows == set(range(MIN_R, MAX_R + 1))
+
+    def test_perpendicular_exits_small_room_count_uses_full_border(self):
+        """exits={'left','bottom'}, heavy-only pool, 1 room → full_border."""
+        from levellayout import _pick_strategy
+        heavy_pool = ['double_t', 'z', 'l']
+        for seed in range(30):
+            result = _pick_strategy(frozenset({'left', 'bottom'}), heavy_pool,
+                                    random.Random(seed), n_rooms=1)
+            assert result == 'full_border', \
+                f"seed={seed}: expected full_border, got {result!r}"
+
+    def test_three_exits_small_room_count_uses_full_border(self):
+        """exits={'left','right','top'}, heavy-only pool, 1 room → full_border."""
+        from levellayout import _pick_strategy
+        heavy_pool = ['double_t', 'z', 'l']
+        for seed in range(30):
+            result = _pick_strategy(frozenset({'left', 'right', 'top'}), heavy_pool,
+                                    random.Random(seed), n_rooms=1)
+            assert result == 'full_border', \
+                f"seed={seed}: expected full_border, got {result!r}"
+
+    def test_layout_graph_heavy_pool_falls_back_to_full_border(self):
+        """layout_graph: all-heavy pool + 1 room → full_border corridor."""
+        graph = self._one_room_graph()
+        for seed in range(20):
+            placed = layout_graph(graph, rng=random.Random(seed),
+                                  strategies=['double_t', 'z', 'l'])
+            assert self._is_full_border(placed, graph), \
+                f"seed={seed}: expected full_border corridor"
+            walls, _ = derive_walls(graph, placed)
+            assert validate_layout(graph, placed, walls) == [], f"seed={seed}: layout error"
+
+    def test_layout_graph_single_strategy_override_bypasses_filter(self):
+        """layout_graph: len(available)==1 guard preserves explicit override."""
+        graph = LevelGraph()
+        graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        for i in range(4):
+            graph.add_node(f'r{i}', NodeSize.ROOM)
+            graph.add_edge('corridor', f'r{i}', EdgeType.OPEN)
+        for seed in range(10):
+            placed = layout_graph(graph, rng=random.Random(seed),
+                                  strategies=['double_t'])
+            # Single-strategy override → double_t used, not full_border
+            assert not self._is_full_border(placed, graph), \
+                f"seed={seed}: single-strategy override should use double_t, not full_border"
 
 
 @pytest.mark.parametrize('seed', range(20))

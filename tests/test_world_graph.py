@@ -174,7 +174,7 @@ class TestPickStrategy:
 
     def test_4_exits_fallback_when_only_weak_available(self):
         result = pick(['left', 'right', 'top', 'bottom'], ['horizontal', 'vertical'])
-        assert result == 'double_t'
+        assert result == 'full_border'
 
     def test_perpendicular_pair_l_compatible(self):
         for pair in [['left', 'top'], ['left', 'bottom'],
