@@ -1434,6 +1434,20 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     all_gates = []
     all_water_tiles = []
 
+    # Gate/lock prerequisites that exist in the placed layout
+    placed_gate_ids = {
+        gate_id
+        for name, node in graph.nodes.items()
+        if name in placed
+        for (gate_id,) in node.plates
+    }
+    placed_key_colours = {
+        colour
+        for name, node in graph.nodes.items()
+        if name in placed
+        for (colour,) in node.keys
+    }
+
     for edge in graph.edges:
         if edge.node_a not in placed or edge.node_b not in placed:
             continue
@@ -1445,9 +1459,15 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
         if conn is None:
             continue
         if edge.edge_type == EdgeType.LOCKED:
-            all_locked_doors.append((*conn, edge.params['key_colour']))
+            colour = edge.params['key_colour']
+            if colour in placed_key_colours:
+                all_locked_doors.append((*conn, colour))
+            # else: prerequisite room was dropped — make this an open passage
         elif edge.edge_type == EdgeType.GATED:
-            all_gates.append((*conn, edge.params['gate_id']))
+            gate_id = edge.params['gate_id']
+            if gate_id in placed_gate_ids:
+                all_gates.append((*conn, gate_id))
+            # else: prerequisite room was dropped — make this an open passage
         elif edge.edge_type == EdgeType.WATER:
             pass  # water tiles already collected by derive_walls
 
@@ -1526,7 +1546,9 @@ def _build_super_grid(graph, rng, strategies):
 
     def _build_subgraph(corridor, is_start_grid):
         sub = LevelGraph(rng=rng)
-        sub.add_node(corridor, graph.nodes[corridor].size, is_start=is_start_grid)
+        # Each subgraph needs its corridor marked is_start so build_level_dict
+        # can find a player_start; the is_start_grid flag is tracked separately.
+        sub.add_node(corridor, graph.nodes[corridor].size, is_start=True)
         for name, edge in graph.neighbors(corridor):
             if edge.edge_type == EdgeType.BORDER:
                 continue
@@ -1542,19 +1564,74 @@ def _build_super_grid(graph, rng, strategies):
             sub.add_edge(corridor, name, edge.edge_type, **edge.params)
         return sub
 
+    # Collect required border sides per corridor (columns/rows that must have
+    # floor tiles so the stitching step can find a shared position).
+    _BORDER_CHECK_COL = {'right': COLS - 2, 'left': 1}
+    _BORDER_CHECK_ROW = {'bottom': ROWS - 2, 'top': 1}
+    required_sides = {cor: set() for cor in corridor_order}
+    for edge in graph.edges:
+        if edge.edge_type != EdgeType.BORDER:
+            continue
+        required_sides[edge.node_a].add(edge.params['exit_side'])
+        required_sides[edge.node_b].add(edge.params['entry_side'])
+
+    def _stitch_ok(rooms_by_gname):
+        """Return True if all BORDER edges can be stitched (shared rows/cols exist)."""
+        for edge in graph.edges:
+            if edge.edge_type != EdgeType.BORDER:
+                continue
+            gname_a = grid_name_map[edge.node_a]
+            gname_b = grid_name_map[edge.node_b]
+            if gname_a not in rooms_by_gname or gname_b not in rooms_by_gname:
+                return False
+            room_a = rooms_by_gname[gname_a]
+            room_b = rooms_by_gname[gname_b]
+            exit_side = edge.params.get('exit_side', 'right')
+            entry_side = edge.params.get('entry_side', 'left')
+            if exit_side in ('right', 'left'):
+                col_a = _BORDER_CHECK_COL[exit_side]
+                col_b = _BORDER_CHECK_COL[entry_side]
+                rows_a = {r for (c, r) in room_a.get('tile_owner', {}) if c == col_a}
+                rows_b = {r for (c, r) in room_b.get('tile_owner', {}) if c == col_b}
+                if not (rows_a & rows_b):
+                    return False
+            else:
+                row_a = _BORDER_CHECK_ROW[exit_side]
+                row_b = _BORDER_CHECK_ROW[entry_side]
+                cols_a = {c for (c, r) in room_a.get('tile_owner', {}) if r == row_a}
+                cols_b = {c for (c, r) in room_b.get('tile_owner', {}) if r == row_b}
+                if not (cols_a & cols_b):
+                    return False
+        return True
+
     # Build each grid independently
     grid_name_map = {cor: (f'grid_{i}' if i > 0 else 'grid_a')
                      for i, cor in enumerate(corridor_order)}
     all_rooms = {}
-    player_start = None
+    all_player_starts = {}
+    subgraphs = {}
 
     for i, corridor in enumerate(corridor_order):
         sub = _build_subgraph(corridor, is_start_grid=(i == 0))
+        subgraphs[corridor] = sub
         d = build_level_dict(sub, rng=rng, strategies=strategies, grid_count=1)
         gname = grid_name_map[corridor]
         all_rooms[gname] = d['rooms']['main']
-        if i == 0:
-            player_start = d['player_start']
+        all_player_starts[gname] = d['player_start']
+
+    # If any stitch would fail, rebuild every multi-grid subgraph with 'cross'
+    # strategy.  The cross layout's full-width h-arm (rows 6-8) and full-height
+    # v-arm (cols 13-15) guarantee that any two grids share rows 7-8 and cols
+    # 14-15 at their border positions, so stitching always succeeds.
+    if not _stitch_ok(all_rooms):
+        for i, corridor in enumerate(corridor_order):
+            d = build_level_dict(
+                subgraphs[corridor], rng=rng, strategies=['cross'], grid_count=1)
+            gname = grid_name_map[corridor]
+            all_rooms[gname] = d['rooms']['main']
+            all_player_starts[gname] = d['player_start']
+
+    player_start = all_player_starts[grid_name_map[corridor_order[0]]]
 
     # Stitch grids along BORDER edges
     _INNER = {
