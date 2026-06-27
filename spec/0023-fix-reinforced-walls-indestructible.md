@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] `_register_bump` returns early for `WALL_REINFORCED` (no hits registered, no break)
+- [x] `_register_bump` returns early for `WALL_REINFORCED` (no hits registered, no break)
 
 ---
 
@@ -50,4 +50,4 @@ Manual — no automated test for this path:
 
 ## Done when
 
-- [ ] Reinforced walls cannot be destroyed by player bumping (user confirmed).
+- [x] Reinforced walls cannot be destroyed by player bumping (user confirmed — b7ca514).
