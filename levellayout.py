@@ -172,6 +172,42 @@ def _try_l_pair_vertical(placed, name_i, name_j, row, band_col, band_w, h_i, h_j
 
 STRATEGIES = ['horizontal', 'vertical', 'off_centre', 't', 'double_t', 'z', 'l']
 
+# Strategies guaranteed to provide floor tiles at each border group.
+_COVERS_LR  = frozenset({'horizontal', 'off_centre', 't', 'double_t', 'z'})
+_COVERS_TB  = frozenset({'vertical', 'double_t', 'z'})
+_COVERS_ALL = frozenset({'double_t', 'z'})
+_COVERS_L   = frozenset({'l', 'double_t', 'z'})   # l only for 2-exit perpendicular
+
+
+def _pick_strategy(exits, available, rng):
+    """Choose a layout strategy compatible with the required exit sides.
+
+    exits:     frozenset of sides in {'left', 'right', 'top', 'bottom'}
+    available: list of strategy names to choose from
+    rng:       random.Random
+
+    Falls back to 'double_t' if no compatible strategy is in available.
+    """
+    has_lr = bool(exits & {'left', 'right'})
+    has_tb = bool(exits & {'top', 'bottom'})
+
+    if has_lr and has_tb:
+        if len(exits) == 2:
+            # Exactly one lr side + one tb side → L-shape is compatible
+            compatible = _COVERS_L
+        else:
+            compatible = _COVERS_ALL
+    elif has_lr:
+        compatible = _COVERS_LR
+    elif has_tb:
+        compatible = _COVERS_TB
+    else:
+        # No border exits required (e.g. single isolated grid)
+        return rng.choice(available) if available else 'double_t'
+
+    choices = [s for s in available if s in compatible]
+    return rng.choice(choices) if choices else 'double_t'
+
 
 def layout_graph(graph, rng=None, strategies=None):
     """Arrange graph nodes onto a 30×16 grid using a random strategy.
@@ -2015,7 +2051,8 @@ def _build_super_grid(graph, rng, strategies):
                     return False
         return True
 
-    # Build each grid independently
+    # Build each grid independently, choosing a strategy compatible with
+    # that grid's required border exits.
     grid_name_map = {cor: (f'grid_{i}' if i > 0 else 'grid_a')
                      for i, cor in enumerate(corridor_order)}
     all_rooms = {}
@@ -2025,18 +2062,21 @@ def _build_super_grid(graph, rng, strategies):
     for i, corridor in enumerate(corridor_order):
         sub = _build_subgraph(corridor, is_start_grid=(i == 0))
         subgraphs[corridor] = sub
-        d = build_level_dict(sub, rng=rng, strategies=strategies, grid_count=1)
+        exits = required_sides[corridor]
+        chosen = [_pick_strategy(frozenset(exits), strategies, rng)]
+        d = build_level_dict(sub, rng=rng, strategies=chosen, grid_count=1)
         gname = grid_name_map[corridor]
         all_rooms[gname] = d['rooms']['main']
         all_player_starts[gname] = d['player_start']
 
-    # If any stitch would fail, rebuild every multi-grid subgraph with 'double_t'.
-    # double_t always has a full-width spine plus stems reaching all four borders,
-    # guaranteeing shared floor rows/cols at every border position.
+    # If any stitch would fail, rebuild every multi-grid subgraph with 'z'.
+    # 'z' arms are flush with all four grid borders (full-width horizontal arms for
+    # z_h, full-height vertical arms for z_v), guaranteeing non-empty shared
+    # rows/cols for any direction of BORDER edge regardless of variant.
     if not _stitch_ok(all_rooms):
         for i, corridor in enumerate(corridor_order):
             d = build_level_dict(
-                subgraphs[corridor], rng=rng, strategies=['double_t'], grid_count=1)
+                subgraphs[corridor], rng=rng, strategies=['z'], grid_count=1)
             gname = grid_name_map[corridor]
             all_rooms[gname] = d['rooms']['main']
             all_player_starts[gname] = d['player_start']
