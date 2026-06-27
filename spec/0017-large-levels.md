@@ -420,12 +420,7 @@ Add `branch_prob` to each Act 2 feature set using the table above.
    grid when post-stitch validation fails?  Retrying with `double_t` once is
    cheap; unlimited retries could loop.
 
-2. **Exit / goal grid placement**: currently the last-placed grid holds the
-   level exit.  With branching, this may be a short dead-end arm.  Should
-   the exit instead be placed at the grid with the greatest BFS distance
-   from the start?
-
-3. **Intra-grid branching depth**: how many hops from the corridor before a
+2. **Intra-grid branching depth**: how many hops from the corridor before a
    room is considered "too deep"?  A chain of length 3+ creates a maze within
    a grid, which can be either interesting or frustrating.
 
