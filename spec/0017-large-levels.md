@@ -1,83 +1,55 @@
-# Large Levels: Roguelike Scale, Branching Topology, Multi-Plane
+# Large Levels: Branching Topology and Multi-Plane
 
-## Status
+## Status — Phase 1 (branching world graph)
 
-- [ ] World graph supports branching (one grid connects to 2+) and loops
-- [ ] Level configs scaled up: 5 grids at level 11, growing to 20–30+ by level 20
-- [ ] Grid arrangement algorithm places grids on a 2D meta-grid
-- [ ] Multi-plane: levels 17–20 have 2–3 planes (floors) connected by stairs
+- [ ] World graph supports branching (one grid → 2+ successors) and loops
+- [ ] World graph grown as spanning tree, then loop edges added on top
+- [ ] Each grid's layout strategy chosen to match its required exits
+- [ ] Level 11: 1 grid (trivially linear)
+- [ ] Level 12–14: small trees, no/few loops
+- [ ] Level 15+: branching + loops visible; exploration is non-linear
+
+## Status — Phase 2 (multi-plane, out of scope until staircase sprite exists)
+
+- [ ] STAIRCASE edge type connecting two grids on different floors
+- [ ] `current_plane` game state in game.py
+- [ ] Staircase sprite (prerequisite — see kb/findings.md)
 
 ---
 
 ## Vision
 
-Act 2 should feel like a roguelike dungeon — large, non-linear, full of
-decisions about where to go next.  The current linear chain of grids (A→B→C)
-must become a proper graph: branches, loops, dead-ends, and eventually
-multiple vertical planes (floors connected by stairs).
+Act 2 should feel like a dungeon, not a corridor chain.  From level 13
+onward the player encounters branch points — junctions where they must
+choose left or right, up or down.  At level 15+ loops appear: you can
+circle back to earlier grids, reducing dead-end backtracking and rewarding
+a player who remembers the map.
+
+Each 30×16 grid is unchanged in size.  The difference is in how many grids
+exist and how they connect.
 
 ---
 
 ## World graph
 
-A **world graph** is the meta-level structure: nodes are grids; edges are
-border transitions between grids.  Currently the world graph is always a
-path (linear chain).  This spec upgrades it to an arbitrary connected graph.
+A **world graph** is the meta-level structure:
 
-### Topology types
+- **Nodes**: corridor nodes, one per 30×16 grid
+- **Edges**: BORDER edges — transitions through a shared border wall
 
-| Type      | Description                                                |
-|-----------|------------------------------------------------------------|
-| path      | A → B → C (current)                                       |
-| branch    | A connects to B and C; player chooses direction            |
-| loop      | A → B → C → A; player can return to earlier grids         |
-| tree      | A tree of depth 2–3; multiple dead-end branches            |
-| web       | Dense graph with multiple loops                           |
+Each corridor node has a 2D position `(meta_col, meta_row)`.  BORDER edges
+only exist between **spatially adjacent** nodes (Manhattan distance 1).
+This is not a policy choice — it is a hard constraint of the stitching
+mechanism: two grids share a border wall only when they are adjacent.
 
-All types are mixed within a single level by the world graph generator.
+### Vocabulary
 
-### Grid exits
-
-Each grid has 4 potential exits: `top`, `bottom`, `left`, `right`.  An exit
-is a BORDER edge connecting two grids at one of their shared border walls.
-A grid can have more than one exit in the same direction only if the two
-exits lead to different grids (they'd be at different row/col positions
-along that border).
-
-In practice, aim for 1–2 exits per grid face.  A grid with exits on 3 or 4
-faces is a hub; 1 exit is a dead-end arm.
-
-### World graph generation
-
-```
-1.  Pick a target grid count N for the level.
-2.  Start with one grid (the start grid).
-3.  Repeat until N grids placed:
-      a. Pick a placed grid that still has free faces.
-      b. Pick a free face.
-      c. Place a new grid on that face (or, with probability p_loop,
-         connect to an already-placed grid that has a matching free face).
-4.  Ensure start grid is reachable from all others (always true since
-    we grew from the start).
-5.  Assign exit_side/entry_side for each BORDER edge based on which
-    face was connected.
-```
-
-`p_loop` (probability of creating a loop instead of a new grid) increases
-with N and with the current loop count — more loops in larger levels.
-
-Suggested: `p_loop = 0.1 + 0.02 * current_loop_count` (capped at 0.4).
-
-### Spatial layout
-
-For display on the world map (and for stitching to work), each grid needs a
-2D position on a meta-grid.  The meta-grid is a logical 2D array of grid
-slots; each slot holds exactly one grid.
-
-Growing algorithm: track occupied slots; when adding a grid on face F of
-grid G at position (gx, gy), place the new grid at (gx+dx, gy+dy) where
-(dx, dy) = face direction.  If that slot is already occupied (loop case),
-record the BORDER edge between the two grids instead.
+| Term           | Definition                                               |
+|----------------|----------------------------------------------------------|
+| dead-end grid  | 1 exit (leaf node in world graph)                        |
+| pass-through   | exactly 2 exits (current behavior)                       |
+| branch grid    | 3 or 4 exits (hub; multiple routes diverge here)         |
+| loop edge      | BORDER edge that closes a cycle (not part of span. tree) |
 
 ---
 
@@ -85,51 +57,110 @@ record the BORDER edge between the two grids instead.
 
 Level N has exactly N−10 grids.
 
-| Level | Grid count | Notes                                    |
-|-------|------------|------------------------------------------|
-| 11    | 1          | single grid, introductory                |
-| 12    | 2          | first multi-grid                         |
-| 13    | 3          | first branching opportunity              |
-| 14    | 4          |                                          |
-| 15    | 5          | first time loops are interesting         |
-| 16    | 6          |                                          |
-| 17    | 7          | multi-plane starts here (future)         |
-| 18    | 8          |                                          |
-| 19    | 9          |                                          |
-| 20    | 10         | full roguelike scale for current Act 2   |
+| Level | Grids | branch_prob | loop_count | Notes                       |
+|-------|-------|-------------|------------|-----------------------------|
+| 11    | 1     | 0           | 0          | trivial — single grid       |
+| 12    | 2     | 0           | 0          | always linear               |
+| 13    | 3     | 0.20        | 0          | first branching opportunity |
+| 14    | 4     | 0.25        | 0          |                             |
+| 15    | 5     | 0.30        | 1          | first loop                  |
+| 16    | 6     | 0.30        | 1          |                             |
+| 17    | 7     | 0.35        | 1          | multi-plane here in Phase 2 |
+| 18    | 8     | 0.35        | 2          |                             |
+| 19    | 9     | 0.40        | 2          |                             |
+| 20    | 10    | 0.40        | 2          | full roguelike scale        |
 
-The grid count is fixed (not random).  The branching/loop topology of the
-world graph makes even small grid counts non-trivial at higher levels.
+`branch_prob` and `loop_count` are first-guess values; playtesting will tune
+them.  The grid count is fixed (not random).
 
 ---
 
-## Multi-plane levels
+## World graph generation algorithm
 
-A **plane** is one floor of the dungeon.  Levels 17–20 have 2–3 planes.
-Each plane is a world graph of grids.  Planes are connected by **staircase
-pairs**: one staircase in a grid on plane N leads to a staircase in a grid
-on plane N+1.
+**Input**: N grids, `branch_prob` p, `loop_count` L.
 
-### Staircases
+### Step 1 — Place the start grid
 
-- A staircase occupies one floor tile in a grid (at a specific col, row).
-- It is distinct from a door or border exit: it leads to a different plane,
-  not an adjacent grid on the same plane.
-- The destination staircase is in a randomly chosen grid on the target plane
-  (not necessarily adjacent spatially).
-- Staircase sprite: already noted as a future feature in findings/kb.
+Place grid 0 at position (0, 0).
+`placed = {(0,0): 0}`, `frontier = [0]`.
 
-### Plane generation
+### Step 2 — Grow spanning tree
 
+Repeat until `len(placed) == N`:
+
+1. Pick a random grid G from `frontier` (uniform random — neither pure BFS
+   nor pure DFS; gives varied tree shapes).
+2. Shuffle the 4 cardinal directions.
+3. For each direction D (in shuffled order):
+   - Compute neighbor position P = pos(G) + D.
+   - If P is unoccupied and `len(placed) < N`: place new grid K at P, record
+     BORDER edge (G→K, exit_side=D), add K to `frontier`, then:
+     - With probability (1 − p): **stop** (only one new grid per turn).
+     - With probability p: **continue** to the next direction, possibly
+       adding a second branch from G in the same turn.
+4. If no direction yielded a new grid: remove G from `frontier`.
+
+After this step the world graph is a spanning tree.  The start grid is the
+root; dead-end grids are leaves.
+
+### Step 3 — Add loop edges
+
+Collect all adjacent pairs of placed grids that do **not** already share a
+BORDER edge.  Shuffle the list.  Pick the first L pairs and add a BORDER
+edge to each.  If fewer than L valid pairs exist, add as many as possible
+and continue without error.
+
+---
+
+## Exit compatibility and strategy selection
+
+A grid's **required exits** are the faces (left, right, top, bottom) that
+have a BORDER edge.  The chosen layout strategy must guarantee a floor tile
+at each required face's border, otherwise stitching fails.
+
+### Coverage table
+
+| Strategy    | Left | Right | Top | Bottom |
+|-------------|:----:|:-----:|:---:|:------:|
+| `horizontal`  | ✓   | ✓     |     |        |
+| `vertical`    |     |       | ✓   | ✓      |
+| `off_centre`  | ✓   | ✓     |     |        |
+| `t`           | ✓   | ✓     | ½   | ½      |
+| `double_t`    | ✓   | ✓     | ✓   | ✓      |
+| `z`           | ✓   | ✓     | ✓   | ✓      |
+| `l`           | *   | *     | *   | *      |
+
+**`t` (½)**: the spine guarantees left+right; the stem extends to **one** of
+{top, bottom} at random.  `t` cannot be relied upon for a specific third
+side — it may or may not reach top or bottom.  Use it only for grids needing
+exactly {left, right}.
+
+**`l`**: covers 2 specific borders depending on which variant is chosen;
+unsuitable for grids with 3+ exits.  Safest to restrict `l` to dead-end
+grids (1 exit only) in the feature set.
+
+### Selection rule
+
+After the world graph is built and each grid's required exits are known:
+
+```python
+def _pick_strategy(exits, available, rng):
+    compatible = [s for s in available if _covers(s, exits)]
+    return rng.choice(compatible) if compatible else 'double_t'
 ```
-1.  Generate plane 0 (the start plane) with its world graph.
-2.  For each additional plane p:
-      a. Generate world graph for plane p.
-      b. Pick a grid on plane p-1 to place the upward staircase.
-      c. Pick a grid on plane p to place the downward staircase.
-      d. Record staircase pairs.
-3.  Player starts on plane 0.
-```
+
+`_covers(s, exits)` table:
+
+| Required exits                                  | Compatible strategies            |
+|-------------------------------------------------|----------------------------------|
+| ∅                                               | all                              |
+| subset of {left, right}                         | horizontal, off_centre, t, double_t, z |
+| subset of {top, bottom}                         | vertical, double_t, z            |
+| {left, right} + one of {top, bottom}            | double_t, z                      |
+| 3 or 4 exits, or any mix of both axes           | double_t, z                      |
+
+The existing stitch-failure fallback (rebuild all grids with `double_t`)
+stays, but should fire rarely once strategy selection is correct.
 
 ---
 
@@ -137,63 +168,101 @@ on plane N+1.
 
 ### levelgraph.py
 
-- `LevelGraph.generate()` currently produces a flat star-topology graph for
-  one grid.  This does not change — each grid's internal room graph is still
-  a star.
-- No changes needed here.
-
-### levellayout.py / build_level_dict
-
-Currently `build_level_dict(..., grid_count=N)` builds a linear chain.
-Replace the chain builder with a **world graph builder**:
+**`_super_grid_positions(n)`** — replaced by a new function:
 
 ```python
-def build_world_graph(feature_set, rng, n_grids, p_loop=None):
-    """Return a list of (corridor_name, BORDER edges) describing the meta-graph."""
-    ...
+def _world_graph(n, branch_prob, loop_count, rng):
+    """Return (positions, tree_edges, loop_edges).
 
-def build_level_dict_v2(feature_sets, rng, strategies, world_graph):
-    """Build all grids and stitch them according to the world graph."""
-    ...
+    positions: list[(meta_col, meta_row)], index = grid index
+    tree_edges: list[(grid_a, grid_b, exit_side, entry_side)]
+    loop_edges: list[(grid_a, grid_b, exit_side, entry_side)]
+    """
 ```
 
-The existing `_stitch_ok` / stitch logic stays but must handle arbitrary
-exit directions (grids can connect via top/bottom as well as left/right).
+**`LevelGraphBuilder.start_next_grid()`** — add a `source` parameter so
+branches can be added from any already-placed corridor:
+
+```python
+def start_next_grid(self, super_col, super_row, exit_side,
+                    source=None, ...)
+# source defaults to _current_corridor when None
+```
+
+**`LevelGraphBuilder.add_border_loop(corridor_a, corridor_b, exit_side, ...)`**
+— new method.  Creates a BORDER edge between two existing corridors without
+adding a new corridor node (for loop edges).
+
+**`LevelGraph.generate()`** — updated call sequence:
+
+```
+1. Call _world_graph(N, branch_prob, loop_count, rng).
+2. BFS from grid 0; for each non-root grid: call start_next_grid(source=parent).
+3. For each loop edge: call add_border_loop(a, b, ...).
+4. Distribute rooms round-robin as today.
+```
 
 ### levels.py
 
-Feature sets gain a `'world_style'` key describing the topology target:
-`'path'`, `'tree'`, `'web'`.  The world graph builder uses this as a hint.
+Add `branch_prob` and `loop_count` to each Act 2 feature set using the
+values from the grid-count table above.
 
-### game.py
+### levellayout.py
 
-Multi-plane transitions require a new game state: `current_plane`.
-Staircase tiles trigger a plane switch (like grid exits trigger a grid
-switch).  The HUD may show the current plane number.
+**`_build_super_grid()`** — `required_sides` is already computed (lines
+1982–1987) but currently not used for strategy selection.  Wire it:
+
+```python
+for corridor in corridor_order:
+    exits = required_sides[corridor]
+    strategy = _pick_strategy(exits, strategies, rng)
+    d = build_level_dict(sub, rng=rng, strategies=[strategy], grid_count=1)
+    ...
+```
+
+---
+
+## Phase 2: multi-plane (future)
+
+Multi-plane levels have 2+ floors connected by staircases.  A staircase is
+a floor tile that, when stepped on, transitions the player to a different
+floor — a different world graph entirely.
+
+Deferred requirements:
+- Staircase sprite (prerequisite; tracked in kb/findings.md)
+- `EdgeType.STAIRCASE` — new edge type; not a border wall connection
+- `current_plane` state in game.py
+- Plane generation: each plane has its own world graph; a staircase pair
+  links one grid on plane P to one grid on plane P+1
+
+Not scoped here.  Revisit when the staircase sprite exists.
 
 ---
 
 ## Open questions
 
-1. **Room counts per grid on large levels**: with 60 grids each having 6–10
-   rooms, a level 20 has 360–600 rooms.  Is that the right scale, or should
-   individual grids have fewer rooms on large levels?
+1. **Bounded meta-grid**: should the generator cap the bounding box (e.g.,
+   5×5 cells) to keep levels compact?  Uncapped growth produces very long
+   arms; a cap keeps the map denser and navigation shorter.
 
-2. **Staircase sprite**: already on the backlog (kb/findings.md).  Needed
-   before multi-plane can be playable.
+2. **Exit / goal placement**: currently grid 0 = start, last grid = exit.
+   With branching the "last grid" is the last one added (a dead-end arm),
+   which is interesting.  Alternative: place the exit at the grid with the
+   greatest BFS distance from the start.
 
-3. **World map / minimap**: with 30–60 grids, players need some way to track
-   where they've been.  Out of scope for this spec but worth noting.
+3. **Loop edge barriers**: same barrier options as tree edges (locked/gated/
+   open)?  Or always open, since secondary paths should not block progress?
 
-4. **p_loop tuning**: the formula `p_loop = 0.1 + 0.02 * loop_count` is a
-   first guess.  Needs playtesting.
+4. **`branch_prob` and `loop_count` tuning**: first-guess values; needs
+   playtesting especially at levels 15–20.
 
 ---
 
-## Done when
+## Done when — Phase 1
 
 - [ ] `poe test` passes
-- [ ] Level 11 generates with 5 grids, non-linear branching topology visible
-- [ ] Level 15 generates with ~20 grids, multiple loops navigable
-- [ ] Level 17 generates with 2 planes; staircase carries player between them
-- [ ] Level 20 generates with 3 planes and ~60 total grids
+- [ ] Level 13 (3 grids): branching topology appears on some seeds (verified by visual inspection)
+- [ ] Level 15 (5 grids): branching + 1 loop present in most runs; player has real choices
+- [ ] Level 20 (10 grids): web-like topology; multiple arms and loops visible (verified by inspection)
+- [ ] No level fails to generate — world graph + stitching never raises
+- [ ] Strategy selection uses exit compatibility; `double_t` fallback fires rarely
