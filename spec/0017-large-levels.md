@@ -83,21 +83,23 @@ record the BORDER edge between the two grids instead.
 
 ## Grid counts by level
 
-| Level | Grid count (target) | World graph style           |
-|-------|---------------------|-----------------------------|
-| 11    | 5                   | path or simple tree         |
-| 12    | 8                   | tree with 1–2 branches      |
-| 13    | 12                  | tree + 1 loop               |
-| 14    | 15                  | tree + 2 loops              |
-| 15    | 20                  | web                         |
-| 16    | 25                  | web                         |
-| 17    | 30 (2 planes)       | web per plane + stairs      |
-| 18    | 40 (2 planes)       | web per plane + stairs      |
-| 19    | 50 (3 planes)       | web per plane + stairs      |
-| 20    | 60 (3 planes)       | web per plane + stairs      |
+Level N has exactly N−10 grids.
 
-Grid counts are targets; the generator may produce ±2 depending on the
-random walk outcome.
+| Level | Grid count | Notes                                    |
+|-------|------------|------------------------------------------|
+| 11    | 1          | single grid, introductory                |
+| 12    | 2          | first multi-grid                         |
+| 13    | 3          | first branching opportunity              |
+| 14    | 4          |                                          |
+| 15    | 5          | first time loops are interesting         |
+| 16    | 6          |                                          |
+| 17    | 7          | multi-plane starts here (future)         |
+| 18    | 8          |                                          |
+| 19    | 9          |                                          |
+| 20    | 10         | full roguelike scale for current Act 2   |
+
+The grid count is fixed (not random).  The branching/loop topology of the
+world graph makes even small grid counts non-trivial at higher levels.
 
 ---
 

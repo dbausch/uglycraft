@@ -187,7 +187,7 @@ def _generate_act2():
     seed = _rnd.Random().randint(0, 2**31)
 
     feature_sets = [
-        # Level 11: open + breakable only
+        # Level 11: 1 grid — open + breakable only
         {
             'room_count': (6, 8),
             'edge_types': [EdgeType.OPEN, EdgeType.OPEN, EdgeType.BREAKABLE],
@@ -197,8 +197,9 @@ def _generate_act2():
             'material_count': (4, 6),
             'enemy_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z', 'l'],
+            'grid_count': 1,
         },
-        # Level 12: + locked doors
+        # Level 12: 2 grids — + locked doors
         {
             'room_count': (6, 8),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE, EdgeType.LOCKED],
@@ -208,8 +209,9 @@ def _generate_act2():
             'material_count': (4, 8),
             'enemy_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z'],
+            'grid_count': 2,
         },
-        # Level 13: + gates, 2 grids
+        # Level 13: 3 grids — + gates
         {
             'room_count': (8, 10),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -220,9 +222,9 @@ def _generate_act2():
             'material_count': (5, 8),
             'enemy_count': (2, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 2,
+            'grid_count': 3,
         },
-        # Level 14: + water streams, 2 grids
+        # Level 14: 4 grids — + water streams
         {
             'room_count': (8, 10),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -233,9 +235,9 @@ def _generate_act2():
             'material_count': (5, 8),
             'enemy_count': (2, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 2,
+            'grid_count': 4,
         },
-        # Level 15: + flame jets, 2 grids
+        # Level 15: 5 grids — + flame jets
         {
             'room_count': (8, 10),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -248,9 +250,9 @@ def _generate_act2():
             'has_flames': True,
             'closet_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 2,
+            'grid_count': 5,
         },
-        # Level 16: + forge ogre, 2 grids
+        # Level 16: 6 grids — + forge ogre
         {
             'room_count': (8, 10),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -264,9 +266,9 @@ def _generate_act2():
             'has_forge_ogre': True,
             'closet_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 2,
+            'grid_count': 6,
         },
-        # Level 17: 3 grids, all mechanics
+        # Level 17: 7 grids
         {
             'room_count': (9, 12),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -280,9 +282,9 @@ def _generate_act2():
             'has_forge_ogre': True,
             'closet_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 3,
+            'grid_count': 7,
         },
-        # Level 18: 3 grids, heavier
+        # Level 18: 8 grids
         {
             'room_count': (9, 12),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -296,9 +298,9 @@ def _generate_act2():
             'has_forge_ogre': True,
             'closet_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 3,
+            'grid_count': 8,
         },
-        # Level 19: 3 grids, gauntlet
+        # Level 19: 9 grids
         {
             'room_count': (9, 12),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -312,9 +314,9 @@ def _generate_act2():
             'has_forge_ogre': True,
             'closet_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 3,
+            'grid_count': 9,
         },
-        # Level 20: boss level, 3 grids
+        # Level 20: 10 grids
         {
             'room_count': (9, 12),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
@@ -328,7 +330,7 @@ def _generate_act2():
             'has_forge_ogre': True,
             'closet_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
-            'grid_count': 3,
+            'grid_count': 10,
         },
     ]
 
