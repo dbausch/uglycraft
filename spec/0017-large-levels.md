@@ -14,7 +14,7 @@
 ## Status — Phase 1 (world graph — spanning tree, no loops)
 
 - [ ] World graph generation produces a spanning tree (no loops, no cycles)
-- [ ] Grids occupy unique hyper-grid coordinates; two grids never share a position
+- [ ] Grids occupy unique super-grid coordinates; two grids never share a position
 - [ ] If a newly placed grid would be adjacent to an existing non-parent grid,
       the adjacency is silently ignored (no connection created)
 - [ ] Branching topology: some grids connect to 2+ successors
@@ -260,7 +260,7 @@ variant is chosen based on which two exits are needed.
 A branch in the world graph is not generated independently of the challenge
 challenge graph.  It *is* a branch in the challenge graph: a corridor node that has BORDER edges to
 two or more other corridor nodes.  The spatial arrangement (which grid is
-placed where on the hyper-grid) is then the physical implementation of that
+placed where on the super-grid) is then the physical implementation of that
 challenge graph structure.
 
 The algorithm below runs **inside `LevelGraph.generate()`** as part of
@@ -272,10 +272,10 @@ topology on its own.
 ### No loops for now
 
 The challenge graph's BORDER edge structure is a **spanning tree**: exactly one path
-between any two corridor nodes.  When assigning hyper-grid positions, if a
+between any two corridor nodes.  When assigning super-grid positions, if a
 candidate position is already occupied by an existing non-parent grid, that
 adjacency is silently ignored — no connection is created.  Two grids must
-never share the same hyper-grid coordinate.
+never share the same super-grid coordinate.
 
 Shortcut passages (loop edges) are deferred to Phase 2.  Until then the
 world graph is a tree with no cycles; the solvability check needs no special
@@ -294,7 +294,7 @@ when they are spatially adjacent.
 **Input**: N grids (from `grid_count`), `branch_prob` p.
 
 **Step 1 — Start corridor**  
-The first corridor is placed at hyper-grid position (0, 0).
+The first corridor is placed at super-grid position (0, 0).
 `placed = {(0,0): corridor_0}`, `frontier = [corridor_0]`.
 
 **Step 2 — Add corridors and BORDER edges**  
@@ -392,13 +392,13 @@ corridor.  The playability invariant (prerequisites in already-reachable
 nodes) must still hold: the parent room must be reachable before the child
 room is added.
 
-**`_super_grid_positions(n)`** — removed.  The hyper-grid topology is no
+**`_super_grid_positions(n)`** — removed.  The super-grid topology is no
 longer a separate spatial computation; it is produced as a side-effect of
 building the challenge graph's BORDER edges (see algorithm above).  Hyper-grid positions
 are assigned incrementally as each corridor is added.
 
 **`LevelGraph.generate()`** — replaces the current snake-pattern loop with
-the spanning-tree algorithm above.  Unique hyper-grid positions guaranteed;
+the spanning-tree algorithm above.  Unique super-grid positions guaranteed;
 adjacency with non-parent grids silently skipped.
 
 **`LevelGraphBuilder.start_next_grid()`** — add `source` parameter: a branch
