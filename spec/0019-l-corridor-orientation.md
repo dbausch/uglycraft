@@ -73,9 +73,9 @@ exists at the arm's far end — the direction the arm faces but does not exit.
 Each virtual tip can be enlarged into the adjacent empty area, potentially
 spanning more than one empty corner.)
 
-Randomly select one available tip room to enlarge.  Tip 1 requires creating a
-new `PlacedNode`; Tip 2 requires extending an existing `PlacedNode`.  If
-neither is geometrically viable, leave the corner empty.
+Both available tip rooms are always placed.  Tip 1 requires creating a
+new `PlacedNode`; Tip 2 requires extending an existing `PlacedNode`.  If a
+tip's area is too small for even a 2×2 room, omit that tip only.
 
 Concretely for `bl` (junction col `jc`, junction row `jr`, arm widths 2):
 
@@ -122,10 +122,10 @@ If the required exits don't match any pair (0, 1, 3, or 4 exits), fall back to
 
 ---
 
-## Fix B — fill L corner by enlarging one virtual tip room
+## Fix B — fill L corner by placing both tip rooms
 
-After zone packing, identify the two virtual tip rooms.  Use `rng.choice`
-to select one.  Implement as:
+After zone packing, identify the two virtual tip rooms and place both.
+Implement as:
 
 - **Tip 1** (v-arm extension): take a spare room name (preferably the last
   room assigned to any zone), compute the tip-room bounding box before
@@ -164,13 +164,16 @@ Zone A: cols c_break+arm_w+1..MAX_C, rows MIN_R..MAX_R-arm_th-1
 Zone B: cols MIN_C..c_break-2, rows MIN_R+arm_th+1..MAX_R
 
 The segment starts and ends do not need to touch the border — they can stop
-short or be positioned anywhere valid inside the grid.  The corridor still
-provides four exits (one at each end of each outer arm) regardless.  When
-`c_break` equals `MIN_C` or `MAX_C`, the shape degenerates to a straight
-corridor.
+short or be positioned anywhere valid inside the grid.  When `c_break` equals
+`MIN_C` or `MAX_C`, the shape degenerates to a straight corridor.
 
-Constraint: `c_break` (or `r_break`) must leave both zones large enough to
-hold at least one room (≥ 3 wide and ≥ 3 tall).
+When an outer arm has an inner endpoint (does not reach its border), the space
+beyond that endpoint is an additional zone (C at the top-arm end, D at the
+bottom-arm end).  Place an enlarged tip room in each such zone — the door sits
+on the arm's end face (col `c_left-1` for Zone C, col `c_right+1` for Zone D).
+
+Constraint: `c_break` (or `r_break`) must leave both primary zones large
+enough to hold at least one room (≥ 3 wide and ≥ 3 tall).
 
 Apply the same logic for `s_h`, `z_v`, `s_v` (mirrors/rotations).
 
@@ -188,5 +191,5 @@ Apply the same logic for `s_h`, `z_v`, `s_v` (mirrors/rotations).
 
 - [ ] `poe test` passes
 - [ ] L-corridor arms always at required border sides (user confirmed)
-- [ ] No large empty corner in L-corridor layouts (user confirmed)
-- [ ] Z-corridor is a single-stroke Z/S shape with two zones (user confirmed)
+- [ ] Both L-corridor tip rooms placed, filling all corner-adjacent areas (user confirmed)
+- [ ] Z-corridor is a single-stroke Z/S shape with two primary zones + optional C/D (user confirmed)
