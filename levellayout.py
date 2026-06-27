@@ -415,20 +415,19 @@ def _layout_t(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
                                                   INT_W, INT_H,
                                                   floor_tiles=cor_tiles)}
 
-        # Side zones: rows strictly INSIDE stem range (start+1 .. end-1),
-        # cols outside stem but not adjacent to spine.
-        zr_mid = r_stem_start + 1
-        zh_mid = r_stem_end - r_stem_start - 1   # height of side bands
-        zw_L   = c_stem - MIN_C - 2              # width of left side zone
-        zw_R   = MAX_C - (c_stem + arm_w) - 1   # width of right side zone
+        # Wide side zones: full area beside spine on each side of the stem.
+        # All rooms face the spine's far edge and connect via one wall row.
+        zw_L = c_stem - MIN_C - 1
+        zw_R = MAX_C - (c_stem + arm_w)
+        if orientation == 'down':
+            z1 = (MIN_C,              MIN_R + arm_h + 1, zw_L, MAX_R - MIN_R - arm_h)
+            z2 = (c_stem + arm_w + 1, MIN_R + arm_h + 1, zw_R, MAX_R - MIN_R - arm_h)
+        else:  # up
+            z1 = (MIN_C,              MIN_R, zw_L, MAX_R - arm_h - MIN_R)
+            z2 = (c_stem + arm_w + 1, MIN_R, zw_R, MAX_R - arm_h - MIN_R)
+        z3 = (c_stem, z3_row, arm_w, z3_h)
 
-        z1 = (MIN_C,               zr_mid,  zw_L,  zh_mid)  # left of stem
-        z2 = (c_stem + arm_w + 1,  zr_mid,  zw_R,  zh_mid)  # right of stem
-        # z3 restricted to stem columns so every room is adjacent to the stem
-        z3 = (c_stem,              z3_row,  arm_w, z3_h)
-
-        # z3 connects to the stem only via a single shared-boundary row, so at
-        # most 1 room can occupy it.  Any remaining rooms go to z1/z2.
+        # z3 gets at most 1 room — only the first room directly faces the stem end.
         per_zone = [[], [], []]
         if room_names:
             per_zone[2].append(room_names[0])
@@ -466,28 +465,32 @@ def _layout_t(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
                                                   INT_W, INT_H,
                                                   floor_tiles=cor_tiles)}
 
-        # Side zones: cols strictly INSIDE stem range (start+1 .. end-1),
-        # rows outside stem but not adjacent to spine.
-        zc_mid = c_stem_start + 1
-        zw_mid = c_stem_end - c_stem_start - 1  # width of side bands
-        zh_T   = r_stem - MIN_R - 2             # height above stem
-        zh_B   = MAX_R - r_stem - arm_h         # height below stem
+        # Wide side zones: full area beside spine, above and below the stem.
+        zw_side = MAX_C - MIN_C - arm_w   # width of area beside the spine
+        zh_A    = r_stem - MIN_R - 1      # height above stem
+        zh_B    = MAX_R - r_stem - arm_h  # height below stem
+        if orientation == 'right':
+            z1 = (MIN_C + arm_w + 1, MIN_R,              zw_side, zh_A)
+            z2 = (MIN_C + arm_w + 1, r_stem + arm_h + 1, zw_side, zh_B)
+        else:  # left
+            z1 = (MIN_C, MIN_R,              zw_side, zh_A)
+            z2 = (MIN_C, r_stem + arm_h + 1, zw_side, zh_B)
+        z3 = (z3_col, r_stem, z3_w, arm_h)  # far side of stem (horizontal)
 
-        z1 = (zc_mid,  MIN_R,              zw_mid, zh_T)   # above stem
-        z2 = (zc_mid,  r_stem + arm_h + 1, zw_mid, zh_B)   # below stem
-        # z3 restricted to stem rows so every room touches the stem boundary.
-        # _pack_band_vertical gives all rooms the full band width, guaranteeing
-        # each room's edge column is adjacent to the spine boundary wall.
-        z3 = (z3_col,  r_stem,             z3_w,   arm_h)  # far side (stem rows)
-
+        # z3 gets at most 1 room (same adjacency constraint as down/up z3).
         per_zone = [[], [], []]
-        for i, name in enumerate(room_names):
-            per_zone[i % 3].append(name)
-        for (zc, zr, zw, zh), names in zip([z1, z2, z3], per_zone):
+        if room_names:
+            per_zone[2].append(room_names[0])
+        for i, name in enumerate(room_names[1:]):
+            per_zone[i % 2].append(name)
+        for (zc, zr, zw, zh), fn, names in zip(
+                [z1, z2, z3],
+                [_pack_band_vertical, _pack_band_vertical, _pack_band],
+                per_zone):
             if names and zw >= 3 and zh >= 2:
-                _pack_band_vertical(placed, names, rng,
-                                    band_col=zc, band_row=zr, band_w=zw, band_h=zh,
-                                    edge_map=edge_map, node_sizes=node_sizes)
+                fn(placed, names, rng,
+                   band_col=zc, band_row=zr, band_w=zw, band_h=zh,
+                   edge_map=edge_map, node_sizes=node_sizes)
 
     return placed
 
