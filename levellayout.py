@@ -655,16 +655,16 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
             zones = [
                 # A: above first arm
                 (MIN_C,           MIN_R,            c_break + arm_w - 1,    r_top - 2,
-                 _pack_band),
-                # B: right of connector (rows r_top..r_bot-2 to stay within connector)
-                (c_break + arm_w + 1, r_top,        MAX_C - c_break - arm_w, r_bot - r_top - 1,
-                 _pack_band_vertical),
+                 _pack_band, None),
+                # B: right of connector — extended to MIN_R, max 1 room (fills top-right gap)
+                (c_break + arm_w + 1, MIN_R,        MAX_C - c_break - arm_w, r_bot - MIN_R - 1,
+                 _pack_band_vertical, 1),
                 # C: below first arm, left of connector
                 (MIN_C,           r_top + arm_h + 1, c_break - 2,            MAX_R - r_top - arm_h,
-                 _pack_band),
+                 _pack_band, None),
                 # D: below second arm
                 (c_break,         r_bot + arm_h + 1, MAX_C - c_break + 1,    MAX_R - r_bot - arm_h,
-                 _pack_band),
+                 _pack_band, None),
             ]
         else:  # s_h: first arm exits RIGHT, second arm exits LEFT
             cor_tiles = (
@@ -678,16 +678,16 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
             zones = [
                 # A: above first arm
                 (c_break,         MIN_R,            MAX_C - c_break + 1,    r_top - 2,
-                 _pack_band),
-                # B: left of connector (rows r_top..r_bot-2)
-                (MIN_C,           r_top,            c_break - 2,             r_bot - r_top - 1,
-                 _pack_band_vertical),
+                 _pack_band, None),
+                # B: left of connector — extended to MIN_R, max 1 room (fills top-left gap)
+                (MIN_C,           MIN_R,            c_break - 2,             r_bot - MIN_R - 1,
+                 _pack_band_vertical, 1),
                 # C: below first arm, right of connector
                 (c_break + arm_w + 1, r_top + arm_h + 1, MAX_C - c_break - arm_w, MAX_R - r_top - arm_h,
-                 _pack_band),
+                 _pack_band, None),
                 # D: below second arm
                 (MIN_C,           r_bot + arm_h + 1, c_break + arm_w - 1,   MAX_R - r_bot - arm_h,
-                 _pack_band),
+                 _pack_band, None),
             ]
 
     else:  # z_v / s_v
@@ -710,16 +710,16 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
             zones = [
                 # A: left of first arm (vertical band, full arm height)
                 (MIN_C,              MIN_R,    c_left - 2,              r_break + arm_h - 1,
-                 _pack_band_vertical),
+                 _pack_band_vertical, None),
                 # B: above connector, between arms
                 (c_left + arm_w + 1, MIN_R,    c_right - c_left - 1,   r_break - 2,
-                 _pack_band),
-                # C: right of second arm (vertical band, full arm height from r_break)
-                (c_right + arm_w + 1, r_break, MAX_C - c_right - arm_w, MAX_R - r_break + 1,
-                 _pack_band_vertical),
+                 _pack_band, None),
+                # C: right of second arm — extended to MIN_R, max 1 room (fills top-right gap)
+                (c_right + arm_w + 1, MIN_R,   MAX_C - c_right - arm_w, MAX_R - MIN_R + 1,
+                 _pack_band_vertical, 1),
                 # D: below connector, between arms
                 (c_left,             r_break + arm_h + 1, c_right - c_left - 1, MAX_R - r_break - arm_h,
-                 _pack_band),
+                 _pack_band, None),
             ]
         else:  # s_v: first arm exits TOP (right col), second arm exits BOTTOM (left col)
             cor_tiles = (
@@ -733,27 +733,35 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
             zones = [
                 # A: right of first arm (vertical band, full arm height)
                 (c_right + arm_w + 1, MIN_R,  MAX_C - c_right - arm_w, r_break + arm_h - 1,
-                 _pack_band_vertical),
+                 _pack_band_vertical, None),
                 # B: above connector, between arms (left of first arm)
                 (c_left,             MIN_R,   c_right - c_left - 1,   r_break - 2,
-                 _pack_band),
-                # C: left of second arm (vertical band, full arm height from r_break)
-                (MIN_C,              r_break, c_left - 2,              MAX_R - r_break + 1,
-                 _pack_band_vertical),
+                 _pack_band, None),
+                # C: left of second arm — extended to MIN_R, max 1 room (fills top-left gap)
+                (MIN_C,              MIN_R,   c_left - 2,              MAX_R - MIN_R + 1,
+                 _pack_band_vertical, 1),
                 # D: below connector, between arms
                 (c_left + arm_w + 1, r_break + arm_h + 1, c_right - c_left - 1, MAX_R - r_break - arm_h,
-                 _pack_band),
+                 _pack_band, None),
             ]
 
     placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
                                          floor_tiles=cor_tiles)}
-    valid = [(zc, zr, zw, zh, fn) for (zc, zr, zw, zh, fn) in zones
+    valid = [(zc, zr, zw, zh, fn, mx) for (zc, zr, zw, zh, fn, mx) in zones
              if zw >= 3 and zh >= 2]
     if valid:
         per_zone = [[] for _ in valid]
-        for i, name in enumerate(room_names):
-            per_zone[i % len(valid)].append(name)
-        for (zc, zr, zw, zh, fn), names in zip(valid, per_zone):
+        rooms_copy = list(room_names)
+        # Pass 1: capped zones (max_rooms=1) take one room each, allocated first
+        for i, (_, _, _, _, _, mx) in enumerate(valid):
+            if mx == 1 and rooms_copy:
+                per_zone[i] = [rooms_copy.pop()]
+        # Pass 2: remaining rooms round-robin across uncapped zones
+        uncapped = [i for i, (_, _, _, _, _, mx) in enumerate(valid) if mx != 1]
+        if uncapped:
+            for k, name in enumerate(rooms_copy):
+                per_zone[uncapped[k % len(uncapped)]].append(name)
+        for (zc, zr, zw, zh, fn, _), names in zip(valid, per_zone):
             if names:
                 fn(placed, names, rng, band_col=zc, band_row=zr,
                    band_w=zw, band_h=zh, edge_map=edge_map, node_sizes=node_sizes)
