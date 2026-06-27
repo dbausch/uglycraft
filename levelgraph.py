@@ -3,8 +3,10 @@
 The graph is the source of truth for a level. The 30×16 tile grid is
 derived from the graph by the layout algorithm in levellayout.py.
 """
+import math
 import random
 from enum import Enum, auto
+from crafting import KEY_COLORS
 
 
 # ── Node sizes ────────────────────────────────────────────────────────────────
@@ -44,6 +46,7 @@ class Node:
         self.name = name
         self.size = size
         self.is_start = is_start
+        self.super_pos = (0, 0)   # (col, row) on the super-grid (corridor nodes only)
         self.treasures = []       # [(item_no,)]
         self.materials = []       # [(mat_type,)]
         self.keys = []            # [(key_colour,)]
@@ -68,6 +71,42 @@ class Edge:
 
     def __repr__(self):
         return f"Edge({self.node_a!r} <-> {self.node_b!r}, {self.edge_type.name})"
+
+
+# ── Super-grid helpers ────────────────────────────────────────────────────────
+
+_OPPOSITE = {'right': 'left', 'left': 'right', 'top': 'bottom', 'bottom': 'top'}
+
+
+def _super_grid_positions(n):
+    """Return a list of (super_col, super_row) positions for n grids.
+
+    Grids are arranged in a snake pattern filling a near-square rectangle:
+    (0,0) → (1,0) → … → right edge, then next row going back, etc.
+    For n=4 this produces a 2×2 ring when all adjacent pairs are connected.
+    """
+    if n <= 1:
+        return [(0, 0)]
+    cols = math.ceil(math.sqrt(n))
+    rows = math.ceil(n / cols)
+    positions = []
+    for r in range(rows):
+        row_cols = range(cols) if r % 2 == 0 else range(cols - 1, -1, -1)
+        for c in row_cols:
+            if len(positions) < n:
+                positions.append((c, r))
+    return positions
+
+
+def _border_direction(pos_a, pos_b):
+    """Return (exit_side, entry_side) for a BORDER edge from pos_a to pos_b."""
+    dc = pos_b[0] - pos_a[0]
+    dr = pos_b[1] - pos_a[1]
+    if dc == 1:   return 'right',  'left'
+    if dc == -1:  return 'left',   'right'
+    if dr == 1:   return 'bottom', 'top'
+    if dr == -1:  return 'top',    'bottom'
+    return 'right', 'left'  # fallback for non-adjacent (shouldn't happen)
 
 
 # ── Level graph ───────────────────────────────────────────────────────────────
@@ -272,7 +311,7 @@ class LevelGraph:
             'material_types': [mat_type, ...]
             'material_count': (min, max)
             'enemy_count': (min, max)
-            'grid_count': 1 or 2
+            'grid_count': N  — number of 30×16 grids (default 1)
             'has_flames': bool
             'has_forge_ogre': bool
         """
@@ -286,48 +325,69 @@ class LevelGraph:
 
         room_min, room_max = feature_set.get('room_count', (4, 6))
         room_count  = max(rng.randint(room_min, room_max), len(required))
-        grid_a_count = room_count // 2 if grid_count >= 2 else room_count
 
-        gate_counter = 0
+        # Shuffled color pool — ensures every locked door uses a distinct color.
+        all_colors = list(KEY_COLORS.keys())
+        rng.shuffle(all_colors)
+        color_pool = list(all_colors)  # cycling: refilled when exhausted
 
-        def _add_room(et, i):
-            nonlocal gate_counter
+        def _next_color():
+            if not color_pool:
+                color_pool.extend(all_colors)
+                rng.shuffle(color_pool)
+            return color_pool.pop()
+
+        gate_counter  = [0]
+        border_counter = [0]
+
+        def _add_room(et):
             size = rng.choice(node_sizes)
             if et == EdgeType.OPEN:
                 b.add_open_room(size=size)
             elif et == EdgeType.BREAKABLE:
                 b.add_breakable_room(rng.choice(['stone', 'wooden']), size=size)
             elif et == EdgeType.LOCKED:
-                b.add_locked_room(rng.choice(['red', 'blue', 'green']), size=size)
+                b.add_locked_room(_next_color(), size=size)
             elif et == EdgeType.GATED:
-                b.add_gated_room(f'gate_{gate_counter}', size=size)
-                gate_counter += 1
+                b.add_gated_room(f'gate_{gate_counter[0]}', size=size)
+                gate_counter[0] += 1
             elif et == EdgeType.WATER:
                 b.add_water_room(size=size)
 
-        for i in range(grid_a_count):
-            et = required[i] if i < len(required) else rng.choice(edge_types)
-            _add_room(et, i)
-
-        if grid_count >= 2:
+        def _barrier_kw():
+            """Pick barrier type for the next BORDER edge."""
             barrier_options = ['open']
             if EdgeType.LOCKED in edge_types:
                 barrier_options.append('locked')
             if EdgeType.GATED in edge_types:
                 barrier_options.append('gated')
             barrier = rng.choice(barrier_options)
-            kw = {}
             if barrier == 'locked':
-                kw = {'barrier': 'locked',
-                      'key_colour': rng.choice(['red', 'blue', 'green'])}
+                return {'barrier': 'locked', 'key_colour': _next_color()}
             elif barrier == 'gated':
-                kw = {'barrier': 'gated', 'gate_id': 'border_gate'}
-            b.start_second_grid(**kw)
+                gid = f'border_gate_{border_counter[0]}'
+                border_counter[0] += 1
+                return {'barrier': 'gated', 'gate_id': gid}
+            return {}
 
-            for j in range(room_count - grid_a_count):
-                i = grid_a_count + j
-                et = required[i] if i < len(required) else rng.choice(edge_types)
-                _add_room(et, i)
+        # Build the 2D super-grid arrangement for grid_count grids.
+        # Rooms are distributed round-robin across grids.
+        super_positions = _super_grid_positions(grid_count)
+        rooms_per_grid  = [room_count // grid_count] * grid_count
+        for i in range(room_count % grid_count):
+            rooms_per_grid[i] += 1
+
+        room_idx = 0
+        for g, (sc, sr) in enumerate(super_positions):
+            if g > 0:
+                exit_side, entry_side = _border_direction(
+                    super_positions[g - 1], (sc, sr))
+                b.start_next_grid(sc, sr, exit_side, **_barrier_kw())
+
+            for _ in range(rooms_per_grid[g]):
+                et = required[room_idx] if room_idx < len(required) else rng.choice(edge_types)
+                _add_room(et)
+                room_idx += 1
 
         if feature_set.get('has_flames'):
             b.add_flames()
@@ -484,25 +544,39 @@ class LevelGraphBuilder:
 
     # ── Multi-grid ────────────────────────────────────────────────────────
 
-    def start_second_grid(self, barrier=None, key_colour=None, gate_id=None):
-        """Add corridor_b and a BORDER edge. If a barrier is given, places its
-        prerequisite item in the current (grid-A) reachable set first.
-        Switches the default parent for subsequent add_*_room calls to corridor_b."""
-        self._graph.add_node('corridor_b', NodeSize.CORRIDOR)
-        params = {}
+    def start_next_grid(self, super_col, super_row, exit_side='right',
+                        barrier=None, key_colour=None, gate_id=None):
+        """Add the next corridor node and a directed BORDER edge.
+
+        super_col, super_row: position on the super-grid for the new corridor.
+        exit_side: which side of the current corridor's grid the exit is on.
+        barrier / key_colour / gate_id: optional lock on the border passage.
+
+        Places barrier prerequisites in the currently-reachable set before
+        switching the default parent to the new corridor.
+        """
+        prev_corridor = self._current_corridor
+        n = sum(1 for name in self._graph.nodes if name.startswith('corridor'))
+        new_name = f'corridor_{n}'
+        self._graph.add_node(new_name, NodeSize.CORRIDOR)
+        self._graph.nodes[new_name].super_pos = (super_col, super_row)
+
+        entry_side = _OPPOSITE[exit_side]
+        params = {'exit_side': exit_side, 'entry_side': entry_side}
         if barrier == 'locked' and key_colour:
-            params = {'barrier': 'locked', 'key_colour': key_colour}
+            params.update(barrier='locked', key_colour=key_colour)
             key_room = self._pick(list(self._reachable))
             self._graph.nodes[key_room].keys.append((key_colour,))
         elif barrier == 'gated' and gate_id:
-            params = {'barrier': 'gated', 'gate_id': gate_id}
+            params.update(barrier='gated', gate_id=gate_id)
             puzzle_room = self._pick(self._puzzle_candidates(),
                                      fallback=self._room_candidates())
             self._graph.nodes[puzzle_room].plates.append((gate_id,))
             self._graph.nodes[puzzle_room].blocks.append(1)
-        self._graph.add_edge('corridor', 'corridor_b', EdgeType.BORDER, **params)
-        self._reachable.add('corridor_b')
-        self._current_corridor = 'corridor_b'
+
+        self._graph.add_edge(prev_corridor, new_name, EdgeType.BORDER, **params)
+        self._reachable.add(new_name)
+        self._current_corridor = new_name
 
     # ── Content distribution ──────────────────────────────────────────────
 
