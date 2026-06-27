@@ -179,13 +179,14 @@ _COVERS_ALL = frozenset({'double_t'})
 _COVERS_L   = frozenset({'l', 'double_t'})   # l only for 2-exit perpendicular
 
 _STRATEGY_MAX_ZONES = {
-    'horizontal': 2,
-    'vertical':   2,
-    'off_centre': 2,
-    't':          3,
-    'double_t':   4,
-    'z':          4,
-    'l':          4,
+    'horizontal':  2,
+    'vertical':    2,
+    'off_centre':  2,
+    't':           3,
+    'double_t':    4,
+    'z':           4,
+    'l':           4,
+    'full_border': 1,
 }
 _SIMPLE_STRATEGIES = frozenset({'horizontal', 'vertical', 'off_centre'})
 
@@ -222,24 +223,22 @@ def _pick_strategy(exits, available, rng, n_rooms=0):
         compatible = _COVERS_TB
     else:
         # No border exits required (e.g. single isolated grid)
-        choices = list(available) if available else ['double_t']
-        if len(choices) > 1 and n_rooms > 0:
+        choices = list(available) if available else ['full_border']
+        if n_rooms > 0:
             room_filtered = [s for s in choices
                              if s in _SIMPLE_STRATEGIES
                              or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
-            if room_filtered:
-                choices = room_filtered
+            choices = room_filtered if room_filtered else ['full_border']
         return rng.choice(choices)
 
     choices = [s for s in available if s in compatible]
     if not choices:
-        return 'double_t'
-    if len(choices) > 1 and n_rooms > 0:
+        return 'full_border'
+    if n_rooms > 0:
         room_filtered = [s for s in choices
                          if s in _SIMPLE_STRATEGIES
                          or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
-        if room_filtered:
-            choices = room_filtered
+        choices = room_filtered if room_filtered else ['full_border']
     return rng.choice(choices)
 
 
@@ -293,8 +292,7 @@ def layout_graph(graph, rng=None, strategies=None, required_exits=None):
         room_filtered = [s for s in available
                          if s in _SIMPLE_STRATEGIES
                          or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
-        if room_filtered:
-            available = room_filtered
+        available = room_filtered if room_filtered else ['full_border']
     strategy = rng.choice(available)
 
     em = edge_map if edge_map else None
