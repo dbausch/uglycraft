@@ -67,7 +67,7 @@ melody root.
 
 Each level track is an **8-bar loop** at 8th-note resolution (64 steps).  Seamless — the
 buffer starts and ends on beat boundaries.  Composed melodic themes of 64 explicit MIDI
-pitches drive the lead voice.  Full theme descriptions: `spec/music-themes.md`.
+pitches drive the lead voice.  Full theme descriptions: `spec/0005-music-themes.md`.
 
 ### Title and win screen music
 

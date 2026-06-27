@@ -142,7 +142,7 @@ Feature sets → Graph → Items → Validate → Partition → Layout → Walls
 | 11 | OPEN, BREAKABLE | treasures, materials, rocks |
 | 12 | + LOCKED | + keys |
 | 13 | + GATED | + pushable blocks, pressure plates |
-| 14+ | (per spec/act2-beyond-the-vault.md) | |
+| 14+ | (per spec/0007-act2-beyond-the-vault.md) | |
 
 ### Architectural features
 
