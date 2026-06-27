@@ -197,6 +197,43 @@ _EXIT_PAIR_TO_ORIENTATION = {
     frozenset({'bottom', 'left'})  : 'tr',
 }
 
+_ENTRANCE_SIDES = [
+    ('left',   lambda t: (0,        t[1]), lambda tiles: min(tiles, key=lambda t: abs(t[1] - (MIN_R + MAX_R) // 2))),
+    ('top',    lambda t: (t[0],     0),    lambda tiles: min(tiles, key=lambda t: abs(t[0] - (MIN_C + MAX_C) // 2))),
+    ('bottom', lambda t: (t[0], ROWS-1),   lambda tiles: min(tiles, key=lambda t: abs(t[0] - (MIN_C + MAX_C) // 2))),
+    ('right',  lambda t: (COLS-1,  t[1]), lambda tiles: min(tiles, key=lambda t: abs(t[1] - (MIN_R + MAX_R) // 2))),
+]
+
+_BORDER_EDGE_TILES = {
+    'left':   lambda: frozenset((MIN_C, r) for r in range(MIN_R, MAX_R + 1)),
+    'top':    lambda: frozenset((c, MIN_R) for c in range(MIN_C, MAX_C + 1)),
+    'bottom': lambda: frozenset((c, MAX_R) for c in range(MIN_C, MAX_C + 1)),
+    'right':  lambda: frozenset((MAX_C, r) for r in range(MIN_R, MAX_R + 1)),
+}
+
+
+def _pick_entrance(corridor_tiles, occupied_sides=frozenset()):
+    """Return (entrance_tile, player_start_tile) for the start corridor.
+
+    entrance_tile:    a border-wall tile (col 0, col COLS-1, row 0, row ROWS-1)
+    player_start_tile: the adjacent corridor floor tile
+
+    Tries left, top, bottom, right in order; skips sides in occupied_sides.
+    Guaranteed to find a match because every corridor strategy reaches ≥1 border.
+    """
+    for side, to_entrance, pick_center in _ENTRANCE_SIDES:
+        if side in occupied_sides:
+            continue
+        edge_tiles = _BORDER_EDGE_TILES[side]()
+        on_side = edge_tiles & corridor_tiles
+        if not on_side:
+            continue
+        player_tile = pick_center(on_side)
+        return to_entrance(player_tile), player_tile
+    # Fallback: pick any corridor tile and derive entrance from col 0
+    any_tile = min(corridor_tiles, key=lambda t: (t[1], t[0]))
+    return (0, any_tile[1]), any_tile
+
 
 def _pick_strategy(exits, available, rng, n_rooms=0):
     """Choose a layout strategy compatible with the required exit sides.
@@ -230,7 +267,7 @@ def _pick_strategy(exits, available, rng, n_rooms=0):
             choices = room_filtered if room_filtered else ['full_border']
         return rng.choice(choices)
 
-    choices = [s for s in available if s in compatible]
+    choices = [s for s in (available or STRATEGIES) if s in compatible]
     if not choices:
         return 'full_border'
     if n_rooms > 0:
@@ -1876,12 +1913,16 @@ def _generate_flame_jets(placed_node, walls, rng, entry=None):
 # ── Game-format output ────────────────────────────────────────────────────────
 
 def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
-                     required_exits=None):
+                     required_exits=None, is_start_grid=True,
+                     occupied_sides=frozenset()):
     """Generate the complete level dict that game.py expects.
 
     Auto-detects multi-grid from BORDER edges in the graph.
     grid_count parameter is kept for API compatibility but ignored when
     BORDER edges are present.
+    is_start_grid: when True, stores 'entrance' in the room dict and computes
+                   player_start from the entrance tile.
+    occupied_sides: sides already used by BORDER exits; entrance avoids these.
     """
     rng = rng or random.Random()
 
@@ -1893,19 +1934,14 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     walls, water_tiles = derive_walls(graph, placed)
     tile_owner = build_tile_owner(placed)
 
-    # Find player start
+    # Find player start via entrance tile
     start_name = None
     for name, node in graph.nodes.items():
         if node.is_start:
             start_name = name
             break
     pn = placed[start_name]
-    target = (pn.col + 1, pn.row + pn.h // 2)
-    if target in pn.floor_tiles:
-        player_start = target
-    else:
-        player_start = min(pn.floor_tiles,
-                           key=lambda t: abs(t[0] - target[0]) + abs(t[1] - target[1]))
+    entrance_tile, player_start = _pick_entrance(pn.floor_tiles, occupied_sides)
 
     # Generate flame jets first so we can exclude their tiles from items
     all_flame_jets = []
@@ -2122,6 +2158,8 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         room['water_tiles'] = water_tiles
     if all_flame_jets:
         room['flame_jets'] = all_flame_jets
+    if is_start_grid:
+        room['entrance'] = entrance_tile
 
     # Validate layout invariant
     errors = validate_layout(graph, placed, walls)
@@ -2245,7 +2283,9 @@ def _build_super_grid(graph, rng, strategies):
                       if node.size != NodeSize.CORRIDOR)
         chosen = [_pick_strategy(frozenset(exits), strategies, rng, n_rooms=n_rooms)]
         d = build_level_dict(sub, rng=rng, strategies=chosen, grid_count=1,
-                             required_exits=frozenset(exits))
+                             required_exits=frozenset(exits),
+                             is_start_grid=(i == 0),
+                             occupied_sides=exits)
         gname = grid_name_map[corridor]
         all_rooms[gname] = d['rooms']['main']
         all_player_starts[gname] = d['player_start']
@@ -2255,8 +2295,11 @@ def _build_super_grid(graph, rng, strategies):
     # pair of adjacent grids always share floor rows/cols at every border.
     if not _stitch_ok(all_rooms):
         for i, corridor in enumerate(corridor_order):
+            exits = required_sides[corridor]
             d = build_level_dict(
-                subgraphs[corridor], rng=rng, strategies=['full_border'], grid_count=1)
+                subgraphs[corridor], rng=rng, strategies=['full_border'], grid_count=1,
+                is_start_grid=(i == 0),
+                occupied_sides=exits)
             gname = grid_name_map[corridor]
             all_rooms[gname] = d['rooms']['main']
             all_player_starts[gname] = d['player_start']
