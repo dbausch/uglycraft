@@ -237,49 +237,66 @@ variant is chosen based on which two exits are needed.
 
 ## Phase 1: World graph (spanning tree)
 
+### DAG branching drives world branching
+
+A branch in the world graph is not generated independently of the challenge
+DAG.  It *is* a branch in the DAG: a corridor node that has BORDER edges to
+two or more other corridor nodes.  The spatial arrangement (which grid is
+placed where on the hyper-grid) is then the physical implementation of that
+DAG structure.
+
+The algorithm below runs **inside `LevelGraph.generate()`** as part of
+constructing the DAG.  It decides how many corridors to add and how they
+connect via BORDER edges.  The spatial layout step (`_build_super_grid`)
+later reads those DAG BORDER edges to derive positions; it does not generate
+topology on its own.
+
 ### No loops for now
 
-The world graph is a **spanning tree**: exactly one path between any two
-grids.  When the placement algorithm places a new grid adjacent to an
-existing non-parent grid, that adjacency is silently ignored — no connection
-is created.  Two grids must never share the same hyper-grid coordinate.
+The DAG's BORDER edge structure is a **spanning tree**: exactly one path
+between any two corridor nodes.  When assigning hyper-grid positions, if a
+candidate position is already occupied by an existing non-parent grid, that
+adjacency is silently ignored — no connection is created.  Two grids must
+never share the same hyper-grid coordinate.
 
-Shortcut passages (loop edges) are deferred to Phase 2.  This simplifies
-the challenge DAG: it remains acyclic with no special handling needed for
-loops.
+Shortcut passages (loop edges) are deferred to Phase 2.  Until then the
+DAG remains acyclic with no special handling needed for loops.
 
 ### Hyper-grid positions
 
-Each grid occupies a unique `(meta_col, meta_row)` cell on a logical
-integer grid.  BORDER connections only exist between grids whose positions
-differ by exactly 1 in one coordinate (Manhattan distance 1).  This is a
-hard constraint of the stitching mechanism.
+Each corridor node is assigned a unique `(meta_col, meta_row)` cell.
+BORDER connections only exist between corridors whose positions differ by
+exactly 1 in one coordinate (Manhattan distance 1).  This is a hard
+constraint of the stitching mechanism: two grids share a border wall only
+when they are spatially adjacent.
 
-### World graph generation algorithm
+### DAG construction algorithm (inside `LevelGraph.generate()`)
 
 **Input**: N grids (from `grid_count`), `branch_prob` p.
 
-**Step 1 — Place start grid**  
-Place grid 0 at (0, 0).  `placed = {(0,0): 0}`, `frontier = [0]`.
+**Step 1 — Start corridor**  
+The first corridor is placed at hyper-grid position (0, 0).
+`placed = {(0,0): corridor_0}`, `frontier = [corridor_0]`.
 
-**Step 2 — Grow spanning tree**  
-Repeat until `len(placed) == N`:
+**Step 2 — Add corridors and BORDER edges**  
+Repeat until N corridor nodes exist in the DAG:
 
-1. Pick a random grid G from `frontier` (uniform random — neither pure BFS
-   nor pure DFS; gives varied tree shapes naturally).
+1. Pick a random corridor G from `frontier` (uniform random — neither pure
+   BFS nor pure DFS; gives varied tree shapes naturally).
 2. Shuffle the 4 cardinal directions.
 3. For each direction D (in shuffled order):
    - Compute candidate position P = pos(G) + D.
-   - If P is already occupied (by any grid, parent or not): skip.
-   - Otherwise: place new grid K at P, record BORDER edge (G→K, exit_side=D),
-     add K to `frontier`.
-   - With probability (1 − p): **stop** after placing one grid.
+   - If P is already occupied by any corridor: skip.
+   - Otherwise: call `start_next_grid(source=G, exit_side=D, ...)` to add a
+     new corridor node K at P with a BORDER edge G→K.  Add K to `frontier`.
+   - With probability (1 − p): **stop** (one new corridor per turn).
    - With probability p: **continue** to the next direction, potentially
-     placing a second new grid from G in the same step (creating a branch).
-4. If no direction yielded a new grid: remove G from `frontier`.
+     adding a second BORDER edge from G in the same step (creating a branch).
+4. If no direction yielded a new corridor: remove G from `frontier`.
 
-The result is a spanning tree where some nodes have degree ≥ 3 (branch
-nodes) depending on `branch_prob`.
+The result is a DAG whose BORDER edges form a spanning tree.  Some corridor
+nodes have more than one outgoing BORDER edge (branch nodes); degree depends
+on `branch_prob`.
 
 ### Grid counts and parameters by level
 
@@ -356,13 +373,19 @@ corridor.  The playability invariant (prerequisites in already-reachable
 nodes) must still hold: the parent room must be reachable before the child
 room is added.
 
-**`_super_grid_positions(n)`** — replace with `_world_graph(n, branch_prob,
-rng)` that returns `(positions, edges)` for a spanning tree using the
-algorithm above.  Unique positions guaranteed; adjacency with existing
-non-parent grids silently skipped.
+**`_super_grid_positions(n)`** — removed.  The hyper-grid topology is no
+longer a separate spatial computation; it is produced as a side-effect of
+building the DAG's BORDER edges (see algorithm above).  Hyper-grid positions
+are assigned incrementally as each corridor is added.
 
-**`LevelGraphBuilder.start_next_grid()`** — add `source` parameter: branch
-can originate from any already-placed corridor, not only `_current_corridor`.
+**`LevelGraph.generate()`** — replaces the current snake-pattern loop with
+the spanning-tree algorithm above.  Unique hyper-grid positions guaranteed;
+adjacency with non-parent grids silently skipped.
+
+**`LevelGraphBuilder.start_next_grid()`** — add `source` parameter: a branch
+can originate from any already-placed corridor node, not only
+`_current_corridor`.  The caller specifies which corridor is the branch
+parent.
 
 **Post-stitch DAG validation** — new step after physical stitching: determine
 which room (if any) owns each BORDER exit tile; re-run reachability analysis
@@ -371,9 +394,11 @@ the grid layout before accepting the level.
 
 ### levellayout.py
 
-**`_build_super_grid()`** — wire `required_sides` (already computed at
-lines 1982–1987 but currently unused for strategy selection) into
-`_pick_strategy()` per the coverage table above.
+**`_build_super_grid()`** — reads the BORDER edge topology already present
+in the DAG (produced by `generate()`); it does not generate world graph
+topology.  Wire `required_sides` (already computed at lines 1982–1987 but
+currently unused for strategy selection) into `_pick_strategy()` per the
+coverage table above.
 
 **Room-room adjacency** — when two rooms share a non-BORDER DAG edge, the
 packing algorithm must place them adjacent (sharing a wall).  This is a new
