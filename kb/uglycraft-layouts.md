@@ -417,7 +417,7 @@ All four examples use `arm_w = 2`, `arm_h = 2`.
 
 v-arm: cols 6–7, rows 1–9.   h-arm: cols 6–28, rows 8–9.
 Zone A: cols 9–28, rows 1–6.   Zone B: cols 1–4, rows 1–9.
-Zone C: cols 9–28, rows 11–14.  Empty corner: cols 1–4, rows 11–14.
+Zone C: cols 9–28, rows 11–14.  Zone T (enlarged tip): cols 1–7, rows 11–14.
 
 ```
  0 ##############################
@@ -431,42 +431,29 @@ Zone C: cols 9–28, rows 11–14.  Empty corner: cols 1–4, rows 11–14.
  8 #BBBB#                       #
  9 #BBBB#                       #
 10 ##############################
-11 #########CCCCCCCCCCCCCCCCCCCC#
-12 #########CCCCCCCCCCCCCCCCCCCC#
-13 #########CCCCCCCCCCCCCCCCCCCC#
-14 #########CCCCCCCCCCCCCCCCCCCC#
+11 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+12 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+13 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+14 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
 15 ##############################
 ```
 
-Gap col 5 (between Zone B and v-arm).  Gap col 8 (between v-arm and Zones A/C).
-Gap row 10 (between h-arm and Zone C).
+Gap col 5 (between Zone B and v-arm).  Gap col 8 (between v-arm and Zones A/C/T).
+Gap row 10 (between h-arm and Zones C/T).
 
-**Tip rooms (spec 0019 Fix B)**
+**Zone T — enlarged v-arm tip (spec 0019 Fix B)**
 
-A tip room is a room whose door sits on the **short face** of the junction —
-the end-face of whichever arm continues into the empty quadrant.  An enlarged
-tip room expands to fill the available corner area.  Both corner-adjacent
-areas are always filled.
+A tip room is a room whose door sits on the **short end-face** of the arm —
+the face the corridor would continue through if the arm went on.  An enlarged
+tip room expands to fill the entire adjacent corner.
 
-Tip 1 — v-arm continues **downward** past the junction:
-door at gap row 10, cols 6–7.  Room: cols 6–7, rows 11–14.
+Zone T: cols 1–7, rows 11–14.  Door at gap row 10, cols 6–7 (the v-arm's base).
+Zone T extends leftward from the v-arm base (cols 6–7) all the way to the
+left border, filling the corner that Zone B leaves below the junction.
 
-Tip 2 — h-arm continues **leftward** past the junction:
-door at gap col 5, rows 8–9 (Zone B's existing door).
-Extend Zone B's bottommost room through gap row 10 into rows 11–14 at cols 1–4.
-
-After filling both tips the empty quadrant is fully occupied:
-
-```
-10 ##############################
-11 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
-12 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
-13 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
-14 #BBBB#TT#CCCCCCCCCCCCCCCCCCCC#
-```
-
-(Cols 1–4 = Zone B extended; col 5 = gap; cols 6–7 = Tip 1 room;
-col 8 = gap; cols 9–28 = Zone C.)
+Zone C: cols 9–28, rows 11–14.  Door at gap row 10, cols 9–28.
+Zone C must **not** be extended leftward into Zone T's area — their doors are
+at different corridor positions and they must remain separate rooms.
 
 When a stem is a dead end rather than a border exit, a third tip may exist
 at the arm's far end — place a room there as well.
@@ -479,7 +466,7 @@ at the arm's far end — place a room there as well.
 
 v-arm: cols 22–23, rows 1–9.   h-arm: cols 1–23, rows 8–9.
 Zone A: cols 1–20, rows 1–6.   Zone B: cols 25–28, rows 1–9.
-Zone C: cols 1–20, rows 11–14.  Empty corner: cols 25–28, rows 11–14.
+Zone C: cols 1–20, rows 11–14.  Zone T (enlarged tip): cols 22–28, rows 11–14.
 
 ```
  0 ##############################
@@ -493,17 +480,16 @@ Zone C: cols 1–20, rows 11–14.  Empty corner: cols 25–28, rows 11–14.
  8 #                       #BBBB#
  9 #                       #BBBB#
 10 ##############################
-11 #CCCCCCCCCCCCCCCCCCCC#########
-12 #CCCCCCCCCCCCCCCCCCCC#########
-13 #CCCCCCCCCCCCCCCCCCCC#########
-14 #CCCCCCCCCCCCCCCCCCCC#########
+11 #CCCCCCCCCCCCCCCCCCCC#TTTTTTT#
+12 #CCCCCCCCCCCCCCCCCCCC#TTTTTTT#
+13 #CCCCCCCCCCCCCCCCCCCC#TTTTTTT#
+14 #CCCCCCCCCCCCCCCCCCCC#TTTTTTT#
 15 ##############################
 ```
 
-**Tip rooms:** Tip 1 (v-arm extension downward, door at row 10 cols 22–23)
-fills cols 22–23, rows 11–14.  Tip 2 (h-arm extension rightward, door at
-col 24 rows 8–9) extends Zone B through row 10 into cols 25–28, rows 11–14.
-Both always filled.
+**Zone T:** cols 22–28, rows 11–14.  Door at gap row 10, cols 22–23.
+Extends rightward from the v-arm base to the right border.
+Zone C (cols 1–20) must not be extended into Zone T's area.
 
 ---
 
@@ -513,13 +499,13 @@ Both always filled.
 
 v-arm: cols 6–7, rows 5–14.   h-arm: cols 6–28, rows 5–6.
 Zone A: cols 9–28, rows 7–14.   Zone B: cols 1–4, rows 5–14.
-Zone C: cols 9–28, rows 1–3.    Empty corner: cols 1–4, rows 1–3.
+Zone C: cols 9–28, rows 1–3.    Zone T (enlarged tip): cols 1–7, rows 1–3.
 
 ```
  0 ##############################
- 1 #########CCCCCCCCCCCCCCCCCCCC#
- 2 #########CCCCCCCCCCCCCCCCCCCC#
- 3 #########CCCCCCCCCCCCCCCCCCCC#
+ 1 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+ 2 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+ 3 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
  4 ##############################
  5 #BBBB#                       #
  6 #BBBB#                       #
@@ -534,10 +520,9 @@ Zone C: cols 9–28, rows 1–3.    Empty corner: cols 1–4, rows 1–3.
 15 ##############################
 ```
 
-**Tip rooms:** Tip 1 (v-arm extension upward, door at row 4 cols 6–7) fills
-cols 6–7, rows 1–3.  Tip 2 (h-arm extension leftward, door at col 5 rows
-5–6) extends Zone B through row 4 into cols 1–4, rows 1–3.  Both always
-filled.
+**Zone T:** cols 1–7, rows 1–3.  Door at gap row 4, cols 6–7 (v-arm's top end).
+Extends leftward from the v-arm base to the left border.
+Zone C (cols 9–28) must not be extended into Zone T's area.
 
 ---
 
@@ -547,13 +532,13 @@ filled.
 
 v-arm: cols 22–23, rows 5–14.   h-arm: cols 1–23, rows 5–6.
 Zone A: cols 1–20, rows 7–14.   Zone B: cols 25–28, rows 5–14.
-Zone C: cols 1–20, rows 1–3.    Empty corner: cols 25–28, rows 1–3.
+Zone C: cols 1–20, rows 1–3.    Zone T (enlarged tip): cols 22–28, rows 1–3.
 
 ```
  0 ##############################
- 1 #CCCCCCCCCCCCCCCCCCCC#########
- 2 #CCCCCCCCCCCCCCCCCCCC#########
- 3 #CCCCCCCCCCCCCCCCCCCC#########
+ 1 #CCCCCCCCCCCCCCCCCCCC#TTTTTTT#
+ 2 #CCCCCCCCCCCCCCCCCCCC#TTTTTTT#
+ 3 #CCCCCCCCCCCCCCCCCCCC#TTTTTTT#
  4 ##############################
  5 #                       #BBBB#
  6 #                       #BBBB#
@@ -568,10 +553,9 @@ Zone C: cols 1–20, rows 1–3.    Empty corner: cols 25–28, rows 1–3.
 15 ##############################
 ```
 
-**Tip rooms:** Tip 1 (v-arm extension upward, door at row 4 cols 22–23) fills
-cols 22–23, rows 1–3.  Tip 2 (h-arm extension rightward, door at col 24
-rows 5–6) extends Zone B through row 4 into cols 25–28, rows 1–3.  Both
-always filled.
+**Zone T:** cols 22–28, rows 1–3.  Door at gap row 4, cols 22–23.
+Extends rightward from the v-arm base to the right border.
+Zone C (cols 1–20) must not be extended into Zone T's area.
 
 ---
 

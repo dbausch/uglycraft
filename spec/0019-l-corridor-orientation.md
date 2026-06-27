@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] L-corridor orientation chosen to match required BORDER exit sides
-- [ ] L-corridor empty quadrant filled by enlarging one randomly chosen virtual tip room
+- [ ] L-corridor empty quadrant filled by Zone T (one enlarged tip room from v-arm base to grid border)
 - [ ] Z-corridor `_layout_z` rewritten to produce the correct single-stroke Z/S shape
 
 ---
@@ -48,41 +48,30 @@ The L-shape leaves one rectangular quadrant with no corridor floor adjacent
 to it.  Currently no zone covers it.  Any room placed there would lack a
 challenge-graph-valid connection to the corridor and be unreachable.
 
-The fix is to place (or enlarge) a room using a **virtual tip room**.  At the
-junction, each arm has a virtual extension in the direction it would continue
-if it went straight through.  These virtual extensions define small rooms that
-can be enlarged into the empty corner by removing the wall separating them
-from it.  For an L-corridor there are always **two** virtual tip rooms:
+The fix is to place one **enlarged tip room** (Zone T) that fills the entire
+empty corner.
 
-**Tip 1 — v-arm extension**
-Where the v-arm would continue past the junction (in the opposite direction
-from its border exit).  This defines a small room area just inside the empty
-quadrant, separated from the h-arm corridor by one gap row.  Enlarge it
-**toward the adjacent corner** by removing the gap wall between it and the
-corner columns.
+A tip room is a room whose door sits on the **short end-face** of the v-arm —
+the face at the base of the arm, where the corridor would continue if the arm
+went on.  Enlarging it means extending its floor sideways from the arm's base
+all the way to the grid border, filling the whole corner area.
 
-**Tip 2 — h-arm extension**
-Where the h-arm would continue past the junction (away from its border exit).
-This area is within Zone B's bounding box (nearest to the corner).  The
-bottommost (or topmost, depending on orientation) Zone B room already occupies
-this position.  Enlarge it **toward the corner** by removing the gap row/col
-that separates it from the corner rows/cols.
+Zone T's door is from the **corridor** into T (through the gap row/col at the
+arm's base).  It is NOT between Zone B/A (the zone adjacent to the v-arm's
+side) and Zone T; those are in different row ranges and share no wall.
 
-(If one arm is a dead end rather than a border exit, a third virtual tip
-exists at the arm's far end — the direction the arm faces but does not exit.
-Each virtual tip can be enlarged into the adjacent empty area, potentially
-spanning more than one empty corner.)
+Zone C (the zone below the h-arm's far side) must **not** be extended into
+Zone T's area — they connect to different corridor positions and must remain
+separate rooms.
 
-Both available tip rooms are always placed.  Tip 1 requires creating a
-new `PlacedNode`; Tip 2 requires extending an existing `PlacedNode`.  If a
-tip's area is too small for even a 2×2 room, omit that tip only.
+Concretely for `bl` (v-arm left col `jc`, junction row `jr`, arm widths 2):
 
-Concretely for `bl` (junction col `jc`, junction row `jr`, arm widths 2):
+Zone T: cols 1..`jc+1`, rows `jr+2`..`MAX_R`   (door at row `jr+1`, cols `jc`..`jc+1`)
 
-| Tip | Room position before enlargement           | Enlarge direction         | Result                                 |
-|-----|--------------------------------------------|---------------------------|----------------------------------------|
-| 1   | cols `jc`–`jc+1`, rows `jr+2`–`MAX_R`     | left → add cols `1`–`jc-2`  | cols 1–`jc+1`, rows `jr+2`–`MAX_R`    |
-| 2   | Zone B's bottommost room (cols 1–`jc-2`)   | down → extend to `MAX_R`  | cols 1–`jc-2`, rows `<orig top>`–`MAX_R` |
+If the area is too small for a 2×3 room, omit Zone T.
+
+(If one arm is a dead end, a second tip exists at the arm's far end; place a
+room there using the same enlarged-tip logic.)
 
 ---
 
@@ -122,22 +111,23 @@ If the required exits don't match any pair (0, 1, 3, or 4 exits), fall back to
 
 ---
 
-## Fix B — fill L corner by placing both tip rooms
+## Fix B — fill L corner with Zone T
 
-After zone packing, identify the two virtual tip rooms and place both.
-Implement as:
+After zone packing, compute Zone T and place it as a new `PlacedNode`:
 
-- **Tip 1** (v-arm extension): take a spare room name (preferably the last
-  room assigned to any zone), compute the tip-room bounding box before
-  enlargement, then extend it to fill the corner by adjusting `col`/`w`
-  (or `row`/`h` depending on orientation), create a new `PlacedNode`, insert
-  into `placed`.
-- **Tip 2** (h-arm extension = Zone B border room): look up the border Zone B
-  room in `placed`, create a new `PlacedNode` with extended `row`/`h` (or
-  `col`/`w`) to reach the corner, replace it in `placed`.
+- Determine `jc` (v-arm left col) and `jr` (junction row, bottom of h-arm)
+  from the corridor's `PlacedNode`.
+- Zone T bounding box: cols 1..`jc+1`, rows `jr+2`..`MAX_R` (for `bl`; mirror
+  for other orientations — see kb section 7 for all four cases).
+- Take a spare room name (last room assigned to any zone), create a new
+  `PlacedNode`, insert into `placed`.
 
-The resulting room's connection to the corridor is found by `derive_walls` in
-the normal way — no special-casing needed.
+Zone T's door is derived automatically by `derive_walls` — no special-casing
+needed.  The door lands at cols `jc`..`jc+1` (the v-arm's base), facing the
+h-arm corridor above.
+
+Zone C is placed separately in the normal zone-packing pass.  Do not extend
+Zone C left/right into Zone T's column range.
 
 ---
 
