@@ -600,9 +600,7 @@ class LevelGraphBuilder:
     def add_materials(self, mat_types, count) -> None:
         if not mat_types:
             return
-        mats = list(mat_types)
-        if self._has_water and 'planks' in mats:
-            mats = [m for m in mats if m != 'planks']
+        mats = [m for m in mat_types if m != 'planks']  # planks only via add_water_room
         if not mats:
             return
         all_nodes = list(self._graph.nodes.keys())
