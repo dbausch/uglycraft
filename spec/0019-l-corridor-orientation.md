@@ -34,8 +34,8 @@ to it.  Currently no zone covers it, so rooms placed there would be unreachable.
 
 Two potential tip rooms exist at any junction: one at the v-arm base and one
 at the h-arm base.  Exactly one is enlarged to fill the corner; the other's
-tile range is absorbed into the adjacent zone.  Eight variants total (four
-exit pairs × two tip strategies) — see kb section 7.
+tile range is absorbed into the adjacent zone (no separate room for it).
+Eight variants total: four exit pairs × two tip strategies.
 
 ---
 
@@ -46,8 +46,11 @@ bottom) connected by a narrow bridge.  This produces an H/π shape, not a Z.
 
 A Z-corridor is a **single corridor stroke with two turns** — three segments:
 1. A partial arm exiting at two adjacent borders (top-left for `z_h`)
-2. A perpendicular connector segment
+2. A perpendicular connector segment (width = `arm_w`, typically 2–3 tiles)
 3. A partial arm exiting at the opposite two borders (bottom-right for `z_h`)
+
+The two room zones sit on opposite sides of the connector — one in the
+top-right quadrant, one in the bottom-left quadrant.
 
 ---
 
@@ -74,17 +77,24 @@ If the required exits don't match any pair (0, 1, 3, or 4 exits), fall back to
 ## Fix B — fill L corner with one enlarged tip room
 
 One parametrised algorithm for all eight variants; rotate and swap row/col
-directions per orientation.
+directions per orientation.  Either tip strategy is valid — choose freely.
 
 **Standard** (`jc` near v-arm exit border, `bl` example):
 - Corner zone: cols 1..`jc+1`, rows `jr+2`..`MAX_R`;  door at gap row `jr+1`
+- Zone B spans rows 1..`jr+1`, absorbing the h-arm base tile range
+- Zone C is placed in the normal zone-packing pass; do not extend it into the
+  corner zone's col range (different corridor-facing gap)
 
 **Transposed** (`jc` near opposite border, `bl` example):
 - Corner zone: cols 1..`jc-2`, rows 1..`MAX_R`;  door at gap col `jc-1`
+- Zone C spans cols `jc`..`MAX_C`, absorbing the v-arm base tile range
 
-Rooms in the far end of the corner zone must extend back to the junction edge;
-otherwise they have no corridor-adjacent face.  Mirror all bounding boxes for
-`br`, `tl`, `tr` (see kb section 7).
+**Corner room constraint:** the corridor-facing gap of the corner zone covers
+only the junction edge rows/cols, not the full corner extent.  Rooms packed
+into the far end of the corner zone must extend back to the junction edge;
+otherwise they have no corridor-adjacent face and are unreachable.
+
+Mirror all bounding boxes for `br`, `tl`, `tr` (see kb section 7 for diagrams).
 
 If the corner zone is too small for a 2×3 room, omit it.
 
