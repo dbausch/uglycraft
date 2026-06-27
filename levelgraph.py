@@ -78,24 +78,54 @@ class Edge:
 _OPPOSITE = {'right': 'left', 'left': 'right', 'top': 'bottom', 'bottom': 'top'}
 
 
-def _super_grid_positions(n):
-    """Return a list of (super_col, super_row) positions for n grids.
+def _spanning_tree(n, branch_prob, rng):
+    """Return a spanning-tree description for n grids on the super-grid.
 
-    Grids are arranged in a snake pattern filling a near-square rectangle:
-    (0,0) → (1,0) → … → right edge, then next row going back, etc.
-    For n=4 this produces a 2×2 ring when all adjacent pairs are connected.
+    Returns a list of length n where entry i is
+        (parent_idx, exit_side, (super_col, super_row))
+    with parent_idx=None and exit_side=None for the root (index 0).
+
+    Indices in BFS order: every parent appears before its children.
+    All super-grid positions are unique; no two grids share a cell.
+    Non-parent adjacent cells are silently ignored (no loops).
+
+    branch_prob: probability of continuing to place a second grid from the
+    same parent in a single step (0 = always a path, 1 = always try all
+    four directions).
     """
     if n <= 1:
-        return [(0, 0)]
-    cols = math.ceil(math.sqrt(n))
-    rows = math.ceil(n / cols)
-    positions = []
-    for r in range(rows):
-        row_cols = range(cols) if r % 2 == 0 else range(cols - 1, -1, -1)
-        for c in row_cols:
-            if len(positions) < n:
-                positions.append((c, r))
-    return positions
+        return [(None, None, (0, 0))]
+
+    _DIRS = [('right', 1, 0), ('left', -1, 0), ('bottom', 0, 1), ('top', 0, -1)]
+
+    result    = [(None, None, (0, 0))]  # root
+    placed    = {(0, 0): 0}            # pos → index
+    positions = [(0, 0)]               # index → pos
+    frontier  = [0]                    # each entry visited exactly once
+
+    while len(placed) < n and frontier:
+        fi = rng.randrange(len(frontier))
+        gi = frontier.pop(fi)           # remove on selection — one visit per node
+        px, py = positions[gi]
+
+        dirs = list(_DIRS)
+        rng.shuffle(dirs)
+
+        for exit_side, dx, dy in dirs:
+            if len(placed) >= n:
+                break
+            pos = (px + dx, py + dy)
+            if pos in placed:
+                continue
+            new_idx = len(placed)
+            placed[pos] = new_idx
+            positions.append(pos)
+            frontier.append(new_idx)
+            result.append((gi, exit_side, pos))
+            if rng.random() >= branch_prob:
+                break   # place one more child only if branch_prob says so
+
+    return result
 
 
 def _border_direction(pos_a, pos_b):
@@ -370,21 +400,27 @@ class LevelGraph:
                 return {'barrier': 'gated', 'gate_id': gid}
             return {}
 
-        # Build the 2D super-grid arrangement for grid_count grids.
-        # Rooms are distributed round-robin across grids.
-        super_positions = _super_grid_positions(grid_count)
-        rooms_per_grid  = [room_count // grid_count] * grid_count
+        # Build the spanning-tree super-grid arrangement.
+        # branch_prob > 0 produces branch nodes (one grid connecting to 2+).
+        branch_prob = feature_set.get('branch_prob', 0.0)
+        tree = _spanning_tree(grid_count, branch_prob, rng)
+        # tree[i] = (parent_idx, exit_side, (sc, sr)); root has parent_idx=None
+
+        def _idx_to_name(i):
+            return 'corridor' if i == 0 else f'corridor_{i}'
+
+        rooms_per_grid = [room_count // grid_count] * grid_count
         for i in range(room_count % grid_count):
             rooms_per_grid[i] += 1
 
         room_idx = 0
-        for g, (sc, sr) in enumerate(super_positions):
-            if g > 0:
-                exit_side, entry_side = _border_direction(
-                    super_positions[g - 1], (sc, sr))
-                b.start_next_grid(sc, sr, exit_side, **_barrier_kw())
+        for i, (parent_idx, exit_side, (sc, sr)) in enumerate(tree):
+            if parent_idx is not None:
+                b.start_next_grid(sc, sr, exit_side,
+                                  source=_idx_to_name(parent_idx),
+                                  **_barrier_kw())
 
-            for _ in range(rooms_per_grid[g]):
+            for _ in range(rooms_per_grid[i]):
                 et = required[room_idx] if room_idx < len(required) else rng.choice(edge_types)
                 _add_room(et)
                 room_idx += 1
@@ -555,17 +591,19 @@ class LevelGraphBuilder:
     # ── Multi-grid ────────────────────────────────────────────────────────
 
     def start_next_grid(self, super_col, super_row, exit_side='right',
-                        barrier=None, key_colour=None, gate_id=None):
-        """Add the next corridor node and a directed BORDER edge.
+                        source=None, barrier=None, key_colour=None, gate_id=None):
+        """Add the next corridor node and a BORDER edge.
 
         super_col, super_row: position on the super-grid for the new corridor.
-        exit_side: which side of the current corridor's grid the exit is on.
+        exit_side: which face of the source corridor the exit is on.
+        source: name of the corridor from which the BORDER edge originates.
+                Defaults to _current_corridor when None.
         barrier / key_colour / gate_id: optional lock on the border passage.
 
         Places barrier prerequisites in the currently-reachable set before
         switching the default parent to the new corridor.
         """
-        prev_corridor = self._current_corridor
+        prev_corridor = source if source is not None else self._current_corridor
         n = sum(1 for name in self._graph.nodes if name.startswith('corridor'))
         new_name = f'corridor_{n}'
         self._graph.add_node(new_name, NodeSize.CORRIDOR)
