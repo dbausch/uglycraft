@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] L-corridor orientation chosen to match required BORDER exit sides
-- [ ] L-corridor empty quadrant filled by Zone T (one enlarged tip room from v-arm base to grid border)
+- [ ] L-corridor empty quadrant filled by one enlarged tip room (standard or transposed strategy; single parametrised algorithm for all eight variants)
 - [ ] Z-corridor `_layout_z` rewritten to produce the correct single-stroke Z/S shape
 
 ---
@@ -48,30 +48,13 @@ The L-shape leaves one rectangular quadrant with no corridor floor adjacent
 to it.  Currently no zone covers it.  Any room placed there would lack a
 challenge-graph-valid connection to the corridor and be unreachable.
 
-The fix is to place one **enlarged tip room** (Zone T) that fills the entire
-empty corner.
+Two potential tip rooms exist at any junction: one at the **v-arm base** (the
+arm end away from its exit border) and one at the **h-arm base**.  Exactly
+one is enlarged to fill the entire corner; the other's tile range is absorbed
+into the adjacent zone (no separate room for it).
 
-A tip room is a room whose door sits on the **short end-face** of the v-arm —
-the face at the base of the arm, where the corridor would continue if the arm
-went on.  Enlarging it means extending its floor sideways from the arm's base
-all the way to the grid border, filling the whole corner area.
-
-Zone T's door is from the **corridor** into T (through the gap row/col at the
-arm's base).  It is NOT between Zone B/A (the zone adjacent to the v-arm's
-side) and Zone T; those are in different row ranges and share no wall.
-
-Zone C (the zone below the h-arm's far side) must **not** be extended into
-Zone T's area — they connect to different corridor positions and must remain
-separate rooms.
-
-Concretely for `bl` (v-arm left col `jc`, junction row `jr`, arm widths 2):
-
-Zone T: cols 1..`jc+1`, rows `jr+2`..`MAX_R`   (door at row `jr+1`, cols `jc`..`jc+1`)
-
-If the area is too small for a 2×3 room, omit Zone T.
-
-(If one arm is a dead end, a second tip exists at the arm's far end; place a
-room there using the same enlarged-tip logic.)
+There are eight variants (four exit pairs × two tip strategies); a single
+parametrised algorithm handles all of them — see kb section 7.
 
 ---
 
@@ -111,23 +94,42 @@ If the required exits don't match any pair (0, 1, 3, or 4 exits), fall back to
 
 ---
 
-## Fix B — fill L corner with Zone T
+## Fix B — fill L corner with one enlarged tip room
 
-After zone packing, compute Zone T and place it as a new `PlacedNode`:
+A single parametrised algorithm covers all eight variants (four orientations ×
+two tip strategies).  Rotate and swap row/col directions per orientation.
 
-- Determine `jc` (v-arm left col) and `jr` (junction row, bottom of h-arm)
-  from the corridor's `PlacedNode`.
-- Zone T bounding box: cols 1..`jc+1`, rows `jr+2`..`MAX_R` (for `bl`; mirror
-  for other orientations — see kb section 7 for all four cases).
-- Take a spare room name (last room assigned to any zone), create a new
-  `PlacedNode`, insert into `placed`.
+**Parameters derived from the corridor `PlacedNode` and orientation:**
+- `corner_bbox` — bounding box of the zone that fills the corner
+- `corner_gap` — the row or col index of the corridor-facing gap into the corner zone
+- `gap_range` — the row or col range where that gap faces actual corridor floor
 
-Zone T's door is derived automatically by `derive_walls` — no special-casing
-needed.  The door lands at cols `jc`..`jc+1` (the v-arm's base), facing the
-h-arm corridor above.
+**Standard tip strategy** (v-arm base enlarged; `jc` near the v-arm exit border):
 
-Zone C is placed separately in the normal zone-packing pass.  Do not extend
-Zone C left/right into Zone T's column range.
+For `bl` (`jc` = v-arm left col, `jr` = h-arm top row, arm width 2):
+- Corner zone: cols 1..`jc+1`, rows `jr+2`..`MAX_R`
+- Door at gap row `jr+1`, cols `jc`..`jc+1`
+- Zone B spans rows 1..`jr+1` absorbing the h-arm base tiles
+- Zone C (placed separately) must not extend into the corner zone's col range
+
+**Transposed tip strategy** (h-arm base enlarged; `jc` near the opposite border):
+
+For `bl` transposed:
+- Corner zone: cols 1..`jc-2`, rows 1..`MAX_R`
+- Door at gap col `jc-1`, rows 1..`jr+1`
+- Zone C spans cols `jc`..`MAX_C` absorbing the v-arm base tiles
+
+**Corner room constraint (all eight variants):**
+The corridor-facing gap covers only the junction edge, not the full corner
+extent.  Any room packed entirely into the corner portion (past the junction
+edge) has no corridor-adjacent face and is unreachable.  When packing rooms
+into the corner zone, every room that covers the far portion must extend far
+enough toward the junction to include at least one tile adjacent to the gap.
+
+Door placement is derived automatically by `derive_walls`.  Mirror all
+bounding boxes and gap positions for `br`, `tl`, `tr` (see kb section 7).
+
+If the corner zone is too small for a 2×3 room, omit it.
 
 ---
 
@@ -185,5 +187,5 @@ Apply the same logic for `s_h`, `z_v`, `s_v` (mirrors/rotations).
 
 - [ ] `poe test` passes
 - [ ] L-corridor arms always at required border sides (user confirmed)
-- [ ] Both L-corridor tip rooms placed, filling all corner-adjacent areas (user confirmed)
+- [ ] L-corridor empty corner filled by one enlarged tip room for all eight variants; no unreachable corner rooms (user confirmed)
 - [ ] Z-corridor is a single-stroke Z/S shape with two primary zones + optional C/D (user confirmed)
