@@ -268,6 +268,51 @@ class TestPickStrategyRoomCount:
         result = _pick_strategy(frozenset(), ['double_t'], random.Random(0), n_rooms=2)
         assert result == 'full_border'
 
+    def test_n_rooms_1_no_exit_uses_full_border(self):
+        """Strict filter: no strategy has max_zones ≤ 1 except full_border."""
+        from levellayout import _pick_strategy, STRATEGIES
+        for seed in range(50):
+            result = _pick_strategy(frozenset(), STRATEGIES, random.Random(seed), n_rooms=1)
+            assert result == 'full_border', \
+                f"seed={seed}: expected full_border for n_rooms=1, got {result!r}"
+
+    def test_n_rooms_1_tb_exit_uses_full_border(self):
+        """1-room grid with tb exit: vertical is ineligible (max_zones=2 > 1)."""
+        from levellayout import _pick_strategy, STRATEGIES
+        for seed in range(50):
+            result = _pick_strategy(frozenset({'top'}), STRATEGIES,
+                                    random.Random(seed), n_rooms=1)
+            assert result == 'full_border', \
+                f"seed={seed}: expected full_border for n_rooms=1 tb exit, got {result!r}"
+
+    def test_n_rooms_2_can_use_vertical(self):
+        """Strict filter still allows 2-zone strategies for n_rooms=2."""
+        from levellayout import _pick_strategy, STRATEGIES
+        results = {_pick_strategy(frozenset({'top'}), STRATEGIES,
+                                  random.Random(s), n_rooms=2)
+                   for s in range(100)}
+        assert 'vertical' in results, \
+            "vertical (max_zones=2) should be eligible for n_rooms=2 with tb exit"
+
+
+@pytest.mark.parametrize('seed', range(20))
+def test_layout_graph_1room_uses_full_border(seed):
+    """With 1 regular room and the default strategy pool, layout_graph must
+    use full_border (the only strategy with max_zones ≤ 1)."""
+    graph = LevelGraph()
+    graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+    graph.add_node('r0', NodeSize.ROOM)
+    graph.add_edge('corridor', 'r0', EdgeType.OPEN)
+
+    placed = layout_graph(graph, rng=random.Random(seed))
+    walls, _ = derive_walls(graph, placed)
+    assert validate_layout(graph, placed, walls) == [], f"seed={seed}: layout error"
+
+    cor = next(n for n, nd in graph.nodes.items() if nd.size == NodeSize.CORRIDOR)
+    left_col_rows = {r for c, r in placed[cor].floor_tiles if c == MIN_C}
+    assert left_col_rows == set(range(MIN_R, MAX_R + 1)), \
+        f"seed={seed}: expected full_border corridor for 1-room graph"
+
 
 class TestFullBorderFallback:
     """full_border is chosen when all exit-compatible strategies are over-zoned."""
