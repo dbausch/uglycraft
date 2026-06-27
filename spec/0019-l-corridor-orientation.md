@@ -146,34 +146,38 @@ the normal way — no special-casing needed.
 Replace the current parallel-arms-plus-bridge implementation with the
 single-stroke Z/S design documented in `kb/uglycraft-layouts.md` section 6.
 
-Key parameters: `c_break` (or `r_break`), `arm_th` (segment thickness in the
-transverse direction), `arm_w` (connector width in the long direction).
+The shape has **four** room zones, two on each side of the stroke.  See
+section 6 of the layouts KB for full diagrams and zone tables.
 
-For `z_h`:
+For `z_h` (exits LEFT + RIGHT):
 
 ```
-top_arm    = cols MIN_C .. c_break+arm_w-1,  rows MIN_R .. MIN_R+arm_th-1
-connector  = cols c_break .. c_break+arm_w-1, rows MIN_R+arm_th-1 .. MAX_R-arm_th+1
-bot_arm    = cols c_break .. MAX_C,           rows MAX_R-arm_th+1 .. MAX_R
+first_arm  = cols MIN_C .. c_break+arm_w-1,  rows r_top .. r_top+arm_h-1
+connector  = cols c_break .. c_break+arm_w-1, rows r_top .. r_bot+arm_h-1
+second_arm = cols c_break .. MAX_C,           rows r_bot .. r_bot+arm_h-1
 ```
 
-(Top arm and connector overlap at the junction rows; similarly bot arm and
-connector overlap.)
+(First arm and connector overlap at junction rows; second arm and connector
+overlap at junction rows.)
 
-Zone A: cols c_break+arm_w+1..MAX_C, rows MIN_R..MAX_R-arm_th-1  
-Zone B: cols MIN_C..c_break-2, rows MIN_R+arm_th+1..MAX_R
+| Zone | Rows                    | Cols                    |
+|------|-------------------------|-------------------------|
+| A    | 1 .. r_top−2            | 1 .. c_break+arm_w−1    |
+| B    | 1 .. r_bot−2            | c_break+arm_w+1 .. 28   |
+| C    | r_top+arm_h+1 .. 14     | 1 .. c_break−2          |
+| D    | r_bot+arm_h+1 .. 14     | c_break .. 28           |
 
-The segment starts and ends do not need to touch the border — they can stop
-short or be positioned anywhere valid inside the grid.  When `c_break` equals
-`MIN_C` or `MAX_C`, the shape degenerates to a straight corridor.
+At each turn, Zone A + Zone B (Turn 1) and Zone C + Zone D (Turn 2) are the
+two virtual tip extensions — they fill the space the corridor would occupy if
+it continued straight at that turn.  All four zones are placed unconditionally
+(skip any with fewer than 3 cols × 2 rows of fillable area).
 
-When an outer arm has an inner endpoint (does not reach its border), the space
-beyond that endpoint is an additional zone (C at the top-arm end, D at the
-bottom-arm end).  Place an enlarged tip room in each such zone — the door sits
-on the arm's end face (col `c_left-1` for Zone C, col `c_right+1` for Zone D).
+Choose `r_top`, `r_bot`, `c_break` so that all four zones have at least one
+packable room.  Typical values with arm_h=2, arm_w=2 on the 30×16 grid:
+`r_top ≈ 4`, `r_bot ≈ 10`, `c_break ≈ 8..22`.
 
-Constraint: `c_break` (or `r_break`) must leave both primary zones large
-enough to hold at least one room (≥ 3 wide and ≥ 3 tall).
+When a zone has zero rows/cols (arm touching the corresponding border), omit
+that zone.
 
 Apply the same logic for `s_h`, `z_v`, `s_v` (mirrors/rotations).
 
