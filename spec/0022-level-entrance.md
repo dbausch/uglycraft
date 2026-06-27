@@ -2,10 +2,10 @@
 
 ## Status
 
-- [ ] `levellayout.py` computes the entrance tile and stores it in the start room dict
-- [ ] `player_start` is the corridor tile immediately inside the entrance
-- [ ] `sprites.py` adds `draw_level_entrance()` — a new entrance sprite
-- [ ] `game.py` renders the entrance sprite at the entrance tile for the start grid
+- [x] `levellayout.py` computes the entrance tile and stores it in the start room dict
+- [x] `player_start` is the corridor tile immediately inside the entrance
+- [x] `sprites.py` adds `draw_level_entrance()` — a new entrance sprite
+- [x] `game.py` renders the entrance sprite at the entrance tile for the start grid
 
 ---
 
@@ -100,9 +100,9 @@ Manual — no automated test suite for this feature:
 
 ## Done when
 
-- [ ] Entrance sprite visible on start grid border in all generated levels
-      (user confirmed)
-- [ ] Player spawns at the corridor tile adjacent to the entrance (not an
-      arbitrary interior tile)
-- [ ] Staircase sprites on BORDER exits unaffected (no regression)
-- [ ] `poe test` passes
+- [x] Entrance sprite visible on start grid border in all generated levels
+      (user confirmed — 61a0875)
+- [x] Player spawns at the corridor tile adjacent to the entrance (not an
+      arbitrary interior tile) — 114eb9b
+- [x] Staircase sprites on BORDER exits unaffected (no regression) — 04be23e
+- [x] `poe test` passes — 114eb9b
