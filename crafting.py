@@ -83,20 +83,32 @@ RECIPES = [
 
 # ── Key colours ───────────────────────────────────────────────────────────────
 
-KEY_RED   = 'red'
-KEY_BLUE  = 'blue'
-KEY_GREEN = 'green'
+KEY_RED    = 'red'
+KEY_BLUE   = 'blue'
+KEY_GREEN  = 'green'
+KEY_YELLOW = 'yellow'
+KEY_CYAN   = 'cyan'
+KEY_PURPLE = 'purple'
+KEY_ORANGE = 'orange'
 
 KEY_COLORS = {
-    KEY_RED:   (220,  50,  50),
-    KEY_BLUE:  ( 80, 140, 255),
-    KEY_GREEN: ( 60, 200,  80),
+    KEY_RED:    (220,  50,  50),
+    KEY_BLUE:   ( 80, 140, 255),
+    KEY_GREEN:  ( 60, 200,  80),
+    KEY_YELLOW: (220, 200,  50),
+    KEY_CYAN:   ( 50, 200, 220),
+    KEY_PURPLE: (160,  80, 255),
+    KEY_ORANGE: (230, 120,  40),
 }
 
 KEY_NAMES = {
-    KEY_RED:   'Red Key',
-    KEY_BLUE:  'Blue Key',
-    KEY_GREEN: 'Green Key',
+    KEY_RED:    'Red Key',
+    KEY_BLUE:   'Blue Key',
+    KEY_GREEN:  'Green Key',
+    KEY_YELLOW: 'Yellow Key',
+    KEY_CYAN:   'Cyan Key',
+    KEY_PURPLE: 'Purple Key',
+    KEY_ORANGE: 'Orange Key',
 }
 
 

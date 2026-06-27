@@ -2,6 +2,7 @@
 import math
 import pygame
 from constants import *
+from crafting import KEY_COLORS
 
 
 def _surf(size=TILE, alpha=True):
@@ -970,6 +971,23 @@ def draw_open_door(size=TILE):
     return s
 
 
+def draw_staircase(size=TILE):
+    """Grid-border exit tile — stone steps indicating passage to adjacent grid."""
+    s = _surf(size, alpha=False)
+    stone  = (80, 80, 90)
+    hi     = (110, 110, 120)
+    shadow = (50, 50, 58)
+    s.fill(stone)
+    n_steps = 4
+    step_h = size // n_steps
+    for i in range(n_steps):
+        indent = i * (size // (n_steps * 2))
+        y = i * step_h
+        pygame.draw.rect(s, hi,     (indent, y, size - indent, 2))
+        pygame.draw.rect(s, shadow, (indent, y + 2, size - indent, step_h - 2))
+    return s
+
+
 def _rotate_h(surf):
     """Rotate a vertical-passage sprite 90° to make a horizontal-passage variant."""
     return pygame.transform.rotate(surf, 90)
@@ -1131,17 +1149,12 @@ def create_sprites():
         'icon_barricade':   _icon(draw_craft_barricade_icon()),
         'icon_portal_pair': _icon(draw_craft_portal_icon()),
         'icon_compass':     _icon(draw_craft_compass_icon()),
-        'key_red':       draw_key_pickup((220, 50, 50)),
-        'key_blue':      draw_key_pickup((80, 140, 255)),
-        'key_green':     draw_key_pickup((60, 200, 80)),
-        'door_red_v':    draw_locked_door((220, 50, 50)),
-        'door_blue_v':   draw_locked_door((80, 140, 255)),
-        'door_green_v':  draw_locked_door((60, 200, 80)),
-        'door_red_h':    _rotate_h(draw_locked_door((220, 50, 50))),
-        'door_blue_h':   _rotate_h(draw_locked_door((80, 140, 255))),
-        'door_green_h':  _rotate_h(draw_locked_door((60, 200, 80))),
+        **{f'key_{name}': draw_key_pickup(rgb) for name, rgb in KEY_COLORS.items()},
+        **{f'door_{name}_v': draw_locked_door(rgb) for name, rgb in KEY_COLORS.items()},
+        **{f'door_{name}_h': _rotate_h(draw_locked_door(rgb)) for name, rgb in KEY_COLORS.items()},
         'door_open_v':   draw_open_door(),
         'door_open_h':   _rotate_h(draw_open_door()),
+        'staircase':     draw_staircase(),
         'water_h':        draw_water(),
         'water_v':        pygame.transform.rotate(draw_water(), 90),
         'bridge_h':       draw_bridge_tile(),
@@ -1156,9 +1169,7 @@ def create_sprites():
         'gate_closed_h':  _rotate_h(draw_gate_closed()),
         'gate_open_v':    draw_gate_open(),
         'gate_open_h':    _rotate_h(draw_gate_open()),
-        'icon_key_red':  _icon(draw_key_pickup((220, 50, 50))),
-        'icon_key_blue': _icon(draw_key_pickup((80, 140, 255))),
-        'icon_key_green':_icon(draw_key_pickup((60, 200, 80))),
+        **{f'icon_key_{name}': _icon(draw_key_pickup(rgb)) for name, rgb in KEY_COLORS.items()},
         'icon_hammer':      _icon(draw_tool_hammer_icon()),
         'icon_chisel':      _icon(draw_tool_chisel_icon()),
         'icon_runestone':   _icon(draw_tool_runestone_icon()),
