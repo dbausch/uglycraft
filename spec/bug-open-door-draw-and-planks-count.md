@@ -4,6 +4,7 @@
 
 - [ ] Open doors drawn only in the room where they were opened
 - [ ] Each water edge supplies exactly 2 planks on the player's side of the graph
+- [ ] No planks placed as random materials — only by water-edge logic
 
 ---
 
@@ -61,13 +62,51 @@ Files: `levelgraph.py`
 
 ---
 
+---
+
+## Bug 3 — Planks placed as random materials in levels without water edges
+
+### Symptom
+
+A level with no WATER edges (e.g. level 11) may still contain planks as
+randomly distributed materials, because `add_materials` only excludes planks
+from the random pool when `self._has_water` is True.  When there is no water,
+the `'planks'` type passes through unchecked.
+
+### Rule
+
+Exactly the required number of planks must be placed — no more, no less:
+
+- Each WATER edge causes `add_water_room()` to place 2 planks in a dry
+  (non-water) reachable room.
+- No other code path may ever place planks.
+
+### Fix
+
+In `add_materials()`, always remove `'planks'` from the candidate material
+types, regardless of `self._has_water`.
+
+```python
+mats = [m for m in mat_types if m != 'planks']
+```
+
+The existing condition `if self._has_water and 'planks' in mats` is replaced
+by this unconditional filter.
+
+Files: `levelgraph.py` — `LevelGraphBuilder.add_materials`
+
+---
+
 ## Verification (manual)
 
 - Open a locked door in one room; confirm no open-door sprite in other rooms.
 - Play a level that generates 2+ water edges; confirm 2 planks per water edge are
   collectable before crossing any stream.
+- Play a level with no water edges (level 11); confirm inventory starts empty of
+  planks and no planks appear in any room.
 
 ## Done when:
 
 - [ ] Open door sprite is absent from rooms where the door was not opened
 - [ ] Level with N water edges places exactly 2N planks in freely-reachable rooms
+- [ ] Level with no water edges contains zero planks (commit: TBD)
