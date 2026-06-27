@@ -389,6 +389,10 @@ class LevelGraph:
                 _add_room(et)
                 room_idx += 1
 
+        c_min, c_max = feature_set.get('closet_count', (0, 0))
+        for _ in range(rng.randint(c_min, c_max)):
+            b.add_closet_room()
+
         if feature_set.get('has_flames'):
             b.add_flames()
 
@@ -480,6 +484,12 @@ class LevelGraphBuilder:
     def add_open_room(self, size=None, parent=None) -> str:
         size = size or self._rng.choice([NodeSize.ROOM, NodeSize.HALL])
         return self._add_node_and_edge(size, EdgeType.OPEN, parent)
+
+    def add_closet_room(self, edge_type=EdgeType.OPEN, parent=None) -> str:
+        """Add a small CLOSET node attached to an existing room (not the corridor)."""
+        candidates = self._room_candidates()
+        chosen = parent or (self._pick(candidates) if candidates else self._current_corridor)
+        return self._add_node_and_edge(NodeSize.CLOSET, edge_type, chosen)
 
     def add_breakable_room(self, wall_type='stone', size=None, parent=None) -> str:
         size = size or self._rng.choice([NodeSize.ROOM, NodeSize.HALL])
