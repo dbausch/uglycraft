@@ -1,183 +1,234 @@
-# Layout Rework: T-shape and Z-shape (replaces chain)
+# Layout Rework: Generalised Corridor Layouts
 
 ## Status
 
-- [ ] T: spine repositioned to the centre area; rooms above the spine as well as on both sides of the stem
-- [ ] T: stem extends to the border when the tip zone is empty
-- [ ] Z: new corridor layout replacing chain; 4 variants (Z, S, rotated-Z, rotated-S)
+- [ ] Generalised corridor function covering horizontal, T, double-T, cross
+- [ ] T: spine in centre third; rooms above and below the bar; stem extends to border when tip empty
+- [ ] Double-T: two stems, one on each side of the bar at different columns
+- [ ] Cross: refactored as the special case of double-T where both stems are at the same column
+- [ ] Z-shape: 4 variants (Z, S, rotated-Z, rotated-S); replaces chain
 
 ---
 
-## T-shape: what makes it distinct
+## Core insight: everything is a corridor + stems
 
-A T corridor is a **horizontal spine** plus a **vertical stem**.  When the
-spine sits in the middle of the grid (same position `_layout_horizontal` uses)
-rooms can appear both above the spine and on either side of the stem below it.
-The stem is the only thing that makes T different from horizontal.
+All these layouts share one structure:
 
 ```
-┌────────────────────────────┐
-│  z_top  (above spine)      │
-├────────────────────────────┤
-│          SPINE             │  ← full-width horizontal arm,
-├────────────┬───┬───────────┤     positioned like _layout_horizontal
-│  z_left    │ S │  z_right  │
-│            │ T │           │
-│            │ E │           │
-│            │ M │           │
-│            └───┘           │  ← or continues to border
-└────────────────────────────┘
+   ┌─────────────────────────────────────┐
+   │  zone above the bar (may be split)  │
+   ├─────────────────────────────────────┤
+   │             C O R R I D O R        │  ← full-width band
+   ├─────────────────────────────────────┤
+   │  zone below the bar (may be split)  │
+   └─────────────────────────────────────┘
 ```
 
-The spine position is chosen the same way as in `_layout_horizontal`:
-randomly in the centre third of the grid.  `_layout_t` is therefore a
-strict superset of `_layout_horizontal` — it adds a stem and two extra
-zones.
+A **stem** is a vertical extension of the corridor band that juts out
+between two rooms on one side.  It splits that side's zone into a left
+sub-zone, a right sub-zone, and a tip zone (≤1 room, directly at the
+stem end).
 
-### Zone table (orientation: `down`)
+```
+   ┌──────────┬────────────────────────────┐
+   │ z_top    │  ← one stem above the bar  │
+   │          │      splits this side       │
+   ├──────────┴──┬──────────────────────────┤
+   │  C O R R   │   I D O R                │  ← full-width band
+   ├─────────────┴───┬───────────────────────┤
+   │  z_left         │  z_right              │  ← one stem below
+   │            ┌────┘                       │
+   │            │ z_bot tip (≤1 room)        │
+   └────────────┴───────────────────────────┘
+```
 
-| Zone    | Rows                         | Cols                       | Pack fn              |
-|---------|------------------------------|----------------------------|----------------------|
-| z_top   | [MIN_R, r_spine−2]           | [MIN_C, MAX_C]             | `_pack_band`         |
-| z_left  | [r_spine+arm_h+1, MAX_R]     | [MIN_C, c_stem−2]          | `_pack_band`         |
-| z_right | [r_spine+arm_h+1, MAX_R]     | [c_stem+arm_w+1, MAX_C]    | `_pack_band`         |
-| z_bot   | tip: bottom of stem, ≤1 room | [c_stem, c_stem+arm_w−1]   | `_pack_band_vertical`|
+Specific layouts are configurations of this one model:
 
-z_top and z_bot each get **at most 1 room** (single-wall-adjacency tip
-zones).  z_left and z_right split the remaining rooms round-robin.
+| Layout     | Stems | Notes                                               |
+|------------|-------|-----------------------------------------------------|
+| horizontal | 0     | 2 zones: above, below                               |
+| vertical   | 0     | same, transposed                                    |
+| T          | 1     | 4 zones: above, left, right, tip                    |
+| double-T   | 2     | 6 zones: above-left, above-right, above-tip,        |
+|            |       |           below-left, below-right, below-tip         |
+| cross      | 2     | special double-T: both stems at the same column     |
+
+---
+
+## Generalised corridor function
+
+A single `_layout_corridor` replaces `_layout_horizontal`, `_layout_vertical`,
+and `_layout_t`.  It also generates double-T and cross.
+
+### Parameters
+
+```python
+def _layout_corridor(
+    corridor_name, room_names, rng,
+    orientation='h',     # 'h' (horizontal) or 'v' (vertical)
+    stems=(),            # sequence of stem specs: (side, col_frac, w_range)
+    edge_map=None, node_sizes=None
+):
+```
+
+| Parameter    | Meaning                                                        |
+|--------------|----------------------------------------------------------------|
+| `orientation`| `'h'` → spine is horizontal; `'v'` → transposed              |
+| `stems`      | 0–2 specs; each: `(side, col_frac, w_range)`                  |
+| `side`       | `'near'` (top for 'h') or `'far'` (bottom for 'h')            |
+| `col_frac`   | float 0–1; stem centre as fraction of band width (chosen by rng if None) |
+| `w_range`    | `(min_w, max_w)` for the stem width; defaults `(3, 5)`         |
 
 ### Spine placement
 
-The spine row is chosen the same way `_layout_horizontal` picks its
-corridor row: randomly within the centre third of the grid interior.
-This guarantees z_top has enough height to hold at least one room.
+Same as current `_layout_horizontal`: random row within the centre third
+of the grid interior (rows MIN_R+INT_H//3 … MIN_R+2*INT_H//3 − arm_h).
 
-### Stem placement
+### Zone derivation
 
-The stem column is chosen randomly within the spine, as today.
+For a horizontal corridor with one `'far'` stem (T-down):
 
-### Stem extension
+```
+z_near  = (MIN_C, MIN_R,          INT_W,  r_spine − MIN_R − 1)   full width
+z_far_L = (MIN_C, r_spine+arm_h+1, c_stem − MIN_C − 1, MAX_R − r_spine − arm_h)
+z_far_R = (c_stem+stem_w+1, r_spine+arm_h+1, ..., ...)
+z_far_T = (c_stem, r_stem_end+2, stem_w, MAX_R − r_stem_end − 2)   tip zone
+```
 
-After zone packing: if no room was placed in z_bot, extend the corridor's
-`floor_tiles` from `r_stem_end + 1` to `MAX_R` at the stem columns.
+Room distribution: near-tip and far-tip each ≤1 room; remaining rooms
+split round-robin between the left/right sub-zones on each side.
 
-Implementation: after band packing, test whether any key in `placed`
-(other than the corridor) has its top row inside the z_bot band.  If not,
-append the extension tiles to `placed[corridor_name]`.
+### Stem extension to border
 
-### Other orientations
+After room packing: if a tip zone received 0 rooms, extend the corridor's
+`floor_tiles` from the stem's current end to the grid border.
 
-`up`, `right`, `left` are symmetric.  For `up` the spine is near the
-bottom; z_top becomes z_bot and vice versa.  For `right`/`left` the
-roles of rows and columns swap throughout.
+### Deriving specific layouts
+
+```python
+# horizontal
+_layout_corridor(name, rooms, rng, orientation='h', stems=())
+
+# vertical
+_layout_corridor(name, rooms, rng, orientation='v', stems=())
+
+# T (random side)
+_layout_corridor(name, rooms, rng, orientation='h',
+                 stems=[('far', None, (3,5))])
+
+# double-T (different column fractions so stems don't align)
+_layout_corridor(name, rooms, rng, orientation='h',
+                 stems=[('near', 0.35, (3,5)), ('far', 0.65, (3,5))])
+
+# cross (same column fraction — both stems align)
+frac = rng.uniform(0.3, 0.7)
+_layout_corridor(name, rooms, rng, orientation='h',
+                 stems=[('near', frac, (3,5)), ('far', frac, (3,5))])
+```
 
 ---
 
-## Z-shape: new corridor layout (replaces chain)
+## Z-shape: shifted corridor
 
-### Concept
+### Insight
 
-The corridor forms a **Z** (or **S**, or their 90° rotations) shape: two
-full-length arms connected by a short perpendicular bridge on one side.
-The bridge splits the space between the arms into a large zone and a small
-zone.
-
-```
-Horizontal Z               Horizontal S
-═══════════════════        ═══════════════════
-               │           │
-               │           │
-═══════════════════        ═══════════════════
-(bridge on right)          (bridge on left)
-
-Vertical Z                 Vertical S
-║                          ║
-║──────────────            ──────────────║
-║                          ║
-(bridge at bottom-right)   (bridge at top-left)
-```
-
-All four variants are valid; chosen randomly at generation time.
-
-### Geometry (horizontal Z — bridge on right)
+A Z is a straight corridor where one room on the south side has been made
+tall enough to push the corridor segment above it upward.  The room on the
+north side of that shifted segment is consequently squeezed: shorter in
+height but wider.
 
 ```
-row r_top ── ══════════════════════════════ ← top arm (arm_h rows, full width)
-                                     │
-                                     │  ← bridge (arm_w cols)
-                                     │
-row r_bot ── ══════════════════════════════ ← bottom arm (arm_h rows, full width)
+before (straight corridor):
+
+  ┌──room A──┬─────room B─────┐   ← north side
+  ╠══════════╪════════════════╣   ← corridor band
+  └──room C──┴─────room D─────┘   ← south side
+
+after (room C grows tall, pushing corridor up on the right):
+
+  ┌──room A──┐ ┌──room B (squeezed shorter, wider)──┐   ← north side
+  ╠══════════╣ ╠════════════════════════════════════╣   ← shifted right
+  │          ╠═╝                                        ← bridge
+  └──room C──┘                                          ← tall south room
+             └──room D──┘   ← remaining south room
 ```
 
-| Symbol     | Value                                                   |
-|------------|---------------------------------------------------------|
-| `r_top`    | `MIN_R` (top arm flush with top border)                 |
-| `r_bot`    | `MAX_R − arm_h + 1` (bottom arm flush with bottom border)|
-| `arm_h`    | `rng.randint(2, 3)`                                     |
-| `c_bridge` | `MAX_C − arm_w + 1` for Z; `MIN_C` for S                |
-| `arm_w`    | `rng.randint(3, 5)`                                     |
+The corridor itself forms a Z (or S, depending on which side the bridge
+is on).
 
-### Room zones (horizontal Z)
+### Geometry (horizontal Z, bridge on right)
 
-| Zone    | Rows                      | Cols                        | Pack fn              |
-|---------|---------------------------|-----------------------------|----------------------|
-| z_main  | [r_top+arm_h+1, r_bot−2]  | [MIN_C, c_bridge−2]         | `_pack_band`         |
-| z_side  | [r_top+arm_h+1, r_bot−2]  | [c_bridge+arm_w+1, MAX_C]   | `_pack_band_vertical`|
+```
+row r_low ──── ══════════════════════════ ← left arm (full width, arm_h rows)
+                                    │
+                                    │  ← bridge (arm_w cols, connects r_low to r_high)
+                                    │
+row r_high ─── ══════════════════════════ ← right arm (full width, arm_h rows)
+```
 
-z_main is the large zone (left of bridge for Z; right for S).
-z_side is the narrow sliver on the other side of the bridge.
+Arms are flush with the top and bottom borders so the corridor fills the
+full height.  The bridge column is chosen randomly in the right or left
+quarter of the grid.
 
-Arms are flush with the borders so no zones exist above or below them.
+### Room zones
 
-**Connectivity**: rooms in z_main connect to the top or bottom arm via
-their top/bottom boundary row.  Rooms in z_side connect to the bridge via
-their left/right boundary column.
+| Zone    | Area                                           | Pack fn              |
+|---------|------------------------------------------------|----------------------|
+| z_main  | between the arms, on the large side of bridge  | `_pack_band`         |
+| z_side  | between the arms, on the narrow side of bridge | `_pack_band_vertical`|
 
-**Room distribution**: z_main takes all rooms; z_side gets at most 1.
+z_main takes the majority of rooms.  z_side gets ≤1 room (it is as narrow
+as `MAX_C − c_bridge − arm_w`, which may be too small for any room; skip
+silently in that case).
 
-### Vertical Z/S (rotated variants)
+### Four variants
 
-Left and right arms run the full height at the left and right borders.
-The bridge is a horizontal band.
+| Variant    | Arms          | Bridge position |
+|------------|---------------|-----------------|
+| Z          | horizontal    | right           |
+| S          | horizontal    | left            |
+| rotated-Z  | vertical      | bottom          |
+| rotated-S  | vertical      | top             |
 
-| Symbol     | Value                                                   |
-|------------|---------------------------------------------------------|
-| `c_left`   | `MIN_C`; `c_right = MAX_C − arm_w + 1`                 |
-| `arm_w`    | `rng.randint(2, 3)` (arm width)                         |
-| `r_bridge` | `MAX_R − arm_h + 1` for rotated-Z; `MIN_R` for rotated-S|
-| `arm_h`    | `rng.randint(3, 5)` (bridge height)                     |
+Chosen randomly at generation time.
 
-Zones mirror the horizontal case: z_main above or below the bridge,
-z_side on the other side.
+### Strategy name
 
-### Strategy name and config
+Strategy key `'z'` replaces `'chain'` in `VALID_STRATEGIES` and all
+`layout_strategies` lists in `levels.py`.
 
-- New strategy key: `'z'`
-- Add `'z'` to `VALID_STRATEGIES` in `levellayout.py`
-- Remove `'chain'` from all `layout_strategies` lists in `levels.py`
-- Add `'z'` to the same lists
+---
+
+## Migration plan
+
+1. Implement `_layout_corridor` replacing `_layout_horizontal`, `_layout_vertical`, `_layout_t`.
+2. Add `_layout_z` as a new function.
+3. Dispatch in `_layout_for_strategy`: `'horizontal'`→corridor(h,0 stems), `'vertical'`→corridor(v,0 stems), `'t'`→corridor(h,1 stem), `'double_t'`→corridor(h,2 stems), `'cross'`→corridor(h,2 aligned stems), `'z'`→z-layout.
+4. Add `'double_t'` and `'cross'` (refactored) to `VALID_STRATEGIES`.
+5. Remove `'chain'`; add `'z'`.
+6. Update `levels.py` layout strategy lists accordingly.
 
 ---
 
 ## Open questions
 
-1. **T z_top height**: with the spine in the centre third, z_top is
-   approximately INT_H/3 − 2 rows ≈ 2–4 rows.  Is that reliably enough
-   to fit one room, or should there be an explicit minimum height check
-   before assigning a room to z_top?
+1. **double-T in level configs**: which levels should include `'double_t'`?
+   It needs enough rooms to populate 6 zones (roughly 6–8 rooms minimum).
 
-2. **Z z_side**: z_side is as wide as the gap between the bridge and the
-   border (arm_w = 3–5 cols wide).  Should z_side sometimes get 0 rooms
-   (when the gap is too small for MIN_W) rather than always attempting to
-   fill it?
+2. **cross refactor**: the current `_layout_cross` produces a full `+`
+   corridor with rooms in 4 corner quadrants.  After refactoring, cross
+   becomes double-T with aligned stems — the corridor shape changes (it
+   now has a band with two aligned stem extensions rather than a full `+`).
+   Is that acceptable, or should the full-`+` corridor be kept as well?
 
 ---
 
 ## Done when
 
 - [ ] `poe test` passes
-- [ ] T `down`/`up`: rooms visible above the spine AND on both sides of the stem; stem reaches the border when z_bot is empty
-- [ ] T `right`/`left`: same, symmetrically
-- [ ] Z/S layout visible in game: large zone on one side of bridge, narrow zone on the other; no stone-waste quadrants
-- [ ] All four Z variants (Z, S, rotated-Z, rotated-S) reachable in generation
-- [ ] `'chain'` removed from all level configs; `'z'` added
+- [ ] horizontal/vertical unchanged in appearance after refactor
+- [ ] T: rooms above spine, rooms on both sides of stem, stem extends to border when z_bot empty
+- [ ] double-T: two stems visible, rooms in all 6 zones (or fewer if band too small)
+- [ ] cross: two aligned stems; rooms in 4 side-zones
+- [ ] Z/S/rotated visible; large z_main zone, narrow z_side; no stone waste
+- [ ] `'chain'` removed; `'z'` and `'double_t'` added to level configs
