@@ -575,6 +575,58 @@ class TestBuildLevelDict(unittest.TestCase):
         self.assertNotIn((pc, pr), room['walls'],
                          "Player start is on a wall")
 
+    def test_entrance_key_exists(self):
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('room', NodeSize.ROOM)
+        g.add_edge('corridor', 'room', EdgeType.OPEN)
+        level = build_level_dict(g)
+        room = level['rooms'][level['start_room']]
+        self.assertIn('entrance', room)
+
+    def test_entrance_is_on_outer_border(self):
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('room', NodeSize.ROOM)
+        g.add_edge('corridor', 'room', EdgeType.OPEN)
+        level = build_level_dict(g)
+        room = level['rooms'][level['start_room']]
+        ec, er = room['entrance']
+        on_border = (ec == 0 or ec == COLS - 1 or er == 0 or er == ROWS - 1)
+        self.assertTrue(on_border, f"entrance {(ec, er)} not on outer border")
+
+    def test_player_start_adjacent_to_entrance(self):
+        g = LevelGraph()
+        g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
+        g.add_node('room', NodeSize.ROOM)
+        g.add_edge('corridor', 'room', EdgeType.OPEN)
+        level = build_level_dict(g)
+        room = level['rooms'][level['start_room']]
+        ec, er = room['entrance']
+        pc, pr = level['player_start']
+        dist = abs(pc - ec) + abs(pr - er)
+        self.assertEqual(dist, 1,
+                         f"player_start {(pc, pr)} not adjacent to entrance {(ec, er)}")
+        self.assertNotIn((pc, pr), room['walls'])
+
+    def test_entrance_in_start_grid_only(self):
+        from tests.conftest import FS_ALL
+        fs = dict(FS_ALL)
+        fs['grid_count'] = 3
+        fs['branch_prob'] = 0.0
+        for seed in range(5):
+            rng = random.Random(seed)
+            graph = LevelGraph.generate(fs, rng=rng)
+            level = build_level_dict(graph, rng=random.Random(seed))
+            start_room = level['start_room']
+            for gname, room in level['rooms'].items():
+                if gname == start_room:
+                    self.assertIn('entrance', room,
+                                  f"Start grid {gname!r} missing entrance (seed={seed})")
+                else:
+                    self.assertNotIn('entrance', room,
+                                     f"Non-start grid {gname!r} should not have entrance (seed={seed})")
+
     def test_tile_owner_in_output(self):
         g = LevelGraph()
         g.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
