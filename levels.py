@@ -196,7 +196,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS],
             'material_count': (4, 6),
             'enemy_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'cross', 't', 'chain', 'l'],
+            'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z', 'l'],
         },
         # Level 12: + locked doors
         {
@@ -207,7 +207,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (4, 8),
             'enemy_count': (1, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z'],
         },
         # Level 13: + gates, 2 grids
         {
@@ -219,7 +219,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (5, 8),
             'enemy_count': (2, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 2,
         },
         # Level 14: + water streams, 2 grids
@@ -232,7 +232,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (5, 8),
             'enemy_count': (2, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 2,
         },
         # Level 15: + flame jets, 2 grids
@@ -247,7 +247,7 @@ def _generate_act2():
             'enemy_count': (2, 4),
             'has_flames': True,
             'closet_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 2,
         },
         # Level 16: + forge ogre, 2 grids
@@ -263,7 +263,7 @@ def _generate_act2():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 2,
         },
         # Level 17: 3 grids, all mechanics
@@ -279,7 +279,7 @@ def _generate_act2():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 3,
         },
         # Level 18: 3 grids, heavier
@@ -295,7 +295,7 @@ def _generate_act2():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 3,
         },
         # Level 19: 3 grids, gauntlet
@@ -311,7 +311,7 @@ def _generate_act2():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 3,
         },
         # Level 20: boss level, 3 grids
@@ -327,7 +327,7 @@ def _generate_act2():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 3,
         },
     ]

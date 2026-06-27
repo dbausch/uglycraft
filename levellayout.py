@@ -170,7 +170,7 @@ def _try_l_pair_vertical(placed, name_i, name_j, row, band_col, band_w, h_i, h_j
 
 # ── Layout strategies ─────────────────────────────────────────────────────────
 
-STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain', 'l']
+STRATEGIES = ['horizontal', 'vertical', 'off_centre', 't', 'double_t', 'z', 'l']
 
 
 def layout_graph(graph, rng=None, strategies=None):
@@ -226,12 +226,14 @@ def layout_graph(graph, rng=None, strategies=None):
         placed = _layout_vertical(corridor_name, regular_rooms, rng, em, ns)
     elif strategy == 'off_centre':
         placed = _layout_off_centre(corridor_name, regular_rooms, rng, em, ns)
-    elif strategy == 'cross':
-        placed = _layout_cross(corridor_name, regular_rooms, rng, em, ns)
     elif strategy == 't':
-        placed = _layout_t(corridor_name, regular_rooms, rng, em, ns)
-    elif strategy == 'chain':
-        placed = _layout_chain(corridor_name, regular_rooms, rng, em, ns)
+        placed = _layout_corridor(corridor_name, regular_rooms, rng,
+                                   stems=[_random_stem(rng)], edge_map=em, node_sizes=ns)
+    elif strategy == 'double_t':
+        placed = _layout_corridor(corridor_name, regular_rooms, rng,
+                                   stems=_double_t_stems(rng), edge_map=em, node_sizes=ns)
+    elif strategy == 'z':
+        placed = _layout_z(corridor_name, regular_rooms, rng, em, ns)
     elif strategy == 'l':
         placed = _layout_l(corridor_name, regular_rooms, rng, em, ns)
     else:
@@ -345,186 +347,211 @@ def _layout_off_centre(corridor_name, room_names, rng, edge_map=None, node_sizes
     return placed
 
 
-def _layout_cross(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
-    """Corridor = horizontal arm ∪ vertical arm (+ shape). Rooms in 4 corner quadrants."""
-    arm_h = rng.randint(2, 3)
-    arm_w = rng.randint(2, 3)
-    c_row = (MIN_R + MAX_R + 1 - arm_h) // 2
-    c_col = (MIN_C + MAX_C + 1 - arm_w) // 2
 
-    h_tiles = frozenset((c, r) for c in range(MIN_C, MAX_C + 1)
-                                for r in range(c_row, c_row + arm_h))
-    v_tiles = frozenset((c, r) for c in range(c_col, c_col + arm_w)
-                                for r in range(MIN_R, MAX_R + 1))
-    cor_tiles = h_tiles | v_tiles
-    placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
-                                         floor_tiles=cor_tiles)}
-    rng.shuffle(room_names)
-
-    quads = [
-        (MIN_C,          MIN_R,          c_col - MIN_C - 1,  c_row - MIN_R - 1),
-        (c_col + arm_w + 1, MIN_R,       MAX_C - c_col - arm_w, c_row - MIN_R - 1),
-        (MIN_C,          c_row + arm_h + 1, c_col - MIN_C - 1, MAX_R - c_row - arm_h),
-        (c_col + arm_w + 1, c_row + arm_h + 1, MAX_C - c_col - arm_w, MAX_R - c_row - arm_h),
-    ]
-    per_quad = [[] for _ in range(4)]
-    for i, name in enumerate(room_names):
-        per_quad[i % 4].append(name)
-    for (qc, qr, qw, qh), names in zip(quads, per_quad):
-        if names and qw >= 3 and qh >= 2:
-            _pack_band(placed, names, rng,
-                       band_col=qc, band_row=qr, band_w=qw, band_h=qh,
-                       edge_map=edge_map, node_sizes=node_sizes)
-    return placed
+def _random_stem(rng):
+    """Return one stem spec (side, col_frac, w_range) for a T layout."""
+    side = rng.choice(['near', 'far'])
+    col_frac = rng.uniform(0.25, 0.75)
+    return (side, col_frac, (3, 5))
 
 
-def _layout_t(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
-    """T-shaped corridor in any of 4 orientations. Rooms in 3 zones.
+def _double_t_stems(rng):
+    """Return two stem specs for a double-T layout.
 
-    Zone boundaries are chosen so that no room is directly adjacent to the spine
-    or to another room from a different zone.  Each zone is separated from the
-    corridor and from its neighbours by at least 1 wall tile.
+    40 % chance stems are aligned (cross-like); 60 % offset.
     """
-    orientation = rng.choice(['down', 'up', 'right', 'left'])
-    arm_h = rng.randint(2, 3)
-    arm_w = rng.randint(2, 3)
+    frac_near = rng.uniform(0.25, 0.75)
+    if rng.random() < 0.4:
+        frac_far = frac_near
+    else:
+        # Keep fracs at least 0.2 apart so stems are visibly offset
+        delta = rng.uniform(0.2, 0.5)
+        frac_far = frac_near + delta
+        if frac_far > 0.75:
+            frac_far = frac_near - delta
+        frac_far = min(0.75, max(0.25, frac_far))
+    return [('near', frac_near, (3, 5)), ('far', frac_far, (3, 5))]
+
+
+def _layout_corridor(corridor_name, room_names, rng, stems=(),
+                     orientation='h', edge_map=None, node_sizes=None):
+    """Generalised corridor: full-width band + 0–2 perpendicular stems.
+
+    orientation  'h' horizontal spine, 'v' vertical spine (transposed).
+    stems        sequence of (side, col_frac, w_range):
+                   side      'near' (top/'h', left/'v') or 'far' (bottom/'h', right/'v')
+                   col_frac  float 0–1, stem centre fraction of band width
+                   w_range   (min_w, max_w) for stem width
+    Stems always extend to the grid border; no tip rooms are pre-allocated.
+    """
     rng.shuffle(room_names)
 
-    if orientation in ('down', 'up'):
-        # Spine: full-width horizontal arm; stem: vertical arm on one side.
-        c_stem   = (MIN_C + MAX_C + 1 - arm_w) // 2
-        stem_len = INT_H // 2
+    # --- spine position: centre third (same as _layout_horizontal) ---
+    arm_h   = rng.randint(2, 3)
+    sp_lo   = MIN_R + INT_H // 3
+    sp_hi   = MIN_R + 2 * INT_H // 3 - arm_h
+    if sp_lo > sp_hi:
+        sp_lo = sp_hi
+    r_spine = rng.randint(sp_lo, sp_hi)
 
-        if orientation == 'down':
-            r_stem_start = MIN_R + arm_h           # first row of stem
-            r_stem_end   = r_stem_start + stem_len - 1
-            spine_rows   = range(MIN_R, MIN_R + arm_h)
-            z3_row, z3_h = r_stem_end + 2, MAX_R - r_stem_end - 1
-        else:
-            r_stem_end   = MAX_R - arm_h           # last row of stem
-            r_stem_start = r_stem_end - stem_len + 1
-            spine_rows   = range(MAX_R - arm_h + 1, MAX_R + 1)
-            z3_row, z3_h = MIN_R, r_stem_start - MIN_R - 1
+    # --- resolve each stem ---
+    stem_info = []
+    for side, col_frac, w_range in stems:
+        stem_w = rng.randint(*w_range)
+        c_ctr  = MIN_C + int(col_frac * INT_W)
+        c_stem = min(max(c_ctr - stem_w // 2, MIN_C + 1), MAX_C - stem_w)
+        stem_info.append({'side': side, 'c': c_stem, 'w': stem_w})
 
-        spine_tiles = frozenset((c, r) for c in range(MIN_C, MAX_C + 1)
-                                       for r in spine_rows)
-        stem_tiles  = frozenset((c, r) for c in range(c_stem, c_stem + arm_w)
-                                       for r in range(r_stem_start, r_stem_end + 1))
-        cor_tiles   = spine_tiles | stem_tiles
-        placed      = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R,
-                                                  INT_W, INT_H,
-                                                  floor_tiles=cor_tiles)}
+    # --- build corridor floor tiles (spine + stems to border) ---
+    cor_tiles = set(
+        (c, r)
+        for c in range(MIN_C, MAX_C + 1)
+        for r in range(r_spine, r_spine + arm_h)
+    )
+    for s in stem_info:
+        rows = (range(r_spine + arm_h, MAX_R + 1) if s['side'] == 'far'
+                else range(MIN_R, r_spine))
+        for r in rows:
+            for c in range(s['c'], s['c'] + s['w']):
+                cor_tiles.add((c, r))
 
-        # Wide side zones: full area beside spine on each side of the stem.
-        # All rooms face the spine's far edge and connect via one wall row.
-        zw_L = c_stem - MIN_C - 1
-        zw_R = MAX_C - (c_stem + arm_w)
-        if orientation == 'down':
-            z1 = (MIN_C,              MIN_R + arm_h + 1, zw_L, MAX_R - MIN_R - arm_h)
-            z2 = (c_stem + arm_w + 1, MIN_R + arm_h + 1, zw_R, MAX_R - MIN_R - arm_h)
-        else:  # up
-            z1 = (MIN_C,              MIN_R, zw_L, MAX_R - arm_h - MIN_R)
-            z2 = (c_stem + arm_w + 1, MIN_R, zw_R, MAX_R - arm_h - MIN_R)
-        z3 = (c_stem, z3_row, arm_w, z3_h)
+    if orientation == 'v':
+        cor_tiles = {(r, c) for c, r in cor_tiles}
 
-        # z3 gets at most 1 room — only the first room directly faces the stem end.
-        per_zone = [[], [], []]
-        if room_names:
-            per_zone[2].append(room_names[0])
-        for i, name in enumerate(room_names[1:]):
-            per_zone[i % 2].append(name)
-        zone_fns = [_pack_band, _pack_band, _pack_band_vertical]
-        for (zc, zr, zw, zh), fn, names in zip([z1, z2, z3], zone_fns, per_zone):
-            if names and zw >= 3 and zh >= 2:
-                fn(placed, names, rng,
-                   band_col=zc, band_row=zr, band_w=zw, band_h=zh,
-                   edge_map=edge_map, node_sizes=node_sizes)
+    placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
+                                         floor_tiles=frozenset(cor_tiles))}
 
-    else:  # right or left
-        # Spine: full-height vertical arm; stem: horizontal arm on one side.
-        r_stem   = (MIN_R + MAX_R + 1 - arm_h) // 2
-        stem_len = INT_W // 2
+    # --- derive room zones for each side of the spine ---
+    near_stems = [s for s in stem_info if s['side'] == 'near']
+    far_stems  = [s for s in stem_info if s['side'] == 'far']
 
-        if orientation == 'right':
-            c_stem_start = MIN_C + arm_w
-            c_stem_end   = c_stem_start + stem_len - 1
-            spine_cols   = range(MIN_C, MIN_C + arm_w)
-            z3_col, z3_w = c_stem_end + 2, MAX_C - c_stem_end - 1
-        else:
-            c_stem_end   = MAX_C - arm_w
-            c_stem_start = c_stem_end - stem_len + 1
-            spine_cols   = range(MAX_C - arm_w + 1, MAX_C + 1)
-            z3_col, z3_w = MIN_C, c_stem_start - MIN_C - 1
+    def _side_zones(side_stems, r_start, r_end):
+        zh = r_end - r_start + 1
+        if zh < 2:
+            return []
+        if not side_stems:
+            return [(MIN_C, r_start, INT_W, zh, _pack_band)]
+        s = side_stems[0]
+        c, w = s['c'], s['w']
+        result = []
+        if c - MIN_C - 1 >= 3:
+            result.append((MIN_C,     r_start, c - MIN_C - 1, zh, _pack_band))
+        if MAX_C - (c + w) >= 3:
+            result.append((c + w + 1, r_start, MAX_C - (c + w), zh, _pack_band))
+        return result
 
-        spine_tiles = frozenset((c, r) for c in spine_cols
-                                       for r in range(MIN_R, MAX_R + 1))
-        stem_tiles  = frozenset((c, r) for c in range(c_stem_start, c_stem_end + 1)
-                                       for r in range(r_stem, r_stem + arm_h))
-        cor_tiles   = spine_tiles | stem_tiles
-        placed      = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R,
-                                                  INT_W, INT_H,
-                                                  floor_tiles=cor_tiles)}
+    zones = (
+        _side_zones(near_stems, MIN_R,                r_spine - 2) +
+        _side_zones(far_stems,  r_spine + arm_h + 1,  MAX_R)
+    )
 
-        # Wide side zones: full area beside spine, above and below the stem.
-        zw_side = MAX_C - MIN_C - arm_w   # width of area beside the spine
-        zh_A    = r_stem - MIN_R - 1      # height above stem
-        zh_B    = MAX_R - r_stem - arm_h  # height below stem
-        if orientation == 'right':
-            z1 = (MIN_C + arm_w + 1, MIN_R,              zw_side, zh_A)
-            z2 = (MIN_C + arm_w + 1, r_stem + arm_h + 1, zw_side, zh_B)
-        else:  # left
-            z1 = (MIN_C, MIN_R,              zw_side, zh_A)
-            z2 = (MIN_C, r_stem + arm_h + 1, zw_side, zh_B)
-        z3 = (z3_col, r_stem, z3_w, arm_h)  # far side of stem (horizontal)
+    if orientation == 'v':
+        def _tfn(fn):
+            return _pack_band_vertical if fn == _pack_band else _pack_band
+        zones = [(r, c, h, w, _tfn(fn)) for c, r, w, h, fn in zones]
 
-        # z3 gets at most 1 room (same adjacency constraint as down/up z3).
-        per_zone = [[], [], []]
-        if room_names:
-            per_zone[2].append(room_names[0])
-        for i, name in enumerate(room_names[1:]):
-            per_zone[i % 2].append(name)
-        for (zc, zr, zw, zh), fn, names in zip(
-                [z1, z2, z3],
-                [_pack_band_vertical, _pack_band_vertical, _pack_band],
-                per_zone):
-            if names and zw >= 3 and zh >= 2:
-                fn(placed, names, rng,
-                   band_col=zc, band_row=zr, band_w=zw, band_h=zh,
-                   edge_map=edge_map, node_sizes=node_sizes)
+    # --- distribute rooms round-robin to valid zones ---
+    valid = [(c, r, w, h, fn) for c, r, w, h, fn in zones if w >= 3 and h >= 2]
+    if valid:
+        per_zone = [[] for _ in valid]
+        for i, name in enumerate(room_names):
+            per_zone[i % len(valid)].append(name)
+        for (zc, zr, zw, zh, fn), names in zip(valid, per_zone):
+            if names:
+                fn(placed, names, rng, band_col=zc, band_row=zr,
+                   band_w=zw, band_h=zh, edge_map=edge_map, node_sizes=node_sizes)
 
     return placed
 
 
-def _layout_chain(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
-    """Compact rectangular hub with rooms in 4 linear bands (above, below, left, right)."""
-    cor_w = rng.randint(4, 8)
-    cor_h = rng.randint(3, 5)
-    cor_col = MIN_C + (INT_W - cor_w) // 2
-    cor_row = MIN_R + (INT_H - cor_h) // 2
+def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
+    """Z/S-shaped corridor: two full-length arms + a bridge. 4 variants.
 
-    placed = {corridor_name: PlacedNode(corridor_name, cor_col, cor_row, cor_w, cor_h)}
+    Variants: z_h (horizontal arms, bridge right), s_h (bridge left),
+              z_v (vertical arms, bridge bottom), s_v (bridge top).
+    """
+    variant  = rng.choice(['z_h', 's_h', 'z_v', 's_v'])
+    arm_th   = rng.randint(2, 3)   # arm thickness
+    bridge_w = rng.randint(3, 5)   # bridge width
+
     rng.shuffle(room_names)
 
-    above_h = cor_row - MIN_R - 1
-    below_h = MAX_R - (cor_row + cor_h)
-    left_w  = cor_col - MIN_C - 1
-    right_w = MAX_C - (cor_col + cor_w)
+    if variant in ('z_h', 's_h'):
+        # Two full-width horizontal arms at top/bottom borders.
+        # Bridge offset from the near border so both zones have usable width.
+        max_off = max(3, min(8, INT_W - bridge_w - 6))
+        offset  = rng.randint(3, max_off)
+        c_bridge = (MAX_C - bridge_w - offset + 1 if variant == 'z_h'
+                    else MIN_C + offset)
 
-    # Above/below bands use hub columns so every room is adjacent to the hub
-    # top/bottom edge, guaranteeing a shared boundary wall tile exists.
-    bands = [
-        (cor_col, MIN_R,              cor_w,  above_h, _pack_band),
-        (cor_col, cor_row + cor_h + 1, cor_w, below_h, _pack_band),
-        (MIN_C, cor_row,             left_w, cor_h,  _pack_band_vertical),
-        (cor_col + cor_w + 1, cor_row, right_w, cor_h, _pack_band_vertical),
-    ]
-    per_band = [[] for _ in range(4)]
-    for i, name in enumerate(room_names):
-        per_band[i % 4].append(name)
-    for (bc, br, bw, bh, fn), names in zip(bands, per_band):
-        if names and bw >= 3 and bh >= 2:
-            fn(placed, names, rng, band_col=bc, band_row=br, band_w=bw, band_h=bh,
-               edge_map=edge_map, node_sizes=node_sizes)
+        top_tiles    = frozenset((c, r) for c in range(MIN_C, MAX_C + 1)
+                                         for r in range(MIN_R, MIN_R + arm_th))
+        bot_tiles    = frozenset((c, r) for c in range(MIN_C, MAX_C + 1)
+                                         for r in range(MAX_R - arm_th + 1, MAX_R + 1))
+        bridge_tiles = frozenset((c, r) for c in range(c_bridge, c_bridge + bridge_w)
+                                         for r in range(MIN_R + arm_th, MAX_R - arm_th + 1))
+        placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
+                                             floor_tiles=top_tiles | bot_tiles | bridge_tiles)}
+
+        r0 = MIN_R + arm_th + 1
+        r1 = MAX_R - arm_th - 1
+        zh = r1 - r0 + 1
+
+        if variant == 'z_h':   # bridge right → main zone on left
+            z_main = (MIN_C,             r0, c_bridge - MIN_C - 1,          zh, _pack_band)
+            z_side = (c_bridge + bridge_w + 1, r0, MAX_C - c_bridge - bridge_w, zh,
+                      _pack_band_vertical)
+        else:                   # bridge left → main zone on right
+            z_main = (c_bridge + bridge_w + 1, r0, MAX_C - c_bridge - bridge_w, zh,
+                      _pack_band)
+            z_side = (MIN_C,             r0, c_bridge - MIN_C - 1,          zh,
+                      _pack_band_vertical)
+
+    else:  # z_v, s_v
+        # Two full-height vertical arms at left/right borders.
+        max_off = max(3, min(5, INT_H - bridge_w - 6))
+        offset  = rng.randint(3, max_off)
+        r_bridge = (MAX_R - bridge_w - offset + 1 if variant == 'z_v'
+                    else MIN_R + offset)
+
+        left_tiles   = frozenset((c, r) for c in range(MIN_C, MIN_C + arm_th)
+                                          for r in range(MIN_R, MAX_R + 1))
+        right_tiles  = frozenset((c, r) for c in range(MAX_C - arm_th + 1, MAX_C + 1)
+                                          for r in range(MIN_R, MAX_R + 1))
+        bridge_tiles = frozenset((c, r) for c in range(MIN_C + arm_th, MAX_C - arm_th + 1)
+                                          for r in range(r_bridge, r_bridge + bridge_w))
+        placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
+                                             floor_tiles=left_tiles | right_tiles | bridge_tiles)}
+
+        c0 = MIN_C + arm_th + 1
+        c1 = MAX_C - arm_th - 1
+        zw = c1 - c0 + 1
+
+        if variant == 'z_v':   # bridge near bottom → main zone above
+            z_main = (c0, MIN_R,             zw, r_bridge - MIN_R - 1, _pack_band_vertical)
+            z_side = (c0, r_bridge + bridge_w + 1, zw,
+                      MAX_R - r_bridge - bridge_w, _pack_band)
+        else:                   # bridge near top → main zone below
+            z_main = (c0, r_bridge + bridge_w + 1, zw,
+                      MAX_R - r_bridge - bridge_w, _pack_band_vertical)
+            z_side = (c0, MIN_R, zw, r_bridge - MIN_R - 1, _pack_band)
+
+    # Main zone gets all rooms; side zone gets at most 1 if viable.
+    zmc, zmr, zmw, zmh, zm_fn = z_main
+    zsc, zsr, zsw, zsh, zs_fn = z_side
+    side_ok = zsw >= 3 and zsh >= 2
+    if side_ok and room_names:
+        side_rooms = [room_names[-1]]
+        main_rooms = room_names[:-1]
+    else:
+        side_rooms = []
+        main_rooms = list(room_names)
+    if main_rooms and zmw >= 3 and zmh >= 2:
+        zm_fn(placed, main_rooms, rng, band_col=zmc, band_row=zmr,
+              band_w=zmw, band_h=zmh, edge_map=edge_map, node_sizes=node_sizes)
+    if side_rooms:
+        zs_fn(placed, side_rooms, rng, band_col=zsc, band_row=zsr,
+              band_w=zsw, band_h=zsh, edge_map=edge_map, node_sizes=node_sizes)
     return placed
 
 
@@ -2003,14 +2030,13 @@ def _build_super_grid(graph, rng, strategies):
         all_rooms[gname] = d['rooms']['main']
         all_player_starts[gname] = d['player_start']
 
-    # If any stitch would fail, rebuild every multi-grid subgraph with 'cross'
-    # strategy.  The cross layout's full-width h-arm (rows 6-8) and full-height
-    # v-arm (cols 13-15) guarantee that any two grids share rows 7-8 and cols
-    # 14-15 at their border positions, so stitching always succeeds.
+    # If any stitch would fail, rebuild every multi-grid subgraph with 'double_t'.
+    # double_t always has a full-width spine plus stems reaching all four borders,
+    # guaranteeing shared floor rows/cols at every border position.
     if not _stitch_ok(all_rooms):
         for i, corridor in enumerate(corridor_order):
             d = build_level_dict(
-                subgraphs[corridor], rng=rng, strategies=['cross'], grid_count=1)
+                subgraphs[corridor], rng=rng, strategies=['double_t'], grid_count=1)
             gname = grid_name_map[corridor]
             all_rooms[gname] = d['rooms']['main']
             all_player_starts[gname] = d['player_start']
