@@ -47,3 +47,5 @@
 **Music deduplication on same level:** `start_music(key)` returns early if `_current_key == key`. Dying and restarting on the same level does not restart the music — it continues mid-track. This is intentional for smooth UX, not a bug.
 
 **`item_no` NOT reset on death:** Unlike the Pascal version, UGLYCRAFT continues the item sequence after a death. The player resumes collecting from whatever `item_no` they were on. The penalty is purely score-based (−500 pts).
+
+**Bridge placement silently consumes extras:** When the player has crafted multiple bridges and tries to place them, only the first placement succeeds. Subsequent attempts consume the bridge item from inventory without placing anything in the world. Root cause unknown — likely in the bridge placement / water-tile check logic in `game.py`. Backlog.
