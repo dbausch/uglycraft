@@ -26,20 +26,44 @@ class PlacedNode:
 
     __slots__ = ('name', 'col', 'row', 'w', 'h', 'floor_tiles')
 
-    def __init__(self, name, col, row, w, h):
+    def __init__(self, name, col, row, w, h, floor_tiles=None):
         self.name = name
         self.col = col
         self.row = row
         self.w = w
         self.h = h
-        self.floor_tiles = frozenset(
-            (c, r) for c in range(col, col + w) for r in range(row, row + h)
-        )
+        if floor_tiles is not None:
+            self.floor_tiles = floor_tiles
+        else:
+            self.floor_tiles = frozenset(
+                (c, r) for c in range(col, col + w) for r in range(row, row + h)
+            )
+
+
+def _l_shape_tiles(col, row, w, h, rng):
+    """Return floor_tiles for a random L-shape within bounding box (col,row,w,h)."""
+    cut_w = rng.randint(max(1, w // 3), max(1, w // 2))
+    cut_h = rng.randint(max(1, h // 3), max(1, h // 2))
+    full   = frozenset((c, r) for c in range(col, col + w) for r in range(row, row + h))
+    corner = rng.choice(['tl', 'tr', 'bl', 'br'])
+    if corner == 'tl':
+        cut = {(c, r) for c in range(col, col + cut_w)
+                       for r in range(row, row + cut_h)}
+    elif corner == 'tr':
+        cut = {(c, r) for c in range(col + w - cut_w, col + w)
+                       for r in range(row, row + cut_h)}
+    elif corner == 'bl':
+        cut = {(c, r) for c in range(col, col + cut_w)
+                       for r in range(row + h - cut_h, row + h)}
+    else:
+        cut = {(c, r) for c in range(col + w - cut_w, col + w)
+                       for r in range(row + h - cut_h, row + h)}
+    return frozenset(full - cut)
 
 
 # ── Layout strategies ─────────────────────────────────────────────────────────
 
-STRATEGIES = ['horizontal', 'vertical', 'off_centre']
+STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain']
 
 
 def layout_graph(graph, rng=None, strategies=None):
@@ -65,6 +89,12 @@ def layout_graph(graph, rng=None, strategies=None):
         return _layout_vertical(corridor_name, room_names, rng)
     elif strategy == 'off_centre':
         return _layout_off_centre(corridor_name, room_names, rng)
+    elif strategy == 'cross':
+        return _layout_cross(corridor_name, room_names, rng)
+    elif strategy == 't':
+        return _layout_t(corridor_name, room_names, rng)
+    elif strategy == 'chain':
+        return _layout_chain(corridor_name, room_names, rng)
     else:
         return _layout_horizontal(corridor_name, room_names, rng)
 
@@ -165,6 +195,182 @@ def _layout_off_centre(corridor_name, room_names, rng):
     return placed
 
 
+def _layout_cross(corridor_name, room_names, rng):
+    """Corridor = horizontal arm ∪ vertical arm (+ shape). Rooms in 4 corner quadrants."""
+    arm_h = rng.randint(2, 3)
+    arm_w = rng.randint(2, 3)
+    c_row = (MIN_R + MAX_R + 1 - arm_h) // 2
+    c_col = (MIN_C + MAX_C + 1 - arm_w) // 2
+
+    h_tiles = frozenset((c, r) for c in range(MIN_C, MAX_C + 1)
+                                for r in range(c_row, c_row + arm_h))
+    v_tiles = frozenset((c, r) for c in range(c_col, c_col + arm_w)
+                                for r in range(MIN_R, MAX_R + 1))
+    cor_tiles = h_tiles | v_tiles
+    placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
+                                         floor_tiles=cor_tiles)}
+    rng.shuffle(room_names)
+
+    quads = [
+        (MIN_C,          MIN_R,          c_col - MIN_C - 1,  c_row - MIN_R - 1),
+        (c_col + arm_w + 1, MIN_R,       MAX_C - c_col - arm_w, c_row - MIN_R - 1),
+        (MIN_C,          c_row + arm_h + 1, c_col - MIN_C - 1, MAX_R - c_row - arm_h),
+        (c_col + arm_w + 1, c_row + arm_h + 1, MAX_C - c_col - arm_w, MAX_R - c_row - arm_h),
+    ]
+    per_quad = [[] for _ in range(4)]
+    for i, name in enumerate(room_names):
+        per_quad[i % 4].append(name)
+    for (qc, qr, qw, qh), names in zip(quads, per_quad):
+        if names and qw >= 3 and qh >= 2:
+            _pack_band(placed, names, rng,
+                       band_col=qc, band_row=qr, band_w=qw, band_h=qh)
+    return placed
+
+
+def _layout_t(corridor_name, room_names, rng):
+    """T-shaped corridor in any of 4 orientations. Rooms in 3 zones.
+
+    Zone boundaries are chosen so that no room is directly adjacent to the spine
+    or to another room from a different zone.  Each zone is separated from the
+    corridor and from its neighbours by at least 1 wall tile.
+    """
+    orientation = rng.choice(['down', 'up', 'right', 'left'])
+    arm_h = rng.randint(2, 3)
+    arm_w = rng.randint(2, 3)
+    rng.shuffle(room_names)
+
+    if orientation in ('down', 'up'):
+        # Spine: full-width horizontal arm; stem: vertical arm on one side.
+        c_stem   = (MIN_C + MAX_C + 1 - arm_w) // 2
+        stem_len = INT_H // 2
+
+        if orientation == 'down':
+            r_stem_start = MIN_R + arm_h           # first row of stem
+            r_stem_end   = r_stem_start + stem_len - 1
+            spine_rows   = range(MIN_R, MIN_R + arm_h)
+            z3_row, z3_h = r_stem_end + 2, MAX_R - r_stem_end - 1
+        else:
+            r_stem_end   = MAX_R - arm_h           # last row of stem
+            r_stem_start = r_stem_end - stem_len + 1
+            spine_rows   = range(MAX_R - arm_h + 1, MAX_R + 1)
+            z3_row, z3_h = MIN_R, r_stem_start - MIN_R - 1
+
+        spine_tiles = frozenset((c, r) for c in range(MIN_C, MAX_C + 1)
+                                       for r in spine_rows)
+        stem_tiles  = frozenset((c, r) for c in range(c_stem, c_stem + arm_w)
+                                       for r in range(r_stem_start, r_stem_end + 1))
+        cor_tiles   = spine_tiles | stem_tiles
+        placed      = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R,
+                                                  INT_W, INT_H,
+                                                  floor_tiles=cor_tiles)}
+
+        # Side zones: rows strictly INSIDE stem range (start+1 .. end-1),
+        # cols outside stem but not adjacent to spine.
+        zr_mid = r_stem_start + 1
+        zh_mid = r_stem_end - r_stem_start - 1   # height of side bands
+        zw_L   = c_stem - MIN_C - 2              # width of left side zone
+        zw_R   = MAX_C - (c_stem + arm_w) - 1   # width of right side zone
+
+        z1 = (MIN_C,               zr_mid,  zw_L,  zh_mid)  # left of stem
+        z2 = (c_stem + arm_w + 1,  zr_mid,  zw_R,  zh_mid)  # right of stem
+        # z3 restricted to stem columns so every room is adjacent to the stem
+        z3 = (c_stem,              z3_row,  arm_w, z3_h)
+
+        # z3 connects to the stem only via a single shared-boundary row, so at
+        # most 1 room can occupy it.  Any remaining rooms go to z1/z2.
+        per_zone = [[], [], []]
+        if room_names:
+            per_zone[2].append(room_names[0])
+        for i, name in enumerate(room_names[1:]):
+            per_zone[i % 2].append(name)
+        zone_fns = [_pack_band, _pack_band, _pack_band_vertical]
+        for (zc, zr, zw, zh), fn, names in zip([z1, z2, z3], zone_fns, per_zone):
+            if names and zw >= 3 and zh >= 2:
+                fn(placed, names, rng,
+                   band_col=zc, band_row=zr, band_w=zw, band_h=zh)
+
+    else:  # right or left
+        # Spine: full-height vertical arm; stem: horizontal arm on one side.
+        r_stem   = (MIN_R + MAX_R + 1 - arm_h) // 2
+        stem_len = INT_W // 2
+
+        if orientation == 'right':
+            c_stem_start = MIN_C + arm_w
+            c_stem_end   = c_stem_start + stem_len - 1
+            spine_cols   = range(MIN_C, MIN_C + arm_w)
+            z3_col, z3_w = c_stem_end + 2, MAX_C - c_stem_end - 1
+        else:
+            c_stem_end   = MAX_C - arm_w
+            c_stem_start = c_stem_end - stem_len + 1
+            spine_cols   = range(MAX_C - arm_w + 1, MAX_C + 1)
+            z3_col, z3_w = MIN_C, c_stem_start - MIN_C - 1
+
+        spine_tiles = frozenset((c, r) for c in spine_cols
+                                       for r in range(MIN_R, MAX_R + 1))
+        stem_tiles  = frozenset((c, r) for c in range(c_stem_start, c_stem_end + 1)
+                                       for r in range(r_stem, r_stem + arm_h))
+        cor_tiles   = spine_tiles | stem_tiles
+        placed      = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R,
+                                                  INT_W, INT_H,
+                                                  floor_tiles=cor_tiles)}
+
+        # Side zones: cols strictly INSIDE stem range (start+1 .. end-1),
+        # rows outside stem but not adjacent to spine.
+        zc_mid = c_stem_start + 1
+        zw_mid = c_stem_end - c_stem_start - 1  # width of side bands
+        zh_T   = r_stem - MIN_R - 2             # height above stem
+        zh_B   = MAX_R - r_stem - arm_h         # height below stem
+
+        z1 = (zc_mid,  MIN_R,              zw_mid, zh_T)   # above stem
+        z2 = (zc_mid,  r_stem + arm_h + 1, zw_mid, zh_B)   # below stem
+        # z3 restricted to stem rows so every room touches the stem boundary.
+        # _pack_band_vertical gives all rooms the full band width, guaranteeing
+        # each room's edge column is adjacent to the spine boundary wall.
+        z3 = (z3_col,  r_stem,             z3_w,   arm_h)  # far side (stem rows)
+
+        per_zone = [[], [], []]
+        for i, name in enumerate(room_names):
+            per_zone[i % 3].append(name)
+        for (zc, zr, zw, zh), names in zip([z1, z2, z3], per_zone):
+            if names and zw >= 3 and zh >= 2:
+                _pack_band_vertical(placed, names, rng,
+                                    band_col=zc, band_row=zr, band_w=zw, band_h=zh)
+
+    return placed
+
+
+def _layout_chain(corridor_name, room_names, rng):
+    """Compact rectangular hub with rooms in 4 linear bands (above, below, left, right)."""
+    cor_w = rng.randint(4, 8)
+    cor_h = rng.randint(3, 5)
+    cor_col = MIN_C + (INT_W - cor_w) // 2
+    cor_row = MIN_R + (INT_H - cor_h) // 2
+
+    placed = {corridor_name: PlacedNode(corridor_name, cor_col, cor_row, cor_w, cor_h)}
+    rng.shuffle(room_names)
+
+    above_h = cor_row - MIN_R - 1
+    below_h = MAX_R - (cor_row + cor_h)
+    left_w  = cor_col - MIN_C - 1
+    right_w = MAX_C - (cor_col + cor_w)
+
+    # Above/below bands use hub columns so every room is adjacent to the hub
+    # top/bottom edge, guaranteeing a shared boundary wall tile exists.
+    bands = [
+        (cor_col, MIN_R,              cor_w,  above_h, _pack_band),
+        (cor_col, cor_row + cor_h + 1, cor_w, below_h, _pack_band),
+        (MIN_C, cor_row,             left_w, cor_h,  _pack_band_vertical),
+        (cor_col + cor_w + 1, cor_row, right_w, cor_h, _pack_band_vertical),
+    ]
+    per_band = [[] for _ in range(4)]
+    for i, name in enumerate(room_names):
+        per_band[i % 4].append(name)
+    for (bc, br, bw, bh, fn), names in zip(bands, per_band):
+        if names and bw >= 3 and bh >= 2:
+            fn(placed, names, rng, band_col=bc, band_row=br, band_w=bw, band_h=bh)
+    return placed
+
+
 def _pack_band_vertical(placed, room_names, rng,
                          band_col, band_row, band_w, band_h):
     """Pack rooms into a vertical band (left or right of a vertical corridor)."""
@@ -185,18 +391,25 @@ def _pack_band_vertical(placed, room_names, rng,
         heights[i % n] += 1
     rng.shuffle(heights)
 
+    band_end = band_row + band_h
     row = band_row
     for i, name in enumerate(room_names):
+        if row + 2 > band_end:  # not enough band space for minimum-height room
+            break
         h = heights[i]
         w = band_w
 
-        if row + h > MAX_R + 1:
-            h = MAX_R + 1 - row
+        # Clamp to band bottom edge and grid boundaries
+        h = min(h, band_end - row, MAX_R + 1 - row)
         if band_col + w > MAX_C + 1:
             w = MAX_C + 1 - band_col
 
         if w >= 3 and h >= 2:
-            placed[name] = PlacedNode(name, band_col, row, w, h)
+            if w >= 6 and h >= 5 and rng.random() < 0.35:
+                ft = _l_shape_tiles(band_col, row, w, h, rng)
+                placed[name] = PlacedNode(name, band_col, row, w, h, floor_tiles=ft)
+            else:
+                placed[name] = PlacedNode(name, band_col, row, w, h)
 
         row += h + 1
 
@@ -222,21 +435,27 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h):
         widths[i % n] += 1
     rng.shuffle(widths)
 
+    band_end = band_col + band_w
     col = band_col
     for i, name in enumerate(room_names):
+        if col + 3 > band_end:  # not enough band space for minimum-width room
+            break
         w = widths[i]
         h = band_h
 
-        # Clamp
-        if col + w > MAX_C + 1:
-            w = MAX_C + 1 - col
+        # Clamp to band right edge and grid boundaries
+        w = min(w, band_end - col, MAX_C + 1 - col)
         if band_row + h > MAX_R + 1:
             h = MAX_R + 1 - band_row
 
         if w >= 3 and h >= 2:
-            placed[name] = PlacedNode(name, col, band_row, w, h)
+            if w >= 6 and h >= 5 and rng.random() < 0.35:
+                ft = _l_shape_tiles(col, band_row, w, h, rng)
+                placed[name] = PlacedNode(name, col, band_row, w, h, floor_tiles=ft)
+            else:
+                placed[name] = PlacedNode(name, col, band_row, w, h)
 
-        col += w + 1  # +1 for wall column between rooms
+        col += widths[i] + 1  # advance by original width to preserve spacing
 
 
 # ── Tile ownership map ────────────────────────────────────────────────────────
@@ -1041,13 +1260,14 @@ def _generate_flame_jets(placed_node, walls, rng, entry=None):
 def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     """Generate the complete level dict that game.py expects.
 
-    grid_count=1: single grid (default).
-    grid_count=2: split the graph across two grids connected by a border exit.
+    Auto-detects multi-grid from BORDER edges in the graph.
+    grid_count parameter is kept for API compatibility but ignored when
+    BORDER edges are present.
     """
     rng = rng or random.Random()
 
-    if grid_count >= 2:
-        return _build_multi_grid(graph, rng, strategies)
+    if any(e.edge_type == EdgeType.BORDER for e in graph.edges):
+        return _build_super_grid(graph, rng, strategies)
 
     placed = layout_graph(graph, rng=rng, strategies=strategies)
     walls, water_tiles = derive_walls(graph, placed)
@@ -1279,30 +1499,34 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1):
     }
 
 
-def _build_multi_grid(graph, rng, strategies):
-    """Build a level spanning two 30x16 grids connected by border exits.
+def _build_super_grid(graph, rng, strategies):
+    """Build a level spanning N 30×16 grids connected by BORDER edges.
 
-    Uses the BORDER edge in the graph to determine the partition.
-    Each side of the BORDER edge becomes a separate grid.
+    Discovers corridors via BFS from the start corridor, builds each grid
+    independently, then stitches them together along their BORDER edges.
     """
     from levelgraph import LevelGraph, NodeSize, EdgeType
+    from collections import deque as _deque
 
-    # Find the BORDER edge and the two corridors it connects
-    border_edge = None
-    for edge in graph.edges:
-        if edge.edge_type == EdgeType.BORDER:
-            border_edge = edge
-            break
-    if border_edge is None:
-        raise ValueError("Multi-grid level has no BORDER edge")
+    # BFS-discover corridors in visit order (start corridor first)
+    start_corridor = next(
+        name for name, node in graph.nodes.items()
+        if node.is_start and node.size == NodeSize.CORRIDOR)
 
-    cor_a = border_edge.node_a
-    cor_b = border_edge.node_b
+    corridor_order = []
+    visited = {start_corridor}
+    queue = _deque([start_corridor])
+    while queue:
+        cor = queue.popleft()
+        corridor_order.append(cor)
+        for name, edge in graph.neighbors(cor):
+            if edge.edge_type == EdgeType.BORDER and name not in visited:
+                visited.add(name)
+                queue.append(name)
 
-    # Partition: each corridor and its connected rooms form a grid
-    def _build_subgraph(corridor):
+    def _build_subgraph(corridor, is_start_grid):
         sub = LevelGraph(rng=rng)
-        sub.add_node(corridor, graph.nodes[corridor].size, is_start=True)
+        sub.add_node(corridor, graph.nodes[corridor].size, is_start=is_start_grid)
         for name, edge in graph.neighbors(corridor):
             if edge.edge_type == EdgeType.BORDER:
                 continue
@@ -1318,55 +1542,99 @@ def _build_multi_grid(graph, rng, strategies):
             sub.add_edge(corridor, name, edge.edge_type, **edge.params)
         return sub
 
-    graph_a = _build_subgraph(cor_a)
-    graph_b = _build_subgraph(cor_b)
+    # Build each grid independently
+    grid_name_map = {cor: (f'grid_{i}' if i > 0 else 'grid_a')
+                     for i, cor in enumerate(corridor_order)}
+    all_rooms = {}
+    player_start = None
 
-    dict_a = build_level_dict(graph_a, rng=rng, strategies=strategies,
-                               grid_count=1)
-    dict_b = build_level_dict(graph_b, rng=rng, strategies=strategies,
-                               grid_count=1)
+    for i, corridor in enumerate(corridor_order):
+        sub = _build_subgraph(corridor, is_start_grid=(i == 0))
+        d = build_level_dict(sub, rng=rng, strategies=strategies, grid_count=1)
+        gname = grid_name_map[corridor]
+        all_rooms[gname] = d['rooms']['main']
+        if i == 0:
+            player_start = d['player_start']
 
-    room_a = dict_a['rooms']['main']
-    room_b = dict_b['rooms']['main']
+    # Stitch grids along BORDER edges
+    _INNER = {
+        'right':  (COLS - 2, None),  # (col, row) — None = use shared_pos
+        'left':   (1,        None),
+        'bottom': (None, ROWS - 2),
+        'top':    (None, 1),
+    }
+    _BORDER_TILE = {
+        'right':  lambda pos: (COLS - 1, pos),
+        'left':   lambda pos: (0,        pos),
+        'bottom': lambda pos: (pos, ROWS - 1),
+        'top':    lambda pos: (pos, 0),
+    }
 
-    # Find a connection row: any row where both grids have floor
-    # adjacent to the border. Can be corridor↔corridor, corridor↔room,
-    # or room↔room.
-    rows_a = {r for (c, r) in room_a['tile_owner'] if c == COLS - 2}
-    rows_b = {r for (c, r) in room_b['tile_owner'] if c == 1}
-    shared = sorted(rows_a & rows_b)
+    for edge in graph.edges:
+        if edge.edge_type != EdgeType.BORDER:
+            continue
+        gname_a = grid_name_map[edge.node_a]
+        gname_b = grid_name_map[edge.node_b]
+        room_a  = all_rooms[gname_a]
+        room_b  = all_rooms[gname_b]
 
-    if not shared:
-        raise ValueError("No shared floor row between grids")
+        exit_side  = edge.params.get('exit_side',  'right')
+        entry_side = edge.params.get('entry_side', 'left')
 
-    exit_row = shared[len(shared) // 2]
+        if exit_side in ('right', 'left'):
+            col_a = _INNER[exit_side][0]
+            col_b = _INNER[entry_side][0]
+            rows_a = {r for (c, r) in room_a['tile_owner'] if c == col_a}
+            rows_b = {r for (c, r) in room_b['tile_owner'] if c == col_b}
+            shared = sorted(rows_a & rows_b)
+            if not shared:
+                raise ValueError(
+                    f"No shared floor row between {gname_a} ({exit_side}) "
+                    f"and {gname_b} ({entry_side})")
+            pos = shared[len(shared) // 2]
+            room_a['walls'].pop((col_a, pos), None)
+            room_b['walls'].pop((col_b, pos), None)
+            exit_key_a = f'{exit_side}_{pos}'
+            exit_key_b = f'{entry_side}_{pos}'
+        else:
+            row_a = _INNER[exit_side][1]
+            row_b = _INNER[entry_side][1]
+            cols_a = {c for (c, r) in room_a['tile_owner'] if r == row_a}
+            cols_b = {c for (c, r) in room_b['tile_owner'] if r == row_b}
+            shared = sorted(cols_a & cols_b)
+            if not shared:
+                raise ValueError(
+                    f"No shared floor col between {gname_a} ({exit_side}) "
+                    f"and {gname_b} ({entry_side})")
+            pos = shared[len(shared) // 2]
+            room_a['walls'].pop((pos, row_a), None)
+            room_b['walls'].pop((pos, row_b), None)
+            exit_key_a = f'{exit_side}_{pos}'
+            exit_key_b = f'{entry_side}_{pos}'
 
-    # Clear any wall at the border-adjacent tile on each side
-    room_a['walls'].pop((COLS - 2, exit_row), None)
-    room_b['walls'].pop((1, exit_row), None)
+        exits_a = room_a.get('exits', {})
+        exits_b = room_b.get('exits', {})
+        exits_a[exit_key_a] = gname_b
+        exits_b[exit_key_b] = gname_a
+        room_a['exits'] = exits_a
+        room_b['exits'] = exits_b
 
-    room_a['exits'] = {f'right_{exit_row}': 'grid_b'}
-    room_b['exits'] = {f'left_{exit_row}': 'grid_a'}
+        barrier_tile = _BORDER_TILE[exit_side](pos)
+        barrier = edge.params.get('barrier', 'open')
+        if barrier == 'locked':
+            colour = edge.params['key_colour']
+            doors = room_a.get('locked_doors', [])
+            doors.append((*barrier_tile, colour))
+            room_a['locked_doors'] = doors
+        elif barrier == 'gated':
+            gate_id = edge.params['gate_id']
+            gates = room_a.get('gates', [])
+            gates.append((*barrier_tile, gate_id))
+            room_a['gates'] = gates
 
-    # Place barrier (door/gate) at the exit tile on grid A's side
-    barrier = border_edge.params.get('barrier', 'open')
-    exit_tile = (COLS - 1, exit_row)
-    if barrier == 'locked':
-        colour = border_edge.params['key_colour']
-        doors = room_a.get('locked_doors', [])
-        doors.append((*exit_tile, colour))
-        room_a['locked_doors'] = doors
-    elif barrier == 'gated':
-        gate_id = border_edge.params['gate_id']
-        gates = room_a.get('gates', [])
-        gates.append((*exit_tile, gate_id))
-        room_a['gates'] = gates
-
+    start_grid = grid_name_map[corridor_order[0]]
     return {
-        'start_room': 'grid_a',
-        'player_start': dict_a['player_start'],
-        'rooms': {
-            'grid_a': room_a,
-            'grid_b': room_b,
-        },
+        'start_room': start_grid,
+        'player_start': player_start,
+        'rooms': all_rooms,
     }

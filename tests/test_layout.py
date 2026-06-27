@@ -45,7 +45,7 @@ from levellayout import (
 )
 from tests.conftest import FS_ALL, FS_OPEN, FS_LOCKED, FS_GATED, ALL_FEATURE_SETS
 
-VALID_STRATEGIES = ['horizontal', 'vertical', 'off_centre']
+VALID_STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain']
 
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
@@ -100,14 +100,20 @@ class TestLayoutFaithfulness:
         with pytest.raises(ValueError, match="no shared boundary"):
             derive_walls(graph, placed)
 
-    def test_chain_strategy_not_available(self):
-        """chain strategy must be removed from STRATEGIES.
-        Using it must raise or not exist in the valid set."""
-        graph = LevelGraph.generate(FS_OPEN, rng=random.Random(0))
+    def test_cross_strategy_available(self):
+        """cross strategy must be registered in STRATEGIES."""
         from levellayout import STRATEGIES
-        assert 'chain' not in STRATEGIES, (
-            "'chain' is still in STRATEGIES — it must be removed because it "
-            "does not guarantee edge realisation for star-topology graphs")
+        assert 'cross' in STRATEGIES
+
+    def test_t_strategy_available(self):
+        """t strategy must be registered in STRATEGIES."""
+        from levellayout import STRATEGIES
+        assert 't' in STRATEGIES
+
+    def test_chain_strategy_available(self):
+        """chain strategy must be registered in STRATEGIES."""
+        from levellayout import STRATEGIES
+        assert 'chain' in STRATEGIES
 
 
 # ── Property-based tests: Invariant L holds for all seeds ─────────────────────
