@@ -180,6 +180,8 @@ class Game:
         if self._is_border(col, row):
             return  # indestructible border (no door/bridge here)
         wall_type = self._level_walls.get((col, row))
+        if wall_type == WALL_REINFORCED:
+            return  # indestructible — bumping has no effect
         if self._is_unbumpable(col, row):
             return  # gates and blocks are not breakable by bumping
         self._bump_consumed.add(key)
