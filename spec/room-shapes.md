@@ -161,37 +161,82 @@ has no OPEN edge between rooms i and i+1, fall back to normal placement.
 ### What it looks like
 
 A large room has a rectangular notch cut from one corner.  A small room
-(the closet) occupies that notch.  One shared wall tile connects them.
+(the closet) occupies that notch.  One shared wall tile is the connection
+point — which may be a plain passage, a locked door, or a gate depending
+on the graph edge type.  The closet is a full graph node and can contain
+treasure, materials, or keys exactly like any other room.
 
 ```
 LLLLLLLL
 LLLLLLLL
 LLLLLLLL
-LLLL|CCC   ← boundary wall tile
+LLLL|CCC   ← boundary wall tile (passage / door / gate)
      CCC
      CCC
 ```
 
-The large room (`L`) becomes an L-shape; the closet (`C`) is rectangular
-and sits in the notch.
+The large room (`L`) becomes an L-shape; the closet (`C`) is rectangular.
+
+### Two access patterns
+
+**From inside the large room** (edge: large_room → closet, any edge type):
+
+```
+CORRIDOR
+──────────────────────────
+L L L L L L L L
+L L L L L L L L
+L L L L | C C C   ← plain / locked / gated
+         C C C
+```
+
+The closet sits in a corner that does NOT face the corridor.  The single
+connection tile separates the L-area from the closet.  No direct corridor
+access exists.
+
+**From the corridor directly** (edge: corridor → closet, any edge type):
+
+```
+CORRIDOR
+──────────────────────────
+L L L L L L L L
+L L L L L L L L
+L L L   C C C
+L L L   C C C     ← closet corner faces the corridor
+    ────|────      ← boundary wall tile (passage / door / gate)
+C O R R I D O R
+```
+
+The closet is placed in the corner of the large room that is adjacent to
+the corridor's wall.  The wall tile on the existing large-room ↔ corridor
+boundary (within the closet's column range) becomes the connection tile.
+The large room's L-area has no edge to the closet — they share only a
+physical wall on the notch sides.
 
 ### When to apply
 
 Post-processing step `_nest_closets(placed, graph, rng)` after the
-initial band packing.  For each pair of graph-adjacent rooms where room A
-has w ≥ 8 and h ≥ 6, and room B has w ≤ 5 and h ≤ 4, and a OPEN edge
-connects them:
+initial band packing.  Candidates: any graph-adjacent pair where room A
+has w ≥ 8 and h ≥ 6, room B has w ≤ 5 and h ≤ 4.  All edge types
+(OPEN, LOCKED, GATED) are eligible.
 
-1. Choose a corner of room A to carve (random from the four corners).
-2. Set notch size = (room_B.w, room_B.h) clamped to 30-45% of each
-   dimension.
+1. Determine access pattern from the graph edge direction:
+   - **large_room → closet edge**: any corner of A; orient notch toward
+     the L-interior.
+   - **corridor → closet edge**: corner of A that is adjacent to the
+     corridor's wall row/col.
+2. Set notch size = (room_B.w, room_B.h) clamped to 30–45 % of each
+   dimension of A.
 3. Update room A's floor_tiles to remove the notch.
 4. Reposition room B's PlacedNode into the notch position.
-5. The connection tile is the single wall tile at the boundary between the
-   notch edge and the remaining L area.
+5. Compute the connection tile:
+   - **large_room access**: single wall tile on the interior notch
+     boundary between the L-area and the closet.
+   - **corridor access**: wall tile on the existing corridor ↔ large-room
+     boundary row/col, within the closet's column or row range.
 
-This function runs before `derive_walls` so the wall map is built
-from the updated floor_tiles.
+This function runs before `derive_walls` so the wall map is built from
+the updated floor_tiles.
 
 ---
 
