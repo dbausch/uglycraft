@@ -45,7 +45,7 @@ from levellayout import (
 )
 from tests.conftest import FS_ALL, FS_OPEN, FS_LOCKED, FS_GATED, ALL_FEATURE_SETS
 
-VALID_STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain']
+VALID_STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain', 'l']
 
 
 # ── Unit tests ────────────────────────────────────────────────────────────────

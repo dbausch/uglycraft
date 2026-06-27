@@ -196,7 +196,7 @@ def _generate_act2():
             'material_types': [MAT_ROCKS, MAT_PLANKS],
             'material_count': (4, 6),
             'enemy_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'cross', 't', 'chain'],
+            'layout_strategies': ['horizontal', 'vertical', 'cross', 't', 'chain', 'l'],
         },
         # Level 12: + locked doors
         {
