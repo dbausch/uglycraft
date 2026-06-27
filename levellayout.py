@@ -226,8 +226,7 @@ def _pick_strategy(exits, available, rng, n_rooms=0):
         choices = list(available) if available else ['full_border']
         if n_rooms > 0:
             room_filtered = [s for s in choices
-                             if s in _SIMPLE_STRATEGIES
-                             or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
+                             if n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
             choices = room_filtered if room_filtered else ['full_border']
         return rng.choice(choices)
 
@@ -236,8 +235,7 @@ def _pick_strategy(exits, available, rng, n_rooms=0):
         return 'full_border'
     if n_rooms > 0:
         room_filtered = [s for s in choices
-                         if s in _SIMPLE_STRATEGIES
-                         or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
+                         if n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
         choices = room_filtered if room_filtered else ['full_border']
     return rng.choice(choices)
 
@@ -290,8 +288,7 @@ def layout_graph(graph, rng=None, strategies=None, required_exits=None):
     if len(available) > 1:
         n_rooms = len(regular_rooms)
         room_filtered = [s for s in available
-                         if s in _SIMPLE_STRATEGIES
-                         or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
+                         if n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
         available = room_filtered if room_filtered else ['full_border']
     strategy = rng.choice(available)
 
@@ -1903,7 +1900,12 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
             start_name = name
             break
     pn = placed[start_name]
-    player_start = (pn.col + 1, pn.row + pn.h // 2)
+    target = (pn.col + 1, pn.row + pn.h // 2)
+    if target in pn.floor_tiles:
+        player_start = target
+    else:
+        player_start = min(pn.floor_tiles,
+                           key=lambda t: abs(t[0] - target[0]) + abs(t[1] - target[1]))
 
     # Generate flame jets first so we can exclude their tiles from items
     all_flame_jets = []
