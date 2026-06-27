@@ -207,84 +207,158 @@ Zone C: cols 1–16, rows 10–14.  Zone D: cols 22–28, rows 10–14.
 
 ## 6. Z-corridor  (four variants)
 
-Two parallel arms joined by a bridge.  The bridge separates a large **main**
-zone from a small **side** zone.
+A single corridor stroke with two turns — three connected segments.  The two
+segments on the outer edges exit at two different grid borders each; the
+connector between them is a narrow perpendicular strip.  The corridor shape
+divides the grid into two large room zones.
 
-### 6a. z_h — horizontal arms, bridge near right
+### 6a. z_h — Z shape, horizontal segments
 
-**Example:** `arm_th = 2`, `bridge_w = 3`, `offset = 5`
-→ `c_bridge = 21`
+Parameters: `c_break`, `arm_th`, `arm_w`, and optionally `c_left`/`c_right`
+for where the outer arms start/end (defaulting to the left and right borders).
+The arms do not need to reach the borders — when `c_break` equals `MIN_C` or
+`MAX_C` the shape degenerates to a straight corridor.
 
-Arms: rows 1–2 and 13–14 (full width).
-Bridge: cols 21–23, rows 3–12 (rows MIN_R+arm_th through MAX_R−arm_th).
-Zones: cols 1–19 (main) and cols 25–28 (side), rows 4–11.
-Gap row 3 (except bridge cols).  Gap row 12 (except bridge cols).
-Gap cols 20 and 24.
+**Example:** `c_break = 12`, `arm_th = 2`, `arm_w = 2`
+
+Segment 1 (top arm): cols 1–13 (= MIN_C..c_break+arm_w−1), rows 1–2.
+Connector: cols 12–13, rows 2–13 (arm_th..MAX_R−arm_th+1).  Top arm and
+connector share cols 12–13 at rows 1–2; bottom arm and connector share
+cols 12–13 at rows 13–14.
+Segment 3 (bottom arm): cols 12–28, rows 13–14.
+
+Zone A: cols 15–28, rows 1–11  (right of connector, above bottom arm).
+Zone B: cols 1–10,  rows 4–14  (left of connector, below top arm).
+Gap col 11 (Zone B / connector).  Gap col 14 (connector / Zone A).
+Gap row 3 (top arm ended, Zone B not yet).  Gap row 12 (Zone A ended, bottom arm not yet).
 
 ```
  0 ##############################
- 1 #                            #
- 2 #                            #
- 3 #####################   ######
- 4 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
- 5 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
- 6 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
- 7 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
- 8 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
- 9 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
-10 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
-11 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
-12 #####################   ######
-13 #                            #
-14 #                            #
+ 1 #             #AAAAAAAAAAAAAA#
+ 2 #             #AAAAAAAAAAAAAA#
+ 3 ############  #AAAAAAAAAAAAAA#
+ 4 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 5 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 6 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 7 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 8 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+ 9 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+10 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+11 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
+12 #BBBBBBBBBB#  ################
+13 #BBBBBBBBBB#                 #
+14 #BBBBBBBBBB#                 #
 15 ##############################
 ```
 
-**Fix C (spec 0019):** current code uses `rng.randint(3, max_off)`, which
-allows offset = 3 → side width = offset−1 = 2, failing `side_ok (≥ 3)`.
-Change to `rng.randint(4, max_off)` so side width ≥ 3 always.
+**Exits:** top + left (top arm hits row 1 and col 1) + bottom + right (bottom
+arm hits row 14 and col 28).
 
-### 6b. s_h — horizontal arms, bridge near left
+### 6b. s_h — S shape, horizontal segments  (mirror of z_h)
 
-Mirror of z_h.  `c_bridge = MIN_C + offset`.  Main zone on right, side on
-left.  Same Fix C applies.
+**Example:** `c_break = 17`, `arm_th = 2`, `arm_w = 2`
 
-### 6c. z_v — vertical arms, bridge near bottom
+Segment 1 (top arm): cols 16–28, rows 1–2.
+Connector: cols 16–17, rows 2–13.
+Segment 3 (bottom arm): cols 1–17, rows 13–14.
 
-**Example:** `arm_th = 2`, `bridge_w = 3`, `r_bridge = 8`
-
-Arms: cols 1–2 and 27–28 (full height).
-Bridge: cols 3–26 (MIN_C+arm_th through MAX_C−arm_th), rows 8–10.
-At bridge rows all 28 interior cols are corridor (arms + bridge overlap).
-Zones: cols 4–25, rows 1–6 (main) and rows 12–14 (side).
-Gap rows 7 and 11 (arms only, interior cols 3–26 are wall).
-Gap cols 3 and 26.
+Zone A: cols 1–14,  rows 1–11  (left of connector, above bottom arm).
+Zone B: cols 19–28, rows 4–14  (right of connector, below top arm).
+Gap col 15 (Zone A / connector).  Gap col 18 (connector / Zone B).
+Gap row 3.  Gap row 12.
 
 ```
  0 ##############################
- 1 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
- 2 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
- 3 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
- 4 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
- 5 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
- 6 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
- 7 #  ########################  #
+ 1 #AAAAAAAAAAAAAA#             #
+ 2 #AAAAAAAAAAAAAA#             #
+ 3 #AAAAAAAAAAAAAA#  ############
+ 4 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+ 5 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+ 6 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+ 7 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+ 8 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+ 9 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+10 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+11 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
+12 ################  #BBBBBBBBBB#
+13 #                 #BBBBBBBBBB#
+14 #                 #BBBBBBBBBB#
+15 ##############################
+```
+
+**Exits:** top + right (top arm) + bottom + left (bottom arm).
+
+### 6c. z_v — Z shape, vertical segments
+
+**Example:** `r_break = 7`, `arm_th = 2`, `arm_w = 2`
+
+Segment 1 (left arm): cols 1–2, rows 1–8 (= 1..r_break+arm_w−1).
+Connector: rows 7–8, cols 3–26 (arm_th+1..MAX_C−arm_th).  At rows 7–8 all
+28 interior cols are corridor (left arm + connector + right arm overlap).
+Segment 3 (right arm): cols 27–28, rows 7–14 (= r_break..MAX_R).
+
+Zone A: cols 4–28, rows 1–5  (right of left arm, above connector).
+Zone B: cols 1–25, rows 10–14 (left of right arm, below connector).
+Gap col 3 (left arm / Zone A).  Gap col 26 (Zone B / right arm).
+Gap row 6.  Gap row 9.
+
+```
+ 0 ##############################
+ 1 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
+ 2 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
+ 3 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
+ 4 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
+ 5 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
+ 6 #  ###########################
+ 7 #                            #
  8 #                            #
- 9 #                            #
-10 #                            #
-11 #  ########################  #
-12 #  #SSSSSSSSSSSSSSSSSSSSSS#  #
-13 #  #SSSSSSSSSSSSSSSSSSSSSS#  #
-14 #  #SSSSSSSSSSSSSSSSSSSSSS#  #
+ 9 ###########################  #
+10 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
+11 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
+12 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
+13 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
+14 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
 15 ##############################
 ```
 
-### 6d. s_v — vertical arms, bridge near top
+**Exits:** top + left (left arm) + bottom + right (right arm).
 
-Mirror of z_v.  Main zone below bridge, side zone above.
+### 6d. s_v — S shape, vertical segments  (mirror of z_v)
 
-**Exits (all Z variants):** all four — arms reach both horizontal or
-vertical borders; bridge connects both arms.
+**Example:** `r_break = 7`, `arm_th = 2`, `arm_w = 2`
+
+Segment 1 (right arm): cols 27–28, rows 1–8.
+Connector: rows 7–8, cols 3–26 (rows 7–8 = full width).
+Segment 3 (left arm): cols 1–2, rows 7–14.
+
+Zone A: cols 1–25, rows 1–5  (left of right arm, above connector).
+Zone B: cols 4–28, rows 10–14 (right of left arm, below connector).
+Gap col 26.  Gap col 3.  Gap rows 6 and 9.
+
+```
+ 0 ##############################
+ 1 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
+ 2 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
+ 3 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
+ 4 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
+ 5 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
+ 6 ###########################  #
+ 7 #                            #
+ 8 #                            #
+ 9 #  ###########################
+10 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
+11 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
+12 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
+13 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
+14 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
+15 ##############################
+```
+
+**Exits:** top + right (right arm) + bottom + left (left arm).
+
+**Note:** The current code implements a different shape (two full-width
+parallel arms + narrow bridge).  The `_layout_z` function must be rewritten
+to produce the single-stroke Z/S corridor described here (spec 0019 Fix C).
 
 ---
 
@@ -335,24 +409,21 @@ Zone C: cols 9–28, rows 11–14.  Empty corner: cols 1–4, rows 11–14.
 15 ##############################
 ```
 
-Gap col 5 (v-arm left wall), gap col 8 (v-arm right wall, rows 1–9 and
-col 8 wall rows 11–14), gap row 10 (h-arm bottom wall).
+Gap col 5 (between Zone B and v-arm).  Gap col 8 (between v-arm and Zones A/C).
+Gap row 10 (between h-arm and Zone C).
 
-**Corner fill — spec 0019 Fix B, randomly choose one candidate:**
+**Virtual tip rooms (spec 0019 Fix B)**
 
-Candidate A — extend Zone B's bottommost room into the corner (cols 1–4,
-rows extend to 14):
+At the junction two virtual extensions exist — where each arm would continue
+if it went straight through instead of turning.  Each defines a small "tip
+room" that can be enlarged into the empty corner by removing the separating
+wall.
 
-```
-10 ##############################
-11 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-12 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-13 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-14 #BBBB####CCCCCCCCCCCCCCCCCCCC#
-```
-
-Candidate B — tip room T spanning v-arm cols + corner cols (cols 1–7,
-rows 11–14); accessed through a door at the h-arm's bottom face (row 10):
+Tip 1 — v-arm continues **downward** past the junction:
+cols 6–7, rows 11–14 (after gap row 10).
+Connected to corridor via door through row 10 into h-arm (rows 8–9).
+Enlarge **leftward** into corner (cols 1–4) by removing wall at col 5
+→ room at cols 1–7, rows 11–14.
 
 ```
 10 ##############################
@@ -361,6 +432,25 @@ rows 11–14); accessed through a door at the h-arm's bottom face (row 10):
 13 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
 14 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
 ```
+
+Tip 2 — h-arm continues **leftward** past the junction:
+cols 1–4, rows 8–9 (left of gap col 5; this is Zone B's bottommost floor).
+Already connected to corridor via door through col 5 into v-arm (cols 6–7).
+Enlarge **downward** into corner (rows 11–14) by removing wall at row 10
+→ room at cols 1–4, rows 8–14 (or: extend Zone B's bottommost room to row 14).
+
+```
+10 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+11 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+12 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+13 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+14 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+```
+
+Either tip may be used; randomly choose one.  In general, a tip room can
+be enlarged toward any adjacent empty area (one or both corners if the
+corridor configuration leaves multiple empty quadrants, e.g. when a stem
+is a dead end rather than a border exit).
 
 ---
 
