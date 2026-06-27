@@ -31,9 +31,8 @@ boundary (not silently drop the edge). This corollary is tested in
 test_missing_connection_raises.
 
 These tests are RED until:
-  • chain strategy is removed
   • the silent `continue` in derive_walls() becomes a ValueError raise
-  (spec/level-gen-refactor.md, step 2)
+  (spec/0010-level-gen-refactor.md, step 2)
 """
 import random
 import pytest
@@ -45,7 +44,7 @@ from levellayout import (
 )
 from tests.conftest import FS_ALL, FS_OPEN, FS_LOCKED, FS_GATED, ALL_FEATURE_SETS
 
-VALID_STRATEGIES = ['horizontal', 'vertical', 'off_centre', 'cross', 't', 'chain', 'l']
+VALID_STRATEGIES = ['horizontal', 'vertical', 'off_centre', 't', 'double_t', 'z', 'l']
 
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
@@ -100,20 +99,17 @@ class TestLayoutFaithfulness:
         with pytest.raises(ValueError, match="no shared boundary"):
             derive_walls(graph, placed)
 
-    def test_cross_strategy_available(self):
-        """cross strategy must be registered in STRATEGIES."""
-        from levellayout import STRATEGIES
-        assert 'cross' in STRATEGIES
-
     def test_t_strategy_available(self):
-        """t strategy must be registered in STRATEGIES."""
         from levellayout import STRATEGIES
         assert 't' in STRATEGIES
 
-    def test_chain_strategy_available(self):
-        """chain strategy must be registered in STRATEGIES."""
+    def test_double_t_strategy_available(self):
         from levellayout import STRATEGIES
-        assert 'chain' in STRATEGIES
+        assert 'double_t' in STRATEGIES
+
+    def test_z_strategy_available(self):
+        from levellayout import STRATEGIES
+        assert 'z' in STRATEGIES
 
 
 # ── Property-based tests: Invariant L holds for all seeds ─────────────────────
