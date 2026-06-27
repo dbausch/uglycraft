@@ -988,6 +988,32 @@ def draw_staircase(size=TILE):
     return s
 
 
+def draw_level_entrance(size=TILE):
+    """Level-entrance border tile — archway marking where the player enters."""
+    s = _surf(size, alpha=False)
+    earth  = (120, 80,  40)
+    stone  = (90,  70,  50)
+    hi     = (170, 130, 70)
+    shadow = (60,  40,  20)
+    glow   = (220, 200, 100)
+    s.fill(earth)
+    # Stone arch outline
+    arch_x, arch_y = size // 4, size // 5
+    arch_w, arch_h = size // 2, size * 3 // 5
+    pygame.draw.rect(s, stone, (arch_x, arch_y, arch_w, arch_h))
+    pygame.draw.rect(s, hi, (arch_x, arch_y, arch_w, 2))
+    pygame.draw.rect(s, shadow, (arch_x, arch_y + 2, 2, arch_h - 2))
+    # Dark passage interior
+    inner_x = arch_x + 2
+    inner_y = arch_y + 3
+    inner_w = arch_w - 4
+    inner_h = arch_h - 3
+    pygame.draw.rect(s, (10, 10, 15), (inner_x, inner_y, inner_w, inner_h))
+    # Keystone glow dot
+    pygame.draw.circle(s, glow, (size // 2, arch_y + 1), 2)
+    return s
+
+
 def _rotate_h(surf):
     """Rotate a vertical-passage sprite 90° to make a horizontal-passage variant."""
     return pygame.transform.rotate(surf, 90)
@@ -1154,7 +1180,8 @@ def create_sprites():
         **{f'door_{name}_h': _rotate_h(draw_locked_door(rgb)) for name, rgb in KEY_COLORS.items()},
         'door_open_v':   draw_open_door(),
         'door_open_h':   _rotate_h(draw_open_door()),
-        'staircase':     draw_staircase(),
+        'staircase':       draw_staircase(),
+        'level_entrance':  draw_level_entrance(),
         'water_h':        draw_water(),
         'water_v':        pygame.transform.rotate(draw_water(), 90),
         'bridge_h':       draw_bridge_tile(),
