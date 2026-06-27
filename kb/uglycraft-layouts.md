@@ -1,471 +1,492 @@
-# UGLYCRAFT Layout Strategies
+# UGLYCRAFT Layout Strategies — Reference
 
-Reference for all seven corridor-layout strategies used by Act 2
-multi-grid levels.  Rows are 1–14 (MIN_R–MAX_R), cols are 1–28
-(MIN_C–MAX_C), interior 28×14.
+## Grid and diagram notation
 
-**Common symbols used in schematics:**
+Full grid: 30 cols (0–29) × 16 rows (0–15).  Interior: cols 1–28, rows 1–14.
 
 ```
-  #  corridor tile
-  A B C D  room zones (rooms packed here)
-  .  empty (corner gap — no corridor adjacent, no room placed)
-  [1] [2]  corner-fill candidates (see L layouts)
+  #   solid wall — outer border, 1-tile gap between corridor and zone, unfilled area
+  A B C …   room zone tile — rooms are packed here
+  (space)   corridor floor tile
 ```
+
+Row numbers run 0–15 down the left margin.  Each row is exactly 30 characters.
+
+---
+
+## Room shapes within zones
+
+### Rect (default)
+Plain rectangle.  Minimum 3 wide, 2 tall.
+
+### L-pair (25 % chance when two consecutive rooms share an OPEN edge)
+`_try_l_pair` / `_try_l_pair_vertical`, called from `_pack_band` /
+`_pack_band_vertical`.  One room takes a full-row top plus a wider bottom
+extension; the neighbour sits in the remaining top corner.  Both rooms
+share one wall door.
+
+### Corner-cut
+`_l_shape_tiles` is defined at line 43 of `levellayout.py` but is never
+called by any packing function.  Not currently used.
+
+### Closet notch
+`_nest_closets` carves a `(b_w+1) × (b_h+1)` notch from one corner of
+the parent room and places the closet there.  Parent and closet share a
+wall door.
 
 ---
 
 ## 1. Horizontal
 
-Full-width horizontal spine.  Rooms packed in two horizontal bands above
-and below.
-
-**Parameters:**
-- `arm_h = 2–3`  corridor height
-- Spine positioned in middle third (rows ~5–9)
-- Zone A (above) and Zone B (below) receive roughly equal rooms
-
-**Exits:** left + right (spine tiles span cols 1–28)
+**Example:** `arm_h = 2`, `cor_row = 7`
 
 ```
-col: 1─────────────────────────28
-  1: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  2: AAAAAAAAAAAAAAAAAAAAAAAAAAA   Zone A  (above)
-  3: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  4: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  5: ───────────────────────────
-  6: ###########################   Corridor (arm_h rows)
-  7: ───────────────────────────
-  8: BBBBBBBBBBBBBBBBBBBBBBBBBBB
-  9: BBBBBBBBBBBBBBBBBBBBBBBBBBB   Zone B  (below)
- 10: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 11: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 12: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 13: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 14: BBBBBBBBBBBBBBBBBBBBBBBBBBB
+ 0 ##############################
+ 1 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 2 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 3 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 4 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 5 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 6 ##############################
+ 7 #                            #
+ 8 #                            #
+ 9 ##############################
+10 #BBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+11 #BBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+12 #BBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+13 #BBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+14 #BBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+15 ##############################
 ```
 
-Rooms are stacked (L-pair / closet-corner shapes possible) within each band.
+Zone A: cols 1–28, rows 1–(cor_row−2).
+Zone B: cols 1–28, rows (cor_row+arm_h+1)–14.
+Corridor: cols 1–28, rows cor_row–(cor_row+arm_h−1).
+Gap rows: (cor_row−1) and (cor_row+arm_h).
+
+**Exits:** left + right.  **Packing:** `_pack_band` for both zones.
 
 ---
 
 ## 2. Vertical
 
-Full-height vertical spine.  Rooms packed in two vertical bands left and
-right.
-
-**Parameters:**
-- `cor_w = 2–3`  corridor width
-- Spine positioned near horizontal centre (cols ~12–17)
-- Zone A (left) and Zone B (right) each at least 5 cols wide
-
-**Exits:** top + bottom (spine tiles span rows 1–14)
+**Example:** `cor_w = 2`, `cor_col = 14`
 
 ```
-col: 1────────13 14 15──────────28
-  1: AAAAAAAAAAA ## BBBBBBBBBBBBB
-  2: AAAAAAAAAAA ## BBBBBBBBBBBBB
-  3: AAAAAAAAAAA ## BBBBBBBBBBBBB   Zone A | Spine | Zone B
-  4: AAAAAAAAAAA ## BBBBBBBBBBBBB
-  5: AAAAAAAAAAA ## BBBBBBBBBBBBB
-  6: AAAAAAAAAAA ## BBBBBBBBBBBBB
-  7: AAAAAAAAAAA ## BBBBBBBBBBBBB
-  8: AAAAAAAAAAA ## BBBBBBBBBBBBB
-  9: AAAAAAAAAAA ## BBBBBBBBBBBBB
- 10: AAAAAAAAAAA ## BBBBBBBBBBBBB
- 11: AAAAAAAAAAA ## BBBBBBBBBBBBB
- 12: AAAAAAAAAAA ## BBBBBBBBBBBBB
- 13: AAAAAAAAAAA ## BBBBBBBBBBBBB
- 14: AAAAAAAAAAA ## BBBBBBBBBBBBB
+ 0 ##############################
+ 1 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 2 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 3 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 4 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 5 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 6 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 7 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 8 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+ 9 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+10 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+11 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+12 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+13 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+14 #AAAAAAAAAAAA#  #BBBBBBBBBBBB#
+15 ##############################
 ```
 
-Rooms are stacked vertically (L-pair / closet-corner shapes possible).
+Zone A: cols 1–12, rows 1–14.
+Zone B: cols 17–28, rows 1–14.
+Corridor: cols 14–15, rows 1–14.
+Gap cols: 13 (between Zone A and corridor) and 16 (between corridor and Zone B).
+
+**Exits:** top + bottom.  **Packing:** `_pack_band_vertical` for both zones.
 
 ---
 
 ## 3. Off-centre
 
-Same topology as horizontal, but the spine is shifted so one band is
-noticeably larger.  More rooms go in the larger band.
+Same structure as Horizontal but with a 30–70 % split so one band is taller.
+More rooms assigned to the larger band.
 
-**Parameters:**
-- `split ∈ [0.3, 0.7]` fraction above
-- Minimum band height: 3 rows each side
-- Rooms biased toward bigger band (2:1 ratio)
-
-**Exits:** left + right
+**Example:** `cor_row = 10`
 
 ```
-col: 1─────────────────────────28
-  1: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  2: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  3: AAAAAAAAAAAAAAAAAAAAAAAAAAA   Zone A  (large, ~60-70%)
-  4: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  5: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  6: AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  7: ###########################   Corridor (shifted high)
-  8: ───────────────────────────
-  9: BBBBBBBBBBBBBBBBBBBBBBBBBBB   Zone B  (small, ~30-40%)
- 10: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 11: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 12: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 13: BBBBBBBBBBBBBBBBBBBBBBBBBBB
- 14: BBBBBBBBBBBBBBBBBBBBBBBBBBB
+ 0 ##############################
+ 1 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 2 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 3 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 4 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 5 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 6 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 7 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 8 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 9 ##############################
+10 #                            #
+11 #                            #
+12 ##############################
+13 #BBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+14 #BBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+15 ##############################
 ```
 
 ---
 
 ## 4. T-corridor
 
-Full-width horizontal spine with one perpendicular stem reaching a border.
-The stem divides the far-side zone into two sub-zones.
+Full-width spine + one perpendicular stem reaching one border.  The stem
+splits the far-side band into two sub-zones.
 
-**Parameters:**
-- `arm_h = 2–3`  spine height
-- Spine in middle third (rows ~5–9)
-- Stem: width 3–5, column fraction 25–75%
-- Stem side: `'near'` (toward row 1) or `'far'` (toward row 14)
-
-**Exits:** left + right + one T/B side (the stem side)
-
-Example (stem on 'far' side, offset-right):
+**Example:** `arm_h = 2`, `r_spine = 7`, stem side = far,
+`c_stem = 13`, `stem_w = 3`
 
 ```
-col: 1──────10 11 13───────────28
-  1: AAAAAAAAAAAAAAAAAAAAAAAAAA    Zone A  (near side, full width)
-  2: AAAAAAAAAAAAAAAAAAAAAAAAAA
-  3: AAAAAAAAAAAAAAAAAAAAAAAAAA
-  4: AAAAAAAAAAAAAAAAAAAAAAAAAA
-  5: ##########################    Spine
-  6: ##########################
-  7: ──────────────────────────
-  8: BBBBBBBBB ## CCCCCCCCCCCC     Zone B (far-left) | Stem | Zone C (far-right)
-  9: BBBBBBBBB ## CCCCCCCCCCCC
- 10: BBBBBBBBB ## CCCCCCCCCCCC
- 11: BBBBBBBBB ## CCCCCCCCCCCC
- 12: BBBBBBBBB ## CCCCCCCCCCCC
- 13: BBBBBBBBB ## CCCCCCCCCCCC
- 14: BBBBBBBBB ## CCCCCCCCCCCC     ← stem exits bottom border
+ 0 ##############################
+ 1 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 2 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 3 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 4 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 5 #AAAAAAAAAAAAAAAAAAAAAAAAAAAA#
+ 6 ##############################
+ 7 #                            #
+ 8 #                            #
+ 9 #############   ##############
+10 #BBBBBBBBBBB#   #CCCCCCCCCCCC#
+11 #BBBBBBBBBBB#   #CCCCCCCCCCCC#
+12 #BBBBBBBBBBB#   #CCCCCCCCCCCC#
+13 #BBBBBBBBBBB#   #CCCCCCCCCCCC#
+14 #BBBBBBBBBBB#   #CCCCCCCCCCCC#
+15 ##############################
 ```
 
-Near-side stem omits Zone A entirely; far-side splits only the far band.
+Spine: cols 1–28, rows 7–8.
+Stem: cols 13–15, rows 9–14.
+Zone A: cols 1–28, rows 1–5.
+Zone B: cols 1–11, rows 10–14.
+Zone C: cols 17–28, rows 10–14.
+Gap row 6.  Gap at row 9 (cols outside 13–15).
+Gap cols 12 and 16.
+
+If stem is on the **near** side, Zone A (above spine) is split around the
+near stem; Zone B (below spine) is full-width.
+
+**Exits:** left + right (spine) + one of top/bottom (stem side).
 
 ---
 
 ## 5. Double-T
 
-Full-width horizontal spine with one stem on each side.  Both stems reach
-their respective border, dividing both bands.  Two variants: aligned stems
-(cross shape, 40% chance) or offset stems (60% chance).
+Full-width spine + two stems, one per side.
 
-**Parameters:**
-- Same as T but two stems
-- `frac_near` and `frac_far` each in [0.25, 0.75]; differ by ≥ 0.2 when offset
-
-**Exits:** all four borders (spine covers left/right; stems cover top/bottom)
-
-Example (offset stems):
+**Example:** `arm_h = 2`, `r_spine = 7`,
+near stem `c_near = 9`, `w_near = 3`; far stem `c_far = 18`, `w_far = 3`
 
 ```
-col: 1──5 6 8──────────17 18 20─28
-  1: AAAA ## BBBBBBBBBBB  ##  CCCC   near stem | Zones A+B+C (near side)
-  2: AAAA ## BBBBBBBBBBB  ##  CCCC
-  3: AAAA ## BBBBBBBBBBB  ##  CCCC
-  4: AAAA ## BBBBBBBBBBB  ##  CCCC
-  5: ##########################    Spine
-  6: ##########################
-  7: ──────────────────────────
-  8: DDDDDDDD  ##  EEEEEEEEEEEE   far stem | Zones D+E (far side)
-  9: DDDDDDDD  ##  EEEEEEEEEEEE
- 10: DDDDDDDD  ##  EEEEEEEEEEEE
- 11: DDDDDDDD  ##  EEEEEEEEEEEE
- 12: DDDDDDDD  ##  EEEEEEEEEEEE
- 13: DDDDDDDD  ##  EEEEEEEEEEEE
- 14: DDDDDDDD  ##  EEEEEEEEEEEE
+ 0 ##############################
+ 1 #AAAAAAA#   #BBBBBBBBBBBBBBBB#
+ 2 #AAAAAAA#   #BBBBBBBBBBBBBBBB#
+ 3 #AAAAAAA#   #BBBBBBBBBBBBBBBB#
+ 4 #AAAAAAA#   #BBBBBBBBBBBBBBBB#
+ 5 #AAAAAAA#   #BBBBBBBBBBBBBBBB#
+ 6 #########   ##################
+ 7 #                            #
+ 8 #                            #
+ 9 ##################   #########
+10 #CCCCCCCCCCCCCCCC#   #DDDDDDD#
+11 #CCCCCCCCCCCCCCCC#   #DDDDDDD#
+12 #CCCCCCCCCCCCCCCC#   #DDDDDDD#
+13 #CCCCCCCCCCCCCCCC#   #DDDDDDD#
+14 #CCCCCCCCCCCCCCCC#   #DDDDDDD#
+15 ##############################
 ```
+
+Near stem: cols 9–11, rows 1–6.  Far stem: cols 18–20, rows 9–14.
+Zone A: cols 1–7, rows 1–5.   Zone B: cols 13–28, rows 1–5.
+Zone C: cols 1–16, rows 10–14.  Zone D: cols 22–28, rows 10–14.
+
+**Exits:** all four.
+**Options:** 40 % aligned stems (cross), 60 % offset (stems differ by ≥ 0.2 × INT_W).
 
 ---
 
 ## 6. Z-corridor  (four variants)
 
-Two parallel arms joined by an off-centre bridge.  The bridge divides the
-space between the arms into a large main zone and a small side zone.
+Two parallel arms joined by a bridge.  The bridge separates a large **main**
+zone from a small **side** zone.
 
-### 6a. z_h  (bridge right)
+### 6a. z_h — horizontal arms, bridge near right
 
-**Parameters:**
-- `arm_th = 2–3`  arm thickness
-- `bridge_w = 3–5`  bridge width
-- `offset ≥ 4`  ← Fix C ensures side zone ≥ 3 cols wide
-- `c_bridge = MAX_C − bridge_w − offset + 1`  (bridge near right edge)
+**Example:** `arm_th = 2`, `bridge_w = 3`, `offset = 5`
+→ `c_bridge = 21`
 
-**Exits:** top + bottom + left + right (arms are full-width; bridge spans full height)
-
-```
-col: 1────────────────c-1 c──c+bw 28
-  1: ###########################   Top arm (full width, arm_th rows)
-  2: ###########################
-  3: ──────────────────────────
-  4: MMMMMMMMMMMMMMMM ## SSSSSS   Main zone (large) | Bridge | Side zone (≥3)
-  5: MMMMMMMMMMMMMMMM ## SSSSSS
-  6: MMMMMMMMMMMMMMMM ## SSSSSS
-  7: MMMMMMMMMMMMMMMM ## SSSSSS
-  8: MMMMMMMMMMMMMMMM ## SSSSSS
-  9: MMMMMMMMMMMMMMMM ## SSSSSS
- 10: MMMMMMMMMMMMMMMM ## SSSSSS
- 11: MMMMMMMMMMMMMMMM ## SSSSSS
- 12: ──────────────────────────
- 13: ###########################   Bottom arm (full width, arm_th rows)
- 14: ###########################
-```
-
-Main zone uses `_pack_band`; side zone uses `_pack_band_vertical` (1 room only).
-
-### 6b. s_h  (bridge left)
-
-Mirror of z_h.  `c_bridge = MIN_C + offset`.
-Main zone is on the **right** of bridge; side zone on the **left**.
-
-### 6c. z_v  (bridge near bottom)
-
-Transposed version of z_h.  Two full-height vertical arms at left and right;
-horizontal bridge near bottom.
-
-**Parameters:**
-- `arm_th = 2–3`  arm thickness
-- `bridge_w = 3–5`  bridge height (number of rows)
-- `offset ≥ 3` (side height `offset−1 ≥ 2` already guaranteed)
-- `r_bridge = MAX_R − bridge_w − offset + 1`
-
-**Exits:** left + right + top + bottom
+Arms: rows 1–2 and 13–14 (full width).
+Bridge: cols 21–23, rows 3–12 (rows MIN_R+arm_th through MAX_R−arm_th).
+Zones: cols 1–19 (main) and cols 25–28 (side), rows 4–11.
+Gap row 3 (except bridge cols).  Gap row 12 (except bridge cols).
+Gap cols 20 and 24.
 
 ```
-col: 1 2 3──────────────────26 27 28
-  1: ## MMMMMMMMMMMMMMMMMMMM ##    Left arm | Main zone (above bridge) | Right arm
-  2: ## MMMMMMMMMMMMMMMMMMMM ##
-  3: ## MMMMMMMMMMMMMMMMMMMM ##
-  4: ## MMMMMMMMMMMMMMMMMMMM ##
-  5: ## MMMMMMMMMMMMMMMMMMMM ##
-  6: ## MMMMMMMMMMMMMMMMMMMM ##
-  7: ## MMMMMMMMMMMMMMMMMMMM ##
-  8: ## MMMMMMMMMMMMMMMMMMMM ##
-  9: ## #################### ##    Bridge (full inner width)
- 10: ## #################### ##
- 11: ## #################### ##
- 12: ## SSSSSSSSSSSSSSSSSSSS ##    Side zone (≥2 rows)
- 13: ## SSSSSSSSSSSSSSSSSSSS ##
- 14: ## SSSSSSSSSSSSSSSSSSSS ##
+ 0 ##############################
+ 1 #                            #
+ 2 #                            #
+ 3 #####################   ######
+ 4 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+ 5 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+ 6 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+ 7 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+ 8 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+ 9 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+10 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+11 #MMMMMMMMMMMMMMMMMMM#   #SSSS#
+12 #####################   ######
+13 #                            #
+14 #                            #
+15 ##############################
 ```
 
-### 6d. s_v  (bridge near top)
+**Fix C (spec 0019):** current code uses `rng.randint(3, max_off)`, which
+allows offset = 3 → side width = offset−1 = 2, failing `side_ok (≥ 3)`.
+Change to `rng.randint(4, max_off)` so side width ≥ 3 always.
 
-Mirror of z_v.  Bridge near top; main zone below.
+### 6b. s_h — horizontal arms, bridge near left
+
+Mirror of z_h.  `c_bridge = MIN_C + offset`.  Main zone on right, side on
+left.  Same Fix C applies.
+
+### 6c. z_v — vertical arms, bridge near bottom
+
+**Example:** `arm_th = 2`, `bridge_w = 3`, `r_bridge = 8`
+
+Arms: cols 1–2 and 27–28 (full height).
+Bridge: cols 3–26 (MIN_C+arm_th through MAX_C−arm_th), rows 8–10.
+At bridge rows all 28 interior cols are corridor (arms + bridge overlap).
+Zones: cols 4–25, rows 1–6 (main) and rows 12–14 (side).
+Gap rows 7 and 11 (arms only, interior cols 3–26 are wall).
+Gap cols 3 and 26.
+
+```
+ 0 ##############################
+ 1 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
+ 2 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
+ 3 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
+ 4 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
+ 5 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
+ 6 #  #MMMMMMMMMMMMMMMMMMMMMM#  #
+ 7 #  ########################  #
+ 8 #                            #
+ 9 #                            #
+10 #                            #
+11 #  ########################  #
+12 #  #SSSSSSSSSSSSSSSSSSSSSS#  #
+13 #  #SSSSSSSSSSSSSSSSSSSSSS#  #
+14 #  #SSSSSSSSSSSSSSSSSSSSSS#  #
+15 ##############################
+```
+
+### 6d. s_v — vertical arms, bridge near top
+
+Mirror of z_v.  Main zone below bridge, side zone above.
+
+**Exits (all Z variants):** all four — arms reach both horizontal or
+vertical borders; bridge connects both arms.
 
 ---
 
 ## 7. L-corridor  (four orientations)
 
-L-shaped corridor with a vertical arm (v-arm) and a horizontal arm (h-arm)
-meeting at a junction.  One quadrant — opposite the junction corner — has
-no corridor tiles and can only receive rooms via Fix B (corner fill).
+L-shaped corridor: one **v-arm** (vertical) + one **h-arm** (horizontal)
+meeting at a junction.  The fourth quadrant has no corridor tiles.  Rooms
+placed there would be unreachable — this quadrant is filled as a corner
+extension (spec 0019 Fix B).
 
-**Parameters:**
-- `arm_h = 2–3`  arm thickness (both arms same)
-- `arm_w = 2–3`  arm width
-- `cor_col`: v-arm column start; left-side: 20–30% of INT_W; right-side: 70–80%
-- `cor_row`: h-arm row start; top-arm: 25–40%; bottom-arm: 55–70%
+Orientation name = position of the junction corner within the grid:
 
-**Orientation → required exits map** (Fix A):
+| Name | v-arm exits | h-arm exits | junction at      |
+|------|-------------|-------------|------------------|
+| `bl` | top         | right       | bottom-left area |
+| `br` | top         | left        | bottom-right     |
+| `tl` | bottom      | right       | top-left         |
+| `tr` | bottom      | left        | top-right        |
 
-| Orientation | `required_exits`        | v-arm direction | h-arm direction |
-|-------------|-------------------------|-----------------|-----------------|
-| `bl`        | `{top, right}`          | upward (→ MIN_R) | rightward (→ MAX_C) |
-| `br`        | `{top, left}`           | upward (→ MIN_R) | leftward (→ MIN_C)  |
-| `tl`        | `{bottom, right}`       | downward (→ MAX_R) | rightward (→ MAX_C) |
-| `tr`        | `{bottom, left}`        | downward (→ MAX_R) | leftward (→ MIN_C)  |
+All four examples use `arm_w = 2`, `arm_h = 2`.
 
 ---
 
-### 7a. bl  (exits: top + right)
+### 7a. bl — exits: top + right
 
-v-arm goes up; h-arm goes right; junction at lower-left of v-arm.
-Empty corner: **bottom-left** (`cols 1..cor_col-2, rows cor_row+arm_h+1..14`).
+`cor_col = 6`, `cor_row = 8`
+
+v-arm: cols 6–7, rows 1–9.   h-arm: cols 6–28, rows 8–9.
+Zone A: cols 9–28, rows 1–6.   Zone B: cols 1–4, rows 1–9.
+Zone C: cols 9–28, rows 11–14.  Empty corner: cols 1–4, rows 11–14.
 
 ```
-col: 1──cor_col──cor_col+arm_w────28
-  1: .... #### AAAAAAAAAAAAAAAAAAA    v-arm (##) | Zone A (above h-arm, right of v-arm)
-  2: .... #### AAAAAAAAAAAAAAAAAAA
-  3: .... #### AAAAAAAAAAAAAAAAAAA
-  4: .... #### ─────────────────── ← h-arm starts
-  5: BBBB #### ###################   Zone B (left of v-arm) | junction | h-arm (###)
-  6: BBBB #### ###################
-  7: BBBB ─────────────────────── ← h-arm ends
-  8: [12] ....  CCCCCCCCCCCCCCCCCC   [corner] | Zone C (below h-arm, right of v-arm)
-  9: [12] ....  CCCCCCCCCCCCCCCCCC
- 10: [12] ....  CCCCCCCCCCCCCCCCCC
- 11: [12] ....  CCCCCCCCCCCCCCCCCC
- 12: [12] ....  CCCCCCCCCCCCCCCCCC
- 13: [12] ....  CCCCCCCCCCCCCCCCCC
- 14: [12] ....  CCCCCCCCCCCCCCCCCC
+ 0 ##############################
+ 1 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 2 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 3 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 4 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 5 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 6 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 7 #BBBB#  ######################
+ 8 #BBBB#                       #
+ 9 #BBBB#                       #
+10 ##############################
+11 #########CCCCCCCCCCCCCCCCCCCC#
+12 #########CCCCCCCCCCCCCCCCCCCC#
+13 #########CCCCCCCCCCCCCCCCCCCC#
+14 #########CCCCCCCCCCCCCCCCCCCC#
+15 ##############################
 ```
 
-**Corner fill candidates (randomly chosen):**
+Gap col 5 (v-arm left wall), gap col 8 (v-arm right wall, rows 1–9 and
+col 8 wall rows 11–14), gap row 10 (h-arm bottom wall).
 
-`[1]` Candidate A — extend Zone B's **bottommost** room downward to row 14:
-```
-  7: BBBB ─────────────────────── ← h-arm ends
-  8: B[1] ....  CCCCCCCCCCCCCCCCCC   Zone B room extends down (same cols, to MAX_R)
-  9: B[1] ....  CCCCCCCCCCCCCCCCCC
- ...
- 14: B[1] ....  CCCCCCCCCCCCCCCCCC
-```
-Room's door remains at the shared wall with the v-arm; floor grows into corner.
+**Corner fill — spec 0019 Fix B, randomly choose one candidate:**
 
-`[2]` Candidate B — tip room below v-arm, spanning corner + v-arm columns:
+Candidate A — extend Zone B's bottommost room into the corner (cols 1–4,
+rows extend to 14):
+
 ```
-  7: ──── ─────────────────────── ← h-arm ends  (v-arm ends too)
-  8: [2][2][2][2]  CCCCCCCCCCCCCCCC  Tip room (cols 1..cor_col+arm_w-1)
-  9: [2][2][2][2]  CCCCCCCCCCCCCCCC
- ...
- 14: [2][2][2][2]  CCCCCCCCCCCCCCCC
+10 ##############################
+11 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+12 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+13 #BBBB####CCCCCCCCCCCCCCCCCCCC#
+14 #BBBB####CCCCCCCCCCCCCCCCCCCC#
 ```
-Room door at bottom face of v-arm (row cor_row+arm_h, cols cor_col..cor_col+arm_w-1).
-One room is "stolen" from Zone B or C to place here.
+
+Candidate B — tip room T spanning v-arm cols + corner cols (cols 1–7,
+rows 11–14); accessed through a door at the h-arm's bottom face (row 10):
+
+```
+10 ##############################
+11 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+12 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+13 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+14 #TTTTTTT#CCCCCCCCCCCCCCCCCCCC#
+```
 
 ---
 
-### 7b. br  (exits: top + left)
+### 7b. br — exits: top + left
 
-v-arm goes up; h-arm goes left; junction at lower-right of v-arm.
-Empty corner: **bottom-right** (`cols cor_col+arm_w+1..28, rows cor_row+arm_h+1..14`).
+`cor_col = 22`, `cor_row = 8`
+
+v-arm: cols 22–23, rows 1–9.   h-arm: cols 1–23, rows 8–9.
+Zone A: cols 1–20, rows 1–6.   Zone B: cols 25–28, rows 1–9.
+Zone C: cols 1–20, rows 11–14.  Empty corner: cols 25–28, rows 11–14.
 
 ```
-col: 1───────────────cor_col──────28
-  1: AAAAAAAAAAAAAAAA #### ........    Zone A | v-arm | (top-right, empty)
-  2: AAAAAAAAAAAAAAAA #### ........
-  3: AAAAAAAAAAAAAAAA #### ........
-  4: ─────────────────────────────  ← h-arm starts
-  5: ##################### #### BBBB   h-arm | junction | Zone B (right of v-arm)
-  6: ##################### #### BBBB
-  7: ──────────────────────────────  ← h-arm ends
-  8: CCCCCCCCCCCCCCCC .... [12][12]  Zone C | (corner) | corner fill [1][2]
-  9:   ...
- 14: CCCCCCCCCCCCCCCC .... [12][12]
+ 0 ##############################
+ 1 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 2 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 3 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 4 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 5 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 6 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 7 ######################  #BBBB#
+ 8 #                       #BBBB#
+ 9 #                       #BBBB#
+10 ##############################
+11 #CCCCCCCCCCCCCCCCCCCC#########
+12 #CCCCCCCCCCCCCCCCCCCC#########
+13 #CCCCCCCCCCCCCCCCCCCC#########
+14 #CCCCCCCCCCCCCCCCCCCC#########
+15 ##############################
 ```
 
-`[1]` Extend Zone B's bottommost room downward (same cols, to row 14).
-`[2]` Tip room cols `cor_col..28`, rows `cor_row+arm_h+1..14` (spans v-arm + corner).
+**Corner fill candidates:** Candidate A extends Zone B into cols 25–28, rows
+11–14.  Candidate B places tip room cols 22–28, rows 11–14.
 
 ---
 
-### 7c. tl  (exits: bottom + right)
+### 7c. tl — exits: bottom + right
 
-v-arm goes down; h-arm goes right; junction at upper-left of v-arm.
-Empty corner: **top-left** (`cols 1..cor_col-2, rows 1..cor_row-2`).
+`cor_col = 6`, `cor_row = 5`
 
-```
-col: 1──cor_col──cor_col+arm_w────28
-  1: [12] .... CCCCCCCCCCCCCCCCCC   [corner fill] | Zone C (above h-arm, right of v-arm)
-  2: [12] .... CCCCCCCCCCCCCCCCCC
-  3: [12] .... CCCCCCCCCCCCCCCCCC
-  4: [12] ─────────────────────── ← h-arm starts (row cor_row)
-  5: BBBB #### ###################   Zone B (left of v-arm) | junction | h-arm
-  6: BBBB #### ###################
-  7: BBBB ─────────────────────── ← h-arm ends
-  8: BBBB #### AAAAAAAAAAAAAAAAAAA   Zone B continues | v-arm | Zone A (below h-arm, right)
-  9: BBBB #### AAAAAAAAAAAAAAAAAAA
- 10: BBBB #### AAAAAAAAAAAAAAAAAAA
- 11: BBBB #### AAAAAAAAAAAAAAAAAAA
- 12: BBBB #### AAAAAAAAAAAAAAAAAAA
- 13: BBBB #### AAAAAAAAAAAAAAAAAAA
- 14: BBBB #### AAAAAAAAAAAAAAAAAAA
-```
-
-`[1]` Extend Zone B's **topmost** room upward to row 1 (same cols, to MIN_R).
-`[2]` Tip room cols `1..cor_col+arm_w-1`, rows `1..cor_row-2` (above v-arm top face).
-
----
-
-### 7d. tr  (exits: bottom + left)
-
-v-arm goes down; h-arm goes left; junction at upper-right of v-arm.
-Empty corner: **top-right** (`cols cor_col+arm_w+1..28, rows 1..cor_row-2`).
+v-arm: cols 6–7, rows 5–14.   h-arm: cols 6–28, rows 5–6.
+Zone A: cols 9–28, rows 7–14.   Zone B: cols 1–4, rows 5–14.
+Zone C: cols 9–28, rows 1–3.    Empty corner: cols 1–4, rows 1–3.
 
 ```
-col: 1───────────────cor_col──────28
-  1: CCCCCCCCCCCCCCCC .... [12][12]  Zone C (above h-arm, left of v-arm) | [corner fill]
-  2: CCCCCCCCCCCCCCCC .... [12][12]
-  3: CCCCCCCCCCCCCCCC .... [12][12]
-  4: ─────────────────────────────  ← h-arm starts
-  5: ##################### #### BBBB   h-arm | junction | Zone B (right of v-arm)
-  6: ##################### #### BBBB
-  7: ──────────────────────────────  ← h-arm ends
-  8: AAAAAAAAAAAAAAAA #### BBBBBBBB  Zone A (below h-arm, left) | v-arm | Zone B
-  9:   ...
- 14: AAAAAAAAAAAAAAAA #### BBBBBBBB
+ 0 ##############################
+ 1 #########CCCCCCCCCCCCCCCCCCCC#
+ 2 #########CCCCCCCCCCCCCCCCCCCC#
+ 3 #########CCCCCCCCCCCCCCCCCCCC#
+ 4 ##############################
+ 5 #BBBB#                       #
+ 6 #BBBB#                       #
+ 7 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 8 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+ 9 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+10 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+11 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+12 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+13 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+14 #BBBB#  #AAAAAAAAAAAAAAAAAAAA#
+15 ##############################
 ```
 
-`[1]` Extend Zone B's topmost room upward (same cols, to row 1).
-`[2]` Tip room cols `cor_col..28`, rows `1..cor_row-2` (above v-arm top face).
+**Corner fill candidates:** Candidate A extends Zone B's topmost room into
+cols 1–4, rows 1–3.  Candidate B places tip room cols 1–7, rows 1–3.
 
 ---
 
-## Zone packing functions
+### 7d. tr — exits: bottom + left
 
-| Function              | Packs rooms along | Used in                                   |
-|-----------------------|-------------------|-------------------------------------------|
-| `_pack_band`          | Horizontal        | Horizontal, off-centre, T/double-T, z/s   |
-| `_pack_band_vertical` | Vertical          | Vertical, Z side zones, L Zone B          |
+`cor_col = 22`, `cor_row = 5`
 
-Both functions may place rooms as plain rectangles, **L-pair rooms** (two
-rooms sharing one wall, one of which is L-shaped), or **corner-closet** rooms.
+v-arm: cols 22–23, rows 5–14.   h-arm: cols 1–23, rows 5–6.
+Zone A: cols 1–20, rows 7–14.   Zone B: cols 25–28, rows 5–14.
+Zone C: cols 1–20, rows 1–3.    Empty corner: cols 25–28, rows 1–3.
 
----
+```
+ 0 ##############################
+ 1 #CCCCCCCCCCCCCCCCCCCC#########
+ 2 #CCCCCCCCCCCCCCCCCCCC#########
+ 3 #CCCCCCCCCCCCCCCCCCCC#########
+ 4 ##############################
+ 5 #                       #BBBB#
+ 6 #                       #BBBB#
+ 7 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 8 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+ 9 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+10 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+11 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+12 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+13 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+14 #AAAAAAAAAAAAAAAAAAAA#  #BBBB#
+15 ##############################
+```
 
-## Strategy selection — `_pick_strategy`
-
-Selects a strategy compatible with the required border exits:
-
-| Requirement              | Eligible strategies                              |
-|--------------------------|--------------------------------------------------|
-| Only L + R exits         | horizontal, off_centre, t, double_t, z (not vertical, not l) |
-| Only T + B exits         | vertical, double_t, z (not horizontal, off_centre)            |
-| Perpendicular pair (L+T etc.) | l, double_t, z                              |
-| 3 or 4 exits             | double_t, z only                                |
-| 0 or 1 exit              | any strategy                                     |
-
-Fallback order: preferred list → double_t → z (z always works for any direction).
-
----
-
-## Corner-fill implementation notes (Fix B for L-layouts)
-
-After zone packing, build a candidate list:
-
-1. **Candidate A**: find the border Zone B room (topmost or bottommost
-   depending on orientation).  Create a new `PlacedNode` with the same
-   `col`/`w` but `row`/`h` extended to reach `MIN_R` or `MAX_R`.  Replace in
-   `placed`.
-
-2. **Candidate B**: steal one spare room name (last in a zone's list, or the
-   last room assigned to any zone).  Compute the tip-room bounding box
-   (v-arm columns + corner columns × corner rows).  Create a new `PlacedNode`
-   for it.  Insert into `placed` (replacing previous placement).
-
-   Candidate B is only added to the list if the corner area is large enough:
-   - width ≥ 3 (cols from `MIN_C` or `cor_col`) AND height ≥ 2 (rows in corner)
-   - At least one room can be "stolen" (zone list has > 1 item)
-
-Use `rng.choice(candidates)` to pick.  If candidates is empty, leave corner
-as solid wall.
+**Corner fill candidates:** Candidate A extends Zone B's topmost room into
+cols 25–28, rows 1–3.  Candidate B places tip room cols 22–28, rows 1–3.
 
 ---
 
-## Z-layout bridge constraint (Fix C)
+## Strategy selection
 
-For `z_h` and `s_h`: change minimum offset from 3 → **4** so that
-`side_width = offset − 1 ≥ 3` (satisfies `side_ok`).  The side zone always
-receives exactly one room.
+| Required exits       | Must use                        | Cannot use                      |
+|----------------------|---------------------------------|---------------------------------|
+| `{left, right}`      | horizontal, off_centre, t, double_t, z | vertical             |
+| `{top, bottom}`      | vertical, t, double_t, z        | horizontal, off_centre          |
+| perpendicular pair   | l, double_t, z                  | horizontal, vertical, off_centre |
+| 3 or 4 exits         | double_t, z                     | everything else                 |
 
-For `z_v` and `s_v`: minimum side height is 2; offset ≥ 3 already guarantees
-this (unchanged).
+L-corridor orientation is chosen to match the required exit pair (Fix A,
+spec 0019).  If no required exits: random orientation.
+
+---
+
+## Parameter ranges
+
+| Parameter         | Range                    | Layout         |
+|-------------------|--------------------------|----------------|
+| arm_h / cor_h     | 2–3                      | all            |
+| cor_w             | 2–3                      | vertical       |
+| arm_w             | 2–3                      | L              |
+| cor_col (bl/tl)   | 20–30 % of INT_W         | L              |
+| cor_col (br/tr)   | 70–80 % of INT_W         | L              |
+| cor_row (bl/br)   | 55–70 % of INT_H         | L              |
+| cor_row (tl/tr)   | 25–40 % of INT_H         | L              |
+| bridge_w          | 3–5                      | Z              |
+| offset (z_h/s_h)  | **≥ 4** after Fix C      | Z horizontal   |
+| offset (z_v/s_v)  | 3–5                      | Z vertical     |
+| stem_w            | 3–5                      | T, double-T    |
+| stem fraction     | 25–75 % of INT_W         | T, double-T    |
