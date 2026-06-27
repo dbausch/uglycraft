@@ -580,11 +580,7 @@ def _pack_band_vertical(placed, room_names, rng,
             w = MAX_C + 1 - band_col
 
         if w >= 3 and h >= 2:
-            if w >= 6 and h >= 5 and rng.random() < 0.35:
-                ft = _l_shape_tiles(band_col, row, w, h, rng)
-                placed[name] = PlacedNode(name, band_col, row, w, h, floor_tiles=ft)
-            else:
-                placed[name] = PlacedNode(name, band_col, row, w, h)
+            placed[name] = PlacedNode(name, band_col, row, w, h)
 
         row += h + 1
         i += 1
@@ -644,11 +640,7 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h,
             h = MAX_R + 1 - band_row
 
         if w >= 3 and h >= 2:
-            if w >= 6 and h >= 5 and rng.random() < 0.35:
-                ft = _l_shape_tiles(col, band_row, w, h, rng)
-                placed[name] = PlacedNode(name, col, band_row, w, h, floor_tiles=ft)
-            else:
-                placed[name] = PlacedNode(name, col, band_row, w, h)
+            placed[name] = PlacedNode(name, col, band_row, w, h)
 
         col += widths[i] + 1
         i += 1
