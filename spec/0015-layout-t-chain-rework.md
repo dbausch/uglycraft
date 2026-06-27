@@ -95,13 +95,21 @@ z_far_R = (c_stem+stem_w+1, r_spine+arm_h+1, ..., ...)
 z_far_T = (c_stem, r_stem_end+2, stem_w, MAX_R − r_stem_end − 2)   tip zone
 ```
 
-Room distribution: near-tip and far-tip each ≤1 room; remaining rooms
-split round-robin between the left/right sub-zones on each side.
+Room distribution: all rooms are distributed round-robin across the
+left/right sub-zones only.  Tip zones receive no pre-allocated rooms.
 
-### Stem extension to border
+### Stem extension to border (always applies)
 
-After room packing: if a tip zone received 0 rooms, extend the corridor's
-`floor_tiles` from the stem's current end to the grid border.
+After packing the side zones, check each stem's tip band.  If any room
+placed in a side zone happens to reach to the tip band (its edge is
+adjacent to the stem's end), a passage is carved there naturally — but
+no room is forced into the tip.  If the tip band is empty, extend the
+corridor's `floor_tiles` from the stem's end to the grid border.
+
+This means tip rooms are **optional**: they appear only when the natural
+zone packing happens to place a room flush against the stem end.
+Practically this will be rare; the stem almost always extends to the
+border.
 
 ### Deriving specific layouts
 
@@ -212,14 +220,16 @@ Strategy key `'z'` replaces `'chain'` in `VALID_STRATEGIES` and all
 
 ## Open questions
 
-1. **double-T in level configs**: which levels should include `'double_t'`?
-   It needs enough rooms to populate 6 zones (roughly 6–8 rooms minimum).
+1. **double-T in level configs**: tip zones are optional and stems extend
+   to the border when empty, so double-T works at any room count.
+   Proposed: add `'double_t'` to all levels that already include `'t'`
+   (levels 11 onwards).
 
 2. **cross refactor**: the current `_layout_cross` produces a full `+`
    corridor with rooms in 4 corner quadrants.  After refactoring, cross
-   becomes double-T with aligned stems — the corridor shape changes (it
-   now has a band with two aligned stem extensions rather than a full `+`).
-   Is that acceptable, or should the full-`+` corridor be kept as well?
+   becomes double-T with aligned stems — the corridor shape changes (band
+   with two short extensions rather than a full `+`).  Is that acceptable,
+   or should the full-`+` corridor be kept as a separate strategy?
 
 ---
 
@@ -228,7 +238,7 @@ Strategy key `'z'` replaces `'chain'` in `VALID_STRATEGIES` and all
 - [ ] `poe test` passes
 - [ ] horizontal/vertical unchanged in appearance after refactor
 - [ ] T: rooms above spine, rooms on both sides of stem, stem extends to border when z_bot empty
-- [ ] double-T: two stems visible, rooms in all 6 zones (or fewer if band too small)
+- [ ] double-T: two stems visible; rooms fill side zones; empty stems extend to border
 - [ ] cross: two aligned stems; rooms in 4 side-zones
 - [ ] Z/S/rotated visible; large z_main zone, narrow z_side; no stone waste
 - [ ] `'chain'` removed; `'z'` and `'double_t'` added to level configs
