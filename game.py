@@ -1187,6 +1187,17 @@ class Game:
                     else:
                         self.surf.blit(sp['floor'], (x, y))
 
+        # Staircase sprite at grid border exits
+        if self._is_multiroom:
+            for exit_key in self._current_room_data.get('exits', {}):
+                side, pos_str = exit_key.rsplit('_', 1)
+                pos = int(pos_str)
+                if side == 'right':    sc, sr = COLS - 1, pos
+                elif side == 'left':   sc, sr = 0,        pos
+                elif side == 'bottom': sc, sr = pos, ROWS - 1
+                else:                  sc, sr = pos, 0
+                self.surf.blit(sp['staircase'], (sc * TILE, sr * TILE))
+
         # Treasure
         if self._is_multiroom:
             rk = self._current_room
