@@ -2,12 +2,12 @@
 
 ## Status — Phase 0 (challenge graph branching + corridor layout extensions)
 
-- [ ] Challenge graph (DAG) supports branching: a corridor node can connect to
-      more than one grid; room nodes can chain (room → room within a grid)
-- [ ] All locks in the physical world trace back to a DAG edge — no ad-hoc locks
-- [ ] Physical border connections validated against DAG reachability:
-      if the border exit tile is inside a room, that room's place in the DAG
-      is used by the solvability checker, not bypassed
+- [ ] Challenge graph supports branching: a corridor node can connect to
+      more than one grid; room nodes can chain (room — room within a grid)
+- [ ] All locks in the physical world trace back to a challenge graph edge — no ad-hoc locks
+- [ ] Physical border connections validated against BFS reachability:
+      if the border exit tile is inside a room, that room's place in the
+      challenge graph is used by the solvability checker, not bypassed
 - [ ] L-shape corridor layout: two perpendicular arms; 4 variants (tl, tr, bl, br)
 - [ ] Dead-end corridor layout: single arm + tip room; no exit on opposite side
 
@@ -25,8 +25,8 @@
 ## Status — Phase 2 (loops / shortcut passages — deferred)
 
 - [ ] Loop edges added after spanning tree; always locked (key or gate)
-- [ ] Challenge DAG stays acyclic even with world-graph loops, because the
-      lock on the loop passage is always a DAG challenge
+- [ ] Solvability check still passes with world-graph loops; the loop
+      passage lock originates in the challenge graph with key reachable
 
 ## Status — Phase 3 (multi-plane — deferred until staircase sprite exists)
 
@@ -34,42 +34,55 @@
 
 ---
 
-## Core design principle: the DAG invariant
+## Core design principle: challenge graph integrity
 
-Every challenge in a level — every lock, gate, water crossing, or other
-obstacle — must originate as an edge in the **challenge DAG** before it
-appears anywhere in the physical world.
+The challenge graph is **undirected**: every edge can be traversed in both
+directions.  A key found on one branch of the world can open a lock on a
+completely different branch — the player collects everything reachable and
+applies it wherever needed.  There is no required linear order of resolution.
+
+Solvability is verified by **BFS reachability**: starting from the start
+node, can the player reach every node by traversing accessible edges,
+collecting items as they go, and using collected items to unlock previously
+blocked edges?  This check works on any undirected graph, with or without
+cycles.
+
+**The graph integrity rule**: every lock, gate, water crossing, or other
+obstacle that appears in the physical world must originate as an edge in
+the challenge graph, with the key or solution placed in a node that is
+reachable before the lock is encountered.
 
 **Consequence**: a locked door cannot be placed in the world unless a
-corresponding LOCKED edge is present in the DAG, with the key already in a
-DAG-reachable node at the time of construction.
+corresponding LOCKED edge is present in the challenge graph, with the key
+already in a reachable node at the time of construction.
 
 This principle already holds for room challenges (room locks, gated rooms).
 It also already holds for BORDER barriers (locked grid exits) — those are
-created by `_barrier_kw()` which adds the barrier to the DAG edge and places
-the key in the current reachable set before switching corridors.
+created by `_barrier_kw()` which adds the barrier to the graph edge and
+places the key in the current reachable set before switching corridors.
 
 **The gap**: when the physical stitch tile lands inside a room (rather than
 the corridor), reaching the other grid requires first entering that room.  If
-that room is locked, the DAG edge for that room is the real prerequisite for
-the BORDER transition — but the solvability checker currently treats the
-BORDER edge as reachable directly from the corridor, ignoring the room.
+that room is locked, that room's graph edge is the real prerequisite for the
+BORDER transition — but the solvability checker currently treats the BORDER
+edge as reachable directly from the corridor, ignoring the room.
 
 The fix is not to avoid this situation, but to **validate correctly**: after
 layout and stitching, identify which room (if any) owns each BORDER exit tile,
-and route the reachability analysis through that room's DAG position.
+and route the BFS reachability analysis through that room.
 
 ---
 
-## The design pipeline (DAG first, world second)
+## The design pipeline (challenge graph first, world second)
 
 ```
-1. Build challenge DAG
+1. Build challenge graph
       │  add rooms, locks, gates, BORDER edges, branches
       │  all challenges and all locks are placed here
+      │  graph is undirected; keys may live on any reachable branch
       ↓
-2. Verify DAG solvability
-      │  every locked item has its key reachable before it
+2. Verify solvability (BFS reachability)
+      │  every locked item has its key reachable via BFS
       │  this is the existing validate_playability() check
       ↓
 3. Lay out each grid
@@ -78,8 +91,8 @@ and route the reachability analysis through that room's DAG position.
 4. Stitch grids (BORDER exits)
       │  find shared border tiles, cut passages
       ↓
-5. Post-stitch DAG validation
-      │  re-run reachability with physical routing information:
+5. Post-stitch solvability check
+      │  re-run BFS with physical routing information:
       │  if BORDER exit is in room_X, reaching the other grid
       │  requires room_X to be reachable first
       │  if this produces a new solvability failure → retry layout
@@ -87,15 +100,15 @@ and route the reachability analysis through that room's DAG position.
 6. Physical level is ready
 ```
 
-The world never introduces a lock that wasn't in the DAG.  If step 5 finds a
-failure it means the stitch landed in a room that is locked in the DAG and
-the key for that room is unreachable from the entry direction.  The remedy is
-to retry layout for that grid (possibly with a different strategy), not to
-bypass the DAG.
+The world never introduces a lock that wasn't in the challenge graph.  If
+step 5 finds a failure it means the stitch landed in a room that is locked
+in the challenge graph and the key for that room is unreachable from the
+entry direction.  The remedy is to retry layout for that grid (possibly with
+a different strategy), not to weaken the challenge graph.
 
 ---
 
-## Phase 0: DAG branching
+## Phase 0: Challenge graph branching
 
 ### Current model
 
@@ -104,33 +117,38 @@ directly to the corridor.  Multiple grids form a linear chain of stars.
 
 ### Proposed extension
 
-The DAG can branch in two ways:
+The challenge graph can branch in two ways:
 
 **Intra-grid branching (room chains and branches)**  
 Rooms within a single grid can connect to each other, not just to the corridor:
 
 ```
-corridor → room_A → room_B          chain: room_B only after room_A
-corridor → room_A → room_B
-                 → room_C          branch: room_B and room_C both after room_A
+corridor — room_A — room_B          chain: room_B only accessible via room_A
+corridor — room_A — room_B
+                  — room_C          branch: room_B and room_C both behind room_A
 ```
+
+Because the graph is undirected, "behind room_A" means the edge room_A—room_B
+is the only connection to room_B; the player must pass through room_A to reach
+it in either direction.
 
 This creates genuine depth inside a single grid — the player discovers room_B
 only after entering room_A, which is impossible with flat star topology.
 
 The layout algorithm must place connected rooms adjacent to each other.
-Currently it does not guarantee this.  The fix: when two rooms share a DAG
-edge, they must be assigned adjacent positions in the layout (sharing a wall).
-The packing algorithm must be aware of room-room adjacency requirements.
+Currently it does not guarantee this.  The fix: when two rooms share a
+challenge graph edge, they must be assigned adjacent positions in the layout
+(sharing a wall).  The packing algorithm must be aware of room-room adjacency
+requirements.
 
 **Inter-grid branching (world graph branches)**  
 A corridor can have BORDER edges to more than one other corridor.  This creates
 a branch in the world graph: the player stands at a junction grid and can
 choose which direction to explore.
 
-Both kinds of branching must be designed in the DAG *first*, before any
-spatial placement is done.  The world graph topology is then a direct
-reflection of the DAG structure, not generated independently.
+Both kinds of branching must be designed in the challenge graph *first*, before
+any spatial placement is done.  The world graph topology is then a direct
+reflection of the challenge graph structure, not generated independently.
 
 ---
 
@@ -237,30 +255,31 @@ variant is chosen based on which two exits are needed.
 
 ## Phase 1: World graph (spanning tree)
 
-### DAG branching drives world branching
+### Challenge graph branching drives world branching
 
 A branch in the world graph is not generated independently of the challenge
-DAG.  It *is* a branch in the DAG: a corridor node that has BORDER edges to
+challenge graph.  It *is* a branch in the challenge graph: a corridor node that has BORDER edges to
 two or more other corridor nodes.  The spatial arrangement (which grid is
 placed where on the hyper-grid) is then the physical implementation of that
-DAG structure.
+challenge graph structure.
 
 The algorithm below runs **inside `LevelGraph.generate()`** as part of
-constructing the DAG.  It decides how many corridors to add and how they
+constructing the challenge graph.  It decides how many corridors to add and how they
 connect via BORDER edges.  The spatial layout step (`_build_super_grid`)
-later reads those DAG BORDER edges to derive positions; it does not generate
+later reads those challenge graph BORDER edges to derive positions; it does not generate
 topology on its own.
 
 ### No loops for now
 
-The DAG's BORDER edge structure is a **spanning tree**: exactly one path
+The challenge graph's BORDER edge structure is a **spanning tree**: exactly one path
 between any two corridor nodes.  When assigning hyper-grid positions, if a
 candidate position is already occupied by an existing non-parent grid, that
 adjacency is silently ignored — no connection is created.  Two grids must
 never share the same hyper-grid coordinate.
 
 Shortcut passages (loop edges) are deferred to Phase 2.  Until then the
-DAG remains acyclic with no special handling needed for loops.
+world graph is a tree with no cycles; the solvability check needs no special
+handling for loops.
 
 ### Hyper-grid positions
 
@@ -270,7 +289,7 @@ exactly 1 in one coordinate (Manhattan distance 1).  This is a hard
 constraint of the stitching mechanism: two grids share a border wall only
 when they are spatially adjacent.
 
-### DAG construction algorithm (inside `LevelGraph.generate()`)
+### Challenge graph construction algorithm (inside `LevelGraph.generate()`)
 
 **Input**: N grids (from `grid_count`), `branch_prob` p.
 
@@ -279,7 +298,7 @@ The first corridor is placed at hyper-grid position (0, 0).
 `placed = {(0,0): corridor_0}`, `frontier = [corridor_0]`.
 
 **Step 2 — Add corridors and BORDER edges**  
-Repeat until N corridor nodes exist in the DAG:
+Repeat until N corridor nodes exist in the challenge graph:
 
 1. Pick a random corridor G from `frontier` (uniform random — neither pure
    BFS nor pure DFS; gives varied tree shapes naturally).
@@ -294,7 +313,7 @@ Repeat until N corridor nodes exist in the DAG:
      adding a second BORDER edge from G in the same step (creating a branch).
 4. If no direction yielded a new corridor: remove G from `frontier`.
 
-The result is a DAG whose BORDER edges form a spanning tree.  Some corridor
+The result is a challenge graph whose BORDER edges form a spanning tree.  Some corridor
 nodes have more than one outgoing BORDER edge (branch nodes); degree depends
 on `branch_prob`.
 
@@ -348,10 +367,10 @@ stays but should fire rarely once strategy selection is correct.
 ## Phase 2: Loops / shortcut passages (deferred)
 
 When loop edges are added later, they will always be locked (key or gate).
-Because the lock originates in the DAG, the challenge DAG remains acyclic
-even though the world graph has a cycle.  The player can only traverse the
-shortcut after acquiring the key — which is placed in a DAG-reachable
-position determined before the lock is created.
+Because the lock originates in the challenge graph with the key placed in a
+reachable node, solvability is maintained even though the world graph now
+has a cycle.  The player can only traverse the shortcut after acquiring the
+key.
 
 ---
 
@@ -375,7 +394,7 @@ room is added.
 
 **`_super_grid_positions(n)`** — removed.  The hyper-grid topology is no
 longer a separate spatial computation; it is produced as a side-effect of
-building the DAG's BORDER edges (see algorithm above).  Hyper-grid positions
+building the challenge graph's BORDER edges (see algorithm above).  Hyper-grid positions
 are assigned incrementally as each corridor is added.
 
 **`LevelGraph.generate()`** — replaces the current snake-pattern loop with
@@ -387,7 +406,7 @@ can originate from any already-placed corridor node, not only
 `_current_corridor`.  The caller specifies which corridor is the branch
 parent.
 
-**Post-stitch DAG validation** — new step after physical stitching: determine
+**Post-stitch challenge graph validation** — new step after physical stitching: determine
 which room (if any) owns each BORDER exit tile; re-run reachability analysis
 routing through those rooms.  If a new solvability failure is found, retry
 the grid layout before accepting the level.
@@ -395,12 +414,12 @@ the grid layout before accepting the level.
 ### levellayout.py
 
 **`_build_super_grid()`** — reads the BORDER edge topology already present
-in the DAG (produced by `generate()`); it does not generate world graph
+in the challenge graph (produced by `generate()`); it does not generate world graph
 topology.  Wire `required_sides` (already computed at lines 1982–1987 but
 currently unused for strategy selection) into `_pick_strategy()` per the
 coverage table above.
 
-**Room-room adjacency** — when two rooms share a non-BORDER DAG edge, the
+**Room-room adjacency** — when two rooms share a non-BORDER challenge graph edge, the
 packing algorithm must place them adjacent (sharing a wall).  This is a new
 constraint for intra-grid room chains and branches.
 
@@ -437,7 +456,7 @@ Add `branch_prob` to each Act 2 feature set using the table above.
       solvability failures from room-room edge stitching)
 - [ ] L-shape corridor renders correctly in all 4 variants
 - [ ] Dead-end corridor renders (single arm + tip room, no opposite exit)
-- [ ] Post-stitch DAG validation catches and retries unsolvable stitch positions
+- [ ] Post-stitch challenge graph validation catches and retries unsolvable stitch positions
 
 ## Done when — Phase 1
 
