@@ -989,28 +989,40 @@ def draw_staircase(size=TILE):
 
 
 def draw_level_entrance(size=TILE):
-    """Level-entrance border tile — archway marking where the player enters."""
+    """Level-entrance border tile — massive closed wooden door with iron bands."""
     s = _surf(size, alpha=False)
-    earth  = (120, 80,  40)
-    stone  = (90,  70,  50)
-    hi     = (170, 130, 70)
-    shadow = (60,  40,  20)
-    glow   = (220, 200, 100)
-    s.fill(earth)
-    # Stone arch outline
-    arch_x, arch_y = size // 4, size // 5
-    arch_w, arch_h = size // 2, size * 3 // 5
-    pygame.draw.rect(s, stone, (arch_x, arch_y, arch_w, arch_h))
-    pygame.draw.rect(s, hi, (arch_x, arch_y, arch_w, 2))
-    pygame.draw.rect(s, shadow, (arch_x, arch_y + 2, 2, arch_h - 2))
-    # Dark passage interior
-    inner_x = arch_x + 2
-    inner_y = arch_y + 3
-    inner_w = arch_w - 4
-    inner_h = arch_h - 3
-    pygame.draw.rect(s, (10, 10, 15), (inner_x, inner_y, inner_w, inner_h))
-    # Keystone glow dot
-    pygame.draw.circle(s, glow, (size // 2, arch_y + 1), 2)
+    frame   = (68,  63,  58)   # stone door frame
+    wood    = (46,  26,   8)   # dark oak door face
+    wood_hi = (72,  46,  16)   # bevel highlight
+    wood_sh = (24,  12,   3)   # bevel shadow
+    iron    = (58,  56,  62)   # iron reinforcement band
+    iron_hi = (88,  86,  92)   # iron top edge
+
+    s.fill(frame)
+
+    # Door face — full width, full height (door meets the floor, no bottom frame)
+    fw = 2
+    pygame.draw.rect(s, wood, (fw, fw, size - fw * 2, size - fw))
+
+    # Bevel: left and top edge lighter, right edge darker
+    pygame.draw.line(s, wood_hi, (fw,        fw), (fw,        size - 1), 1)
+    pygame.draw.line(s, wood_hi, (fw,        fw), (size-fw-1, fw      ), 1)
+    pygame.draw.line(s, wood_sh, (size-fw-1, fw), (size-fw-1, size - 1), 1)
+
+    # Wood grain — faint vertical lines
+    grain = (40, 22, 6)
+    for gx in range(fw + 4, size - fw - 1, 5):
+        pygame.draw.line(s, grain, (gx, fw + 2), (gx, size - 2), 1)
+
+    # Two iron bands at ~1/3 and 2/3 height
+    bh = max(3, size // 10)
+    for by in (size // 3 - bh // 2, size * 2 // 3 - bh // 2):
+        pygame.draw.rect(s, iron, (fw, by, size - fw * 2, bh))
+        pygame.draw.line(s, iron_hi, (fw, by), (size - fw - 1, by), 1)
+        # Rivets: two per band
+        for rx in (fw + 3, size - fw - 6):
+            pygame.draw.rect(s, iron_hi, (rx, by + 1, 2, bh - 2))
+
     return s
 
 
