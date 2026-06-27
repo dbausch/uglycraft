@@ -3,8 +3,8 @@
 ## Status
 
 - [ ] L-corridor orientation chosen to match required BORDER exit sides
-- [ ] L-corridor empty quadrant filled by enlarging one randomly chosen adjacent room
-- [ ] Z-corridor bridge positioned so the side zone is always viable
+- [ ] L-corridor empty quadrant filled by enlarging one randomly chosen virtual tip room
+- [ ] Z-corridor `_layout_z` rewritten to produce the correct single-stroke Z/S shape
 
 ---
 
@@ -48,59 +48,57 @@ The L-shape leaves one rectangular quadrant with no corridor floor adjacent
 to it.  Currently no zone covers it.  Any room placed there would lack a
 challenge-graph-valid connection to the corridor and be unreachable.
 
-The fix is to enlarge an **existing** corridor-adjacent room so its floor
-extends into the corner.  There are up to two candidates:
+The fix is to place (or enlarge) a room using a **virtual tip room**.  At the
+junction, each arm has a virtual extension in the direction it would continue
+if it went straight through.  These virtual extensions define small rooms that
+can be enlarged into the empty corner by removing the wall separating them
+from it.  For an L-corridor there are always **two** virtual tip rooms:
 
-**Candidate A — Zone B border room**
-The zone that runs alongside the v-arm (Zone B) has a room at the boundary
-nearest the corner.  Extending that room's bounding box towards the corner
-does not change its challenge-graph edge to the corridor; the door remains at
-the same shared wall with the corridor arm.
+**Tip 1 — v-arm extension**
+Where the v-arm would continue past the junction (in the opposite direction
+from its border exit).  This defines a small room area just inside the empty
+quadrant, separated from the h-arm corridor by one gap row.  Enlarge it
+**toward the adjacent corner** by removing the gap wall between it and the
+corner columns.
 
-**Candidate B — Arm tip room**
-The corridor's v-arm ends at a "tip" — its innermost row (or column) closest
-to the corner, just short of the corner area.  A room placed immediately
-beyond this tip and spanning the full width of both the tip and the corner
-columns creates a large dead-end room, accessed through a single door at the
-arm's tip face.  This room is a fresh PlacedNode that covers the tip area
-(same column range as the v-arm) **plus** the corner (cols outside the arm,
-same rows).  Its challenge-graph edge to the corridor is satisfied by the
-shared wall at the arm tip.
+**Tip 2 — h-arm extension**
+Where the h-arm would continue past the junction (away from its border exit).
+This area is within Zone B's bounding box (nearest to the corner).  The
+bottommost (or topmost, depending on orientation) Zone B room already occupies
+this position.  Enlarge it **toward the corner** by removing the gap row/col
+that separates it from the corner rows/cols.
 
-Randomly select one of the available candidates (A, B, or both if both exist).
-If neither candidate is available, leave the corner empty.
+(If one arm is a dead end rather than a border exit, a third virtual tip
+exists at the arm's far end — the direction the arm faces but does not exit.
+Each virtual tip can be enlarged into the adjacent empty area, potentially
+spanning more than one empty corner.)
 
-Concretely:
+Randomly select one available tip room to enlarge.  Tip 1 requires creating a
+new `PlacedNode`; Tip 2 requires extending an existing `PlacedNode`.  If
+neither is geometrically viable, leave the corner empty.
 
-| Orientation | Corner area                        | Candidate A                         | Candidate B (tip room)                      |
-|-------------|------------------------------------|--------------------------------------|----------------------------------------------|
-| `bl`        | cols `MIN_C`–`cor_col-2`,          | bottommost Zone B room               | cols `MIN_C`–`cor_col+arm_w-1`,              |
-|             | rows `cor_row+arm_h+1`–`MAX_R`     | extended to `MAX_R`                  | rows `cor_row+arm_h+1`–`MAX_R`               |
-| `br`        | cols `cor_col+arm_w+1`–`MAX_C`,    | bottommost Zone B room               | cols `cor_col`–`MAX_C`,                      |
-|             | rows `cor_row+arm_h+1`–`MAX_R`     | extended to `MAX_R`                  | rows `cor_row+arm_h+1`–`MAX_R`               |
-| `tl`        | cols `MIN_C`–`cor_col-2`,          | topmost Zone B room                  | cols `MIN_C`–`cor_col+arm_w-1`,              |
-|             | rows `MIN_R`–`cor_row-2`           | extended to `MIN_R`                  | rows `MIN_R`–`cor_row-2`                     |
-| `tr`        | cols `cor_col+arm_w+1`–`MAX_C`,    | topmost Zone B room                  | cols `cor_col`–`MAX_C`,                      |
-|             | rows `MIN_R`–`cor_row-2`           | extended to `MIN_R`                  | rows `MIN_R`–`cor_row-2`                     |
+Concretely for `bl` (junction col `jc`, junction row `jr`, arm widths 2):
 
-Candidate B is only placed if the corner area is large enough (≥ 3 wide or
-≥ 3 tall depending on orientation, and ≥ 2 in the other dimension) **and**
-a spare room is available (one can be "stolen" from the least-full zone).
+| Tip | Room position before enlargement           | Enlarge direction         | Result                                 |
+|-----|--------------------------------------------|---------------------------|----------------------------------------|
+| 1   | cols `jc`–`jc+1`, rows `jr+2`–`MAX_R`     | left → add cols `1`–`jc-2`  | cols 1–`jc+1`, rows `jr+2`–`MAX_R`    |
+| 2   | Zone B's bottommost room (cols 1–`jc-2`)   | down → extend to `MAX_R`  | cols 1–`jc-2`, rows `<orig top>`–`MAX_R` |
 
 ---
 
-## Problem C — Z-corridor empty side zone
+## Problem C — Z-corridor wrong shape
 
-`_layout_z` for `z_h`/`s_h` variants places the bridge at
-`offset = rng.randint(3, max_off)`.  With `offset = 3` the side zone has
-width `offset − 1 = 2`, which fails `side_ok` (`zsw >= 3`) and leaves the
-side area empty.  A room in the main zone cannot cover it (the bridge corridor
-separates them).  The side area abuts the corridor arms but is too narrow for
-a room, resulting in wasted space that cannot be filled by enlarging any
-adjacent room.
+The current `_layout_z` generates two full-width parallel arms (top and
+bottom) connected by a narrow bridge.  This produces an H/π shape, not a Z.
 
-The fix is structural: choose the bridge position so the side zone always has
-at least width 3 (or height 2 for `z_v`/`s_v`).
+A Z-corridor is a **single corridor stroke with two turns** — three segments:
+1. A partial arm exiting at two adjacent borders (top-left for `z_h`)
+2. A perpendicular connector segment
+3. A partial arm exiting at the opposite two borders (bottom-right for `z_h`)
+
+The bridge (connector) is narrow in one dimension (width = `arm_w`, typically
+2–3 tiles) and long in the other.  The two room zones sit on opposite sides of
+the connector — one in the top-right area, one in the bottom-left area.
 
 ---
 
@@ -124,42 +122,57 @@ If the required exits don't match any pair (0, 1, 3, or 4 exits), fall back to
 
 ---
 
-## Fix B — fill L corner by enlarging one adjacent room
+## Fix B — fill L corner by enlarging one virtual tip room
 
-After zone packing, build a list of candidate rooms (Zone B border room, tip
-room) for the corner.  Use `rng.choice` to select one.  Implement as:
+After zone packing, identify the two virtual tip rooms.  Use `rng.choice`
+to select one.  Implement as:
 
-- Candidate A: look up the border Zone B room in `placed`, create a new
-  `PlacedNode` with the same `col`/`w` but extended `row`/`h` to reach the
-  corner, replace it in `placed`.
-- Candidate B: take a spare room name (preferably the last room assigned to
-  any zone), compute the tip-room bounding box, create a new `PlacedNode`
-  for it, insert into `placed` (replacing any previous placement for that name).
+- **Tip 1** (v-arm extension): take a spare room name (preferably the last
+  room assigned to any zone), compute the tip-room bounding box before
+  enlargement, then extend it to fill the corner by adjusting `col`/`w`
+  (or `row`/`h` depending on orientation), create a new `PlacedNode`, insert
+  into `placed`.
+- **Tip 2** (h-arm extension = Zone B border room): look up the border Zone B
+  room in `placed`, create a new `PlacedNode` with extended `row`/`h` (or
+  `col`/`w`) to reach the corner, replace it in `placed`.
 
 The resulting room's connection to the corridor is found by `derive_walls` in
 the normal way — no special-casing needed.
 
 ---
 
-## Fix C — guarantee Z side zone is viable
+## Fix C — rewrite `_layout_z` for correct Z/S shape
 
-For `z_h` and `s_h` variants, change:
+Replace the current parallel-arms-plus-bridge implementation with the
+single-stroke Z/S design documented in `kb/uglycraft-layouts.md` section 6.
 
-```python
-offset = rng.randint(3, max_off)
+Key parameters: `c_break` (or `r_break`), `arm_th` (segment thickness in the
+transverse direction), `arm_w` (connector width in the long direction).
+
+For `z_h`:
+
+```
+top_arm    = cols MIN_C .. c_break+arm_w-1,  rows MIN_R .. MIN_R+arm_th-1
+connector  = cols c_break .. c_break+arm_w-1, rows MIN_R+arm_th-1 .. MAX_R-arm_th+1
+bot_arm    = cols c_break .. MAX_C,           rows MAX_R-arm_th+1 .. MAX_R
 ```
 
-to:
+(Top arm and connector overlap at the junction rows; similarly bot arm and
+connector overlap.)
 
-```python
-offset = rng.randint(4, max_off)
-```
+Zone A: cols c_break+arm_w+1..MAX_C, rows MIN_R..MAX_R-arm_th-1  
+Zone B: cols MIN_C..c_break-2, rows MIN_R+arm_th+1..MAX_R
 
-This ensures `side_width = offset − 1 ≥ 3`, so `side_ok` is always `True`
-and the side zone always receives a room.
+The segment starts and ends do not need to touch the border — they can stop
+short or be positioned anywhere valid inside the grid.  The corridor still
+provides four exits (one at each end of each outer arm) regardless.  When
+`c_break` equals `MIN_C` or `MAX_C`, the shape degenerates to a straight
+corridor.
 
-For `z_v` and `s_v`, `side_ok` requires height ≥ 2 and the current offset
-range already guarantees this — no change needed.
+Constraint: `c_break` (or `r_break`) must leave both zones large enough to
+hold at least one room (≥ 3 wide and ≥ 3 tall).
+
+Apply the same logic for `s_h`, `z_v`, `s_v` (mirrors/rotations).
 
 ---
 
@@ -167,7 +180,7 @@ range already guarantees this — no change needed.
 
 - `levellayout.py` — `_layout_l`, `_layout_for_strategy`, `layout_graph`
 - `levellayout.py` — `_build_super_grid`: compute and pass `required_exits`
-- `levellayout.py` — `_layout_z`: adjust minimum offset for `z_h`/`s_h`
+- `levellayout.py` — `_layout_z`: complete rewrite
 
 ---
 
@@ -176,4 +189,4 @@ range already guarantees this — no change needed.
 - [ ] `poe test` passes
 - [ ] L-corridor arms always at required border sides (user confirmed)
 - [ ] No large empty corner in L-corridor layouts (user confirmed)
-- [ ] Z-corridor side zone always contains a room (user confirmed)
+- [ ] Z-corridor is a single-stroke Z/S shape with two zones (user confirmed)
