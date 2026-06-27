@@ -207,200 +207,187 @@ Zone C: cols 1–16, rows 10–14.  Zone D: cols 22–28, rows 10–14.
 
 ## 6. Z-corridor  (four variants)
 
-A single corridor stroke with two turns — three connected segments.  The two
-outer arms and the perpendicular connector between them create two primary
-room zones (A and B) on opposite sides of the connector.  When the outer arms
-have inner endpoints (not at the borders), two additional zones open up at
-the arm ends (C at the top-arm end, D at the bottom-arm end), giving up to
-four zones total.  Tip rooms can be placed at any arm end that stops short of
-the border.
+A corridor stroke with two turns.  The first arm starts at one border and
+travels into the grid; at the first turn it bends onto a connector; at the
+second turn it resumes the original direction and exits the *opposite* border
+at a different position along it.  The shape is an S or Z: entering from one
+side, exiting from the same axis but shifted.
 
-### 6a. z_h — Z shape, horizontal segments
+Each turn is analogous to the L-corridor: two virtual tip extensions define
+two zones.  With two turns there are **four zones in total — two on each side
+of the stroke**.
 
-Parameters: `c_break`, `arm_th`, `arm_w`, and optionally `c_left`/`c_right`
-for where the outer arms start/end (defaulting to the left and right borders).
-The arms do not need to reach the borders — when `c_break` equals `MIN_C` or
-`MAX_C` the shape degenerates to a straight corridor.
+The smallest example (arm_h = 1, arm_w = 1, 5 × 4 interior):
 
-**Example:** `c_break = 12`, `arm_th = 2`, `arm_w = 2`
+```
+ 0 #######
+ 1 #AAABB#
+ 2 #   BB#
+ 3 #CC   #
+ 4 #CCDDD#
+ 5 #######
+```
 
-Segment 1 (top arm): cols 1–13 (= MIN_C..c_break+arm_w−1), rows 1–2.
-Connector: cols 12–13, rows 2–13 (arm_th..MAX_R−arm_th+1).  Top arm and
-connector share cols 12–13 at rows 1–2; bottom arm and connector share
-cols 12–13 at rows 13–14.
-Segment 3 (bottom arm): cols 12–28, rows 13–14.
+Zone A: above first arm (same cols).  Zone B: right of connector, upper.
+Zone C: left of connector, lower.  Zone D: below second arm (same cols).
 
-Zone A: cols 15–28, rows 1–11  (right of connector, above bottom arm).
-Zone B: cols 1–10,  rows 4–14  (left of connector, below top arm).
-Gap col 11 (Zone B / connector).  Gap col 14 (connector / Zone A).
-Gap row 3 (top arm ended, Zone B not yet).  Gap row 12 (Zone A ended, bottom arm not yet).
+---
+
+### 6a. z_h — Z shape, horizontal arms
+
+**Parameters:** `r_top`, `r_bot`, `c_break`, `arm_h`, `arm_w`
+
+First arm:  cols 1..c_break+arm_w−1, rows r_top..r_top+arm_h−1.  Exits **LEFT**.
+Connector:  cols c_break..c_break+arm_w−1, rows r_top..r_bot+arm_h−1.
+Second arm: cols c_break..28, rows r_bot..r_bot+arm_h−1.  Exits **RIGHT**.
+
+| Zone | Rows                        | Cols                  | Gap                       |
+|------|-----------------------------|-----------------------|---------------------------|
+| A    | 1 .. r_top−2                | 1 .. c_break+arm_w−1  | row r_top−1               |
+| B    | 1 .. r_bot−2                | c_break+arm_w+1 .. 28 | col c_break+arm_w, row r_bot−1 |
+| C    | r_top+arm_h+1 .. 14         | 1 .. c_break−2        | row r_top+arm_h, col c_break−1 |
+| D    | r_bot+arm_h+1 .. 14         | c_break .. 28         | row r_bot+arm_h           |
+
+**Example:** `r_top = 4`, `r_bot = 10`, `c_break = 12`, `arm_h = 2`, `arm_w = 2`
+
+Zone A: rows 1–2,  cols 1–13.  Gap row 3.
+Zone B: rows 1–8,  cols 15–28. Gap col 14, gap row 9.
+Zone C: rows 7–14, cols 1–10.  Gap row 6, gap col 11.
+Zone D: rows 13–14, cols 12–28. Gap row 12.
 
 ```
  0 ##############################
- 1 #             #AAAAAAAAAAAAAA#
- 2 #             #AAAAAAAAAAAAAA#
- 3 ############  #AAAAAAAAAAAAAA#
- 4 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 5 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 6 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 7 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 8 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 9 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
-10 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
-11 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
-12 #BBBBBBBBBB#  ################
-13 #BBBBBBBBBB#                 #
-14 #BBBBBBBBBB#                 #
+ 1 #AAAAAAAAAAAAA#BBBBBBBBBBBBBB#
+ 2 #AAAAAAAAAAAAA#BBBBBBBBBBBBBB#
+ 3 ###############BBBBBBBBBBBBBB#
+ 4 #             #BBBBBBBBBBBBBB#
+ 5 #             #BBBBBBBBBBBBBB#
+ 6 ############  #BBBBBBBBBBBBBB#
+ 7 #CCCCCCCCCC#  #BBBBBBBBBBBBBB#
+ 8 #CCCCCCCCCC#  #BBBBBBBBBBBBBB#
+ 9 #CCCCCCCCCC#  ################
+10 #CCCCCCCCCC#                 #
+11 #CCCCCCCCCC#                 #
+12 #CCCCCCCCCC###################
+13 #CCCCCCCCCC#DDDDDDDDDDDDDDDDD#
+14 #CCCCCCCCCC#DDDDDDDDDDDDDDDDD#
 15 ##############################
 ```
 
-**Exits:** top + left (top arm hits row 1 and col 1) + bottom + right (bottom
-arm hits row 14 and col 28).
+**Exits:** LEFT (first arm) + RIGHT (second arm).
 
-**Zone C and D (arm endpoints inside the grid):**
-When `c_left > MIN_C`, Zone C sits at cols `MIN_C..c_left-2`, rows `MIN_R..arm_th`
-— accessible via the top arm's left face (door at col `c_left-1`).
-When `c_right < MAX_C`, Zone D sits at cols `c_right+2..MAX_C`, rows `MAX_R-arm_th+1..MAX_R`
-— accessible via the bottom arm's right face (door at col `c_right+1`).
-These zones receive one enlarged tip room each that fills the available area.
+---
 
-**Example with inner endpoints:** `c_break = 12`, `arm_th = 2`, `arm_w = 2`,
-`c_left = 4`, `c_right = 25`
+### 6b. s_h — S shape, horizontal arms  (left-right mirror of z_h)
 
-Zone C: cols 1–2, rows 1–2.  Zone D: cols 27–28, rows 13–14.
+**Parameters:** `r_top = 4`, `r_bot = 10`, `c_break = 17`, `arm_h = 2`, `arm_w = 2`
+
+First arm:  cols c_break..28 = 17–28, rows 4–5.  Exits **RIGHT**.
+Connector:  cols c_break..c_break+arm_w−1 = 17–18, rows 4–11.
+Second arm: cols 1..c_break+arm_w−1 = 1–18, rows 10–11.  Exits **LEFT**.
+
+Zone A: rows 1–2,  cols 17–28. Zone B: rows 1–8,  cols 1–15.
+Zone C: rows 7–14, cols 20–28. Zone D: rows 13–14, cols 1–18.
 
 ```
  0 ##############################
- 1 #CC#          #AAAAAAAAAAAAAA#
- 2 #CC#          #AAAAAAAAAAAAAA#
- 3 ############  #AAAAAAAAAAAAAA#
- 4 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 5 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 6 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 7 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 8 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
- 9 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
-10 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
-11 #BBBBBBBBBB#  #AAAAAAAAAAAAAA#
-12 #BBBBBBBBBB#  ################
-13 #BBBBBBBBBB#              #DD#
-14 #BBBBBBBBBB#              #DD#
+ 1 #BBBBBBBBBBBBBBB#AAAAAAAAAAAA#
+ 2 #BBBBBBBBBBBBBBB#AAAAAAAAAAAA#
+ 3 #BBBBBBBBBBBBBBB##############
+ 4 #BBBBBBBBBBBBBBB#            #
+ 5 #BBBBBBBBBBBBBBB#            #
+ 6 #BBBBBBBBBBBBBBB#  ###########
+ 7 #BBBBBBBBBBBBBBB#  #CCCCCCCCC#
+ 8 #BBBBBBBBBBBBBBB#  #CCCCCCCCC#
+ 9 #################  #CCCCCCCCC#
+10 #                  #CCCCCCCCC#
+11 #                  #CCCCCCCCC#
+12 ####################CCCCCCCCC#
+13 #DDDDDDDDDDDDDDDDDD#CCCCCCCCC#
+14 #DDDDDDDDDDDDDDDDDD#CCCCCCCCC#
 15 ##############################
 ```
 
-Gap col 3 (Zone C / top arm).  Gap col 26 (bottom arm / Zone D).
+**Exits:** RIGHT (first arm) + LEFT (second arm).
 
-### 6b. s_h — S shape, horizontal segments  (mirror of z_h)
+---
 
-**Example:** `c_break = 17`, `arm_th = 2`, `arm_w = 2`
+### 6c. z_v — Z shape, vertical arms
 
-Segment 1 (top arm): cols 16–28, rows 1–2.
-Connector: cols 16–17, rows 2–13.
-Segment 3 (bottom arm): cols 1–17, rows 13–14.
+**Parameters:** `c_top`, `c_bot`, `r_break`, `arm_w`, `arm_h`
 
-Zone A: cols 1–14,  rows 1–11  (left of connector, above bottom arm).
-Zone B: cols 19–28, rows 4–14  (right of connector, below top arm).
-Gap col 15 (Zone A / connector).  Gap col 18 (connector / Zone B).
-Gap row 3.  Gap row 12.
+First arm:  cols c_top..c_top+arm_w−1, rows 1..r_break+arm_h−1.  Exits **TOP**.
+Connector:  rows r_break..r_break+arm_h−1, cols c_top..c_bot+arm_w−1.
+Second arm: cols c_bot..c_bot+arm_w−1, rows r_break..14.  Exits **BOTTOM**.
+
+| Zone | Rows                  | Cols                      | Gap                        |
+|------|-----------------------|---------------------------|----------------------------|
+| A    | 1 .. r_break−2        | 1 .. c_top−2              | row r_break−1, col c_top−1 |
+| B    | 1 .. r_break−2        | c_top+arm_w+1 .. 28       | row r_break−1, col c_top+arm_w |
+| C    | r_break+arm_h+1 .. 14 | 1 .. c_bot−2              | row r_break+arm_h, col c_bot−1 |
+| D    | r_break .. 14         | c_bot+arm_w+1 .. 28       | col c_bot+arm_w            |
+
+**Example:** `c_top = 5`, `c_bot = 22`, `r_break = 7`, `arm_w = 2`, `arm_h = 2`
+
+Zone A: rows 1–5,  cols 1–3.  Zone B: rows 1–5,  cols 8–28.
+Zone C: rows 10–14, cols 1–20. Zone D: rows 7–14, cols 25–28.
 
 ```
  0 ##############################
- 1 #AAAAAAAAAAAAAA#             #
- 2 #AAAAAAAAAAAAAA#             #
- 3 #AAAAAAAAAAAAAA#  ############
- 4 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
- 5 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
- 6 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
- 7 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
- 8 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
- 9 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
-10 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
-11 #AAAAAAAAAAAAAA#  #BBBBBBBBBB#
-12 ################  #BBBBBBBBBB#
-13 #                 #BBBBBBBBBB#
-14 #                 #BBBBBBBBBB#
+ 1 #AAA#  #BBBBBBBBBBBBBBBBBBBBB#
+ 2 #AAA#  #BBBBBBBBBBBBBBBBBBBBB#
+ 3 #AAA#  #BBBBBBBBBBBBBBBBBBBBB#
+ 4 #AAA#  #BBBBBBBBBBBBBBBBBBBBB#
+ 5 #AAA#  #BBBBBBBBBBBBBBBBBBBBB#
+ 6 #####  #######################
+ 7 #####                   #DDDD#
+ 8 #####                   #DDDD#
+ 9 ######################  #DDDD#
+10 #CCCCCCCCCCCCCCCCCCCC#  #DDDD#
+11 #CCCCCCCCCCCCCCCCCCCC#  #DDDD#
+12 #CCCCCCCCCCCCCCCCCCCC#  #DDDD#
+13 #CCCCCCCCCCCCCCCCCCCC#  #DDDD#
+14 #CCCCCCCCCCCCCCCCCCCC#  #DDDD#
 15 ##############################
 ```
 
-**Exits:** top + right (top arm) + bottom + left (bottom arm).
+**Exits:** TOP (first arm) + BOTTOM (second arm).
 
-### 6c. z_v — Z shape, vertical segments
+---
 
-**Example:** `r_break = 7`, `arm_th = 2`, `arm_w = 2`
+### 6d. s_v — S shape, vertical arms  (left-right mirror of z_v)
 
-Segment 1 (left arm): cols 1–2, rows 1–8 (= 1..r_break+arm_w−1).
-Connector: rows 7–8, cols 3–26 (arm_th+1..MAX_C−arm_th).  At rows 7–8 all
-28 interior cols are corridor (left arm + connector + right arm overlap).
-Segment 3 (right arm): cols 27–28, rows 7–14 (= r_break..MAX_R).
+**Parameters:** `c_top = 22`, `c_bot = 5`, `r_break = 7`, `arm_w = 2`, `arm_h = 2`
 
-Zone A: cols 4–28, rows 1–5  (right of left arm, above connector).
-Zone B: cols 1–25, rows 10–14 (left of right arm, below connector).
-Gap col 3 (left arm / Zone A).  Gap col 26 (Zone B / right arm).
-Gap row 6.  Gap row 9.
+First arm exits **TOP** (near right side); second arm exits **BOTTOM** (near left side).
+
+Zone A: rows 1–5,  cols 25–28. Zone B: rows 1–5,  cols 1–20.
+Zone C: rows 10–14, cols 8–28. Zone D: rows 7–14, cols 1–3.
 
 ```
  0 ##############################
- 1 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
- 2 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
- 3 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
- 4 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
- 5 #  #AAAAAAAAAAAAAAAAAAAAAAAAA#
- 6 #  ###########################
- 7 #                            #
- 8 #                            #
- 9 ###########################  #
-10 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
-11 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
-12 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
-13 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
-14 #BBBBBBBBBBBBBBBBBBBBBBBBB#  #
+ 1 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 2 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 3 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 4 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 5 #BBBBBBBBBBBBBBBBBBBB#  #AAAA#
+ 6 ######################  ######
+ 7 #DDD#                   ######
+ 8 #DDD#                   ######
+ 9 #DDD#  #######################
+10 #DDD#  #CCCCCCCCCCCCCCCCCCCCC#
+11 #DDD#  #CCCCCCCCCCCCCCCCCCCCC#
+12 #DDD#  #CCCCCCCCCCCCCCCCCCCCC#
+13 #DDD#  #CCCCCCCCCCCCCCCCCCCCC#
+14 #DDD#  #CCCCCCCCCCCCCCCCCCCCC#
 15 ##############################
 ```
 
-**Exits:** top + left (left arm) + bottom + right (right arm).
+**Exits:** TOP (first arm) + BOTTOM (second arm).
 
-**Zone C and D (arm endpoints inside the grid):**
-When `r_top < MIN_R+arm_th` (left arm ends above the bottom): space above the
-left arm becomes Zone C at rows `MIN_R..r_top-2`, cols `MIN_C..arm_th`.
-When `r_bot > MAX_R-arm_th` (right arm starts below the top): space below the
-right arm becomes Zone D at rows `r_bot+2..MAX_R`, cols `MAX_C-arm_th+1..MAX_C`.
-
-### 6d. s_v — S shape, vertical segments  (mirror of z_v)
-
-**Example:** `r_break = 7`, `arm_th = 2`, `arm_w = 2`
-
-Segment 1 (right arm): cols 27–28, rows 1–8.
-Connector: rows 7–8, cols 3–26 (rows 7–8 = full width).
-Segment 3 (left arm): cols 1–2, rows 7–14.
-
-Zone A: cols 1–25, rows 1–5  (left of right arm, above connector).
-Zone B: cols 4–28, rows 10–14 (right of left arm, below connector).
-Gap col 26.  Gap col 3.  Gap rows 6 and 9.
-
-```
- 0 ##############################
- 1 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
- 2 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
- 3 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
- 4 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
- 5 #AAAAAAAAAAAAAAAAAAAAAAAAA#  #
- 6 ###########################  #
- 7 #                            #
- 8 #                            #
- 9 #  ###########################
-10 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
-11 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
-12 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
-13 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
-14 #  #BBBBBBBBBBBBBBBBBBBBBBBBB#
-15 ##############################
-```
-
-**Exits:** top + right (right arm) + bottom + left (left arm).
-
-**Note:** The current code implements a different shape (two full-width
-parallel arms + narrow bridge).  The `_layout_z` function must be rewritten
-to produce the single-stroke Z/S corridor described here (spec 0019 Fix C).
+**Note:** The current `_layout_z` code generates a different shape (two
+full-width parallel arms + narrow bridge).  It must be rewritten to produce
+the four-zone Z/S shape described here (spec 0019 Fix C).
 
 ---
 
