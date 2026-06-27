@@ -6,9 +6,10 @@
 - [x] `layout_graph` filters the strategy pool to `max_zones ≤ n_rooms` before selecting
 - [x] `_pick_strategy` passes the room count constraint into its selection
 - [x] No empty-zone layouts generated in the test suite (property test)
-- [ ] `'full_border'` added to `_STRATEGY_MAX_ZONES` (max_zones=1)
-- [ ] `full_border` is the fallback when `room_filtered` is empty
-- [ ] Erroneous `len(choices) > 1` guard removed from `_pick_strategy`
+- [x] `'full_border'` added to `_STRATEGY_MAX_ZONES` (max_zones=1)
+- [x] `full_border` is the fallback when `room_filtered` is empty
+- [x] Erroneous `len(choices) > 1` guard removed from `_pick_strategy`
+- [ ] `_SIMPLE_STRATEGIES` always-eligible carve-out removed from filter
 
 ---
 
@@ -32,19 +33,22 @@ structure that the graph cannot fill.
 > Choose a corridor layout strategy whose maximum zone count does not exceed
 > the number of rooms in the corridor's subgraph.
 
-Simple 2-zone strategies (`horizontal`, `vertical`, `off_centre`) are
-always eligible — one empty zone in a 2-zone layout is the irreducible
-minimum and is acceptable.
+The filter is strict: a strategy is eligible only when
+`n_rooms >= _STRATEGY_MAX_ZONES[strategy]`.  No carve-out for "simple"
+strategies — a 1-room grid with a `vertical` corridor still leaves one zone
+empty, which is unacceptable.  `full_border` (max_zones=1) serves as the
+unconditional fallback, covering all exits by construction.
 
-| Strategy    | Max zones | Min rooms to select |
-|-------------|-----------|---------------------|
-| `horizontal`  | 2 | always eligible |
-| `vertical`    | 2 | always eligible |
-| `off_centre`  | 2 | always eligible |
-| `t`           | 3 | ≥ 3             |
-| `double_t`    | 4 | ≥ 4             |
-| `z`           | 4 | ≥ 4             |
-| `l`           | 4 | ≥ 4             |
+| Strategy      | Max zones | Min rooms to select |
+|---------------|-----------|---------------------|
+| `full_border` | 1         | ≥ 1 (fallback)      |
+| `horizontal`  | 2         | ≥ 2                 |
+| `vertical`    | 2         | ≥ 2                 |
+| `off_centre`  | 2         | ≥ 2                 |
+| `t`           | 3         | ≥ 3                 |
+| `double_t`    | 4         | ≥ 4                 |
+| `z`           | 4         | ≥ 4                 |
+| `l`           | 4         | ≥ 4                 |
 
 The "max zones" figure is the structural maximum for each strategy (e.g.
 `double_t` can produce two near-side sub-zones + two far-side sub-zones = 4).
@@ -75,7 +79,7 @@ _SIMPLE_STRATEGIES = frozenset({'horizontal', 'vertical', 'off_centre'})
 frame and the entire interior is a single room zone.  It covers all four
 border sides by construction, so it is always exit-compatible.
 
-### 2. Filter in `layout_graph` — already done (fix `_SIMPLE_STRATEGIES` fallback)
+### 2. Filter in `layout_graph` — update to remove `_SIMPLE_STRATEGIES` carve-out
 
 After `regular_rooms` is computed, before `rng.choice`:
 
@@ -84,26 +88,20 @@ available = strategies or STRATEGIES
 if len(available) > 1:
     n_rooms = len(regular_rooms)
     filtered = [s for s in available
-                if s in _SIMPLE_STRATEGIES
-                or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
+                if n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
     available = filtered if filtered else ['full_border']
 strategy = rng.choice(available)
 ```
 
-When `filtered` is empty (all strategies in the pool are over-zoned for
-this room count **and** the pool contains no simple strategies), fall back to
-`'full_border'`.  This replaces the previous silent "do nothing" behaviour
-that allowed an over-zoned strategy through.
+The `if s in _SIMPLE_STRATEGIES` arm is removed.  The filter is now a
+strict zone-count check; `full_border` is the fallback when nothing passes.
 
 The `len(available) > 1` guard preserves explicit single-strategy overrides
 used in tests and the stitch-fallback path.
 
-### 3. Filter in `_pick_strategy` — existing implementation has a guard bug
+### 3. Filter in `_pick_strategy` — update to remove `_SIMPLE_STRATEGIES` carve-out
 
-The current implementation has an erroneous `len(choices) > 1` guard that
-prevents the room-count filter from running when the exit-compatibility step
-narrows the pool to a single strategy.  Remove the guard and apply the same
-fallback logic:
+Same change: drop the `s in _SIMPLE_STRATEGIES` arm.
 
 ```python
 def _pick_strategy(exits, available, rng, n_rooms=0):
@@ -113,21 +111,19 @@ def _pick_strategy(exits, available, rng, n_rooms=0):
         return 'full_border'
     if n_rooms > 0:
         room_filtered = [s for s in choices
-                         if s in _SIMPLE_STRATEGIES
-                         or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
+                         if n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
         choices = room_filtered if room_filtered else ['full_border']
     return rng.choice(choices)
 ```
 
-The `else` branch (no exits required) gets the same treatment:
+The `else` branch (no exits required):
 
 ```python
 else:
     choices = list(available) if available else ['full_border']
     if n_rooms > 0:
         room_filtered = [s for s in choices
-                         if s in _SIMPLE_STRATEGIES
-                         or n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
+                         if n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
         choices = room_filtered if room_filtered else ['full_border']
     return rng.choice(choices)
 ```
