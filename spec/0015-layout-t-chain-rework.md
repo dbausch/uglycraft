@@ -4,8 +4,8 @@
 
 - [ ] Generalised corridor function covering horizontal, T, double-T, cross
 - [ ] T: spine in centre third; rooms above and below the bar; stem extends to border when tip empty
-- [ ] Double-T: two stems, one on each side of the bar at different columns
-- [ ] Cross: refactored as the special case of double-T where both stems are at the same column
+- [ ] Double-T: two stems, one on each side; 40 % chance stems align (cross-like), 60 % offset
+- [ ] Cross (`_layout_cross` + `'cross'` key) removed; cross-like shapes emerge from double-T
 - [ ] Z-shape: 4 variants (Z, S, rotated-Z, rotated-S); replaces chain
 
 ---
@@ -51,7 +51,6 @@ Specific layouts are configurations of this one model:
 | T          | 1     | 4 zones: above, left, right, tip                    |
 | double-T   | 2     | 6 zones: above-left, above-right, above-tip,        |
 |            |       |           below-left, below-right, below-tip         |
-| cross      | 2     | special double-T: both stems at the same column     |
 
 ---
 
@@ -124,14 +123,14 @@ _layout_corridor(name, rooms, rng, orientation='v', stems=())
 _layout_corridor(name, rooms, rng, orientation='h',
                  stems=[('far', None, (3,5))])
 
-# double-T (different column fractions so stems don't align)
+# double-T — 40 % chance stems are aligned (cross-like), 60 % offset
+frac_near = rng.uniform(0.25, 0.75)
+if rng.random() < 0.4:
+    frac_far = frac_near                      # aligned → cross-like
+else:
+    frac_far = rng.uniform(0.25, 0.75)        # offset → true double-T
 _layout_corridor(name, rooms, rng, orientation='h',
-                 stems=[('near', 0.35, (3,5)), ('far', 0.65, (3,5))])
-
-# cross (same column fraction — both stems align)
-frac = rng.uniform(0.3, 0.7)
-_layout_corridor(name, rooms, rng, orientation='h',
-                 stems=[('near', frac, (3,5)), ('far', frac, (3,5))])
+                 stems=[('near', frac_near, (3,5)), ('far', frac_far, (3,5))])
 ```
 
 ---
@@ -211,9 +210,9 @@ Strategy key `'z'` replaces `'chain'` in `VALID_STRATEGIES` and all
 
 1. Implement `_layout_corridor` replacing `_layout_horizontal`, `_layout_vertical`, `_layout_t`.
 2. Add `_layout_z` as a new function.
-3. Dispatch in `_layout_for_strategy`: `'horizontal'`→corridor(h,0 stems), `'vertical'`→corridor(v,0 stems), `'t'`→corridor(h,1 stem), `'double_t'`→corridor(h,2 stems), `'cross'`→corridor(h,2 aligned stems), `'z'`→z-layout.
-4. Add `'double_t'` and `'cross'` (refactored) to `VALID_STRATEGIES`.
-5. Remove `'chain'`; add `'z'`.
+3. Dispatch in `_layout_for_strategy`: `'horizontal'`→corridor(h,0 stems), `'vertical'`→corridor(v,0 stems), `'t'`→corridor(h,1 stem), `'double_t'`→corridor(h,2 stems with biased alignment), `'z'`→z-layout.
+4. Add `'double_t'` to `VALID_STRATEGIES`.
+5. Remove `'chain'` and `'cross'`; add `'z'` and `'double_t'`.
 6. Update `levels.py` layout strategy lists accordingly.
 
 ---
@@ -225,11 +224,9 @@ Strategy key `'z'` replaces `'chain'` in `VALID_STRATEGIES` and all
    Proposed: add `'double_t'` to all levels that already include `'t'`
    (levels 11 onwards).
 
-2. **cross refactor**: the current `_layout_cross` produces a full `+`
-   corridor with rooms in 4 corner quadrants.  After refactoring, cross
-   becomes double-T with aligned stems — the corridor shape changes (band
-   with two short extensions rather than a full `+`).  Is that acceptable,
-   or should the full-`+` corridor be kept as a separate strategy?
+2. **cross removed**: `_layout_cross` and the `'cross'` strategy key are
+   deleted.  Cross-like shapes emerge naturally from `'double_t'` at ~40 %
+   probability (biased aligned-stem roll).  No separate strategy needed.
 
 ---
 
@@ -239,6 +236,6 @@ Strategy key `'z'` replaces `'chain'` in `VALID_STRATEGIES` and all
 - [ ] horizontal/vertical unchanged in appearance after refactor
 - [ ] T: rooms above spine, rooms on both sides of stem, stem extends to border when z_bot empty
 - [ ] double-T: two stems visible; rooms fill side zones; empty stems extend to border
-- [ ] cross: two aligned stems; rooms in 4 side-zones
+- [ ] double-T aligned (cross-like): two stems at same column; rooms in 4 side zones; both stems extend to border
 - [ ] Z/S/rotated visible; large z_main zone, narrow z_side; no stone waste
-- [ ] `'chain'` removed; `'z'` and `'double_t'` added to level configs
+- [ ] `'chain'` and `'cross'` removed; `'z'` and `'double_t'` added to level configs
