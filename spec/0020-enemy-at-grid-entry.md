@@ -2,59 +2,71 @@
 
 ## Status
 
-- [ ] No enemy spawns within MIN_ENEMY_DIST of a BORDER stitch tile
+- [ ] Stitch tiles always land in corridor floor, never in a room
+- [ ] No enemy can appear at a grid entry tile by construction
 
 ---
 
 ## Problem
 
-When two grids are stitched, a wall tile at the border column/row is removed to
-create a passage.  The stitching code picks this tile from `tile_owner`: if the
-corridor's floor tiles don't reach to the very border column, the stitch tile
-may be owned by a *room* node, not the corridor.
+The stitch code scans `tile_owner` for any floor tile at the border
+column/row when looking for a shared position between two grids.  If a room's
+floor tiles extend all the way to col 1 or col 28, the selected stitch tile can
+be in that room, not the corridor.  Enemies are placed in rooms; corridors have
+no enemies.  Entering via a room-owned stitch tile can put the player immediately
+next to an enemy.
 
-Enemies are placed in rooms via `_place_items_in_room` during per-grid
-`build_level_dict`.  At that time, the global `player_pos` is only the
-first-grid player start.  For rooms on subsequent grids there is no player
-proximity guard at all: `player_dist` is `None` so the `min_dist_from_player`
-check is skipped entirely, and enemies can land right next to the grid entry
-point.
+---
 
-Even for the first grid, if the stitch tile is in a room (not the corridor),
-the enemy distance check is relative to the player start, not the stitch tile.
+## Insight
+
+Corridors have no enemies.  If stitch tiles are restricted to tiles **owned by
+the corridor node**, the entry point is always corridor floor and can never be
+adjacent to an enemy.  No post-processing of `enemy_starts` is needed; the
+constraint is satisfied structurally.
 
 ---
 
 ## Fix
 
-After computing all stitch positions in `_build_super_grid`, collect a set of
-"entry tiles" — the inner-border tiles opened on both sides of each BORDER edge:
+In both `_stitch_ok` and the actual stitch loop, filter `tile_owner` to only
+include tiles owned by the corridor when searching for shared rows/cols:
 
 ```python
-entry_tiles: set[tuple[int,int]] = set()
-# for each stitched edge:
-entry_tiles.add((col_a, pos))   # exit side inner tile
-entry_tiles.add((col_b, pos))   # entry side inner tile
+# before (checks any floor tile at the border column):
+rows_a = {r for (c, r) in room_a['tile_owner'] if c == col_a}
+
+# after (only corridor-owned tiles):
+rows_a = {r for (c, r), owner in room_a['tile_owner'].items()
+          if c == col_a and owner == edge.node_a}
 ```
 
-Then post-process `all_enemy_starts`: remove any entry whose tile is within
-`MIN_ENEMY_DIST` BFS steps of any entry tile.  Use the stitched wall map
-(walls with stitch openings already applied) to compute passability.
+`edge.node_a` and `edge.node_b` are the corridor node names for each grid
+(every BORDER edge connects two corridors, so these are the right names).
 
-If an enemy is removed, do not try to re-place it — enemy counts are soft
-targets; a missing enemy is preferable to a teleport-death.
+Apply the same change to the `_stitch_ok` validity check so it agrees with the
+actual stitch.
+
+---
+
+## Relationship to the challenge graph
+
+Enemies are already carried on room nodes in the challenge graph.  This fix
+enforces the invariant structurally: corridor nodes own the entry tiles and
+corridor nodes have no enemies.  No change to graph generation is needed;
+the guarantee comes from layout.
 
 ---
 
 ## Files
 
-- `levellayout.py` — `_build_super_grid`: collect entry tiles, post-process
-  `all_enemy_starts` in the assembled `room` dict
+- `levellayout.py` — `_stitch_ok` and the BORDER stitch loop in
+  `_build_super_grid`
 
 ---
 
 ## Done when
 
 - [ ] `poe test` passes
-- [ ] Crossing grid borders in levels 12–20 never puts the player in
-      immediate melee range of an enemy (user confirmed)
+- [ ] Crossing grid borders in levels 12–20 never puts the player next to an
+      enemy (user confirmed)

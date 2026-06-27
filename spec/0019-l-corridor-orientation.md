@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] L-corridor orientation chosen to match required BORDER exit sides
-- [ ] Empty quadrant minimised: only unavoidable inaccessible corner remains
+- [ ] Empty quadrant filled: adjacent Zone B extended to cover it
 
 ---
 
@@ -12,40 +12,34 @@
 `_layout_l` picks one of `['bl', 'br', 'tl', 'tr']` at random.  Each
 orientation exposes exits at a different pair of grid borders:
 
-| Orientation | arm exits     |
-|-------------|---------------|
-| `bl`        | top + right   |
-| `br`        | top + left    |
-| `tl`        | bottom + right|
-| `tr`        | bottom + left |
+| Orientation | corridor exits |
+|-------------|----------------|
+| `bl`        | top + right    |
+| `br`        | top + left     |
+| `tl`        | bottom + right |
+| `tr`        | bottom + left  |
 
-When `_pick_strategy` selects `'l'` for a corridor that needs, say,
+When `_pick_strategy` selects `'l'` for a corridor that requires, say,
 `exits = {'left', 'top'}`, `_layout_l` might produce `'tl'` (bottom + right),
-placing corridor floor tiles on the wrong borders.  The stitch then fails (or
-the fallback to `z` always fires), and the intended L-shape is never used.
+placing arms on the wrong borders.  The stitch falls back to `'z'` every time,
+and the L-shape is never actually used.
 
 ---
 
 ## Problem B — large empty quadrant
 
-The L-shape always leaves one rectangular quadrant of the grid with no corridor
-floor tiles adjacent to it.  Rooms cannot be placed there (no shared wall to
-connect through), so the area is solid wall.  Depending on arm positions the
-empty quadrant can be 4–6 tiles tall × 6–8 tiles wide — conspicuous empty space.
+The L-shape leaves one rectangular quadrant with no corridor floor tiles
+adjacent to it.  Currently no zone covers that area, so it is solid wall.
+Depending on arm position the quadrant can be 4–6 tiles tall × 5–7 tiles wide
+— conspicuous wasted space.
 
 ---
 
 ## Fix A — orient by required exits
 
-`_layout_l` receives `edge_map` but not the required exit sides.  The call
-chain is:
-
-```
-build_level_dict → layout_graph → _layout_for_strategy → _layout_l
-```
-
-Pass `required_exits: frozenset` through the call chain so `_layout_l` can
-choose the orientation that places arms at the required borders:
+Pass `required_exits: frozenset` from `_build_super_grid` through
+`layout_graph` and `_layout_for_strategy` to `_layout_l`.  Map exit pair to
+orientation:
 
 ```python
 _EXIT_PAIR_TO_ORIENTATION = {
@@ -56,37 +50,41 @@ _EXIT_PAIR_TO_ORIENTATION = {
 }
 ```
 
-If the required exits don't match any pair (no exits, or a non-perpendicular
-pair), fall back to `rng.choice`.
+If the required exits don't match any pair, fall back to `rng.choice`.
 
 ---
 
-## Fix B — minimise empty quadrant
+## Fix B — extend Zone B into the empty quadrant
 
-Once the orientation is exit-driven, the empty quadrant is always the "inside
-corner" of the L.  Make it small by placing the bend near the inside-corner
-border: for `br` (exits top+left) the empty quadrant is bottom-right, so push
-the bend toward the bottom-right (high `frac_r`, high `frac` for `br`).
+The empty quadrant is always on the "inside corner" of the L — the side
+opposite to where both arms extend.  The zone that is **adjacent** to the
+empty quadrant (Zone B, a vertical band alongside the v-arm) currently starts
+at the h-arm row.  Extending Zone B to start at `MIN_R` (instead of `cor_row`)
+allows rooms packed into it to cover the full height including the empty corner.
 
-Specifically, adjust `frac` and `frac_r` for each orientation so the empty
-quadrant is ≤ 3 tiles in each dimension:
+The rooms in the extended part (above the h-arm) share a wall with the v-arm
+at col `cor_col ± 1`, in the rows where the v-arm exists.  `derive_walls` finds
+that connection tile and punches a door there.  The room's floor extends into
+the former empty corner and the player can explore it through that door.
 
-| Orientation | frac (h-arm col)   | frac_r (v-arm row) |
-|-------------|--------------------|--------------------|
-| `bl`        | keep 0.20–0.30     | keep 0.55–0.70     |
-| `br`        | keep 0.70–0.80     | keep 0.55–0.70     |
-| `tl`        | keep 0.20–0.30     | change to 0.30–0.45|
-| `tr`        | keep 0.70–0.80     | change to 0.30–0.45|
+Concretely, for each orientation, extend Zone B's `band_row` to `MIN_R` (or
+`band_end` to `MAX_R`) so it spans the full height or width of that strip:
 
-(`tl`/`tr` previously used 0.55–0.70 which placed the h-arm too low, leaving
-3–5 empty rows at the top of the grid.)
+| Orientation | Zone B before         | Zone B after (extended)         |
+|-------------|-----------------------|---------------------------------|
+| `bl`        | rows `MIN_R` → `cor_row+arm_h-1`  | rows `MIN_R` → `MAX_R`  |
+| `br`        | rows `MIN_R` → `cor_row+arm_h-1`  | rows `MIN_R` → `MAX_R`  |
+| `tl`        | rows `cor_row` → `MAX_R`          | rows `MIN_R` → `MAX_R`  |
+| `tr`        | rows `cor_row` → `MAX_R`          | rows `MIN_R` → `MAX_R`  |
+
+(For `bl`/`br` the extension is downward; for `tl`/`tr` upward.)
 
 ---
 
 ## Files
 
-- `levellayout.py` — `_layout_for_strategy`, `layout_graph`, `_layout_l`
-- `levellayout.py` — `_build_super_grid`: pass `required_exits` per corridor
+- `levellayout.py` — `_layout_l`, `_layout_for_strategy`, `layout_graph`
+- `levellayout.py` — `_build_super_grid`: compute and pass `required_exits`
 
 ---
 
@@ -94,5 +92,5 @@ quadrant is ≤ 3 tiles in each dimension:
 
 - [ ] `poe test` passes
 - [ ] L-corridor arms are always at the required border sides (confirmed by
-      running levels that trigger the `l` strategy)
-- [ ] Empty corner area is visually small (user confirmed)
+      inspecting levels that trigger the `l` strategy)
+- [ ] No large empty corner visible in the L-corridor layout (user confirmed)
