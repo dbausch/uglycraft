@@ -49,3 +49,10 @@
 **`item_no` NOT reset on death:** Unlike the Pascal version, UGLYCRAFT continues the item sequence after a death. The player resumes collecting from whatever `item_no` they were on. The penalty is purely score-based (−500 pts).
 
 **Bridge placement silently consumes extras:** When the player has crafted multiple bridges and tries to place them, only the first placement succeeds. Subsequent attempts consume the bridge item from inventory without placing anything in the world. Root cause unknown — likely in the bridge placement / water-tile check logic in `game.py`. Backlog.
+
+**Stairs sprite drawn at ordinary passages (bug, unimplemented feature):** The staircase sprite is rendered at some non-stair passages even though `EdgeType.STAIRS` has never been implemented. The rendering code appears to fall through to the stairs visual for an unrecognised edge type. Backlog — fix the fallthrough when implementing stairs properly.
+
+**Stairs design notes (for future implementation):**
+- A staircase tile is a normal interior floor tile; it is NOT restricted to the 30×16 grid border. It can appear anywhere inside a room or corridor.
+- Each staircase goes in one direction only: **up** (to the layer above) or **down** (to the layer below) — never both.
+- Connecting layer N to layer N+1 therefore requires two separate stair nodes: one "stairs down" in layer N and one "stairs up" in layer N+1.
