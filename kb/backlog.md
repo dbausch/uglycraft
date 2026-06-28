@@ -374,3 +374,38 @@ Cross-reference `spec/0030-key-placement-fixes.md` (K1 notes that a dropped
 node's keys are legitimately absent and K2 opens the door),
 `kb/requirements.md` (R-P3, R-P4), and BL-17 (completely empty rooms — possibly
 related).
+
+---
+
+## BL-24 · P2 · "The forge is defeated" text overflows the message box
+
+The message shown when the forge (forge ogre) is defeated — text along the lines
+of "The forge is defeated" — is too long and overflows its message/dialog box.
+
+**Fix hint:** locate the exact string (it may be a gettext-translated string in a
+.po/.pot locale file or a dialog/message call — grep the codebase and locale
+files for "forge"/"defeat"), and the routine that renders the message box
+(`game.py` / `main.py`). Either shorten the message, wrap the text across lines,
+or size the box to the text. Check other in-game messages don't overflow either.
+
+---
+
+## BL-25 · P3 · Scale room count with grid count so late Act 2 levels aren't boring full-border grids
+
+Levels 19-20 are visually boring: most grids are laid out with the `full_border`
+strategy because each grid contains only ONE room. Cause: in
+`LevelGraph.generate` the total `room_count` is split across grids
+(`rooms_per_grid = room_count // grid_count`, ~line 410); with grid_count up to
+10 and a small room_count, each grid gets ~1 room, and a 1-room grid can only use
+full_border (1 zone).
+
+**Fix:** scale total room_count with grid_count so each grid receives several
+rooms. Target progression: about 2-4 rooms in level 11 (1 grid), increasing
+smoothly to about 40-60 rooms in level 20 (10 grids) — i.e. roughly 4-6 rooms per
+grid at the top end. Adjust the `room_count` ranges in the `ACT2_FEATURE_SETS`
+(`levels.py` / `_act2_feature_sets`).
+
+Cross-reference BL-21 (reduce rooms in level 11 — this scaling subsumes/refines
+it; reconcile the two) and BL-22 (remove complex layouts from levels 11-13).
+Verify with a headless sweep that few/no grids fall back to full_border at high
+levels.
