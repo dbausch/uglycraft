@@ -59,11 +59,17 @@ tile geometry purely from algebra.
 
 ### Backlog agent rule
 
-New backlog items are added by spawning a background agent:
+New backlog items are added by spawning a background agent. The agent must also
+**commit its own changes to `kb/backlog.md`** (one commit per invocation) so the
+backlog is never left uncommitted — the main session does not commit on its
+behalf:
 
 ```python
 Agent(description="Add backlog item", run_in_background=True,
-      prompt="Append to kb/backlog.md with the next BL-NN ID and priority P2: [description + fix hint]")
+      prompt="Append to kb/backlog.md with the next BL-NN ID and priority P2: "
+             "[description + fix hint]. Then `git add kb/backlog.md` and commit "
+             "with a 'docs: add BL-NN ...' message (use the standard commit "
+             "trailers). Committing the backlog requires no user confirmation.")
 ```
 
 The main session never edits `kb/backlog.md` directly mid-task.
