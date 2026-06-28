@@ -109,6 +109,28 @@ filtering (zones with `w ≥ 3, h ≥ 2`). In practice zone count can fall below
 1-tile gap between each.
 `_pack_band_vertical(col, row, w, h)` fills a vertical zone top-to-bottom.
 
+### Zone capacity and n-capping
+
+Both packers cap `n` to the maximum rooms that physically fit at minimum dimensions
+**before** computing per-room sizes. This ensures rooms use the full available space
+rather than leaving dead wall area when too many rooms are assigned to a narrow zone.
+
+| Packer | Min room dim | Per-room cost | n_max formula |
+|--------|-------------|---------------|---------------|
+| `_pack_band` | w ≥ 3 | 3 + 1 gap = 4 cols | `(band_w + 1) // 4` |
+| `_pack_band_vertical` | h ≥ 2 | 2 + 1 gap = 3 rows | `(band_h + 1) // 3` |
+
+After capping, `base = usable // n` is always ≥ the minimum (3 or 2 respectively),
+so no special-case branch is needed.
+
+**Why this matters:** without the cap, assigning 2 rooms to a 4-row vertical zone
+gave `base=3`, placed the first room at h=3, then dropped the second because
+`row+2 > band_end`. The placed room occupied 3 of 4 rows, leaving 1 row wasted.
+With the cap: n_max = (4+1)//3 = 1, so only 1 room is assigned and it gets h=4
+(full zone).
+
+→ See R-P4 and R-P6 in `kb/requirements.md`.
+
 ### Zone connectivity invariant
 
 The packing function must be chosen so that **every placed room** has a wall tile

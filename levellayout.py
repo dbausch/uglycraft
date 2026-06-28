@@ -837,12 +837,13 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h,
         return
 
     n = len(room_names)
+    # Cap to rooms that can actually fit: each needs min w=3 plus 1-tile gap (4 cols/room)
+    n = min(n, (band_w + 1) // 4)
+    if n == 0:
+        return
     walls_between = n - 1
     usable = band_w - walls_between
-    if usable < n * 3:
-        base = 3
-    else:
-        base = usable // n
+    base = usable // n  # always ≥ 3 after capping
 
     widths = [base] * n
     leftover = usable - base * n

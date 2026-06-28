@@ -36,6 +36,20 @@ Smaller rooms are silently skipped by the packing functions.
 `_pack_band` advances `col += widths[i] + 1`; `_pack_band_vertical` advances `row += h + 1`.
 This 1-tile gap is what becomes the shared-boundary wall tile.
 
+**R-P6** Each packing function caps the room count to the maximum that fits at minimum
+dimensions (min w=3 for `_pack_band`; min h=2 for `_pack_band_vertical`) accounting for
+the (n−1) inter-room gaps:
+
+  n_max = (band_w + 1) // 4   for `_pack_band`       [3 cols/room + 1 gap = 4]
+  n_max = (band_h + 1) // 3   for `_pack_band_vertical`  [2 rows/room + 1 gap = 3]
+
+Without this cap, a zone that receives more rooms than it can hold gets an inflated
+`base` dimension for the first room (base=3 or base=2), drops the remaining rooms
+at the overflow check, and leaves dead wall space inside the zone.  With the cap,
+`base = usable // n ≥ minimum` always holds, and placed rooms fill the zone correctly.
+
+→ See "Zone capacity and n-capping" in `kb/architecture.md`.
+
 ---
 
 ## W — Walls
