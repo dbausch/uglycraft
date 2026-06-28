@@ -5,7 +5,6 @@
 - [ ] Water stream tiles (visual, directional flow)
 - [ ] Player carried by water (visible tile-by-tile animation)
 - [ ] Bridge crafting (2 planks, covers 1 water tile)
-- [ ] Pushable blocks into water (permanent stepping stone)
 - [ ] WATER edge type in graph system
 - [ ] Flame jet tiles (rhythmic on/off, 2s cycle)
 - [ ] Shield protects against flames
@@ -21,7 +20,7 @@
 ### Graph model
 
 New edge type: `WATER` — a passage between two rooms blocked by a stream.
-The player must place a bridge (2 planks) or push a block to cross.
+The player must place a bridge (2 planks) to cross.
 
 Like GATED edges require a plate+block, WATER edges require planks in
 inventory. The playability validator checks that planks are reachable
@@ -41,9 +40,6 @@ When the player steps onto an unbridged water tile:
 
 Bridging: place a bridge item on a water tile (SPACE with bridge selected).
 The water tile becomes passable floor with a bridge sprite.
-
-Pushing a block into water: the block fills the water tile permanently
-(stepping stone), same as bridging.
 
 ### Level data format
 
@@ -137,7 +133,6 @@ Level 15: + flame jets, shield-vs-flames
 - [ ] Water tiles render with directional flow animation
 - [ ] Player is carried by water visibly
 - [ ] Bridge covers water tile, player can walk on it
-- [ ] Block pushed into water creates stepping stone
 - [ ] Flame jets cycle on/off with visible fire sprites
 - [ ] Contact with active flames = catch
 - [ ] Shield protects against flames

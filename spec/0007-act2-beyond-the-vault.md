@@ -227,8 +227,8 @@ broken by any entity (player, chaser, Forge Ogre, boss). The player pushes a
 block 1 tile by walking into it, provided the tile behind the block (in the
 push direction) is empty floor. Enemies cannot push blocks.
 
-Uses: hold down pressure plates, push into water (permanent stepping stone),
-block enemy paths, block flame jet sources, redirect patrol guard routes.
+Uses: hold down pressure plates, block enemy paths, block flame jet sources,
+redirect patrol guard routes.
 
 ### Pressure Plates + Gates
 
@@ -247,8 +247,7 @@ until reaching the stream's end - a narrow drain grate or a point where the
 water flows under a wall. The player ends up at the drain tile.
 
 Not lethal (no life lost). Creates one-way movement hazards. Cross with a
-Bridge (crafted from 2 planks) placed on any water tile, or push a block into
-the stream (permanent stepping stone at that tile).
+Bridge (crafted from 2 planks) placed on any water tile.
 
 Enemies that step on water are also carried to the drain.
 
