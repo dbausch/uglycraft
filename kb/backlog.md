@@ -343,44 +343,20 @@ player in with simpler corridor layouts. Remove the more complex strategies
 
 ---
 
-## BL-23 · P1 · Investigate silent node (room) drops during layout
+## BL-23 · FIXED · Silent node (room) drops during layout — multi-grid closets
 
-Discovered while implementing spec 0030: whole graph nodes (rooms) can be
-silently DROPPED during layout — they never appear in the `placed` dict, so the
-room and ALL its content (keys, treasures, materials, enemies) vanish from the
-level. The generator already tolerates this: build_level_dict and the
-item-placement loop skip unplaced nodes (`if name not in placed: continue`), and
-locked/gated edges whose endpoint or prerequisite was dropped degrade to an open
-passage. So levels remain solvable, but content is lost and rooms disappear —
-the user was unaware this could happen and wants it investigated.
-
-Likely mechanism: R-P4 — packing functions SILENTLY SKIP rooms whose assigned
-zone is below minimum usable size (w < 2 or h < 2). A node assigned a too-small
-zone is therefore never placed. (See `kb/requirements.md` R-P3/R-P4 and
-`kb/architecture.md` zone packing.) There may be other drop paths in
-`layout_graph` / the greedy zone assignment.
-
-Investigate:
-1. How often nodes are dropped, across seeds and all Act 2 feature sets
-   (headless sweep counting graph nodes vs placed nodes).
-2. Exactly which code paths drop a node (R-P4 silent skip in `_pack_band` /
-   `_pack_band_vertical`; any others).
-3. Whether to eliminate drops entirely — e.g. cap room_count / sizes so every
-   node fits, or raise LayoutError to regenerate (consistent with how unsolvable
-   push puzzles and full-corridor spills are handled) instead of silently
-   dropping content.
-
-Cross-reference `spec/0030-key-placement-fixes.md` (K1 notes that a dropped
-node's keys are legitimately absent and K2 opens the door),
-`kb/requirements.md` (R-P3, R-P4), and BL-17 (completely empty rooms — possibly
-related).
-
-Measured (50 seeds × 10 Act 2 feature sets = 500 levels, PYTHONHASHSEED=0): node
-drops occur in 302/500 levels (~60%), dropping 541 nodes total, of which 369 held
-content (keys/treasures/materials/plates). With planks, keys, and soft-locks now
-all at zero across the same sweep (spec 0029/0030), silent node drops are the
-dominant remaining content-loss path — hence bumped to P1. Sweep script:
-scratchpad/sweep_losses.py.
+Root cause: 432/434 dropped nodes were CLOSETS; the multi-grid path
+(_build_super_grid._build_subgraph) copied only the corridor's direct room
+neighbours, so closets (which attach to a room, not the corridor) were never
+copied into any per-grid subgraph and were silently dropped (single-grid dropped
+0%). Fixed by spec 0032: closets are generated one-per-room at ~10%, copied into
+per-grid subgraphs (C6), and CARVED from the parent's own tiles as a back/side
+office or corner toilet (C2-C5); content of any un-carvable closet or dropped
+room is spilled to the room/corridor so nothing is lost (C7). Also: closets are
+excluded from zone room-count (no unoccupied zones) and never carved from a
+push-puzzle room. Commits e0691e0, 86647dd, 48ca6ed, 1da849e. Full suite 415
+passed; user-confirmed in-game (closets render well, no bad layouts across many
+grids). Invariants now hold: keys_dict==keys_graph, planks_dict==planks_graph.
 
 ---
 

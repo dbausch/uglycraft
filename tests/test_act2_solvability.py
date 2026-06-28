@@ -44,27 +44,18 @@ def _build(fs, seed):
     raise AssertionError(f"build never succeeded for seed={seed}")
 
 
-def _placed_names(level):
-    names = set()
-    for rd in level['rooms'].values():
-        names.update(rd.get('tile_owner', {}).values())
-    return names
-
-
 def assert_layout_solvable(graph, level):
-    placed = _placed_names(level)
-
-    # K1 / W1 — a placed node's keys and planks all reach the level dict.
+    # K1 / W1 / C7 — every key and plank survives into the level dict (an
+    # un-carvable closet or dropped room spills its content; spec 0032 C7).
     keys_dict = sum(len(rd.get('keys', [])) for rd in level['rooms'].values())
-    keys_placed = sum(len(graph.nodes[n].keys) for n in placed if n in graph.nodes)
-    assert keys_dict == keys_placed, "a placed node's key was dropped"
+    keys_graph = sum(len(nd.keys) for nd in graph.nodes.values())
+    assert keys_dict == keys_graph, "a key was lost"
 
     planks_dict = sum(1 for rd in level['rooms'].values()
                       for m in rd.get('materials', []) if m[2] == 'planks')
-    planks_placed = sum(
-        sum(1 for m in graph.nodes[n].materials if m == ('planks',))
-        for n in placed if n in graph.nodes)
-    assert planks_dict == planks_placed, "a placed node's plank was dropped"
+    planks_graph = sum(sum(1 for m in nd.materials if m == ('planks',))
+                       for nd in graph.nodes.values())
+    assert planks_dict == planks_graph, "a plank was lost"
 
     # K2 — every locked door (interior + border) has a surviving key.
     key_colours = {k[2] for rd in level['rooms'].values()

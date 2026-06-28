@@ -95,8 +95,14 @@ no shared-boundary tile. Silent `continue` is forbidden.
 **R-T2** Every non-closet room must be adjacent to the corridor node.
 Closet rooms (nodes with no direct corridor edge) are nested inside their parent.
 
-**R-T3** Closet rooms share two outer walls with their parent (corner placement).
-`_nest_closets` cuts a notch from the parent and places the closet at a corner.
+**R-T3** Closet rooms are **carved from their parent's own tiles** (spec 0032):
+`_carve_closets` splits off a back office / side office (~⅓ of the room) or a
+corner toilet (~⅕, near-square), separated from the reduced room by a 1-tile
+wall; the closet door is cut to the **room**, never the corridor.  Each room has
+at most one closet (~10%, `closet_prob`).  In multi-grid levels closets are
+copied into the per-grid subgraph by `_build_subgraph` (without that they were
+silently dropped — BL-23).  A closet that cannot be carved (parent dropped or too
+small) is currently skipped; content spill / puzzle elision is spec 0032 C7.
 
 **R-T4** For BORDER edges: the two corridor nodes must be in adjacent super-grid cells
 (Manhattan distance 1 on the super-grid).

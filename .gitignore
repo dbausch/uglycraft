@@ -33,6 +33,9 @@ packaging/uglycraft-git/
 uglycraft.hsc
 ugli.log
 
+# Claude Code worktrees (transient git worktrees for isolated agent work)
+.claude/worktrees/
+
 # Editor / OS
 .idea/
 .vscode/
