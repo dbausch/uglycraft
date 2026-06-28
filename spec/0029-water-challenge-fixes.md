@@ -6,8 +6,11 @@
       (after flames, push puzzles, and keys, before treasures and other
       materials); any item that overflows its room spills to the corridor; enemies
       may share a tile with an item (no reserved tile); `LayoutError` only if the
-      corridor is also full (should never happen). `planks_dict == 2 × N_water`
-      for every generated level
+      corridor is also full (should never happen). Every **placed** node's planks
+      survive (empirically `planks_dict == 2 × N_water` — a dropped *node* loses
+      its planks, see node-drop note / BL-23).
+      **Implemented by the spec 0030 work** (shared spill + `_build_subgraph`
+      fix); plank loss measured 85% → 0%. Pending user confirmation before ✓.
 - [ ] W2 — One bridge per water **room**: as soon as a water room is made
       accessible by a bridge, no further bridge to that room can be built
       (keyed on the room, not on a tile or an edge)
@@ -38,15 +41,19 @@
 Scripts: `scratchpad/repro_water.py`, `scratchpad/repro_water2.py`.
 Graph-level vs. built-level over 105 water-bearing Act 2 levels (15 seeds × 10):
 
-| Property | Result | Meaning |
-|---|---|---|
-| graph planks `== 2 × N_water` | **0/105 wrong** | graph provisioning is correct |
-| **planks lost in layout** | **89/105 (85%)** | planks dropped building the level dict |
-| craftable bridges `< N_water` | **89/105 (85%)** | most water levels can't be fully completed |
-| `_bridges_remaining < N_water` | 20/105 (19%) | runtime cap mis-keyed |
+| Property | Before 0030 | After 0030 | Meaning |
+|---|---|---|---|
+| graph planks `== 2 × N_water` | 0/105 wrong | 0/105 wrong | graph provisioning is correct |
+| **planks lost in layout** | **89/105 (85%)** | **0/105** | planks no longer dropped (W1 done) |
+| craftable bridges `< N_water` | 89/105 (85%) | **0/105** | enough planks now reach every level |
+| `_bridges_remaining < N_water` | 20/105 (19%) | **20/105 (19%)** | runtime cap still mis-keyed (W3) |
 
-Example (`seed0 idx4`): 3 water rooms → graph places 6 planks → **1 plank
-survives** → 0 craftable bridges.
+Before 0030, `seed0 idx4`: 3 water rooms → 6 planks placed → **1 survived** → 0
+craftable bridges. After 0030 the same sweep shows **0 plank loss** across all 105
+levels. The 85% was dominated by the `_build_subgraph` bug (corridor-held planks
+silently dropped in multi-grid) plus tile-exhaustion, both fixed by the 0030 work.
+**The remaining water defect is entirely runtime** (W2/W3/W4): the per-grid
+`_bridges_remaining` cap is still wrong in 19% of levels.
 
 ## The defects and resolutions
 
@@ -98,8 +105,26 @@ planks find no tile and are lost.
    (respecting `MIN_ENEMY_DIST` from the player, avoiding walls/flames) **without**
    adding it to `used`, so enemies always fit in their room and never overflow.
 
-**Target:** `planks_dict == 2 × N_water` for every generated level (W6 asserts);
-no collectible silently dropped.
+**Target:** every placed node's planks survive (empirically `planks_dict ==
+2 × N_water`); no collectible silently dropped.
+
+**Update — implemented by the spec 0030 work (pending user confirmation).**
+The placement order (1) and the spill-to-corridor mechanism (2/3) were built as
+the shared collectible-placement infrastructure in spec 0030 — they apply to
+planks identically. A second, larger plank-loss path was also fixed there:
+`_build_subgraph` did not copy the **corridor's own items**, so planks
+`add_water_room` placed on a corridor (via `_pick` over `_reachable`, which
+includes corridors) were silently lost in multi-grid levels. With both fixes the
+sweep shows **0 plank loss** (was 85%).
+
+Residual: a whole *node* dropped during layout (room too small to pack, R-P4)
+loses its planks. Unlike keys — where the dependent door degrades to an open
+passage — water has **no graceful fallback**, so a dropped plank-holder node for
+a surviving water edge could under-provision bridges. This did **not** occur in
+105 levels (plank-holder rooms are rarely the ones dropped, and the corridor
+often carries planks and is never dropped), but it is the one way W1 can still
+fail. Tracked by **BL-23** (eliminate silent node drops); W6 should assert
+"every placed node's planks survive" rather than strict `2 × N_water`.
 
 ### W2 — One bridge per water room (user-specified; currently absent)
 
@@ -167,7 +192,11 @@ No automated suite exists for game.py runtime, but the generator is testable.
 Add pytest property tests (per project test-suite discipline) that, across many
 seeds and all Act 2 feature sets, assert for every generated level:
 
-1. `planks_dict == 2 × N_water` (W1) — no planks lost; planks may sit on any grid.
+1. Every **placed** node's planks survive into the level dict (W1) — no planks
+   lost to tile exhaustion; empirically `planks_dict == 2 × N_water`; planks may
+   sit on any grid, including the corridor. (A dropped *node* is the only
+   exception — see BL-23.) Mirror `tests/test_key_placement.py`'s placed-node
+   approach.
 2. Every water tile maps to exactly one water room; one bridge tile makes that
    room accessible (W2/W4).
 3. The number of water rooms is recoverable from the level dict and there is no
@@ -180,11 +209,13 @@ water; after these fixes the water challenge is solvable by construction.
 
 ## Done when:
 
-- [ ] W1 — Every graph plank reaches the level dict (`planks_dict == 2 × N_water`),
-      placed after flames, push puzzles, and keys, before treasures and other
-      materials; planks may be distributed across grids; surplus collectibles
-      spill to the corridor and nothing is silently dropped; enemies may overlap
-      items; `LayoutError` only if the corridor is full.
+- [ ] W1 — Every **placed** node's planks reach the level dict (empirically
+      `planks_dict == 2 × N_water`), placed after flames, push puzzles, and keys,
+      before treasures and other materials; planks may be distributed across grids;
+      surplus collectibles spill to the corridor and nothing is silently dropped;
+      enemies may overlap items; `LayoutError` only if the corridor is full.
+      *(Implemented by the spec 0030 work — plank loss 85% → 0%; awaiting user
+      confirmation. Node-drop residual tracked by BL-23.)*
 - [ ] W2 — Building a bridge that makes a water room accessible marks that room
       accessed; no further bridge to it can be built; bridges cannot be wasted.
 - [ ] W3 — `_bridges_remaining` removed; bridge availability is governed solely by
