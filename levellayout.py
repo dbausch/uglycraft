@@ -709,17 +709,17 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
             )
             zones = [
                 # A: left of first arm (vertical band, full arm height)
-                (MIN_C,              MIN_R,    c_left - 2,              r_break + arm_h - 1,
+                (MIN_C,               MIN_R,               c_left - 2,             r_break + arm_h - 1,
                  _pack_band_vertical, None),
-                # B: above connector, between arms
-                (c_left + arm_w + 1, MIN_R,    c_right - c_left - 1,   r_break - 2,
-                 _pack_band, None),
-                # C: right of second arm — extended to MIN_R, max 1 room (fills top-right gap)
-                (c_right + arm_w + 1, MIN_R,   MAX_C - c_right - arm_w, MAX_R - MIN_R + 1,
-                 _pack_band_vertical, 1),
-                # D: below connector, between arms
-                (c_left,             r_break + arm_h + 1, c_right - c_left - 1, MAX_R - r_break - arm_h,
-                 _pack_band, None),
+                # B: above connector — extended right to MAX_C; all rooms connect via first arm left wall
+                (c_left + arm_w + 1,  MIN_R,               MAX_C - c_left - arm_w, r_break - 2,
+                 _pack_band_vertical, None),
+                # C: right of second arm — starts at r_break so all rooms reach the arm; no cap
+                (c_right + arm_w + 1, r_break,             MAX_C - c_right - arm_w, MAX_R - r_break + 1,
+                 _pack_band_vertical, None),
+                # D: below connector — extended left to MIN_C; rooms connect via top wall to connector
+                (MIN_C,               r_break + arm_h + 1, c_right - 2,            MAX_R - r_break - arm_h,
+                 _pack_band_vertical, None),
             ]
         else:  # s_v: first arm exits TOP (right col), second arm exits BOTTOM (left col)
             cor_tiles = (
@@ -732,17 +732,17 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
             )
             zones = [
                 # A: right of first arm (vertical band, full arm height)
-                (c_right + arm_w + 1, MIN_R,  MAX_C - c_right - arm_w, r_break + arm_h - 1,
+                (c_right + arm_w + 1, MIN_R,               MAX_C - c_right - arm_w, r_break + arm_h - 1,
                  _pack_band_vertical, None),
-                # B: above connector, between arms (left of first arm)
-                (c_left,             MIN_R,   c_right - c_left - 1,   r_break - 2,
-                 _pack_band, None),
-                # C: left of second arm — extended to MIN_R, max 1 room (fills top-left gap)
-                (MIN_C,              MIN_R,   c_left - 2,              MAX_R - MIN_R + 1,
-                 _pack_band_vertical, 1),
-                # D: below connector, between arms
-                (c_left + arm_w + 1, r_break + arm_h + 1, c_right - c_left - 1, MAX_R - r_break - arm_h,
-                 _pack_band, None),
+                # B: above connector — extended left to MIN_C; all rooms connect via first arm right wall
+                (MIN_C,               MIN_R,               c_right - 2,             r_break - 2,
+                 _pack_band_vertical, None),
+                # C: left of second arm — starts at r_break so all rooms reach the arm; no cap
+                (MIN_C,               r_break,             c_left - 2,              MAX_R - r_break + 1,
+                 _pack_band_vertical, None),
+                # D: below connector — extended right to MAX_C; rooms connect via top wall to connector
+                (c_left + arm_w + 1,  r_break + arm_h + 1, MAX_C - c_left - arm_w, MAX_R - r_break - arm_h,
+                 _pack_band_vertical, None),
             ]
 
     placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
