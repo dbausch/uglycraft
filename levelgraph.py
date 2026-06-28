@@ -420,9 +420,13 @@ class LevelGraph:
                 _add_room(et)
                 room_idx += 1
 
-        c_min, c_max = feature_set.get('closet_count', (0, 0))
-        for _ in range(rng.randint(c_min, c_max)):
-            b.add_closet_room()
+        # Each room independently gets at most ONE closet (spec 0032 C1).
+        closet_prob = feature_set.get('closet_prob', 0.10)
+        room_names = [n for n, nd in b._graph.nodes.items()
+                      if nd.size in (NodeSize.ROOM, NodeSize.HALL)]
+        for rn in room_names:
+            if rng.random() < closet_prob:
+                b.add_closet_room(parent=rn)
 
         if feature_set.get('has_flames'):
             b.add_flames()

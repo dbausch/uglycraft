@@ -359,7 +359,7 @@ def layout_graph(graph, rng=None, strategies=None, required_exits=None):
         placed = _layout_horizontal(corridor_name, regular_rooms, rng, em, ns)
 
     if closet_rooms:
-        _nest_closets(placed, closet_rooms, graph, rng)
+        _carve_closets(placed, closet_rooms, graph, rng, corridor_name)
 
     return placed
 
@@ -1095,76 +1095,182 @@ def _layout_l(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
     return placed
 
 
-def _nest_closets(placed, closet_rooms, graph, rng):
-    """Reposition closet rooms into a corner of their parent room.
+def _rect_tiles(col, row, w, h):
+    return frozenset((c, r) for c in range(col, col + w)
+                            for r in range(row, row + h))
 
-    The closet shares two outer walls with the parent (it sits at a true
-    corner).  The notch is (b_w+1)×(b_h+1): one added vertical wall and
-    one added horizontal wall separate the closet from the parent interior.
-    """
-    for child_name, parent_name in closet_rooms.items():
-        if parent_name not in placed:
-            continue
-        pn_a = placed[parent_name]
 
-        b_w = min(4, max(2, pn_a.w // 5))
-        b_h = min(3, max(2, pn_a.h // 3))
-        notch_w = b_w + 1   # 1 added vertical wall
-        notch_h = b_h + 1   # 1 added horizontal wall
+def _corridor_facing_side(pn, corridor_floor):
+    """Side of room pn whose edge faces the corridor: 'top'/'bottom'/'left'/
+    'right'.  The corridor floor sits 2 tiles out (floor-wall-floor, R-P5)."""
+    col, row, w, h = pn.col, pn.row, pn.w, pn.h
+    f = pn.floor_tiles
+    if any((c, row - 2) in corridor_floor
+           for c in range(col, col + w) if (c, row) in f):
+        return 'top'
+    if any((c, row + h + 1) in corridor_floor
+           for c in range(col, col + w) if (c, row + h - 1) in f):
+        return 'bottom'
+    if any((col - 2, r) in corridor_floor
+           for r in range(row, row + h) if (col, r) in f):
+        return 'left'
+    if any((col + w + 1, r) in corridor_floor
+           for r in range(row, row + h) if (col + w - 1, r) in f):
+        return 'right'
+    return None
 
-        if pn_a.w < notch_w + 1 or pn_a.h < notch_h + 1:
-            _place_closet_adjacent(placed, child_name, pn_a, b_w, b_h)
-            continue
 
-        a_floor = pn_a.floor_tiles
+def _carve_strip(col, row, w, h, strip_side, t):
+    """Carve a `t`-thick strip off `strip_side`, leaving a 1-tile wall gap.
 
-        # Four corners: (notch_col, notch_row, closet_col, closet_row)
-        # Closet occupies the corner of the notch, sharing the outer walls.
-        corners = [
-            (pn_a.col,                    pn_a.row,
-             pn_a.col,                    pn_a.row),
-            (pn_a.col + pn_a.w - notch_w, pn_a.row,
-             pn_a.col + pn_a.w - b_w,     pn_a.row),
-            (pn_a.col,                    pn_a.row + pn_a.h - notch_h,
-             pn_a.col,                    pn_a.row + pn_a.h - b_h),
-            (pn_a.col + pn_a.w - notch_w, pn_a.row + pn_a.h - notch_h,
-             pn_a.col + pn_a.w - b_w,     pn_a.row + pn_a.h - b_h),
-        ]
-        rng.shuffle(corners)
+    Returns (closet_floor, room_floor) or None if it does not fit (the room
+    needs at least one tile plus the gap on that axis)."""
+    if strip_side in ('top', 'bottom'):
+        if h < t + 2:
+            return None
+        if strip_side == 'top':
+            crows, rrows = range(row, row + t), range(row + t + 1, row + h)
+        else:
+            crows, rrows = range(row + h - t, row + h), range(row, row + h - t - 1)
+        cols = range(col, col + w)
+        return (frozenset((c, r) for c in cols for r in crows),
+                frozenset((c, r) for c in cols for r in rrows))
+    if w < t + 2:
+        return None
+    if strip_side == 'left':
+        ccols, rcols = range(col, col + t), range(col + t + 1, col + w)
+    else:
+        ccols, rcols = range(col + w - t, col + w), range(col, col + w - t - 1)
+    rows = range(row, row + h)
+    return (frozenset((c, r) for c in ccols for r in rows),
+            frozenset((c, r) for c in rcols for r in rows))
 
-        placed_ok = False
-        for nc_notch, nr_notch, nc, nr in corners:
-            notch = frozenset((c, r)
-                              for c in range(nc_notch, nc_notch + notch_w)
-                              for r in range(nr_notch, nr_notch + notch_h))
-            new_a = a_floor - notch
-            if not new_a or not _floor_connected(new_a):
+
+def _carve_corner(col, row, w, h, sw, sh, corner):
+    """Carve an sw×sh toilet at `corner` ('tl'/'tr'/'bl'/'br'), enclosed by an
+    L-wall (its two room-facing sides + the corner cell).  Returns
+    (closet_floor, room_floor) or None if it does not fit."""
+    if w < sw + 1 or h < sh + 1:
+        return None
+    left = corner in ('tl', 'bl')
+    top = corner in ('tl', 'tr')
+    tc0 = col if left else col + w - sw
+    tr0 = row if top else row + h - sh
+    toilet = _rect_tiles(tc0, tr0, sw, sh)
+    wall_col = tc0 + sw if left else tc0 - 1
+    wall_row = tr0 + sh if top else tr0 - 1
+    lwall = {(wall_col, r) for r in range(tr0, tr0 + sh)}
+    lwall |= {(c, wall_row) for c in range(tc0, tc0 + sw)}
+    lwall.add((wall_col, wall_row))
+    room = _rect_tiles(col, row, w, h) - toilet - lwall
+    return toilet, frozenset(room)
+
+
+def _corner_on_side(corner, side):
+    return ((side == 'top' and corner in ('tl', 'tr')) or
+            (side == 'bottom' and corner in ('bl', 'br')) or
+            (side == 'left' and corner in ('tl', 'bl')) or
+            (side == 'right' and corner in ('tr', 'br')))
+
+
+def _shares_boundary(a, b):
+    """True if floor sets `a` and `b` are separated by exactly one wall tile
+    somewhere — a tile of `a` is two apart (colinear) from a tile of `b`, so the
+    between tile is the shared-boundary wall derive_walls will use."""
+    for (c, r) in a:
+        if ((c + 2, r) in b or (c - 2, r) in b
+                or (c, r + 2) in b or (c, r - 2) in b):
+            return True
+    return False
+
+
+def _pick_closet_carve(pn, side, rng, anchors):
+    """Choose a buildable closet carve for room pn (corridor on `side`).
+
+    Returns (closet_floor, room_floor) or None.  Types: back office and side
+    office ~1/3 of the room (strips); corner toilet ~1/5, near-square."""
+    col, row, w, h = pn.col, pn.row, pn.w, pn.h
+    area = w * h
+    horizontal_edge = side in ('top', 'bottom')
+    edge_len = w if horizontal_edge else h          # tiles facing the corridor
+    opp = {'top': 'bottom', 'bottom': 'top',
+           'left': 'right', 'right': 'left'}[side]
+    perp = ('left', 'right') if horizontal_edge else ('top', 'bottom')
+
+    cands = []
+
+    # back office — strip on the side opposite the corridor (~1/3 of the depth)
+    depth = h if horizontal_edge else w
+    bo = _carve_strip(col, row, w, h, opp, max(1, round(depth / 3)))
+    if bo:
+        cands.append(bo)
+
+    # side office — strip on a perpendicular side (~1/3 along the corridor edge)
+    if edge_len >= 3:
+        along = w if horizontal_edge else h
+        t = max(1, round(along / 3))
+        for ps in perp:
+            so = _carve_strip(col, row, w, h, ps, t)
+            if so:
+                cands.append(so)
+
+    # corner toilet — near-square ~1/5 of the area in a corner
+    s = max(1, round((0.2 * area) ** 0.5))
+    sw, sh = min(s, w - 1), min(s, h - 1)
+    if sw >= 1 and sh >= 1:
+        for corner in ('tl', 'tr', 'bl', 'br'):
+            if edge_len < 3 and _corner_on_side(corner, side):
                 continue
+            ct = _carve_corner(col, row, w, h, sw, sh, corner)
+            if ct:
+                cands.append(ct)
 
-            b_floor = frozenset((c, r)
-                                for c in range(nc, nc + b_w)
-                                for r in range(nr, nr + b_h))
-            if not b_floor:
-                continue
-
-            placed[parent_name] = PlacedNode(parent_name, pn_a.col, pn_a.row,
-                                              pn_a.w, pn_a.h, floor_tiles=new_a)
-            placed[child_name] = PlacedNode(child_name, nc, nr, b_w, b_h,
-                                             floor_tiles=b_floor)
-            placed_ok = True
-            break
-
-        if not placed_ok:
-            _place_closet_adjacent(placed, child_name, pn_a, b_w, b_h)
+    valid = [(closet, room) for (closet, room) in cands
+             if room and _floor_connected(room)
+             and all(_shares_boundary(room, anc) for anc in anchors)]
+    return rng.choice(valid) if valid else None
 
 
-def _place_closet_adjacent(placed, child_name, pn_a, b_w, b_h):
-    """Fallback: place closet as a small rectangle just below parent."""
-    c = pn_a.col
-    r = pn_a.row + pn_a.h + 1
-    r = min(r, MAX_R - b_h + 1)
-    c = min(c, MAX_C - b_w + 1)
-    placed[child_name] = PlacedNode(child_name, c, r, b_w, b_h)
+def _carve_closets(placed, closet_rooms, graph, rng, corridor_name):
+    """Carve each closet out of its parent room's own tiles (spec 0032).
+
+    A closet is a sub-block of the parent bbox separated from the (reduced)
+    room by a 1-tile wall; derive_walls then cuts exactly one door between the
+    room and the closet (never to the corridor).
+
+    A closet is skipped (left unplaced) in the rare cases where it cannot be
+    carved: the parent was dropped, is non-rectangular, faces no corridor, or is
+    too small for any buildable carve.  These residual drops — and spilling such
+    a closet's content to the room/corridor instead of losing it — are handled
+    by spec 0032 C7 (step 2)."""
+    corridor_floor = (placed[corridor_name].floor_tiles
+                      if corridor_name in placed else frozenset())
+    for child, parent in closet_rooms.items():
+        if parent not in placed:
+            continue
+        pn = placed[parent]
+        if pn.floor_tiles != _rect_tiles(pn.col, pn.row, pn.w, pn.h):
+            continue
+        side = _corridor_facing_side(pn, corridor_floor)
+        if side is None:
+            continue
+        # The reduced room must keep its boundary with the corridor and every
+        # sibling (every placed graph-neighbour except the closet being carved).
+        anchors = [placed[nb].floor_tiles
+                   for nb, _ in graph.neighbors(parent)
+                   if nb != child and nb in placed]
+        carve = _pick_closet_carve(pn, side, rng, anchors)
+        if carve is None:
+            continue
+        closet_floor, room_floor = carve
+        placed[parent] = PlacedNode(parent, pn.col, pn.row, pn.w, pn.h,
+                                    floor_tiles=room_floor)
+        ccols = [c for c, _ in closet_floor]
+        crows = [r for _, r in closet_floor]
+        placed[child] = PlacedNode(
+            child, min(ccols), min(crows),
+            max(ccols) - min(ccols) + 1, max(crows) - min(crows) + 1,
+            floor_tiles=closet_floor)
 
 
 # ── Tile ownership map ────────────────────────────────────────────────────────
@@ -1797,7 +1903,9 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
             pairs.append((P, B, frozenset(tiles)))
 
     if not pairs:
-        raise ValueError(
+        # Retryable: a closet carve can shrink the room below what the puzzle
+        # needs; regenerate rather than crash (spec 0032 / BL-23).
+        raise LayoutError(
             f"No solvable puzzle placement in room {room_name!r} for gate {gate_id!r}")
 
     P, B, sol = rng.choice(pairs)
@@ -2322,19 +2430,34 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         cnode.plates = list(src.plates)
         cnode.enemies = list(src.enemies)
         cnode.has_flames = src.has_flames
+
+        def _copy(dst, s):
+            dst.treasures = list(s.treasures)
+            dst.materials = list(s.materials)
+            dst.keys = list(s.keys)
+            dst.blocks = list(s.blocks)
+            dst.plates = list(s.plates)
+            dst.enemies = list(s.enemies)
+            dst.has_flames = s.has_flames
+
+        # Corridor's room neighbours, then nodes hanging off those rooms (nested
+        # closets — they attach to a room, not the corridor, so without this BFS
+        # they'd be omitted from the subgraph and dropped; spec 0032 / BL-23).
+        frontier = []
         for name, edge in graph.neighbors(corridor):
             if edge.edge_type == EdgeType.BORDER:
                 continue
-            n = graph.nodes[name]
-            node = sub.add_node(name, n.size)
-            node.treasures = list(n.treasures)
-            node.materials = list(n.materials)
-            node.keys = list(n.keys)
-            node.blocks = list(n.blocks)
-            node.plates = list(n.plates)
-            node.enemies = list(n.enemies)
-            node.has_flames = n.has_flames
+            _copy(sub.add_node(name, graph.nodes[name].size), graph.nodes[name])
             sub.add_edge(corridor, name, edge.edge_type, **edge.params)
+            frontier.append(name)
+        while frontier:
+            par = frontier.pop()
+            for name, edge in graph.neighbors(par):
+                if edge.edge_type == EdgeType.BORDER or name in sub.nodes:
+                    continue
+                _copy(sub.add_node(name, graph.nodes[name].size), graph.nodes[name])
+                sub.add_edge(par, name, edge.edge_type, **edge.params)
+                frontier.append(name)
         return sub
 
     # Collect required border sides per corridor (columns/rows that must have
