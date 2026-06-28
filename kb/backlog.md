@@ -85,21 +85,6 @@ interior minus one rectangular zone reserved for the second room.
 
 ---
 
-## BL-06 · P3 · Test suite too slow for TDD cycles
-
-345 tests take ~90 seconds, making red-green-refactor loops expensive. The
-hypothesis-based property tests (`max_examples=150-200`) are the main driver.
-
-**Fix hint:** (1) Reduce `max_examples` to 50 for the slower hypothesis suites
-— the database still replays historical failures, so coverage does not regress
-much. (2) Explore `@settings(deadline=...)` or a named Hypothesis profile that
-caps wall-clock time per test rather than example count. (3) Split the suite
-into a fast tier (pure unit tests, no Hypothesis or small `max_examples`) and a
-slow tier, then add a `poe test-fast` task that runs only the fast tier so TDD
-cycles stay under ~10 seconds.
-
----
-
 ## BL-08 · FIXED · `_spanning_tree` returns fewer nodes than requested
 
 Fixed in 7cabe8a (spec/0026-wilson-spanning-tree.md).
