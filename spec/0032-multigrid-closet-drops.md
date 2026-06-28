@@ -1,108 +1,158 @@
-# Spec 0032 — Closets (and other nodes) silently dropped in multi-grid layout (BL-23)
+# Spec 0032 — Closet redesign: multi-grid inclusion + carved-from-room closets (BL-23)
 
 ## Status
 
-- [ ] N1 — `_build_subgraph` includes each grid's closets (with their edges and
-      items); no closet is dropped in a multi-grid level
-- [ ] N2 — No node is silently dropped: a built level contains every node of its
-      graph, or raises `LayoutError` to regenerate (defense-in-depth; also covers
-      the rare non-closet R-P4 case)
-- [ ] N3 — Regression tests: placed nodes == graph nodes across feature sets
-      (single- and multi-grid); closets survive in multi-grid
-- [ ] N4 — Tests pass (`poe test`)
+- [ ] C1 — Generation: each room independently gets **at most one** closet with
+      **~10%** probability (replaces `closet_count`)
+- [ ] C2 — A closet is **carved from the room's own tiles** (never extends the
+      room footprint), as one of three types: **back office**, **side office**,
+      **corner toilet**
+- [ ] C3 — Sizing: **offices ≈ 33%** of the room's tiles; **toilets ≈ 20%** and
+      **near-square**; rounded to fit, respecting the 1-tile wall gap and a
+      1-tile minimum toilet (2×2 footprint incl. its L-wall)
+- [ ] C4 — The closet **type is chosen at layout** from the options actually
+      buildable for the room's geometry (corridor-edge ≥ 3 tiles → any type;
+      == 2 → back office only)
+- [ ] C5 — The closet door connects to the **ROOM**, never the corridor; doors
+      are cut **after** closets are defined
+- [ ] C6 — Multi-grid: closets are copied into per-grid subgraphs (they are no
+      longer omitted and dropped)
+- [ ] C7 — Item spill **closet → room → corridor → `LayoutError`**; a closet
+      that cannot be built spills its content to room/corridor; a closet push
+      puzzle that cannot live in the room is **elided together with its gate**
+- [ ] C8 — No content is silently dropped; `scratchpad/diag_drops.py` shows 0
+      closet drops; regression tests assert it
+- [ ] C9 — `poe test` green
 
-## Investigation
+## Investigation (why nodes were lost)
 
-A diagnostic sweep (40 seeds × 10 real Act 2 feature sets = 400 levels,
-`scratchpad/diag_drops.py`) found **434 / 6617 nodes dropped (6.6%)**:
+Diagnostic (40 seeds × 10 real Act 2 sets): **434 / 6617 nodes dropped; 432 are
+CLOSETS** (298 held content). Focused check: multi-grid drops **100%** of
+closets, single-grid **0%**. Root cause: `_build_super_grid._build_subgraph`
+copies only the corridor's direct room neighbours; a closet attaches to a *room*,
+so it is never copied into any subgraph → dropped (C6 fixes this). Attempting to
+place them then exposed that the old `_nest_closets` notch geometry is fragile —
+carving can delete the parent's connection tile, two closets collide, and the
+`_place_closet_adjacent` fallback abuts other rooms. This spec **replaces** the
+old notch/closet scheme with the carved-from-room design below.
 
-| dropped node kind | count |
-|---|---|
-| **CLOSET** | **432** |
-| HALL | 2 |
+## Design
 
-298 of the dropped nodes held content (treasures / materials / keys / plates).
-A focused check (`closet_count=2`, varying grid count, 40 seeds each):
+Common setup for the diagrams: room floor cols 4–9 × rows 2–5, corridor along the
+bottom (row 7); the room's **door edge** is its bottom (corridor-facing) edge.
+`.` room floor · `k` closet floor · `#` wall · `+` cut door · `C` corridor.
 
-| grids | closets survived | closets dropped |
-|---|---|---|
-| 1 | 42 | **0** |
-| 2 | 0 | **80** |
-| 4 | 0 | **80** |
+### C1 — Generation
 
-**Root cause (the 432).** Closets are nodes with no direct corridor edge — they
-attach to a *room* (`add_closet_room`, edge room→closet). The single-grid path
-`layout_graph` detects them (`closet_rooms`) and places them via `_nest_closets`
-(which always succeeds — corner notch, else `_place_closet_adjacent`), so
-single-grid drops 0. But the multi-grid path `_build_super_grid._build_subgraph`
-(`levellayout.py:2293-2311`) copies **only the corridor's direct neighbours**
-into each per-grid subgraph:
+In `LevelGraph.generate` / the builder, drop `closet_count`. After the rooms are
+added, **each room** rolls independently: with probability `_CLOSET_PROB ≈ 0.10`
+add exactly one closet node attached to it (edge room→closet, OPEN). A room thus
+has zero or one closet. The closet node still carries content (treasures /
+materials / keys / plate+block) like any node.
 
-```python
-for name, edge in graph.neighbors(corridor):
-    if edge.edge_type == EdgeType.BORDER:
-        continue
-    node = sub.add_node(name, n.size)   # rooms only
-    ...
+### C2/C3/C5 — Three closet types (carved from the room)
+
+**(a) Back office** — one wall **parallel** to the door edge; closet = the back
+strip. Consumes depth (rows); the corridor edge stays fully free. **≈ 33%** of
+room tiles (full width × depth ≈ H/3, ≥ 1, leaving the room a corridor-adjacent row).
+
+```
+      4 5 6 7 8 9
+row2  k k k k k k     closet (back strip)
+row3  # # + # # #     NEW wall ∥ door edge; + = closet↔ROOM door
+row4  . . . . . .     room (front)
+row5  . . . . . .
+row6  # # # + # #     room↔corridor door — any of cols 4–9
+row7  C C C C C C
 ```
 
-A closet is a neighbour of a *room*, not the corridor, so it is never added to any
-subgraph → never laid out → silently absent from `placed`/`tile_owner`. Every
-closet in a level with ≥ 2 grids is therefore dropped.
+**(b) Side office** — one wall **perpendicular** to the door edge; closet = a
+full-depth side block. **≈ 33%** (depth × width ≈ W/3). Reduces the room's
+corridor-door columns; the closet's corridor-facing tiles stay walled (no
+corridor door for the closet).
 
-**Secondary (the 2).** Two HALLs dropped via the simple-strategy band cap: a
-`_pack_band` zone caps `n = (band_w+1)//3` and never iterates `room_names[n:]`,
-and skips rooms with `w<2`/`h<2` (R-P4). This is over-capacity / too-small-zone
-and is rare (2 / 6617) but is a genuine silent-drop path distinct from closets.
+```
+      4 5 6 7 8 9
+row2  k k # . . .
+row3  k k # . . .     closet = side block (cols 4–5)
+row4  k k + . . .     + = closet↔ROOM door
+row5  k k # . . .
+row6  # # # + # #     room↔corridor door — only cols 7–9
+row7  C C C C C C
+```
 
-## Resolution
+**(c) Corner toilet** — a near-square block in a corner, enclosed by an **L of
+two wall segments sharing the corner cell**, then one arm cut as the door.
+**≈ 20%**, near-square (e.g. 6×4 room → ~5 tiles → 2×2). Minimum 1 tile → 2×2
+footprint (toilet + 3-tile L-wall, one of which becomes the door). At a
+corridor-facing corner it costs one door column; at a back corner it does not
+affect the door.
 
-### N1 — copy each grid's closets into its subgraph (fixes the 432)
+```
+      4 5 6 7 8 9
+row2  . . . . . .
+row3  . . . . . .     room
+row4  . . . . # #     L-wall: corner (8,4) + arm (9,4)
+row5  . . . . + k     arm (8,5) cut as closet↔ROOM door; toilet = (9,5)
+row6  # # # + # #     room↔corridor door — cols 4–7
+row7  C C C C C C
+```
 
-In `_build_subgraph`, after adding the corridor's room neighbours, also pull in any
-node reachable from those rooms via non-BORDER, non-corridor edges (the closets —
-and any closet-of-closet chain), adding each with its edge and a full item copy
-(`treasures`, `materials`, `keys`, `blocks`, `plates`, `enemies`, `has_flames`),
-exactly as room neighbours are copied. Then `layout_graph`'s existing closet
-detection + `_nest_closets` place them within that grid. No geometry changes —
-this is graph-copy completeness only.
+In all three, the dividing tiles are wall by construction (interior non-floor →
+wall in `derive_walls`), so the room↔closet edge yields **exactly one** door, cut
+into the **room** (C5), and the closet shares **zero** passages with the corridor
+(R-E3). Doors are cut by `derive_walls` after the closet floor sets are fixed.
 
-### N2 — make silent node drops impossible (defense-in-depth, covers the 2)
+### C4 — Buildable-option selection (at layout)
 
-After layout, assert that every node assigned to a grid is present in `placed`; if
-any is missing, raise `LayoutError` so `_generate_act2_level` regenerates rather
-than shipping a level with vanished content. This converts the residual R-P4
-band-cap/too-small drops into a retry.
+Let `E` = the count of room floor tiles along the corridor-facing edge.
+- `E ≥ 3` → all three types are normally buildable; pick one (random among the
+  buildable set, honouring the C3 sizing).
+- `E == 2` → only **back office** (it consumes depth, not corridor-edge width).
+- A type is buildable only if its carve leaves the room (i) with ≥ 1 corridor-edge
+  tile for its own door, (ii) connected, and (iii) each part ≥ its minimum. If no
+  type is buildable, the closet is treated as "cannot be built" (see C7).
 
-**Caveat (must resolve before enabling N2 unconditionally):** if a grid is ever
-assigned more rooms than any compatible strategy can hold, N2 would regenerate
-forever. The simple strategies silently cap today precisely because selection
-filters on *min zones*, not *max capacity*. So N2 must be paired with bounding
-room counts to layout capacity — which is exactly **BL-25** (scale room count with
-grid count). Options: (a) land BL-25 first, then enable N2 globally; or (b) scope
-N2 to "no **content-bearing** node is dropped" (raise only when a dropped node has
-items), which is safe now and still prevents all content loss. Recommend (b) for
-this spec, with (a) as the eventual stronger guarantee.
+### C6 — Multi-grid inclusion
 
-### N3/N4 — regression tests
+In `_build_subgraph`, after adding the corridor's room neighbours, BFS over
+non-BORDER, non-corridor edges from those rooms to also add their closets (with
+the room↔closet edge and a full item copy). Then per-grid layout carves them.
 
-- For single- and multi-grid feature sets (incl. the real Act 2 sets and a
-  closet-bearing multi-grid set), assert **every graph node appears in some room's
-  `tile_owner`** (placed == graph) — or, under N2 option (b), at least every
-  content-bearing node.
-- Specifically assert closets survive at grid counts 1..N.
+### C7 — Item placement and fallbacks
+
+- **Spill order for a closet's items:** closet tiles → its room → the corridor →
+  `LayoutError` (mirrors the room→corridor spill from spec 0029/0030, with the
+  closet as the innermost level).
+- **Closet that cannot be built** (no buildable type, C4): the closet contributes
+  no floor; its items spill to the room, then the corridor. We want this to be
+  rare — log/measure it (diagnostic) to understand when it happens.
+- **A closet push puzzle** (plate+block intended for the closet) that cannot be
+  placed in the closet is first retried in the **room**; if it cannot be solvable
+  there either, the puzzle is **elided together with its gate** (the gated edge
+  becomes an open passage, plate+block removed) — consistent with spec 0030's
+  "barrier exists only if its prerequisite is on the floor".
+- No content-bearing node is silently dropped: if content cannot be placed
+  anywhere (closet→room→corridor all full), raise `LayoutError` to regenerate.
 
 ## Verification
 
-Re-run `scratchpad/diag_drops.py`: expect dropped closets → 0 and total drops → 0
-(option a) or content-bearing drops → 0 (option b). New pytest cases enforce it.
+- `scratchpad/diag_drops.py`: dropped closets → 0; content drops → 0.
+- pytest (`tests/test_node_drops.py`): closets survive at grid counts 1..N; no
+  content-bearing node dropped across single- and multi-grid feature sets;
+  closet doors connect to the room (closet shares 0 passages with the corridor);
+  every built level still passes `validate_layout` / `validate_push_puzzles` (via
+  successful `build_level_dict`).
 
 ## Done when:
 
-- [ ] N1 — Closets are copied into per-grid subgraphs and placed; the focused
-      check shows 0 closets dropped at all grid counts.
-- [ ] N2 — No node (option a) / no content-bearing node (option b) is silently
-      dropped; a level that cannot place one regenerates via `LayoutError`.
-- [ ] N3 — Regression tests assert placed == graph (closets included) across
-      single- and multi-grid feature sets.
-- [ ] N4 — `poe test` green.
+- [ ] C1 — One closet per room at ~10%; `closet_count` removed.
+- [ ] C2/C3 — Closets carved from room tiles as back/side office (~33%) or corner
+      toilet (~20%, near-square); never extend the footprint.
+- [ ] C4 — Type picked from buildable options; `E==2` → back office only.
+- [ ] C5 — Closet door connects to the room; closet shares 0 corridor passages.
+- [ ] C6 — Closets present in multi-grid levels (0 dropped at all grid counts).
+- [ ] C7 — Spill closet→room→corridor→`LayoutError`; unbuildable closet/puzzle
+      handled (puzzle elided with its gate); no content silently dropped.
+- [ ] C8/C9 — Regression tests + `diag_drops` confirm 0 closet/content drops;
+      `poe test` green.
