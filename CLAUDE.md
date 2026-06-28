@@ -69,6 +69,17 @@ Agent(description="Add backlog item", run_in_background=True,
 The main session never edits `kb/backlog.md` directly mid-task.
 Project backlog is `kb/backlog.md`. Items use IDs BL-NN with priority P1/P2/P3.
 
+### "What's next?" rule
+
+When the user asks "what's next?", always spawn an agent to answer:
+
+```python
+Agent(description="What's next?",
+      prompt="Read kb/backlog.md and summarise the open backlog items by priority. List P1 first, then P2, then P3. For each item show its ID, priority, one-line description, and the fix hint. Working directory: /home/daniel/prog/uglycraft")
+```
+
+Never answer "what's next?" inline without spawning the agent.
+
 ### Level generator sessions
 
 Load `kb/requirements.md` and `kb/architecture.md` at the start of every session
