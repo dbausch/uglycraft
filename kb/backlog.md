@@ -152,3 +152,19 @@ of pending updates, causing them to move erratically for the first few seconds.
 accumulator so enemies begin with a clean `dt=0` state. Look at how the game
 loop advances time and where level transitions happen (likely in `game.py`) to
 find where the accumulator should be zeroed.
+
+---
+
+## BL-12 · P2 · Bug: Grid entry tiles always display stairs instead of the source exit type
+
+Grid entry tiles unconditionally render as stairs regardless of what barrier
+type the player just passed through. If the source grid has an open doorway,
+a locked door, or a gate at the border tile, the corresponding entry tile on
+the destination grid should display the same passage type — mirroring what the
+player sees when they look back.
+
+**Fix hint:** Find where BORDER edge entry tiles are rendered (likely in
+`game.py` or `levellayout.py`). Instead of unconditionally drawing stairs,
+look up the barrier type stored in the BORDER edge params (open / locked /
+gated) and draw the matching tile — open passage, locked door, or gate — so
+the entry tile reflects what the player crossed to get there.
