@@ -1184,6 +1184,15 @@ def _shares_boundary(a, b):
     return False
 
 
+def _toilet_size(w, h):
+    """Square corner-toilet side for a w×h room: ~1/5 of the area (rounded),
+    but only if it leaves at least one room tile behind each of its two new
+    walls — i.e. size <= min(w, h) - 2.  Returns None if no toilet fits (e.g. a
+    room only 2 tiles in one dimension, or one where the 20% size is too big)."""
+    s = max(1, round((0.2 * w * h) ** 0.5))
+    return s if s <= min(w, h) - 2 else None
+
+
 def _pick_closet_carve(pn, side, rng, anchors):
     """Choose a buildable closet carve for room pn (corridor on `side`).
 
@@ -1214,14 +1223,14 @@ def _pick_closet_carve(pn, side, rng, anchors):
             if so:
                 cands.append(so)
 
-    # corner toilet — near-square ~1/5 of the area in a corner
-    s = max(1, round((0.2 * area) ** 0.5))
-    sw, sh = min(s, w - 1), min(s, h - 1)
-    if sw >= 1 and sh >= 1:
+    # corner toilet — square ~1/5 of the area, only if it leaves >= 1 room tile
+    # behind each of its two new walls (size <= min(w, h) - 2).
+    s = _toilet_size(w, h)
+    if s is not None:
         for corner in ('tl', 'tr', 'bl', 'br'):
             if edge_len < 3 and _corner_on_side(corner, side):
                 continue
-            ct = _carve_corner(col, row, w, h, sw, sh, corner)
+            ct = _carve_corner(col, row, w, h, s, s, corner)
             if ct:
                 cands.append(ct)
 

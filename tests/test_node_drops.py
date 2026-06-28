@@ -12,7 +12,8 @@ import pytest
 from hypothesis import given, settings, strategies as st
 
 from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict, LayoutError
+from levellayout import (build_level_dict, LayoutError,
+                         _toilet_size, _carve_corner)
 from levels import ACT2_FEATURE_SETS
 
 
@@ -161,3 +162,33 @@ def test_content_never_lost_real_act2(idx, seed):
     g, level = _build(fs, seed * 100 + idx)
     _assert_content_preserved(g, level, f"idx={idx} seed={seed}",
                               has_flames=fs.get('has_flames', False))
+
+
+# ── Corner-toilet sizing: must leave >= 1 room tile behind each new wall ──────
+
+@pytest.mark.parametrize('w,h,expected', [
+    (2, 2, None),   # too small in both dims
+    (2, 5, None),   # 2-wide -> no toilet (only a back office)
+    (5, 2, None),
+    (3, 3, 1),      # min-2 = 1; 20% size 1 fits
+    (6, 4, 2),      # 20% size 2; min-2 = 2 -> fits
+    (10, 3, None),  # 20% size 2 but min-2 = 1 -> too large, no toilet
+    (10, 10, 4),
+])
+def test_toilet_size_rule(w, h, expected):
+    assert _toilet_size(w, h) == expected
+
+
+@given(st.integers(min_value=2, max_value=14),
+       st.integers(min_value=2, max_value=14))
+@settings(max_examples=200)
+def test_toilet_leaves_room_tile_behind_each_wall(w, h):
+    s = _toilet_size(w, h)
+    if s is None:
+        return
+    assert 1 <= s <= min(w, h) - 2
+    closet, room = _carve_corner(0, 0, w, h, s, s, 'br')
+    # toilet occupies the bottom-right s×s block; its two new walls are the
+    # column w-s-1 and row h-s-1 — the room must keep tiles beyond both.
+    assert any(c <= w - s - 2 for c, r in room), "no room tile behind vertical wall"
+    assert any(r <= h - s - 2 for c, r in room), "no room tile behind horizontal wall"
