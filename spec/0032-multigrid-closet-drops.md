@@ -2,27 +2,27 @@
 
 ## Status
 
-- [ ] C1 — Generation: each room independently gets **at most one** closet with
+- [x] C1 — Generation: each room independently gets **at most one** closet with
       **~10%** probability (replaces `closet_count`)
-- [ ] C2 — A closet is **carved from the room's own tiles** (never extends the
+- [x] C2 — A closet is **carved from the room's own tiles** (never extends the
       room footprint), as one of three types: **back office**, **side office**,
       **corner toilet**
-- [ ] C3 — Sizing: **offices ≈ 33%** of the room's tiles; **toilets ≈ 20%** and
+- [x] C3 — Sizing: **offices ≈ 33%** of the room's tiles; **toilets ≈ 20%** and
       **near-square**; rounded to fit, respecting the 1-tile wall gap and a
       1-tile minimum toilet (2×2 footprint incl. its L-wall)
-- [ ] C4 — The closet **type is chosen at layout** from the options actually
+- [x] C4 — The closet **type is chosen at layout** from the options actually
       buildable for the room's geometry (corridor-edge ≥ 3 tiles → any type;
       == 2 → back office only)
-- [ ] C5 — The closet door connects to the **ROOM**, never the corridor; doors
+- [x] C5 — The closet door connects to the **ROOM**, never the corridor; doors
       are cut **after** closets are defined
-- [ ] C6 — Multi-grid: closets are copied into per-grid subgraphs (they are no
+- [x] C6 — Multi-grid: closets are copied into per-grid subgraphs (they are no
       longer omitted and dropped)
-- [ ] C7 — Item spill **closet → room → corridor → `LayoutError`**; a closet
+- [x] C7 — Item spill **closet → room → corridor → `LayoutError`**; a closet
       that cannot be built spills its content to room/corridor; a closet push
       puzzle that cannot live in the room is **elided together with its gate**
-- [ ] C8 — No content is silently dropped; `scratchpad/diag_drops.py` shows 0
+- [x] C8 — No content is silently dropped; `scratchpad/diag_drops.py` shows 0
       closet drops; regression tests assert it
-- [ ] C9 — `poe test` green
+- [x] C9 — `poe test` green
 
 ## Investigation (why nodes were lost)
 
@@ -149,13 +149,21 @@ the room↔closet edge and a full item copy). Then per-grid layout carves them.
 
 ## Done when:
 
-- [ ] C1 — One closet per room at ~10%; `closet_count` removed.
-- [ ] C2/C3 — Closets carved from room tiles as back/side office (~33%) or corner
-      toilet (~20%, near-square); never extend the footprint.
-- [ ] C4 — Type picked from buildable options; `E==2` → back office only.
-- [ ] C5 — Closet door connects to the room; closet shares 0 corridor passages.
-- [ ] C6 — Closets present in multi-grid levels (0 dropped at all grid counts).
-- [ ] C7 — Spill closet→room→corridor→`LayoutError`; unbuildable closet/puzzle
-      handled (puzzle elided with its gate); no content silently dropped.
-- [ ] C8/C9 — Regression tests + `diag_drops` confirm 0 closet/content drops;
-      `poe test` green.
+- [x] C1 — One closet per room at ~10%; `closet_count` removed. — e0691e0
+- [x] C2/C3 — Closets carved from room tiles as back/side office (~33%) or corner
+      toilet (square ~20%, `s ≤ min(w,h)−2`); never extend the footprint.
+      — e0691e0, 1da849e
+- [x] C4 — Type picked from buildable options; `E==2` → back office only;
+      closets excluded from zone room-count; never carved from a push-puzzle
+      room. — e0691e0, 48ca6ed
+- [x] C5 — Closet door connects to the room; closet shares 0 corridor passages.
+      — e0691e0
+- [x] C6 — Closets present in multi-grid levels (carve rate ≥90%; was 0%).
+      — e0691e0
+- [x] C7 — Spill closet→room→corridor→`LayoutError`; an unplaced node's content
+      is relocated, never dropped; a dropped puzzle room's gate is elided.
+      — 86647dd
+- [x] C8/C9 — Regression tests confirm 0 closet/content drops and full content
+      preservation (`keys_dict==keys_graph`, `planks_dict==planks_graph`);
+      `poe test` green (415). — 86647dd, 48ca6ed, 1da849e
+      *User-confirmed in-game: no bad layouts across many grids tested.*
