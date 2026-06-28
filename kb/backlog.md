@@ -478,3 +478,22 @@ rendering is in game.py (find where the WALL/placement counter is drawn); the
 crafting-menu open/handler is also in game.py — gate it behind a constant so it can
 be hidden for the test build (ties in with BL-26's 'hide unfinished content'
 constants).
+
+---
+
+## BL-29 · P1 · Unsolvable level: grid edge attaches to a gate-locked zone of a corridor-based room
+
+A grid connection from a border-layout room entered a double-T-layout room at the
+top-right zone (a gate-locked sub-room) rather than at the top vertical corridor
+segment. The double-T room's push puzzle for that gate was in a *different*
+sub-room of the same grid, so the player was locked inside the room connected to
+the grid entry, unable to reach the puzzle — the level is unsolvable.
+
+**Expected:** a grid connection into a double-T (or any corridor-based) layout
+should attach to a corridor/spine segment that is reachable without first passing
+through a gate, not to a gate-locked interior zone.
+
+**Fix hint:** when choosing the attachment cell/door for a grid edge into a
+multi-zone room layout, prefer the shared corridor (vertical/horizontal spine)
+over gate-locked zones; validate that the entry zone is reachable from the rest of
+that room's grid without the gate, else relocate the connection.
