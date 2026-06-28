@@ -468,3 +468,13 @@ far-side-open check unchanged.
 
 **Fix hint:** in `_try_auto_bridge`, before the `has_item` check, attempt an
 auto-craft; the bridge recipe is `CRAFT_BRIDGE` in `crafting.py` `RECIPES`.
+
+Follow-on UI: with bridges auto-crafted and auto-placed on bump, the player never
+needs the crafting menu for bridges. Add a BRIDGE counter to the HUD, to the LEFT
+of the existing WALL counter, showing how many bridges the player currently has
+(or can craft). With that in place we could disable the crafting menu entirely for
+the user tests, simplifying the UI for testers. Fix hints: the HUD/counter
+rendering is in game.py (find where the WALL/placement counter is drawn); the
+crafting-menu open/handler is also in game.py — gate it behind a constant so it can
+be hidden for the test build (ties in with BL-26's 'hide unfinished content'
+constants).
