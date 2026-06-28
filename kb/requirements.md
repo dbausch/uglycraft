@@ -101,6 +101,26 @@ Closet rooms (nodes with no direct corridor edge) are nested inside their parent
 **R-T4** For BORDER edges: the two corridor nodes must be in adjacent super-grid cells
 (Manhattan distance 1 on the super-grid).
 
+**R-T5** BORDER openings land on the **corridor**, and corridors **continue**
+across the border (BL-29 / spec 0033). Two parts:
+- *Corridor-only stitch:* the inter-grid opening is punched only on a tile owned
+  by the corridor node on **both** endpoints — never a room that happens to reach
+  the border face. (Pre-fix, ~40 % of openings landed in rooms on every side; a
+  gate-sealed entry room made the level unsolvable.)
+- *Continuation:* grids are built in BFS order, so a grid's spanning-tree parent
+  is placed first. The child's corridor segment at the shared face reproduces the
+  parent's corridor **band** (same rows/cols + width). For a BORDER edge between
+  two non-`full_border` grids the two corridor face bands are therefore identical.
+  Enforced via `corridor_anchor=(side, lo, w)` threaded into the spine/stem
+  strategies (horizontal/off_centre/vertical/t/double_t), which fix the segment
+  position+width instead of drawing them. Arm strategies (z/s/l) cannot reproduce
+  an arbitrary band and are filtered out when an anchor is active; `full_border`
+  (frame reaches every position → FREE) is the per-grid last resort.
+  Note: only **stems** are currently width 2–5; **spines** stay 2–3 (widening
+  them regresses closet nesting, under redesign — see spec 0033 "Spine widening
+  deferred"). Band coverage is still complete: left/right bands come from spines
+  (≤ 3) and wide top/bottom bands from stems.
+
 ---
 
 ## S — Layout strategies

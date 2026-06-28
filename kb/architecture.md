@@ -306,22 +306,30 @@ structure.
 `_build_super_grid()` in `levellayout.py`:
 
 1. BFS-discovers corridors from the start corridor (respects the predetermined
-   spanning tree order).
+   spanning tree order). Each grid's spanning-tree **parent is built before it**.
 2. Reads `required_sides` from BORDER edge params (`exit_side`/`entry_side`).
-3. Calls `build_level_dict()` for each grid independently, passing
-   `required_exits=frozenset(exits)` so the chosen strategy guarantees corridor
-   floor tiles reach the required border sides.
-4. **Stitching**: for each BORDER edge, finds the intersection of floor
-   rows/cols that both corridor floor sets reach at the shared border face, then
-   picks the middle position. This one decision — the exact tile position of the
-   border opening — is not predetermined; it depends on where corridor tiles land.
+3. **Coordinate at layout (continuation, BL-29 / spec 0033, R-T5).** For each
+   grid in BFS order, computes its `corridor_anchor` from the already-built
+   parent's corridor band at the shared face: `(child_side, lo, w)`. Builds the
+   grid with `build_level_dict(..., corridor_anchor=anchor)` so its corridor
+   segment reproduces the parent's band — the corridor runs straight through the
+   border. The anchor is threaded into the spine/stem strategies, which fix the
+   segment position+width. Arm strategies (z/s/l) are filtered out when an anchor
+   is active; `full_border` (parent FREE / frame reaches every position) is the
+   per-grid last resort. The start grid (no parent) and grids whose parent is
+   `full_border` are built unanchored (full strategy variety).
+4. **Stitching (corridor-only):** for each BORDER edge, intersects the rows/cols
+   that both **corridor** floor sets (not rooms) reach at the shared face, then
+   picks the middle position. Continuation guarantees this intersection is
+   non-empty; opening on a room is impossible.
 5. Punches the border wall at that position and records the `exits` dict entry
    pointing from each grid to the other.
 6. Places locked-door or gate entities at the border tile if the edge has a barrier.
 
-If any stitch fails (no shared floor rows/cols), all grids are rebuilt with the
-`full_border` strategy, which puts corridor floor tiles on all four grid edges,
-guaranteeing overlap.
+The old all-or-nothing fallback (any unstitchable edge → rebuild *every* grid as
+`full_border`) is gone — it would have collapsed ~33–54 % of multi-grid levels to
+frame layouts once openings were corridor-restricted. `full_border` is now chosen
+per grid only when no spine/stem strategy can honour that grid's anchor.
 
 ### Data flow summary
 
@@ -330,10 +338,11 @@ _spanning_tree()                     → super-grid topology (which connects to 
 start_next_grid(exit_side, barrier)  → BORDER edge with exit_side/entry_side/barrier in params
                                        + node.super_pos on each corridor node
 
-_build_super_grid()
+_build_super_grid()  (grids built in BFS order, parent before child)
   reads: BORDER edge params          → required_sides per corridor
-  decides: layout strategy           → compatible with required_sides
-  decides: stitch position           → middle of shared floor rows/cols at border face
+  computes: corridor_anchor          → parent's corridor band at the shared face
+  decides: layout strategy           → spine/stem honouring the anchor (else full_border)
+  decides: stitch position           → middle of shared CORRIDOR rows/cols at border face
   punches border wall at stitch pos  → exit/entry recorded in rooms['exits']
 ```
 
