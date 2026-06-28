@@ -37,7 +37,7 @@ pipeline once per grid, then stitches results together.
 |------|------|
 | `levelgraph.py` | `LevelGraph`, `Node`, `Edge`, `NodeSize`, `EdgeType`; graph generation (`LevelGraphBuilder`); playability validation |
 | `levellayout.py` | `PlacedNode`; all layout strategies; `derive_walls`; Sokoban solver; `build_level_dict` |
-| `levels.py` | Act 1 hand-authored level dicts; Act 2 feature-set builders that produce `LevelGraph` objects |
+| `levels.py` | Act 1 hand-authored level dicts; `ACT2_FEATURE_SETS` + lazy per-level Act 2 generation (`get_level`, `new_game_levels`, `regenerate_level`) |
 
 ---
 
@@ -217,6 +217,29 @@ filter for the super-grid path (lines 268–271, 277–280). Zone counts are in
 `_STRATEGY_MAX_ZONES` (lines 185–194). BL-02 is closed.
 
 ---
+
+## Lazy Act 2 generation (spec 0028 / BL-11)
+
+Act 2 levels (11–20) are **not** generated at import. `levels.get_level(n)`
+builds a single level on first access and caches it in `_act2_cache` (keyed by
+level number). Generation is expensive — measured ~20 ms for a 1-grid level
+(11) up to ~3.6 s for a 10-grid level (20); all ten together ≈ 10.6 s.
+
+- Per-level seed is `_rnd.Random(_game_seed + index)`, so a given game produces
+  the same level whether reached by play or by `--level N`.
+- `new_game_levels()` picks a fresh `_game_seed` and clears the cache (a new game
+  reshuffles, generating nothing up front).
+- `regenerate_level(n)` force-rebuilds one level with fresh entropy — used by the
+  `game._verify_blocks` safety net when a generated level has a stuck push-block
+  (see BL-13: such unplayable levels should not slip through in the first place).
+- `build_level_dict` / `_build_super_grid` accept an optional `progress(done,
+  total)` callback (one unit per grid) so the loading screen can show progress.
+
+History: previously all ten levels were generated eagerly at `import levels`
+**and again** in `_full_reset` via `regenerate_act2` (~20 s of mostly-discarded
+work, blank window). The main loop also clamps `dt` to `MAX_DT_MS` so the long
+generation hitch no longer dumps a huge accumulated time into the update step
+(which caused the level-start enemy "burst").
 
 ## The geometric challenge
 

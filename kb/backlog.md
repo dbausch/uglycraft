@@ -140,16 +140,19 @@ other grids.
 
 ---
 
-## BL-11 · P2 · Bug: Tick accumulation on level load causes enemy burst-movement
+## BL-11 · FIXED · Tick accumulation on level load causes enemy burst-movement
 
-Ticks accumulate during level generation or loading. When the level actually
-starts, the game loop sees a large accumulated `dt` and sends enemies a burst
-of pending updates, causing them to move erratically for the first few seconds.
+Fixed in 8bed7e1 (spec/0028-lazy-level-generation.md).
 
-**Fix hint:** Before starting each level, drain or reset the game clock / tick
-accumulator so enemies begin with a clean `dt=0` state. Look at how the game
-loop advances time and where level transitions happen (likely in `game.py`) to
-find where the accumulator should be zeroed.
+Root cause was twofold: (1) all ten Act 2 levels were generated eagerly at
+`import levels` **and again** in `_full_reset` via `regenerate_act2` (~20 s of
+mostly-discarded work, blank window), and (2) the first `clock.tick()` after that
+returned an ~11 s `dt` that drained one enemy step per frame, causing the
+1–2 s burst. Fixes: lazy per-level Act 2 generation (`levels.get_level`,
+`new_game_levels`, `regenerate_level`) so `--level 11` went ~9.9 s → ~0.02 s,
+plus a `dt` clamp to `MAX_DT_MS` in the main loop. A "Loading . . ." progress
+screen covers the (now per-level) generation. → see `kb/architecture.md`
+("Lazy Act 2 generation").
 
 ---
 
@@ -166,3 +169,29 @@ player sees when they look back.
 look up the barrier type stored in the BORDER edge params (open / locked /
 gated) and draw the matching tile — open passage, locked door, or gate — so
 the entry tile reflects what the player crossed to get there.
+
+---
+
+## BL-13 · P2 · Investigate how unplayable levels still slip through "playability-preserving" transformations
+
+The level generator builds levels via a chain of graph transformations
+(`levelgraph.py` / `levellayout.py`), each of which is supposed to preserve a
+playability invariant — playable before, playable after. Yet `game.py` keeps a
+runtime safety net `_verify_blocks` that detects stuck push-blocks and
+force-regenerates the level (now via `levels.regenerate_level()`). The mere
+existence of that net proves unplayable levels still slip through: some
+transformation does *not* in fact preserve the invariant.
+
+The task is to find which one. Candidate culprits:
+1. **Layout / packing step** placing a push-block flush against walls so it has
+   zero pushable directions.
+2. **Multi-grid stitching** (`_build_super_grid`) altering tiles *after*
+   per-grid playability was already validated, invalidating the earlier check.
+3. **`validate_playability` gaps** already tracked in BL-04 (water-crossing
+   check too permissive).
+
+**Fix hint:** Audit each transformation to determine where the invariant is
+actually violated, then either tighten that transformation's validation or add
+a post-transformation playability check so the runtime `_verify_blocks` net
+becomes redundant. Cross-reference `kb/requirements.md` (the formal playability
+invariants) and `kb/architecture.md` (the pipeline and super-grid stitching).

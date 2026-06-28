@@ -2,15 +2,15 @@
 
 ## Status
 
-- [ ] Act 2 levels are generated lazily, one level at a time, on first access
-- [ ] No Act 2 generation happens at `import levels`
-- [ ] `_full_reset` / new-game no longer regenerates all 10 Act 2 levels eagerly
-- [ ] A new game reshuffles Act 2 (fresh random levels), still without up-front cost
-- [ ] `--level N` debug launch generates only level N (lazily)
-- [ ] Main loop clamps `dt` so a long hitch never produces an enemy-movement burst
-- [ ] A "Loading . . ." frame (white on black) is shown before/during any uncached Act 2 generation
-- [ ] The loading dots fill to indicate generation progress
-- [ ] Level music and enemy movement begin together when the level graphic first appears
+- [x] Act 2 levels are generated lazily, one level at a time, on first access — 8bed7e1
+- [x] No Act 2 generation happens at `import levels` — 8bed7e1
+- [x] `_full_reset` / new-game no longer regenerates all 10 Act 2 levels eagerly — 8bed7e1
+- [x] A new game reshuffles Act 2 (fresh random levels), still without up-front cost — 8bed7e1
+- [x] `--level N` debug launch generates only level N (lazily) — 8bed7e1
+- [x] Main loop clamps `dt` so a long hitch never produces an enemy-movement burst — 8bed7e1 (code; no-burst pending user confirmation)
+- [ ] A "Loading . . ." frame (white on black) is shown before/during any uncached Act 2 generation *(manual)*
+- [ ] The loading dots fill to indicate generation progress *(manual)*
+- [ ] Level music and enemy movement begin together when the level graphic first appears *(manual)*
 
 ## Problem (measured)
 
@@ -195,11 +195,11 @@ Run with `poe test`.
 
 ## Done when
 
-- [ ] `import levels` generates no Act 2 levels; `_act2_cache` empty, `LEVELS` has 10 entries — *(test)*
-- [ ] `get_level()` generates Act 2 levels lazily and caches them; only accessed levels are built — *(test)*
-- [ ] `new_game_levels()` reshuffles (new seed, cleared cache) with no up-front generation — *(test)*
-- [ ] `--level N` clamps to `TOTAL_LEVELS` and generates only level N — *(manual)*
+- [x] `import levels` generates no Act 2 levels; `_act2_cache` empty, `LEVELS` has 10 entries — *(test)* 8bed7e1
+- [x] `get_level()` generates Act 2 levels lazily and caches them; only accessed levels are built — *(test)* 8bed7e1
+- [x] `new_game_levels()` reshuffles (new seed, cleared cache) with no up-front generation — *(test)* 8bed7e1
+- [x] `--level N` clamps to `TOTAL_LEVELS` and generates only level N — *(smoke-verified)* 8bed7e1
 - [ ] `--level 11` shows the graphic near-instantly with no enemy burst — *(manual / user acceptance)*
 - [ ] Heavy Act 2 levels (16/18/20) show the "Loading . . ." frame with dots filling per grid instead of a frozen window — *(manual / user acceptance)*
 - [ ] Level music and enemy movement begin together with the level graphic — *(manual / user acceptance)*
-- [ ] `poe test` green
+- [x] `poe test` green — 8bed7e1 (344 passed)
