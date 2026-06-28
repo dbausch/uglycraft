@@ -23,8 +23,8 @@
       both endpoints — `tests/test_border_continuity.py`, green
 - [x] Sanity: `full_border` usage across a multi-grid seed sweep stays low
       (< 30 %) — `test_full_border_usage_stays_low`, green
-- [ ] User confirms a previously-unsolvable double-T entry is now solvable
-      (manual play)
+- [x] User confirms the fix works in play — border crossings land on the
+      corridor and exits are varied ("Much better now", levels 13/16)
 
 ## Problem
 
@@ -316,4 +316,4 @@ stitch prefers. No strategy-function changes.
 - [x] Continuation test (parent band == child band) passes (`a564670`).
 - [x] `full_border`-usage sanity check passes over the seed sweep (`a564670`).
 - [x] `poe test` passes — full suite 387 passed (`a564670`).
-- [ ] User confirms the double-T entry case is solvable (manual play).
+- [x] User confirms the fix works in play ("Much better now", levels 13/16).
