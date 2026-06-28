@@ -3,9 +3,10 @@
 ## Status
 
 - [x] Zone B extended to `MIN_R` in z_h and s_h (unconditional)
-- [x] Zone C extended to `MIN_R` in z_v and s_v (unconditional)
 - [x] z_h/s_h Zone B uses `_pack_band` (horizontal) with no room cap — all rooms connect via bottom arm
-- [ ] z_v/s_v Zone C keeps `max_rooms=1` — only one room can reach the second arm's side wall
+- [x] z_v/s_v Zone B extended to outer edge, packed vertically — fills top corner gap
+- [x] z_v/s_v Zone C starts at `r_break` (not `MIN_R`), packed vertically, no room cap
+- [x] z_v/s_v Zone D extended to outer edge, packed vertically
 - [ ] `poe test` passes
 
 ---
@@ -89,30 +90,103 @@ position, so `max_rooms=None` (unlimited) is correct.
 
 ---
 
-## Why z_v/s_v Zone C keeps max_rooms=1
+## ASCII diagram — z_v, before vs after
 
-Zone C (z_v / s_v) sits to the right / left of the second arm.  The second arm
-spans only rows `r_break..MAX_R`.  Zone C is extended from `MIN_R` to `MAX_R`.
+Concrete values: `arm_h=2, arm_w=2, c_left=6, c_right=18, r_break=7`  
+Interior: cols 1–28, rows 1–14.  `#` = corridor.  First arm exits TOP (cols 6–7);
+connector horizontal (cols 6–19, rows 7–8); second arm exits BOTTOM (cols 18–19).
 
-With vertical packing, a second room stacked above the first might occupy rows
-`MIN_R..r_break-1` — entirely above the second arm's row range.  Its only
-possible corridor adjacency is the side wall at `c_right+arm_w` (or `c_left-1`
-for s_v), but that wall is only corridor-adjacent at rows `r_break..MAX_R`.
-A room ending before `r_break` has no shared boundary → disconnected.
+```
+      col: 0         1         2
+            0123456789012345678901234567890
 
-One room spanning the full zone height (`MIN_R..MAX_R`) always reaches the
-arm rows and connects. ✓
+BEFORE (Zone C extended to MIN_R, max_rooms=1):
+  row  1:  |AAAA.##.BBBBBBBBBBB.CCCCCCCC|  C: rows 1–14, max_rooms=1
+  row  5:  |AAAA.##.BBBBBBBBBBB.CCCCCCCC|  (one tall room or disconnected)
+  row  7:  |AAAA.##############.CCCCCCCC|
+  row 10:  |.....DDDDDDDDDDD.##.CCCCCCCC|
+
+AFTER (B extended right, C starts at r_break, D extended left):
+  row  0:  +------------------------------+
+  row  1:  |AAAA.##.BBBBBBBBBBBBBBBBBBBB|  Zone B extends to right border
+  row  2:  |AAAA.##.BBBBBBBBBBBBBBBBBBBB|
+  row  3:  |AAAA.##.BBBBBBBBBBBBBBBBBBBB|
+  row  4:  |AAAA.##.BBBBBBBBBBBBBBBBBBBB|
+  row  5:  |AAAA.##.BBBBBBBBBBBBBBBBBBBB|
+  row  6:  |AAAA.##......................|  wall row (B → connector)
+  row  7:  |AAAA.##############.CCCCCCCC|  Zone C starts at r_break
+  row  8:  |AAAA.##############.CCCCCCCC|
+  row  9:  |.................##.CCCCCCCC|  wall row (connector → D)
+  row 10:  |DDDDDDDDDDDDDDDD.##.CCCCCCCC|  Zone D extends to left border
+  row 11:  |DDDDDDDDDDDDDDDD.##.CCCCCCCC|
+  row 12:  |DDDDDDDDDDDDDDDD.##.CCCCCCCC|
+  row 13:  |DDDDDDDDDDDDDDDD.##.CCCCCCCC|
+  row 14:  |DDDDDDDDDDDDDDDD.##.CCCCCCCC|
+  row 15:  +------------------------------+
+
+  Zone A: cols  1– 4, rows  1– 8   _pack_band_vertical  (unchanged)
+  Zone B: cols  9–28, rows  1– 5   _pack_band_vertical  (extended right to MAX_C)
+  Zone C: cols 21–28, rows  7–14   _pack_band_vertical  (starts at r_break; no cap)
+  Zone D: cols  1–16, rows 10–14   _pack_band_vertical  (extended left to MIN_C)
+```
+
+Connectivity:
+- Zone B: left wall (col 8) → first arm (col 7, rows 1–8 ⊇ 1–5).  All rooms
+  span the full zone width and connect regardless of vertical position. ✓
+- Zone C: left wall (col 20) → second arm (col 19, rows 7–14).  Zone C rows are
+  exactly 7–14, so every room reaches the arm range. ✓ No cap needed.
+- Zone D: top wall (row 9) → connector (row 8, cols 6–19 ∩ 1–16 = 6–16). ✓
+
+---
+
+## ASCII diagram — s_v
+
+s_v is z_v reflected left-right.  First arm exits TOP at the right col (18–19);
+second arm exits BOTTOM at the left col (6–7).
+
+```
+      col: 0         1         2
+            0123456789012345678901234567890
+
+  row  0:  +------------------------------+
+  row  1:  |BBBBBBBBBBBBBBBB.##.AAAAAAAA|  Zone B extends to left border
+  row  2:  |BBBBBBBBBBBBBBBB.##.AAAAAAAA|
+  row  3:  |BBBBBBBBBBBBBBBB.##.AAAAAAAA|
+  row  4:  |BBBBBBBBBBBBBBBB.##.AAAAAAAA|
+  row  5:  |BBBBBBBBBBBBBBBB.##.AAAAAAAA|
+  row  6:  |..................##.AAAAAAAA|  wall row (B → connector)
+  row  7:  |CCCC.##############.AAAAAAAA|  Zone C starts at r_break
+  row  8:  |CCCC.##############.AAAAAAAA|
+  row  9:  |CCCC.##......................|  wall row (connector → D)
+  row 10:  |CCCC.##.DDDDDDDDDDDDDDDDDDDD|  Zone D extends to right border
+  row 11:  |CCCC.##.DDDDDDDDDDDDDDDDDDDD|
+  row 12:  |CCCC.##.DDDDDDDDDDDDDDDDDDDD|
+  row 13:  |CCCC.##.DDDDDDDDDDDDDDDDDDDD|
+  row 14:  |CCCC.##.DDDDDDDDDDDDDDDDDDDD|
+  row 15:  +------------------------------+
+
+  Zone A: cols 21–28, rows  1– 8   _pack_band_vertical  (unchanged)
+  Zone B: cols  1–16, rows  1– 5   _pack_band_vertical  (extended left to MIN_C)
+  Zone C: cols  1– 4, rows  7–14   _pack_band_vertical  (starts at r_break; no cap)
+  Zone D: cols  9–28, rows 10–14   _pack_band_vertical  (extended right to MAX_C)
+```
+
+Connectivity (s_v):
+- Zone B: right wall (col 17) → first arm (col 18, rows 1–8 ⊇ 1–5). ✓
+- Zone C: right wall (col 5) → second arm (col 6, rows 7–14). ✓
+- Zone D: left wall (col 8) → second arm (col 7, rows 7–14 ⊇ 10–14);
+  also top wall (row 9) → connector at cols 9–19. ✓
 
 ---
 
 ## Affected variants
 
-| Variant | Gap location | Zone to extend | Index | Packing fn          | max_rooms |
-|---------|-------------|----------------|-------|---------------------|-----------|
-| z_h     | top-right   | B (index 1)    |       | `_pack_band`        | `None`    |
-| s_h     | top-left    | B (index 1)    |       | `_pack_band`        | `None`    |
-| z_v     | top-right   | C (index 2)    |       | `_pack_band_vertical` | `1`     |
-| s_v     | top-left    | C (index 2)    |       | `_pack_band_vertical` | `1`     |
+| Variant | Gap location | Fix                                                        |
+|---------|--------------|------------------------------------------------------------|
+| z_h     | top-right    | Zone B extended to `MIN_R`, `_pack_band`, no cap          |
+| s_h     | top-left     | Zone B extended to `MIN_R`, `_pack_band`, no cap          |
+| z_v     | top-right    | Zone B extended to `MAX_C`, `_pack_band_vertical`, no cap; Zone C starts at `r_break`; Zone D extended to `MIN_C` |
+| s_v     | top-left     | Zone B extended to `MIN_C`, `_pack_band_vertical`, no cap; Zone C starts at `r_break`; Zone D extended to `MAX_C` |
 
 ---
 
@@ -120,43 +194,55 @@ arm rows and connects. ✓
 
 ### Zone tuple format
 
-6 elements: `(col, row, w, h, fn, max_rooms)`.  `None` = unlimited; `1` = at
-most one room.
+6 elements: `(col, row, w, h, fn, max_rooms)`.  `None` = unlimited.
 
-### z_h Zone B (index 1)
+### z_h Zone B (index 1) — already done
 
 ```python
-# was: _pack_band_vertical, 1
 (c_break + arm_w + 1, MIN_R, MAX_C - c_break - arm_w, r_bot - MIN_R - 1,
  _pack_band, None)
 ```
 
-### s_h Zone B (index 1)
+### s_h Zone B (index 1) — already done
 
 ```python
-# was: _pack_band_vertical, 1
 (MIN_C, MIN_R, c_break - 2, r_bot - MIN_R - 1,
  _pack_band, None)
 ```
 
-### z_v Zone C (index 2) — unchanged
+### z_v zones (indices 0–3)
 
 ```python
-(c_right + arm_w + 1, MIN_R, MAX_C - c_right - arm_w, MAX_R - MIN_R + 1,
- _pack_band_vertical, 1)
+# A: left of first arm (vertical band) — unchanged
+(MIN_C,              MIN_R,    c_left - 2,            r_break + arm_h - 1,
+ _pack_band_vertical, None),
+# B: above connector — extended right to MAX_C
+(c_left + arm_w + 1, MIN_R,    MAX_C - c_left - arm_w, r_break - 2,
+ _pack_band_vertical, None),
+# C: right of second arm — starts at r_break (not MIN_R), no cap
+(c_right + arm_w + 1, r_break, MAX_C - c_right - arm_w, MAX_R - r_break + 1,
+ _pack_band_vertical, None),
+# D: below connector — extended left to MIN_C
+(MIN_C,              r_break + arm_h + 1, c_right - 2, MAX_R - r_break - arm_h,
+ _pack_band_vertical, None),
 ```
 
-### s_v Zone C (index 2) — unchanged
+### s_v zones (indices 0–3)
 
 ```python
-(MIN_C, MIN_R, c_left - 2, MAX_R - MIN_R + 1,
- _pack_band_vertical, 1)
+# A: right of first arm (vertical band) — unchanged
+(c_right + arm_w + 1, MIN_R,  MAX_C - c_right - arm_w, r_break + arm_h - 1,
+ _pack_band_vertical, None),
+# B: above connector — extended left to MIN_C
+(MIN_C,              MIN_R,   c_right - 2,              r_break - 2,
+ _pack_band_vertical, None),
+# C: left of second arm — starts at r_break (not MIN_R), no cap
+(MIN_C,              r_break, c_left - 2,               MAX_R - r_break + 1,
+ _pack_band_vertical, None),
+# D: below connector — extended right to MAX_C
+(c_left + arm_w + 1, r_break + arm_h + 1, MAX_C - c_left - arm_w, MAX_R - r_break - arm_h,
+ _pack_band_vertical, None),
 ```
-
-### Room distribution in `_layout_z`
-
-Two-pass: cap zones (`max_rooms=1`) get one room each first; remaining rooms
-go round-robin to uncapped zones.
 
 ---
 
@@ -166,7 +252,8 @@ Manual — no automated test for visual layout:
 
 - Run `poe run --level 11` through `--level 20` multiple times; look for Z/S grids.
 - Confirm corner area is occupied by a room (not solid wall).
-- Confirm multiple rooms fit in Zone B for z_h/s_h grids.
+- Confirm multiple rooms fit in z_h/s_h Zone B.
+- Confirm multiple rooms fit in z_v/s_v Zone B and Zone C.
 - Confirm rooms connect correctly (no black screen / fallback to `full_border`).
 - `poe test` must pass.
 
@@ -176,4 +263,5 @@ Manual — no automated test for visual layout:
 
 - [ ] Z/S corner gap no longer appears (user confirmed).
 - [ ] Multiple rooms are placed in z_h/s_h Zone B when graph has enough rooms.
+- [ ] Multiple rooms are placed in z_v/s_v Zone B and Zone C when graph has enough rooms.
 - [ ] `poe test` passes.
