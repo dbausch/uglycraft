@@ -81,12 +81,15 @@ row6  # # # + # #     room↔corridor door — only cols 7–9
 row7  C C C C C C
 ```
 
-**(c) Corner toilet** — a near-square block in a corner, enclosed by an **L of
-two wall segments sharing the corner cell**, then one arm cut as the door.
-**≈ 20%**, near-square (e.g. 6×4 room → ~5 tiles → 2×2). Minimum 1 tile → 2×2
-footprint (toilet + 3-tile L-wall, one of which becomes the door). At a
-corridor-facing corner it costs one door column; at a back corner it does not
-affect the door.
+**(c) Corner toilet** — a **square** block of side `s` in a corner, enclosed by
+an **L of two wall segments sharing the corner cell**, then one arm cut as the
+door. `s = round(sqrt(0.2·w·h))` (~20% of the area), but placed only if
+**`s ≤ min(w, h) − 2`** so at least one room tile remains behind each of its two
+new walls; if the ~20% size is larger than that, **no toilet** is placed in that
+room (another closet type may still apply).  Consequently a room with a 2-tile
+dimension never gets a toilet (only a back office).  At a corridor-facing corner
+the toilet costs one door column; at a back corner it does not affect the door.
+(`_toilet_size(w, h)` in `levellayout.py` encodes the rule.)
 
 ```
       4 5 6 7 8 9
