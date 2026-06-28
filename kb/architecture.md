@@ -419,6 +419,49 @@ assertion rather than a load-bearing safety net.
 
 ---
 
+## Item placement, spill, and barrier prerequisites (spec 0030)
+
+**Placement order & spill (shared infra, also spec 0029 W1).**
+`_place_items_in_room` places a node's collectibles in priority order **keys →
+planks → treasures (awards) → other materials**. When the node's own floor is
+exhausted, items **spill to the corridor** (`spill_floor`, the `CORRIDOR` node's
+free tiles, passed from `build_level_dict`) instead of being silently dropped;
+`LayoutError` is raised only if the corridor is also full (→ regenerate; should
+never happen). Enemies are exempt: they reserve no tile (may stand on an item)
+and never spill, so they always fit in-room. This replaced the old `if p:`
+silent-drop, which lost ~85% of planks and dropped keys in ~43% of key levels.
+
+**Barrier ↔ prerequisite coupling.** A locked door / gate is created **only when
+its key / plate actually survived placement**, never from the graph's
+`node.keys`/`node.plates`. `build_level_dict` derives `placed_key_colours` /
+`placed_gate_ids` from the surviving `all_keys` / `all_plates`; `_build_super_grid`
+guards **border** barriers the same way, keyed on surviving keys/plates across all
+grids. If a prerequisite is missing the passage is left **open** rather than a
+soft-locked door. (With spill, a placed node's keys never drop, so this is mostly
+a safety net — but it is the correct invariant and removes the BL-13-style
+"mutate after validation" smell from stitching.)
+
+**`_build_subgraph` copies the corridor's own items.** Multi-grid subgraph
+construction previously copied items only for the corridor's *neighbour* rooms,
+not the corridor node itself. `start_next_grid` can place a **border key** (or
+treasures/materials) on a corridor via `_pick(list(self._reachable))`, so those
+items were lost → key dropped → border door soft-locked. Fixed: copy the corridor
+node's keys/treasures/materials/plates/blocks/enemies/has_flames too.
+
+**Node drops are real (R-P4).** A node whose assigned zone is below minimum size
+is **silently skipped** by the packing functions (R-P4) and never enters `placed`;
+its whole room — keys, treasures, materials, enemies — vanishes. Levels stay
+solvable (dependent doors degrade to open via the coupling above), but content is
+lost. The K1 invariant is therefore "every *placed* node's keys survive", not
+strict graph equality. Under investigation: **BL-23**.
+
+→ Code: `_place_items_in_room`, `_build_subgraph`, `_build_super_grid` border
+  stitch in `levellayout.py`. Spec: `spec/0030-key-placement-fixes.md`,
+  `spec/0029-water-challenge-fixes.md` (W1). Invariants: R-P3/R-P4 in
+  `kb/requirements.md`.
+
+---
+
 ## Target architecture (backlog BL-05)
 
 All corridor shapes can be derived from a single parametric model:
