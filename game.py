@@ -262,7 +262,7 @@ class Game:
             self._room_blocks = {}
             self._room_plates = {}
             self._room_gates = {}
-            self._bridged_tiles = set()
+            self._bridged_tiles = {}
             self._gate_open = set()  # set of currently open gate_ids
             for rkey, rdata in data['rooms'].items():
                 treasures = list(rdata.get('treasures', []))
@@ -464,7 +464,7 @@ class Game:
         for bc, br in self._room_blocks.get(room_key, []):
             self.walls[bc][br] = True
         for wc, wr in getattr(self, '_water_tiles', set()):
-            if (wc, wr) not in getattr(self, '_bridged_tiles', set()):
+            if (wc, wr) not in self._bridged_tiles.get(room_key, set()):
                 self.walls[wc][wr] = True
         for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
             if gate_id not in self._gate_open:
@@ -922,7 +922,7 @@ class Game:
         if not self._is_multiroom:
             return False
         water = getattr(self, '_water_tiles', set())
-        bridged = getattr(self, '_bridged_tiles', set())
+        bridged = self._bridged_tiles.get(self._current_room, set())
         if (col, row) not in water or (col, row) in bridged:
             return False
         if not self.inventory.has_item(CRAFT_BRIDGE):
@@ -936,7 +936,7 @@ class Game:
         if (0 < far_c < COLS - 1 and 0 < far_r < ROWS - 1
                 and not self.walls[far_c][far_r]):
             self.inventory.use_item(CRAFT_BRIDGE)
-            self._bridged_tiles.add((col, row))
+            self._bridged_tiles.setdefault(self._current_room, set()).add((col, row))
             self._bridges_remaining -= 1
             self._build_walls_multiroom()
             self.sounds.play('place_wall')
@@ -1235,7 +1235,7 @@ class Game:
                 vert = ((wc, wr - 1) in self._water_tiles or
                         (wc, wr + 1) in self._water_tiles)
                 o = 'v' if vert else 'h'
-                if (wc, wr) in self._bridged_tiles:
+                if (wc, wr) in self._bridged_tiles.get(self._current_room, set()):
                     self.surf.blit(sp[f'bridge_{o}'], (wc * TILE, wr * TILE))
                 else:
                     self.surf.blit(sp[f'water_{o}'], (wc * TILE, wr * TILE))
