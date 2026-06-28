@@ -221,3 +221,131 @@ test) to confirm zero water-caused stuck blocks across many seeds. Cross-referen
 kb/architecture.md "Playability validation: the model boundary (BL-13)". Related:
 BL-04 (water-crossing check too permissive) is part of the same water-model story
 and may be folded into this fix.
+
+---
+
+## BL-15 · FOLDED INTO spec 0030 · Place keys with priority in the layout item-placement order
+
+The collectible placement order has been decided as **keys → planks → treasures
+(award items) → other materials** (after flames and push puzzles), with
+spill-to-corridor for overflow. NOTE the order changed: keys are now placed
+FIRST, BEFORE planks (not "right after planks" as originally written here). This
+item is fully covered by `spec/0030-key-placement-fixes.md` (K1) and
+`spec/0029-water-challenge-fixes.md` (W1); see those specs for the authoritative
+resolution.
+
+---
+
+## BL-16 · P2 · Don't place items on the player start tile (next to the entrance)
+
+Treasures, materials, and keys can currently spawn on the `player_start` tile
+because `player_start` is never added to `global_used` in `build_level_dict`
+(levellayout.py). An item under the player at spawn is auto-collected or visually
+wrong.
+
+**Fix hint:** add `player_start` (and consider the entrance tile) to `global_used`
+before any item placement, or exclude it inside `_place_items_in_room`, so nothing
+lands on the player's starting position.
+
+---
+
+## BL-17 · P2 · Completely empty rooms are still generated
+
+Some generated Act 2 rooms contain no items or enemies at all (dead space) —
+observed during testing. Treasure/material/enemy distribution in
+`LevelGraph.generate` / the builder assigns to `rng.choice(all_nodes)`, so some
+nodes receive nothing.
+
+**Fix hint:** guarantee every non-corridor room gets at least one item — e.g. a
+round-robin seeding pass over rooms before the random distribution, or a
+post-layout check that drops a treasure into any room that ended up empty. Verify
+with a headless sweep that no non-corridor room is empty across many seeds.
+
+---
+
+## BL-18 · P3 · Bridge-building variety: 4-plank bridges from mixed plank sources (single planks, packs of two, wooden doors)
+
+Goal: add variety to how the player gathers the planks needed to bridge to a
+water room.
+
+Changes:
+1. A bridge costs 4 planks instead of 2, matching the bridge sprite (which
+   depicts four planks). Update the `CRAFT_BRIDGE` recipe in `crafting.py` from
+   `{MAT_PLANKS: 2}` to `{MAT_PLANKS: 4}`.
+2. Floor plank pickups come in two forms: a single plank (1 plank — NEW item
+   type and NEW sprite) and a pack of two planks (2 planks — existing-style
+   plank sprite). Today planks are placed only as individual `('planks',)`
+   materials worth 1 each; this adds an explicit single vs. pack distinction
+   with distinct sprites.
+3. Breaking down a wooden door yields 4 planks in one go — a full bridge's worth
+   — as a non-scavenging alternative to collecting loose planks. This ties
+   plank-sourcing to the existing breakable wooden wall/door mechanic
+   (`WALL_WOODEN` / `BREAKABLE` edges).
+4. The `add_water_room` algorithm (`levelgraph.py`) provisions, per water room,
+   ANY valid combination of these sources whose total equals the equivalent of
+   4 planks — e.g. 4 singles, 2 packs, 1 pack + 2 singles, or one wooden door
+   (=4) — chosen at random. All sources must remain reachable on the dry side
+   and may be distributed across grids (fungible), per spec 0029.
+
+Dependencies / interactions:
+- Builds on and SUPERSEDES spec 0029's "2 planks per water room" provisioning:
+  the invariant becomes "4-plank-equivalent per water room." The
+  `validate_playability` check and the test targets from spec 0029 (W5/W6) must
+  update from "2 reachable planks" to "4-plank-equivalent reachable."
+- Requires new material/item handling (single vs pack) and sprites (a
+  single-plank sprite; confirm the bridge sprite shows 4 planks).
+- The "wooden door gives planks" rule interacts with the existing wall-break
+  credit mechanic — decide whether a wooden barrier that funds a bridge still
+  awards break credits.
+- Needs its own spec before implementation; depends on spec 0029 landing first.
+
+---
+
+## BL-19 · P2 · Push plates must not be placed next to a room's entrance tile
+
+Pressure plates for push puzzles can currently land on a tile cardinally
+adjacent to the room's entrance/connection tile. That is awkward (the player
+steps in and is immediately beside the plate) and can trivialise or cramp the
+puzzle.
+
+**Fix hint:** in the push-puzzle placement (`_place_puzzle` / `build_level_dict`
+in `levellayout.py`), exclude tiles cardinally adjacent to the room's entry tile
+(the connection tile from the corridor, found via `_find_connection_tile` — the
+same way flame-jet entry detection works) from the plate candidate set.
+
+---
+
+## BL-20 · P2 · Place enemies only in rooms of width >= 3 and height >= 3
+
+Enemies placed in narrow rooms (bounding box width < 3 or height < 3) can trap
+the player with no room to dodge. Restrict enemy start placement to rooms whose
+placed bounding box is at least 3x3.
+
+**Fix hint:** in enemy distribution (`LevelGraph.generate` / builder
+`add_enemies` in `levelgraph.py`) or at layout time (`_place_items_in_room`
+`enemy_starts` in `levellayout.py`), skip placed nodes with `w < 3` or `h < 3`;
+only assign/place enemies in rooms meeting the threshold (the corridor is large
+and remains eligible). Verify with a headless sweep that no enemy start lands in
+a sub-3x3 room.
+
+---
+
+## BL-21 · P3 · Reduce the number of rooms in level 11
+
+Level 11 (the first Act 2 level, `ACT2_FEATURE_SETS` index 0) generates too many
+rooms for an introductory Act 2 level. Reduce its `room_count` range.
+
+**Fix hint:** in `levels.py` (`_act2_feature_sets`), lower the `room_count`
+tuple for index 0 (level 11).
+
+---
+
+## BL-22 · P3 · Remove the more complex layout options from levels 11-13
+
+Early Act 2 levels (11-13, `ACT2_FEATURE_SETS` indices 0-2) should ease the
+player in with simpler corridor layouts. Remove the more complex strategies
+(`z/s`, `l`, `double_t`) from their `layout_strategies`, leaving simpler ones
+(`horizontal`, `vertical`, `off_centre`, `t`).
+
+**Fix hint:** in `levels.py` (`_act2_feature_sets`), trim the
+`'layout_strategies'` lists for indices 0-2.
