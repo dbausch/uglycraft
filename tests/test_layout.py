@@ -409,3 +409,53 @@ def test_layout_graph_2room_no_heavy_strategy(seed):
                       any(r == MAX_R for (c, r) in corridor_tiles))
     assert not (touches_all_lr and touches_all_tb), \
         f"seed={seed}: corridor touches all 4 borders — double_t/z chosen for 2-room graph"
+
+
+# ── R-P4 / R-P6: packing-function minimum dimensions and n-cap ────────────────
+
+class TestPackBandCapacity:
+    """R-P4 (min w≥2, h≥2) and R-P6 (n_max cap) for both packing functions."""
+
+    def test_pack_band_width5_fits_two_rooms(self):
+        """band_w=5 must fit 2 rooms: 2 + 1-gap + 2 = 5."""
+        from levellayout import _pack_band
+        placed = {}
+        _pack_band(placed, ['a', 'b'], random.Random(0),
+                   band_col=1, band_row=1, band_w=5, band_h=2)
+        assert 'a' in placed, "first room not placed"
+        assert 'b' in placed, "second room not placed"
+        a, b = placed['a'], placed['b']
+        assert a.w >= 2 and b.w >= 2
+        assert b.col == a.col + a.w + 1, "gap between rooms must be exactly 1"
+
+    def test_pack_band_width4_one_room_uses_full_width(self):
+        """band_w=4, n=2: n_max=1; the single placed room fills the zone."""
+        from levellayout import _pack_band
+        placed = {}
+        _pack_band(placed, ['a', 'b'], random.Random(0),
+                   band_col=1, band_row=1, band_w=4, band_h=2)
+        assert 'a' in placed, "first room not placed"
+        assert 'b' not in placed, "second room must not be placed (n_max=1 for band_w=4)"
+        assert placed['a'].w == 4, f"expected width=4, got {placed['a'].w}"
+
+    def test_pack_band_vertical_height5_fits_two_rooms(self):
+        """band_h=5 must fit 2 rooms: 2 + 1-gap + 2 = 5."""
+        from levellayout import _pack_band_vertical
+        placed = {}
+        _pack_band_vertical(placed, ['a', 'b'], random.Random(0),
+                            band_col=1, band_row=1, band_w=3, band_h=5)
+        assert 'a' in placed, "first room not placed"
+        assert 'b' in placed, "second room not placed"
+        a, b = placed['a'], placed['b']
+        assert a.h >= 2 and b.h >= 2
+        assert b.row == a.row + a.h + 1, "gap between rooms must be exactly 1"
+
+    def test_pack_band_vertical_height4_one_room_uses_full_height(self):
+        """band_h=4, n=2: n_max=1; the single placed room fills the zone."""
+        from levellayout import _pack_band_vertical
+        placed = {}
+        _pack_band_vertical(placed, ['a', 'b'], random.Random(0),
+                            band_col=1, band_row=1, band_w=3, band_h=4)
+        assert 'a' in placed, "first room not placed"
+        assert 'b' not in placed, "second room must not be placed (n_max=1 for band_h=4)"
+        assert placed['a'].h == 4, f"expected height=4, got {placed['a'].h}"
