@@ -105,6 +105,39 @@ def test_corridors_continue_across_border(seed):
                     f"continue across {ga}({es})->{gb}({en}): {sorted(ba)} != {sorted(bb)}")
 
 
+def _build_forced(fs, seed, gc, strategies):
+    base = random.Random(seed)
+    fs = {**fs, 'grid_count': gc}
+    for _ in range(60):
+        rng = random.Random(base.randint(0, 2 ** 31))
+        g = LevelGraph.generate(fs, rng)
+        try:
+            lv = build_level_dict(g, rng=rng, strategies=strategies, grid_count=gc)
+            return g, lv
+        except LayoutError:
+            continue
+    raise AssertionError(f"forced build failed fs={fs.get('name')} seed={seed}")
+
+
+def test_full_border_exits_are_varied():
+    """With every grid forced to full_border (all edges full<->full), openings
+    must not all sit at the grid centre — the source grid actively varies its
+    exit band within an attachable range (spec 0033)."""
+    positions = []
+    for fs in _SETS:
+        for seed in range(25):
+            graph, lv = _build_forced(fs, seed, 4, ['full_border'])
+            for rd in lv['rooms'].values():
+                for ek in rd.get('exits', {}):
+                    side, _, pos = ek.rpartition('_')
+                    positions.append((side, int(pos)))
+    assert positions, "no border openings sampled"
+    distinct_pos = {pos for _, pos in positions}
+    # pre-fix this is {7, 14} (left/right + top/bottom centres) → 2 values
+    assert len(distinct_pos) >= 6, (
+        f"full_border exits cluster at centre: {sorted(distinct_pos)}")
+
+
 def test_full_border_usage_stays_low():
     """Coordinate-at-layout must not collapse most grids to full_border."""
     full = total = 0
