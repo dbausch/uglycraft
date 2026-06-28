@@ -25,6 +25,11 @@ class LayoutError(Exception):
     """Raised when a layout strategy cannot place all assigned rooms."""
 
 
+class CorridorAnchorError(LayoutError):
+    """Raised when a strategy cannot place its corridor segment at the band
+    required to continue a neighbouring grid's corridor across a BORDER edge."""
+
+
 class PlacedNode:
     """A graph node placed at a spatial position on the grid."""
 
@@ -281,10 +286,13 @@ def _pick_strategy(exits, available, rng, n_rooms=0):
     return rng.choice(choices)
 
 
-def layout_graph(graph, rng=None, strategies=None, required_exits=None):
+def layout_graph(graph, rng=None, strategies=None, required_exits=None,
+                 corridor_anchor=None):
     """Arrange graph nodes onto a 30×16 grid using a random strategy.
 
     required_exits: frozenset of border sides this corridor must reach.
+    corridor_anchor: (side, lo, w) — continue a neighbouring grid's corridor
+                     band across a BORDER edge (see _layout_corridor).
     Returns {node_name: PlacedNode}.
     """
     rng = rng or random.Random()
@@ -337,15 +345,25 @@ def layout_graph(graph, rng=None, strategies=None, required_exits=None):
     ns = node_sizes if node_sizes else None
 
     if strategy == 'vertical':
-        placed = _layout_vertical(corridor_name, regular_rooms, rng, em, ns)
+        placed = _layout_vertical(corridor_name, regular_rooms, rng, em, ns,
+                                  corridor_anchor=corridor_anchor)
     elif strategy == 'off_centre':
-        placed = _layout_off_centre(corridor_name, regular_rooms, rng, em, ns)
+        placed = _layout_off_centre(corridor_name, regular_rooms, rng, em, ns,
+                                    corridor_anchor=corridor_anchor)
     elif strategy == 't':
+        # A top/bottom anchor needs the single stem on that side.
+        if corridor_anchor and corridor_anchor[0] in ('top', 'bottom'):
+            want = 'near' if corridor_anchor[0] == 'top' else 'far'
+            stems = [(want, rng.uniform(0.25, 0.75), (2, 5))]
+        else:
+            stems = [_random_stem(rng)]
         placed = _layout_corridor(corridor_name, regular_rooms, rng,
-                                   stems=[_random_stem(rng)], edge_map=em, node_sizes=ns)
+                                   stems=stems, edge_map=em, node_sizes=ns,
+                                   corridor_anchor=corridor_anchor)
     elif strategy == 'double_t':
         placed = _layout_corridor(corridor_name, regular_rooms, rng,
-                                   stems=_double_t_stems(rng), edge_map=em, node_sizes=ns)
+                                   stems=_double_t_stems(rng), edge_map=em, node_sizes=ns,
+                                   corridor_anchor=corridor_anchor)
     elif strategy == 'z':
         placed = _layout_z(corridor_name, regular_rooms, rng, em, ns,
                            required_exits=required_exits)
@@ -356,7 +374,8 @@ def layout_graph(graph, rng=None, strategies=None, required_exits=None):
         placed = _layout_full_border(corridor_name, regular_rooms, rng, em, ns,
                                      required_exits=required_exits)
     else:
-        placed = _layout_horizontal(corridor_name, regular_rooms, rng, em, ns)
+        placed = _layout_horizontal(corridor_name, regular_rooms, rng, em, ns,
+                                    corridor_anchor=corridor_anchor)
 
     if closet_rooms:
         _nest_closets(placed, closet_rooms, graph, rng)
@@ -364,20 +383,30 @@ def layout_graph(graph, rng=None, strategies=None, required_exits=None):
     return placed
 
 
-def _layout_horizontal(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
+def _layout_horizontal(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
+                       corridor_anchor=None):
     """Corridor runs left-right, rooms above and below."""
-    cor_h = rng.randint(2, 3)
-    remaining = INT_H - cor_h - 2
-    above_h = remaining // 2
-    below_h = remaining - above_h
-    if above_h < 3:
-        above_h = 3
+    if corridor_anchor and corridor_anchor[0] in ('left', 'right'):
+        # Continue the neighbour's corridor: spine rows fixed to the band.
+        _, lo, w = corridor_anchor
+        cor_h = w
+        cor_row = lo
+        if cor_row < MIN_R or cor_row + cor_h - 1 > MAX_R:
+            raise CorridorAnchorError(f"horizontal cannot place spine at {lo}+{w}")
+        above_h = max(0, cor_row - MIN_R - 1)
+        below_h = max(0, MAX_R - cor_row - cor_h)
+    else:
+        cor_h = rng.randint(2, 3)
+        remaining = INT_H - cor_h - 2
+        above_h = remaining // 2
         below_h = remaining - above_h
-    if below_h < 3:
-        below_h = 3
-        above_h = remaining - below_h
-
-    cor_row = MIN_R + above_h + 1
+        if above_h < 3:
+            above_h = 3
+            below_h = remaining - above_h
+        if below_h < 3:
+            below_h = 3
+            above_h = remaining - below_h
+        cor_row = MIN_R + above_h + 1
     placed = {}
     placed[corridor_name] = PlacedNode(
         corridor_name, MIN_C, cor_row, INT_W, cor_h)
@@ -397,20 +426,30 @@ def _layout_horizontal(corridor_name, room_names, rng, edge_map=None, node_sizes
     return placed
 
 
-def _layout_vertical(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
+def _layout_vertical(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
+                     corridor_anchor=None):
     """Corridor runs top-bottom, rooms left and right."""
-    cor_w = rng.randint(2, 3)
-    remaining = INT_W - cor_w - 2
-    left_w = remaining // 2
-    right_w = remaining - left_w
-    if left_w < 5:
-        left_w = 5
+    if corridor_anchor and corridor_anchor[0] in ('top', 'bottom'):
+        # Continue the neighbour's corridor: spine cols fixed to the band.
+        _, lo, w = corridor_anchor
+        cor_w = w
+        cor_col = lo
+        if cor_col < MIN_C or cor_col + cor_w - 1 > MAX_C:
+            raise CorridorAnchorError(f"vertical cannot place spine at {lo}+{w}")
+        left_w = max(0, cor_col - MIN_C - 1)
+        right_w = max(0, MAX_C - cor_col - cor_w)
+    else:
+        cor_w = rng.randint(2, 3)
+        remaining = INT_W - cor_w - 2
+        left_w = remaining // 2
         right_w = remaining - left_w
-    if right_w < 5:
-        right_w = 5
-        left_w = remaining - right_w
-
-    cor_col = MIN_C + left_w + 1
+        if left_w < 5:
+            left_w = 5
+            right_w = remaining - left_w
+        if right_w < 5:
+            right_w = 5
+            left_w = remaining - right_w
+        cor_col = MIN_C + left_w + 1
     placed = {}
     placed[corridor_name] = PlacedNode(
         corridor_name, cor_col, MIN_R, cor_w, INT_H)
@@ -463,18 +502,27 @@ def _layout_full_border(corridor_name, room_names, rng, edge_map=None, node_size
     return placed
 
 
-def _layout_off_centre(corridor_name, room_names, rng, edge_map=None, node_sizes=None):
+def _layout_off_centre(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
+                       corridor_anchor=None):
     """Corridor shifted up or down, asymmetric room bands."""
-    cor_h = rng.randint(2, 3)
-    remaining = INT_H - cor_h - 2
-    # Shift: one band gets 60-80% of the space
-    split = rng.uniform(0.3, 0.7)
-    above_h = max(3, int(remaining * split))
-    below_h = max(3, remaining - above_h)
-    if above_h + below_h > remaining:
-        above_h = remaining - below_h
-
-    cor_row = MIN_R + above_h + 1
+    if corridor_anchor and corridor_anchor[0] in ('left', 'right'):
+        _, lo, w = corridor_anchor
+        cor_h = w
+        cor_row = lo
+        if cor_row < MIN_R or cor_row + cor_h - 1 > MAX_R:
+            raise CorridorAnchorError(f"off_centre cannot place spine at {lo}+{w}")
+        above_h = max(0, cor_row - MIN_R - 1)
+        below_h = max(0, MAX_R - cor_row - cor_h)
+    else:
+        cor_h = rng.randint(2, 3)
+        remaining = INT_H - cor_h - 2
+        # Shift: one band gets 60-80% of the space
+        split = rng.uniform(0.3, 0.7)
+        above_h = max(3, int(remaining * split))
+        below_h = max(3, remaining - above_h)
+        if above_h + below_h > remaining:
+            above_h = remaining - below_h
+        cor_row = MIN_R + above_h + 1
     placed = {}
     placed[corridor_name] = PlacedNode(
         corridor_name, MIN_C, cor_row, INT_W, cor_h)
@@ -541,7 +589,8 @@ def _next_room_tiles(zw, zh, fn, k):
 
 
 def _layout_corridor(corridor_name, room_names, rng, stems=(),
-                     orientation='h', edge_map=None, node_sizes=None):
+                     orientation='h', edge_map=None, node_sizes=None,
+                     corridor_anchor=None):
     """Generalised corridor: full-width band + 0–2 perpendicular stems.
 
     orientation  'h' horizontal spine, 'v' vertical spine (transposed).
@@ -550,16 +599,31 @@ def _layout_corridor(corridor_name, room_names, rng, stems=(),
                    col_frac  float 0–1, stem centre fraction of band width
                    w_range   (min_w, max_w) for stem width
     Stems always extend to the grid border; no tip rooms are pre-allocated.
+    corridor_anchor  (side, lo, w): continue a neighbour's corridor band.  A
+                   left/right anchor fixes the spine rows; a top/bottom anchor
+                   fixes the matching stem's cols.  Only orientation 'h' (t /
+                   double_t) is anchored.
     """
     rng.shuffle(room_names)
 
+    anchor_side = corridor_anchor[0] if corridor_anchor else None
+    if anchor_side is not None and orientation != 'h':
+        raise CorridorAnchorError("only horizontal corridors are anchored")
+
     # --- spine position: centre third (same as _layout_horizontal) ---
-    arm_h   = rng.randint(2, 3)
-    sp_lo   = MIN_R + INT_H // 3
-    sp_hi   = MIN_R + 2 * INT_H // 3 - arm_h
-    if sp_lo > sp_hi:
-        sp_lo = sp_hi
-    r_spine = rng.randint(sp_lo, sp_hi)
+    if anchor_side in ('left', 'right'):
+        _, lo, w = corridor_anchor
+        arm_h = w
+        if lo < MIN_R or lo + arm_h - 1 > MAX_R:
+            raise CorridorAnchorError(f"corridor cannot place spine at {lo}+{w}")
+        r_spine = lo
+    else:
+        arm_h   = rng.randint(2, 3)
+        sp_lo   = MIN_R + INT_H // 3
+        sp_hi   = MIN_R + 2 * INT_H // 3 - arm_h
+        if sp_lo > sp_hi:
+            sp_lo = sp_hi
+        r_spine = rng.randint(sp_lo, sp_hi)
 
     # --- resolve each stem ---
     stem_info = []
@@ -568,6 +632,18 @@ def _layout_corridor(corridor_name, room_names, rng, stems=(),
         c_ctr  = MIN_C + int(col_frac * INT_W)
         c_stem = min(max(c_ctr - stem_w // 2, MIN_C + 1), MAX_C - stem_w)
         stem_info.append({'side': side, 'c': c_stem, 'w': stem_w})
+
+    # A top/bottom anchor fixes the matching stem's cols + width.
+    if anchor_side in ('top', 'bottom'):
+        _, lo, w = corridor_anchor
+        want = 'near' if anchor_side == 'top' else 'far'
+        if lo < MIN_C or lo + w - 1 > MAX_C:
+            raise CorridorAnchorError(f"corridor cannot place stem at {lo}+{w}")
+        matching = [s for s in stem_info if s['side'] == want]
+        if not matching:
+            raise CorridorAnchorError(f"no {want} stem to continue {anchor_side} band")
+        matching[0]['c'] = lo
+        matching[0]['w'] = w
 
     # --- build corridor floor tiles (spine + stems to border) ---
     cor_tiles = set(
@@ -1982,7 +2058,8 @@ def _generate_flame_jets(placed_node, walls, rng, entry=None):
 
 def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                      required_exits=None, is_start_grid=True,
-                     occupied_sides=frozenset(), progress=None):
+                     occupied_sides=frozenset(), progress=None,
+                     corridor_anchor=None):
     """Generate the complete level dict that game.py expects.
 
     Auto-detects multi-grid from BORDER edges in the graph.
@@ -2004,7 +2081,8 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         progress(0, 1)
 
     placed = layout_graph(graph, rng=rng, strategies=strategies,
-                          required_exits=required_exits)
+                          required_exits=required_exits,
+                          corridor_anchor=corridor_anchor)
     walls, water_tiles = derive_walls(graph, placed)
     tile_owner = build_tile_owner(placed)
 
@@ -2337,10 +2415,8 @@ def _build_super_grid(graph, rng, strategies, progress=None):
             sub.add_edge(corridor, name, edge.edge_type, **edge.params)
         return sub
 
-    # Collect required border sides per corridor (columns/rows that must have
-    # floor tiles so the stitching step can find a shared position).
-    _BORDER_CHECK_COL = {'right': COLS - 2, 'left': 1}
-    _BORDER_CHECK_ROW = {'bottom': ROWS - 2, 'top': 1}
+    # Required border sides per corridor (the corridor must reach these so a
+    # shared continuation position exists at every BORDER face).
     required_sides = {cor: set() for cor in corridor_order}
     for edge in graph.edges:
         if edge.edge_type != EdgeType.BORDER:
@@ -2348,76 +2424,116 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         required_sides[edge.node_a].add(edge.params['exit_side'])
         required_sides[edge.node_b].add(edge.params['entry_side'])
 
-    def _stitch_ok(rooms_by_gname):
-        """Return True if all BORDER edges can be stitched (shared rows/cols exist)."""
-        for edge in graph.edges:
-            if edge.edge_type != EdgeType.BORDER:
-                continue
-            gname_a = grid_name_map[edge.node_a]
-            gname_b = grid_name_map[edge.node_b]
-            if gname_a not in rooms_by_gname or gname_b not in rooms_by_gname:
-                return False
-            room_a = rooms_by_gname[gname_a]
-            room_b = rooms_by_gname[gname_b]
-            exit_side = edge.params.get('exit_side', 'right')
-            entry_side = edge.params.get('entry_side', 'left')
-            if exit_side in ('right', 'left'):
-                col_a = _BORDER_CHECK_COL[exit_side]
-                col_b = _BORDER_CHECK_COL[entry_side]
-                rows_a = {r for (c, r) in room_a.get('tile_owner', {}) if c == col_a}
-                rows_b = {r for (c, r) in room_b.get('tile_owner', {}) if c == col_b}
-                if not (rows_a & rows_b):
-                    return False
-            else:
-                row_a = _BORDER_CHECK_ROW[exit_side]
-                row_b = _BORDER_CHECK_ROW[entry_side]
-                cols_a = {c for (c, r) in room_a.get('tile_owner', {}) if r == row_a}
-                cols_b = {c for (c, r) in room_b.get('tile_owner', {}) if r == row_b}
-                if not (cols_a & cols_b):
-                    return False
-        return True
-
-    # Build each grid independently, choosing a strategy compatible with
-    # that grid's required border exits.
     grid_name_map = {cor: (f'grid_{i}' if i > 0 else 'grid_a')
                      for i, cor in enumerate(corridor_order)}
+
+    _FULL = {'left':  frozenset(range(MIN_R, MAX_R + 1)),
+             'right': frozenset(range(MIN_R, MAX_R + 1)),
+             'top':   frozenset(range(MIN_C, MAX_C + 1)),
+             'bottom': frozenset(range(MIN_C, MAX_C + 1))}
+
+    def _face_band(room_main, cor_name, side):
+        """Positions (rows for left/right, cols for top/bottom) where this
+        grid's corridor reaches the inner line of `side`."""
+        owner = room_main['tile_owner']
+        if side in ('left', 'right'):
+            col = MIN_C if side == 'left' else MAX_C
+            return frozenset(r for (c, r), o in owner.items()
+                             if c == col and o == cor_name)
+        row = MIN_R if side == 'top' else MAX_R
+        return frozenset(c for (c, r), o in owner.items()
+                         if r == row and o == cor_name)
+
+    _ANCHOR_FAMILY = ('horizontal', 'off_centre', 'vertical', 't', 'double_t')
+
+    def _anchor_candidates(exits, n_rooms):
+        """Spine/stem strategies that reach every required exit, so the anchored
+        side has a corridor segment to fix.  Arm strategies (z/s/l) cannot
+        reproduce an arbitrary band and are excluded when an anchor is active."""
+        exits = frozenset(exits)
+        has_lr = bool(exits & {'left', 'right'})
+        has_tb = bool(exits & {'top', 'bottom'})
+        if has_lr and has_tb:
+            comp = _COVERS_ALL if len(exits) > 2 else _COVERS_L
+        elif has_lr:
+            comp = _COVERS_LR
+        elif has_tb:
+            comp = _COVERS_TB
+        else:
+            comp = frozenset(_ANCHOR_FAMILY)
+        avail = [s for s in (strategies or STRATEGIES)
+                 if s in comp and s in _ANCHOR_FAMILY]
+        if n_rooms > 0:
+            rf = [s for s in avail if n_rooms >= _STRATEGY_MAX_ZONES.get(s, 2)]
+            avail = rf if rf else avail
+        rng.shuffle(avail)
+        return avail
+
+    def _build_grid(sub, corridor, i, anchor):
+        """Build one grid, continuing the parent's corridor band when `anchor`
+        is set.  Tries compatible strategies, then full_border (whose frame
+        reaches every position) as a per-grid last resort."""
+        exits = required_sides[corridor]
+        n_rooms = sum(1 for nm, nd in sub.nodes.items()
+                      if nd.size != NodeSize.CORRIDOR)
+        if anchor is None:
+            cand = [_pick_strategy(frozenset(exits), strategies, rng,
+                                   n_rooms=n_rooms)]
+        else:
+            cand = _anchor_candidates(exits, n_rooms)
+        for strat in cand + ['full_border']:
+            try:
+                d = build_level_dict(
+                    sub, rng=rng, strategies=[strat], grid_count=1,
+                    required_exits=frozenset(exits), is_start_grid=(i == 0),
+                    occupied_sides=exits, corridor_anchor=anchor)
+            except (LayoutError, ValueError):
+                continue
+            if anchor is not None:
+                side, lo, w = anchor
+                band = _face_band(d['rooms']['main'], corridor, side)
+                if not (band & set(range(lo, lo + w))):
+                    continue   # strategy ignored / could not honour the anchor
+            return d
+        raise LayoutError(f"no strategy placed grid {corridor!r}")
+
+    # Build grids in BFS order: a grid's spanning-tree parent is built first and
+    # fixes the corridor band on the shared face, so the corridor continues
+    # straight across the border (BL-29 / spec 0033).
     all_rooms = {}
     all_player_starts = {}
-    subgraphs = {}
-
+    built = set()
     total_grids = len(corridor_order)
     if progress:
         progress(0, total_grids)
     for i, corridor in enumerate(corridor_order):
+        anchor = None
+        if i > 0:
+            for nbr, edge in graph.neighbors(corridor):
+                if edge.edge_type != EdgeType.BORDER or nbr not in built:
+                    continue
+                if edge.node_a == corridor:
+                    child_side = edge.params['exit_side']
+                    parent_side = edge.params['entry_side']
+                else:
+                    child_side = edge.params['entry_side']
+                    parent_side = edge.params['exit_side']
+                parent_band = _face_band(all_rooms[grid_name_map[nbr]],
+                                         nbr, parent_side)
+                if parent_band and parent_band != _FULL[parent_side]:
+                    lo = min(parent_band)
+                    w = max(parent_band) - lo + 1
+                    anchor = (child_side, lo, w)
+                break
         sub = _build_subgraph(corridor, is_start_grid=(i == 0))
-        subgraphs[corridor] = sub
-        exits = required_sides[corridor]
-        n_rooms = sum(1 for name, node in sub.nodes.items()
-                      if node.size != NodeSize.CORRIDOR)
-        chosen = [_pick_strategy(frozenset(exits), strategies, rng, n_rooms=n_rooms)]
-        d = build_level_dict(sub, rng=rng, strategies=chosen, grid_count=1,
-                             required_exits=frozenset(exits),
-                             is_start_grid=(i == 0),
-                             occupied_sides=exits)
+        d = _build_grid(sub, corridor, i, anchor)
         gname = grid_name_map[corridor]
         all_rooms[gname] = d['rooms']['main']
         all_player_starts[gname] = d['player_start']
+        built.add(corridor)
         if progress:
             progress(i + 1, total_grids)
 
-    # If any stitch would fail, rebuild every multi-grid subgraph with 'full_border'.
-    # 'full_border' places corridor floor tiles on all four grid edges, so any
-    # pair of adjacent grids always share floor rows/cols at every border.
-    if not _stitch_ok(all_rooms):
-        for i, corridor in enumerate(corridor_order):
-            exits = required_sides[corridor]
-            d = build_level_dict(
-                subgraphs[corridor], rng=rng, strategies=['full_border'], grid_count=1,
-                is_start_grid=(i == 0),
-                occupied_sides=exits)
-            gname = grid_name_map[corridor]
-            all_rooms[gname] = d['rooms']['main']
-            all_player_starts[gname] = d['player_start']
 
     player_start = all_player_starts[grid_name_map[corridor_order[0]]]
 
@@ -2451,15 +2567,22 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         gname_b = grid_name_map[edge.node_b]
         room_a  = all_rooms[gname_a]
         room_b  = all_rooms[gname_b]
+        cor_a   = edge.node_a   # corridor node names own the corridor tiles
+        cor_b   = edge.node_b
 
         exit_side  = edge.params.get('exit_side',  'right')
         entry_side = edge.params.get('entry_side', 'left')
 
+        # Only the corridor may be opened onto — never a room that happens to
+        # reach the border face (BL-29).  Continuation guarantees a shared
+        # corridor position exists.
         if exit_side in ('right', 'left'):
             col_a = _INNER[exit_side][0]
             col_b = _INNER[entry_side][0]
-            rows_a = {r for (c, r) in room_a['tile_owner'] if c == col_a}
-            rows_b = {r for (c, r) in room_b['tile_owner'] if c == col_b}
+            rows_a = {r for (c, r), o in room_a['tile_owner'].items()
+                      if c == col_a and o == cor_a}
+            rows_b = {r for (c, r), o in room_b['tile_owner'].items()
+                      if c == col_b and o == cor_b}
             shared = sorted(rows_a & rows_b)
             if not shared:
                 raise ValueError(
@@ -2473,8 +2596,10 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         else:
             row_a = _INNER[exit_side][1]
             row_b = _INNER[entry_side][1]
-            cols_a = {c for (c, r) in room_a['tile_owner'] if r == row_a}
-            cols_b = {c for (c, r) in room_b['tile_owner'] if r == row_b}
+            cols_a = {c for (c, r), o in room_a['tile_owner'].items()
+                      if r == row_a and o == cor_a}
+            cols_b = {c for (c, r), o in room_b['tile_owner'].items()
+                      if r == row_b and o == cor_b}
             shared = sorted(cols_a & cols_b)
             if not shared:
                 raise ValueError(

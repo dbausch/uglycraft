@@ -51,10 +51,10 @@ def _grid_corridor(rd, cor_names):
 def _band(rd, side, corname):
     to = rd['tile_owner']
     if side in ('left', 'right'):
-        c = 1 if side == 'left' else COLS - 2
-        return frozenset(r for (cc, r), o in to.items() if cc == c and o == corname)
-    r = 1 if side == 'top' else ROWS - 2
-    return frozenset(c for (cc, rr), o in to.items() if rr == r and o == corname)
+        col = 1 if side == 'left' else COLS - 2
+        return frozenset(rr for (cc, rr), o in to.items() if cc == col and o == corname)
+    row = 1 if side == 'top' else ROWS - 2
+    return frozenset(cc for (cc, rr), o in to.items() if rr == row and o == corname)
 
 
 _SETS = (FS_CROWDED_LOCKED, FS_CROWDED_WATER)
