@@ -1821,16 +1821,23 @@ def _bfs_dist(start, passable):
 
 
 def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
-                          global_used=None):
+                          global_used=None, spill_floor=None):
     """Pick floor positions for a node's items.
 
     global_used: shared set across all rooms — no two items on the same tile.
+    spill_floor: corridor floor tiles used as overflow when this room runs out
+        of space, so a collectible is never silently dropped.  Collectibles are
+        placed in priority order: keys, planks, treasures (awards), then other
+        materials.  Enemies reserve no tile (they may stand on an item) and are
+        never spilled to the corridor.  Raises LayoutError only when both the
+        room and the corridor are full (should never happen).
     """
     if global_used is None:
         global_used = set()
     floor = sorted(t for t in placed_node.floor_tiles if t not in walls)
     rng.shuffle(floor)
     used = global_used
+    spill = spill_floor if spill_floor is not None else []
 
     # Pre-compute distance from player if in this room
     player_dist = None
@@ -1838,57 +1845,64 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
         passable = set(placed_node.floor_tiles) - set(walls.keys())
         player_dist = _bfs_dist(player_pos, passable)
 
-    def _next(min_dist_from_player=0):
+    def _next():
+        """Next free tile: this room first, then the corridor (spill)."""
         for p in floor:
-            if p in used:
-                continue
-            if min_dist_from_player > 0 and player_dist:
-                d = player_dist.get(p, 0)
-                if d < min_dist_from_player:
-                    continue
-            used.add(p)
-            return p
-        # Fallback: farthest available tile
-        if min_dist_from_player > 0 and player_dist:
-            best = None
-            best_d = -1
-            for p in floor:
-                if p in used:
-                    continue
-                d = player_dist.get(p, 0)
-                if d > best_d:
-                    best_d = d
-                    best = p
-            if best:
-                used.add(best)
-                return best
+            if p not in used:
+                used.add(p)
+                return p
+        for p in spill:
+            if p not in used:
+                used.add(p)
+                return p
         return None
+
+    def _place_collectible():
+        p = _next()
+        if p is None:
+            raise LayoutError(
+                f"No free tile (room or corridor) to place an item in "
+                f"{node.name!r}")
+        return p
+
+    # Priority order: keys -> planks -> treasures (awards) -> other materials.
+    keys = []
+    for (key_colour,) in node.keys:
+        c, r = _place_collectible()
+        keys.append((c, r, key_colour))
+
+    plank_mats = [m for m in node.materials if m == ('planks',)]
+    other_mats = [m for m in node.materials if m != ('planks',)]
+
+    materials = []
+    for (mat_type,) in plank_mats:
+        c, r = _place_collectible()
+        materials.append((c, r, mat_type))
 
     # Flame-room treasures are placed on far tiles only (see far-tiles pass
     # in build_level_dict); skip them here so nothing lands on the near side.
     treasures = []
     if not node.has_flames:
         for (item_no,) in node.treasures:
-            p = _next()
-            if p:
-                treasures.append((*p, item_no))
+            c, r = _place_collectible()
+            treasures.append((c, r, item_no))
 
-    materials = []
-    for (mat_type,) in node.materials:
-        p = _next()
-        if p:
-            materials.append((*p, mat_type))
+    for (mat_type,) in other_mats:
+        c, r = _place_collectible()
+        materials.append((c, r, mat_type))
 
-    keys = []
-    for (key_colour,) in node.keys:
-        p = _next()
-        if p:
-            keys.append((*p, key_colour))
-
+    # Enemies stand on any in-room floor tile (may overlap an item); they
+    # reserve no tile and are never spilled to the corridor.
     enemy_starts = []
+    enemy_tiles: set = set()
     for enemy_info in node.enemies:
-        p = _next(min_dist_from_player=MIN_ENEMY_DIST)
-        if p:
+        far = [p for p in floor if p not in enemy_tiles
+               and (not player_dist
+                    or player_dist.get(p, 0) >= MIN_ENEMY_DIST)]
+        pool = far or [p for p in floor if p not in enemy_tiles]
+        if pool:
+            p = rng.choice(pool)
+            enemy_tiles.add(p)
             enemy_starts.append((*p, enemy_info[0]))
 
     return treasures, materials, keys, enemy_starts
@@ -2127,12 +2141,24 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     for ft in flame_tile_set:
         item_walls[ft] = WALL_REINFORCED
 
+    # Corridor floor tiles serve as the overflow ("spill") target so a
+    # collectible is never dropped when its own room is full.
+    corridor_name = next(
+        (n for n, nd in graph.nodes.items()
+         if nd.size == NodeSize.CORRIDOR and n in placed), None)
+    spill_floor = []
+    if corridor_name is not None:
+        spill_floor = sorted(t for t in placed[corridor_name].floor_tiles
+                             if t not in item_walls)
+        rng.shuffle(spill_floor)
+
     for name, node in graph.nodes.items():
         if name not in placed:
             continue
         t, m, k, es = _place_items_in_room(
             node, placed[name], item_walls, rng,
-            player_pos=player_start, global_used=global_used)
+            player_pos=player_start, global_used=global_used,
+            spill_floor=spill_floor)
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
@@ -2155,19 +2181,11 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     all_gates = []
     all_water_tiles = []
 
-    # Gate/lock prerequisites that exist in the placed layout
-    placed_gate_ids = {
-        gate_id
-        for name, node in graph.nodes.items()
-        if name in placed
-        for (gate_id,) in node.plates
-    }
-    placed_key_colours = {
-        colour
-        for name, node in graph.nodes.items()
-        if name in placed
-        for (colour,) in node.keys
-    }
+    # Gate/lock prerequisites that actually SURVIVED placement.  A locked door
+    # or gate is created only when its key / plate is on the floor — never a
+    # barrier with an absent prerequisite (which would soft-lock the level).
+    placed_gate_ids = {gid for *_, gid in all_plates}
+    placed_key_colours = {colour for *_, colour in all_keys}
 
     for edge in graph.edges:
         if edge.node_a not in placed or edge.node_b not in placed:
@@ -2276,7 +2294,18 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         sub = LevelGraph(rng=rng)
         # Each subgraph needs its corridor marked is_start so build_level_dict
         # can find a player_start; the is_start_grid flag is tracked separately.
-        sub.add_node(corridor, graph.nodes[corridor].size, is_start=True)
+        cnode = sub.add_node(corridor, graph.nodes[corridor].size, is_start=True)
+        # Copy the corridor's own items — start_next_grid can place a border
+        # key (or treasures/materials) on a corridor; without this they'd be
+        # lost when the grid is laid out.
+        src = graph.nodes[corridor]
+        cnode.treasures = list(src.treasures)
+        cnode.materials = list(src.materials)
+        cnode.keys = list(src.keys)
+        cnode.blocks = list(src.blocks)
+        cnode.plates = list(src.plates)
+        cnode.enemies = list(src.enemies)
+        cnode.has_flames = src.has_flames
         for name, edge in graph.neighbors(corridor):
             if edge.edge_type == EdgeType.BORDER:
                 continue
@@ -2376,6 +2405,15 @@ def _build_super_grid(graph, rng, strategies, progress=None):
 
     player_start = all_player_starts[grid_name_map[corridor_order[0]]]
 
+    # Prerequisites that actually survived placement, across all grids (the
+    # inventory is global).  A border door/gate is created only when its key /
+    # plate is on the floor somewhere — never a barrier with no prerequisite,
+    # which would soft-lock the level.
+    surviving_key_colours = {
+        k[2] for rd in all_rooms.values() for k in rd.get('keys', [])}
+    surviving_gate_ids = {
+        p[2] for rd in all_rooms.values() for p in rd.get('pressure_plates', [])}
+
     # Stitch grids along BORDER edges
     _INNER = {
         'right':  (COLS - 2, None),  # (col, row) — None = use shared_pos
@@ -2441,16 +2479,17 @@ def _build_super_grid(graph, rng, strategies, progress=None):
 
         barrier_tile = _BORDER_TILE[exit_side](pos)
         barrier = edge.params.get('barrier', 'open')
-        if barrier == 'locked':
+        if barrier == 'locked' and edge.params['key_colour'] in surviving_key_colours:
             colour = edge.params['key_colour']
             doors = room_a.get('locked_doors', [])
             doors.append((*barrier_tile, colour))
             room_a['locked_doors'] = doors
-        elif barrier == 'gated':
+        elif barrier == 'gated' and edge.params['gate_id'] in surviving_gate_ids:
             gate_id = edge.params['gate_id']
             gates = room_a.get('gates', [])
             gates.append((*barrier_tile, gate_id))
             room_a['gates'] = gates
+        # else: barrier prerequisite absent — leave the border passage open
 
     start_grid = grid_name_map[corridor_order[0]]
     return {
