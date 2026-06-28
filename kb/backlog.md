@@ -139,3 +139,16 @@ the most tiles; empty zones are filled before any zone gets a second room;
 When the player crafts a bridge on one grid and places it over a water edge, the bridge also appears as traversable on every other grid that has a water edge at the same tile position. The bridge/water-crossing state is not scoped per grid — it is stored or checked globally, causing water passages on unrelated grids to behave as if they have been bridged.
 
 **Fix hint:** Scope the bridge/water-crossing state to the individual grid (room key or grid index) rather than the tile position alone. When checking whether a water edge is crossable, include the grid identifier in the lookup key so bridges placed on one grid do not affect water edges on other grids at the same coordinates.
+
+---
+
+## BL-11 · P2 · Bug: Tick accumulation on level load causes enemy burst-movement
+
+Ticks accumulate during level generation or loading. When the level actually
+starts, the game loop sees a large accumulated `dt` and sends enemies a burst
+of pending updates, causing them to move erratically for the first few seconds.
+
+**Fix hint:** Before starting each level, drain or reset the game clock / tick
+accumulator so enemies begin with a clean `dt=0` state. Look at how the game
+loop advances time and where level transitions happen (likely in `game.py`) to
+find where the accumulator should be zeroed.
