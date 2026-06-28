@@ -778,8 +778,8 @@ def _pack_band_vertical(placed, room_names, rng,
     n = len(room_names)
     walls_between = n - 1
     usable = band_h - walls_between
-    if usable < n * 3:
-        base = 3
+    if usable < n * 2:
+        base = 2  # min room height (not width — vertical packer)
     else:
         base = usable // n
 
