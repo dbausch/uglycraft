@@ -776,12 +776,13 @@ def _pack_band_vertical(placed, room_names, rng,
         return
 
     n = len(room_names)
+    # Cap to rooms that can actually fit: each needs min h=2 plus 1-tile gap (3 rows/room)
+    n = min(n, (band_h + 1) // 3)
+    if n == 0:
+        return
     walls_between = n - 1
     usable = band_h - walls_between
-    if usable < n * 2:
-        base = 2  # min room height (not width — vertical packer)
-    else:
-        base = usable // n
+    base = usable // n  # always ≥ 2 after capping
 
     heights = [base] * n
     leftover = usable - base * n
