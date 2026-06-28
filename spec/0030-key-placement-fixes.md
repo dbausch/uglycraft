@@ -3,8 +3,9 @@
 ## Status
 
 - [ ] K1 — Keys are never dropped during layout (spill to corridor, like spec
-      0029 planks); placed with priority right after planks; `keys_dict ==
-      keys_graph` for every generated level
+      0029 planks); placed **first** — after flames and push puzzles, before
+      planks and all other items; `keys_dict == keys_graph` for every generated
+      level
 - [ ] K2 — A locked door / gate is placed **iff** its key / plate+block actually
       survived layout; otherwise the passage degrades to open. One guarded
       placement path shared by interior **and** border barriers; stitching only
@@ -67,9 +68,12 @@ the room is full, and keys are placed after treasures.
 **Resolution:** keys are covered by spec 0029's **spill-to-corridor** mechanism —
 when a key's room is full it spills to a free corridor tile (the corridor is the
 reachability hub, so the key stays reachable), and `LayoutError` only if the
-corridor is also full. Additionally, place keys in the priority pass **right
-after planks** (before treasures and other materials), per BL-15, so keys win a
-tile in their own room when possible. Target: `keys_dict == keys_graph` always.
+corridor is also full. Keys lead the collectible placement order — placed
+**first**, after flames and push puzzles and **before** planks, treasures, and
+other materials — so a key always wins a tile in its own room when possible. The
+full canonical order is: **keys → planks → treasures (award items) → other
+materials** (this supersedes BL-15's earlier "keys right after planks"). Target:
+`keys_dict == keys_graph` always.
 
 **Depends on spec 0029 W1 landing** (the spill machinery).
 
@@ -134,7 +138,8 @@ assert for every generated level:
 ## Done when:
 
 - [ ] K1 — `keys_dict == keys_graph` for every generated level; keys spill to the
-      corridor rather than dropping; keys placed right after planks.
+      corridor rather than dropping; keys placed first — before planks, treasures,
+      and other materials (after flames and push puzzles).
 - [ ] K2 — Locked doors and gates (interior and border) are placed only when
       their key / plate+block survived; otherwise the passage is open; border
       barriers go through the same guarded path as interior ones; stitching only

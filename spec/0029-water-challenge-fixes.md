@@ -2,11 +2,12 @@
 
 ## Status
 
-- [ ] W1 — No collectible is ever dropped during layout: planks are placed first
-      (after flames and push puzzles); any item that overflows its room spills to
-      the corridor; enemies may share a tile with an item (no reserved tile);
-      `LayoutError` only if the corridor is also full (should never happen).
-      `planks_dict == 2 × N_water` for every generated level
+- [ ] W1 — No collectible is ever dropped during layout: planks are placed early
+      (after flames, push puzzles, and keys, before treasures and other
+      materials); any item that overflows its room spills to the corridor; enemies
+      may share a tile with an item (no reserved tile); `LayoutError` only if the
+      corridor is also full (should never happen). `planks_dict == 2 × N_water`
+      for every generated level
 - [ ] W2 — One bridge per water **room**: as soon as a water room is made
       accessible by a bridge, no further bridge to that room can be built
       (keyed on the room, not on a tile or an edge)
@@ -72,10 +73,11 @@ planks find no tile and are lost.
 
 **Resolution — drop nothing; spill surplus to the corridor.**
 
-1. **Planks first.** Place planks in a dedicated pass **right after flame jets and
-   push puzzles, before any other item** in `build_level_dict`, so they get first
-   dibs on their own room and tend to stay near their water room. (Cross-grid
-   fungible distribution from `add_water_room` is unchanged.)
+1. **Placement order.** After flame jets and push puzzles, place collectibles in
+   priority order: **keys (spec 0030) → planks → treasures (award items) → other
+   materials**. Planks thus precede treasures and other materials, so they get
+   dibs on a tile in their own room and tend to stay near their water room.
+   (Cross-grid fungible distribution from `add_water_room` is unchanged.)
 
 2. **Spill, never drop.** Make `_place_items_in_room`'s `_next()` never return
    `None` for a collectible: when the room's own tiles are exhausted, draw the
@@ -179,10 +181,10 @@ water; after these fixes the water challenge is solvable by construction.
 ## Done when:
 
 - [ ] W1 — Every graph plank reaches the level dict (`planks_dict == 2 × N_water`),
-      placed after flames and push puzzles and before all other items; planks may
-      be distributed across grids; surplus collectibles spill to the corridor and
-      nothing is silently dropped; enemies may overlap items; `LayoutError` only if
-      the corridor is full.
+      placed after flames, push puzzles, and keys, before treasures and other
+      materials; planks may be distributed across grids; surplus collectibles
+      spill to the corridor and nothing is silently dropped; enemies may overlap
+      items; `LayoutError` only if the corridor is full.
 - [ ] W2 — Building a bridge that makes a water room accessible marks that room
       accessed; no further bridge to it can be built; bridges cannot be wasted.
 - [ ] W3 — `_bridges_remaining` removed; bridge availability is governed solely by
