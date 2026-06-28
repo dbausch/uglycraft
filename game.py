@@ -109,15 +109,16 @@ class Game:
     def draw_loading(self, done, total):
         """Render "Loading . . ." with a 10-dot progress field (white on black).
 
-        The font is monospace, so swapping filled dots for spaces keeps the line
-        width constant and the text stays centred.
+        Left-aligned in the lower-left corner.  The font is monospace, so
+        swapping filled dots for spaces keeps the line width constant.
         """
         filled = round(10 * done / max(1, total))
         dots = ' '.join(['.'] * filled + [' '] * (10 - filled))
         surf = self.font_big.render(f'Loading {dots}', True, (255, 255, 255))
         self.surf.fill((0, 0, 0))
-        self.surf.blit(surf, (LOGICAL_W // 2 - surf.get_width() // 2,
-                              LOGICAL_H // 2 - surf.get_height() // 2))
+        margin = 8
+        self.surf.blit(surf, (margin,
+                              LOGICAL_H - surf.get_height() - margin))
 
     def _loading_progress(self, done, total):
         """Progress callback for get_level(): paint and present a loading frame.
