@@ -315,9 +315,11 @@ structure.
    segment reproduces the parent's band — the corridor runs straight through the
    border. The anchor is threaded into the spine/stem strategies, which fix the
    segment position+width. Arm strategies (z/s/l) are filtered out when an anchor
-   is active; `full_border` (parent FREE / frame reaches every position) is the
-   per-grid last resort. The start grid (no parent) and grids whose parent is
-   `full_border` are built unanchored (full strategy variety).
+   is active; `full_border` (frame reaches every position) is the per-grid last
+   resort. The start grid (no parent) is built unanchored. A `full_border`
+   **parent** actively picks a varied exit band (`_varied_band`) and anchors the
+   child to continue it — the chosen opening position is recorded (`chosen_pos`)
+   so a `full_border`↔`full_border` edge does not collapse to grid centre.
 4. **Stitching (corridor-only):** for each BORDER edge, intersects the rows/cols
    that both **corridor** floor sets (not rooms) reach at the shared face, then
    picks the middle position. Continuation guarantees this intersection is

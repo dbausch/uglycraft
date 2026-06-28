@@ -11,10 +11,10 @@
       parent grid's corridor cross-section** (same rows/cols + width); arm
       strategies (z/s/l) and unhonourable bands are filtered out, `full_border` is
       the per-grid last resort — commit `a564670`
-- [ ] When the parent (source) grid is `full_border` (its frame covers the whole
+- [x] When the parent (source) grid is `full_border` (its frame covers the whole
       face), it **actively picks a varied exit band** within an attachable range
       and anchors the child to continue it — instead of always opening at grid
-      centre — see "Full_border active exit position" below
+      centre — commit `4737109`; `test_full_border_exits_are_varied` green
 - [x] The stitch chooses the border opening from **corridor** floor tiles only,
       on both endpoints — never room floor tiles — commit `a564670`
 - [x] `full_border` is a per-grid last resort (not the old all-or-nothing

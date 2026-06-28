@@ -115,7 +115,12 @@ across the border (BL-29 / spec 0033). Two parts:
   strategies (horizontal/off_centre/vertical/t/double_t), which fix the segment
   position+width instead of drawing them. Arm strategies (z/s/l) cannot reproduce
   an arbitrary band and are filtered out when an anchor is active; `full_border`
-  (frame reaches every position → FREE) is the per-grid last resort.
+  (frame reaches every position) is the per-grid last resort. A `full_border`
+  **parent** is not passive: it **actively picks a varied exit band** within an
+  attachable range (`_varied_band`: rows ~4–10 for left/right, cols ~7–21 for
+  top/bottom) and anchors the child to continue it, with the chosen opening
+  position recorded so a `full_border`↔`full_border` edge does not collapse to
+  grid centre.
   Note: only **stems** are currently width 2–5; **spines** stay 2–3 (widening
   them regresses closet nesting, under redesign — see spec 0033 "Spine widening
   deferred"). Band coverage is still complete: left/right bands come from spines
