@@ -434,6 +434,9 @@ there, investigate the suspected display bug (e.g. stale entry, wrong colour,
 miscount, or a key shown/not shown incorrectly). Cross-reference spec 0030 (keys
 are now reliably placed, so a wrong display is a UI bug, not a generation bug).
 
+**Note:** Display the coloured key icons also in the status line (HUD), not only
+in the inventory view.
+
 ---
 
 ## BL-28 · P3 · Auto-craft a bridge when bumping water (no crafting-menu step)
