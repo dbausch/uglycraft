@@ -460,6 +460,41 @@ strict graph equality. Under investigation: **BL-23**.
   `spec/0029-water-challenge-fixes.md` (W1). Invariants: R-P3/R-P4 in
   `kb/requirements.md`.
 
+## Water bridge mechanics (spec 0029)
+
+**Provisioning (W1).** `add_water_room` places exactly 2 planks per WATER edge
+into reachable, non-water rooms (fungible, may be on any grid incl. the
+corridor). With the spec 0030 spill + `_build_subgraph` corridor-items fix,
+those planks never drop during layout (was 85% loss → 0%). A bridge costs 2
+planks (`CRAFT_BRIDGE`); N water rooms ↔ 2N planks ↔ N bridges.
+
+**Water-room identity (W4).** `build_level_dict` emits
+`room['water_tile_room'] = {(c,r): water_room_node}`, mapping each water tile to
+the node behind its WATER edge (`edge.node_b`), computed via
+`_build_water_stream` over `orig_walls`. WATER edges are always intra-grid (never
+BORDER), so each grid's room dict carries its own map.
+
+**One bridge per water room (W2/W3).** Runtime `_try_auto_bridge` (`game.py`)
+looks up the bumped tile's water room and refuses if it is already in
+`self._bridged_water_rooms`; otherwise it builds the one bridge, records the tile
+in `_bridged_tiles[room_key]` (per-grid, spec 0027/BL-10) and the room in
+`_bridged_water_rooms`. The lock is keyed on the **room**, not the tile or edge,
+so bridges cannot be wasted. The old per-grid `_bridges_remaining` cap (counted
+grids-with-water, not water rooms → under-budget in ~19% of multi-water-room
+grids) is **removed**; the per-room lock + crafted-bridge inventory are the only
+limits.
+
+**Validation (W5, closes BL-04).** `validate_playability` opens a WATER edge only
+when **≥ 2 planks are reachable** (a craftable bridge); a pushable block no longer
+counts as a water crossing. This is a graph-level gate; plank *survival* through
+layout is the W1 guarantee (a dropped node still loses planks — BL-23 — with no
+graceful fallback for water, unlike keys).
+
+→ Code: `build_level_dict` (`water_tile_room`), `validate_playability` WATER block
+  in `levelgraph.py`; `_try_auto_bridge`, `_start_level`, `_enter_room` in
+  `game.py`. Spec: `spec/0029-water-challenge-fixes.md`. Tests:
+  `tests/test_water_challenge.py`.
+
 ---
 
 ## Target architecture (backlog BL-05)
