@@ -120,8 +120,14 @@ database, replaying on every test run.
 The test `test_no_branching_at_zero_prob` passes (≤1 child per node), so the
 tree structure is not wrong — some node is simply never placed.
 
-**Fix hint:** audit the loop in `_spanning_tree` for an off-by-one or early-exit
-condition when `branch_prob=0.0` and `n` is large.
+**Fix hint:** replace `_spanning_tree` with **Wilson's algorithm** (loop-erased
+random walk). The current random-walk approach can snake back and surround its
+own tip, emptying the frontier before `n` nodes are placed. Wilson's algorithm
+avoids this by construction: walk randomly from any unplaced position, erase
+loops as they form, and add the resulting simple path to the tree when it hits
+an already-placed node. Repeat until `n` nodes are in the tree. Result is a
+uniform spanning tree with no trapping risk. `branch_prob` can be retired;
+tree shape diversity comes naturally from the algorithm.
 
 ---
 
