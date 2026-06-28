@@ -471,6 +471,13 @@ Net invariant: `keys_dict == keys_graph`, `planks_dict == planks_graph`, and no
 content-bearing node's items vanish — a node may be unplaced, but its content is
 relocated, never dropped.
 
+Two closet/zone rules: (1) closets are **excluded from the room count** used for
+strategy selection (`_build_super_grid` counts only ROOM/HALL, matching
+`layout_graph`) — otherwise a grid picks a layout with more zones than it has
+regular rooms, leaving unoccupied zones. (2) `_carve_closets` never carves a
+closet out of a **push-puzzle room** (parent with plates/blocks), since shrinking
+it could make the puzzle unsolvable; that closet's content spills via C7.
+
 → Code: `_place_items_in_room`, `_build_subgraph`, `_build_super_grid` border
   stitch in `levellayout.py`. Spec: `spec/0030-key-placement-fixes.md`,
   `spec/0029-water-challenge-fixes.md` (W1). Invariants: R-P3/R-P4 in
