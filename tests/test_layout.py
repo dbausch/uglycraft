@@ -459,3 +459,76 @@ class TestPackBandCapacity:
         assert 'a' in placed, "first room not placed"
         assert 'b' not in placed, "second room must not be placed (n_max=1 for band_h=4)"
         assert placed['a'].h == 4, f"expected height=4, got {placed['a'].h}"
+
+
+# ── BL-09: greedy zone assignment ─────────────────────────────────────────────
+
+class TestNextRoomTiles:
+    """Unit tests for _next_room_tiles (tile count for the next room in a zone)."""
+
+    def test_pack_band_first_room(self):
+        from levellayout import _next_room_tiles, _pack_band
+        # zw=3, zh=10, k=0: base=(3-0)//(0+1)=3 → 3*10=30
+        assert _next_room_tiles(3, 10, _pack_band, 0) == 30
+
+    def test_pack_band_zone_full(self):
+        from levellayout import _next_room_tiles, _pack_band
+        # zw=3, zh=10, k=1: base=(3-1)//(1+1)=1 < 2 → 0
+        assert _next_room_tiles(3, 10, _pack_band, 1) == 0
+
+    def test_pack_band_wide_zone_second_room(self):
+        from levellayout import _next_room_tiles, _pack_band
+        # zw=7, zh=5, k=1: base=(7-1)//(1+1)=3 → 3*5=15
+        assert _next_room_tiles(7, 5, _pack_band, 1) == 15
+
+    def test_pack_band_vertical_first_room(self):
+        from levellayout import _next_room_tiles, _pack_band_vertical
+        # zw=6, zh=4, k=0: base=(4-0)//(0+1)=4 → 6*4=24
+        assert _next_room_tiles(6, 4, _pack_band_vertical, 0) == 24
+
+    def test_pack_band_vertical_zone_full(self):
+        from levellayout import _next_room_tiles, _pack_band_vertical
+        # zw=6, zh=4, k=1: base=(4-1)//(1+1)=1 < 2 → 0
+        assert _next_room_tiles(6, 4, _pack_band_vertical, 1) == 0
+
+
+class TestGreedyZoneAssignment:
+    """Integration tests for greedy distribution in _layout_corridor."""
+
+    def _call_corridor(self, room_names, col_frac=0.2, rng_seed=0):
+        from levellayout import _layout_corridor
+        rng = random.Random(rng_seed)
+        # col_frac=0.2 → c_stem=5, stem_w=3:
+        #   near Zone A (w=3, cap=1), near Zone B (w=20, cap=7),
+        #   far Zone C (w=28, cap=9). total_cap=17.
+        return _layout_corridor(
+            'corridor', list(room_names), rng,
+            stems=[('near', col_frac, (3, 3))],
+        )
+
+    def test_all_rooms_placed_when_capacity_sufficient(self):
+        """Greedy places all rooms; round-robin would drop the 4th (2nd in Zone A)."""
+        # 4 rooms, 3 valid zones: round-robin assigns rooms 0,3 to Zone A (cap=1),
+        # silently dropping room 3.  Greedy sends it to a wider zone instead.
+        room_names = ['r0', 'r1', 'r2', 'r3']
+        placed = self._call_corridor(room_names)
+        for name in room_names:
+            assert name in placed, f"room {name!r} was silently dropped"
+
+    def test_layout_error_when_capacity_exceeded(self):
+        """LayoutError raised when rooms outnumber total zone capacity."""
+        from levellayout import LayoutError
+        # Zone caps sum to 17; 18 rooms must overflow.
+        room_names = [f'r{i}' for i in range(18)]
+        with pytest.raises(LayoutError):
+            self._call_corridor(room_names)
+
+    def test_single_room_goes_to_wide_zone(self):
+        """With 1 room, greedy skips the narrow Zone A (w=3) for a wider zone."""
+        # Round-robin takes index 0 → Zone A (w=3).
+        # Greedy picks Zone B (w=20) or Zone C (w=28); either gives w > 3.
+        placed = self._call_corridor(['r0'])
+        assert 'r0' in placed
+        assert placed['r0'].w > 3, (
+            f"expected room in a wide zone (w > 3), got w={placed['r0'].w}"
+        )

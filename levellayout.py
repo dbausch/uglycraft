@@ -21,6 +21,10 @@ INT_H = MAX_R - MIN_R + 1    # 14
 MIN_ENEMY_DIST = 10
 
 
+class LayoutError(Exception):
+    """Raised when a layout strategy cannot place all assigned rooms."""
+
+
 class PlacedNode:
     """A graph node placed at a spatial position on the grid."""
 
@@ -521,6 +525,21 @@ def _double_t_stems(rng):
     return [('near', frac_near, (3, 5)), ('far', frac_far, (3, 5))]
 
 
+def _next_room_tiles(zw, zh, fn, k):
+    """Tile count the (k+1)-th room would get in this zone (0 if zone is full).
+
+    k  — rooms already assigned to the zone.
+    fn — _pack_band (horizontal) or _pack_band_vertical.
+    With k+1 rooms there are k inter-room gaps, so usable = dim - k.
+    """
+    if fn is _pack_band:
+        base = (zw - k) // (k + 1)
+        return base * zh if base >= 2 else 0
+    else:
+        base = (zh - k) // (k + 1)
+        return zw * base if base >= 2 else 0
+
+
 def _layout_corridor(corridor_name, room_names, rng, stems=(),
                      orientation='h', edge_map=None, node_sizes=None):
     """Generalised corridor: full-width band + 0–2 perpendicular stems.
@@ -598,12 +617,34 @@ def _layout_corridor(corridor_name, room_names, rng, stems=(),
             return _pack_band_vertical if fn == _pack_band else _pack_band
         zones = [(r, c, h, w, _tfn(fn)) for c, r, w, h, fn in zones]
 
-    # --- distribute rooms round-robin to valid zones ---
+    # --- distribute rooms greedily: each room goes to the zone that gives it
+    #     the most tiles.  Tie-break: larger zone area, then fewer assigned,
+    #     then a per-zone random shuffle index. ---
     valid = [(c, r, w, h, fn) for c, r, w, h, fn in zones if w >= 3 and h >= 2]
     if valid:
-        per_zone = [[] for _ in valid]
-        for i, name in enumerate(room_names):
-            per_zone[i % len(valid)].append(name)
+        zone_rand = list(range(len(valid)))
+        rng.shuffle(zone_rand)
+        n_assigned = [0] * len(valid)
+        per_zone   = [[] for _ in valid]
+
+        for name in room_names:
+            best_i   = -1
+            best_key = (-1, -1, 0, -1)
+            for i, (zc, zr, zw, zh, fn) in enumerate(valid):
+                t = _next_room_tiles(zw, zh, fn, n_assigned[i])
+                if t <= 0:
+                    continue
+                key = (t, zw * zh, -n_assigned[i], zone_rand[i])
+                if key > best_key:
+                    best_key = key
+                    best_i   = i
+            if best_i < 0:
+                raise LayoutError(
+                    f"Cannot place room {name!r}: all zone capacity exhausted"
+                )
+            per_zone[best_i].append(name)
+            n_assigned[best_i] += 1
+
         for (zc, zr, zw, zh, fn), names in zip(valid, per_zone):
             if names:
                 fn(placed, names, rng, band_col=zc, band_row=zr,

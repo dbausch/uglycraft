@@ -181,7 +181,7 @@ LEVELS = [
 def _generate_act2():
     import random as _rnd
     from levelgraph import LevelGraph, EdgeType, NodeSize
-    from levellayout import build_level_dict
+    from levellayout import build_level_dict, LayoutError
     from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
 
     seed = _rnd.Random().randint(0, 2**31)
@@ -346,12 +346,18 @@ def _generate_act2():
 
     levels = []
     for i, features in enumerate(feature_sets):
-        rng = _rnd.Random(seed + i)
-        graph = LevelGraph.generate(features, rng=rng)
-        strats = features.get('layout_strategies')
-        grids  = features.get('grid_count', 1)
-        level_dict = build_level_dict(graph, rng=rng, strategies=strats,
-                                      grid_count=grids)
+        base_rng = _rnd.Random(seed + i)
+        strats   = features.get('layout_strategies')
+        grids    = features.get('grid_count', 1)
+        while True:
+            rng = _rnd.Random(base_rng.randint(0, 2**31))
+            graph = LevelGraph.generate(features, rng=rng)
+            try:
+                level_dict = build_level_dict(graph, rng=rng, strategies=strats,
+                                              grid_count=grids)
+                break
+            except LayoutError:
+                pass   # base_rng advances; next iteration uses a fresh seed
         levels.append(level_dict)
     return levels
 
