@@ -457,7 +457,13 @@ constants).
 
 ---
 
-## BL-29 · P1 · Unsolvable level: grid edge attaches to a gate-locked zone of a corridor-based room
+## BL-29 · FIXED · Unsolvable level: grid edge attaches to a gate-locked zone of a corridor-based room
+
+Fixed by spec 0042 (commits a564670, 4737109, 0e8d284). Grid connections into
+corridor-based rooms now stitch to a reachable corridor/spine segment instead of
+a gate-locked interior zone. See spec/0042-border-corridor-stitch.md (checklist
+complete) and user-confirmed in play ("Much better now", levels 13/16). Follow-up
+spine widening is tracked separately as BL-30.
 
 A grid connection from a border-layout room entered a double-T-layout room at the
 top-right zone (a gate-locked sub-room) rather than at the top vertical corridor
