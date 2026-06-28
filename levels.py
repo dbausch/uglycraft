@@ -198,7 +198,6 @@ def _generate_act2():
             'enemy_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z', 'l'],
             'grid_count': 1,
-            'branch_prob': 0.00,
         },
         # Level 12: 2 grids — + locked doors
         {
@@ -211,7 +210,6 @@ def _generate_act2():
             'enemy_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z'],
             'grid_count': 2,
-            'branch_prob': 0.00,
         },
         # Level 13: 3 grids — + gates
         {
@@ -225,7 +223,6 @@ def _generate_act2():
             'enemy_count': (2, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 3,
-            'branch_prob': 0.20,
         },
         # Level 14: 4 grids — + water streams
         {
@@ -239,7 +236,6 @@ def _generate_act2():
             'enemy_count': (2, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 4,
-            'branch_prob': 0.25,
         },
         # Level 15: 5 grids — + flame jets
         {
@@ -255,7 +251,6 @@ def _generate_act2():
             'closet_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 5,
-            'branch_prob': 0.30,
         },
         # Level 16: 6 grids — + forge ogre
         {
@@ -272,7 +267,6 @@ def _generate_act2():
             'closet_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 6,
-            'branch_prob': 0.30,
         },
         # Level 17: 7 grids
         {
@@ -289,7 +283,6 @@ def _generate_act2():
             'closet_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 7,
-            'branch_prob': 0.35,
         },
         # Level 18: 8 grids
         {
@@ -306,7 +299,6 @@ def _generate_act2():
             'closet_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 8,
-            'branch_prob': 0.35,
         },
         # Level 19: 9 grids
         {
@@ -323,7 +315,6 @@ def _generate_act2():
             'closet_count': (1, 3),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 9,
-            'branch_prob': 0.40,
         },
         # Level 20: 10 grids
         {
@@ -340,7 +331,6 @@ def _generate_act2():
             'closet_count': (1, 2),
             'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
             'grid_count': 10,
-            'branch_prob': 0.40,
         },
     ]
 

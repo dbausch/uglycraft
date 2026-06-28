@@ -78,52 +78,53 @@ class Edge:
 _OPPOSITE = {'right': 'left', 'left': 'right', 'top': 'bottom', 'bottom': 'top'}
 
 
-def _spanning_tree(n, branch_prob, rng):
+def _spanning_tree(n, rng):
     """Return a spanning-tree description for n grids on the super-grid.
 
-    Returns a list of length n where entry i is
+    Uses randomized Prim's algorithm: at each step pick a random edge from the
+    frontier of all tree nodes and add the neighbour. Terminates in exactly n-1
+    successful steps; never wanders on the infinite grid.
+
+    Returns a list of length exactly n where entry i is
         (parent_idx, exit_side, (super_col, super_row))
     with parent_idx=None and exit_side=None for the root (index 0).
 
-    Indices in BFS order: every parent appears before its children.
-    All super-grid positions are unique; no two grids share a cell.
-    Non-parent adjacent cells are silently ignored (no loops).
-
-    branch_prob: probability of continuing to place a second grid from the
-    same parent in a single step (0 = always a path, 1 = always try all
-    four directions).
+    Parents always appear before their children in the list.
+    All super-grid positions are unique.
     """
     if n <= 1:
         return [(None, None, (0, 0))]
 
     _DIRS = [('right', 1, 0), ('left', -1, 0), ('bottom', 0, 1), ('top', 0, -1)]
+    _DELTA_TO_SIDE = {(1, 0): 'right', (-1, 0): 'left', (0, 1): 'bottom', (0, -1): 'top'}
 
-    result    = [(None, None, (0, 0))]  # root
-    placed    = {(0, 0): 0}            # pos → index
-    positions = [(0, 0)]               # index → pos
-    frontier  = [0]                    # each entry visited exactly once
+    result  = [(None, None, (0, 0))]
+    in_tree = {(0, 0): 0}
 
-    while len(placed) < n and frontier:
-        fi = rng.randrange(len(frontier))
-        gi = frontier.pop(fi)           # remove on selection — one visit per node
-        px, py = positions[gi]
+    # frontier: list of (parent_idx, child_pos) — edges from tree to unvisited
+    frontier = [(0, (dx, dy)) for _, dx, dy in _DIRS]
 
-        dirs = list(_DIRS)
-        rng.shuffle(dirs)
+    while len(in_tree) < n:
+        i = rng.randrange(len(frontier))
+        parent_idx, child_pos = frontier[i]
+        frontier[i] = frontier[-1]
+        frontier.pop()
 
-        for exit_side, dx, dy in dirs:
-            if len(placed) >= n:
-                break
-            pos = (px + dx, py + dy)
-            if pos in placed:
-                continue
-            new_idx = len(placed)
-            placed[pos] = new_idx
-            positions.append(pos)
-            frontier.append(new_idx)
-            result.append((gi, exit_side, pos))
-            if rng.random() >= branch_prob:
-                break   # place one more child only if branch_prob says so
+        if child_pos in in_tree:
+            continue
+
+        parent_pos = result[parent_idx][2]
+        exit_side  = _DELTA_TO_SIDE[(child_pos[0] - parent_pos[0],
+                                     child_pos[1] - parent_pos[1])]
+        new_idx = len(result)
+        result.append((parent_idx, exit_side, child_pos))
+        in_tree[child_pos] = new_idx
+
+        cx, cy = child_pos
+        for _, dx, dy in _DIRS:
+            nb = (cx + dx, cy + dy)
+            if nb not in in_tree:
+                frontier.append((new_idx, nb))
 
     return result
 
@@ -400,10 +401,7 @@ class LevelGraph:
                 return {'barrier': 'gated', 'gate_id': gid}
             return {}
 
-        # Build the spanning-tree super-grid arrangement.
-        # branch_prob > 0 produces branch nodes (one grid connecting to 2+).
-        branch_prob = feature_set.get('branch_prob', 0.0)
-        tree = _spanning_tree(grid_count, branch_prob, rng)
+        tree = _spanning_tree(grid_count, rng)
         # tree[i] = (parent_idx, exit_side, (sc, sr)); root has parent_idx=None
 
         def _idx_to_name(i):
