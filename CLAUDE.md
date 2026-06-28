@@ -41,6 +41,66 @@ Two AUR packages, each with its own repo:
 Each set `provides` and `conflicts` with the other so only one can be
 installed at a time.
 
+## Session discipline
+
+### One topic per session
+
+Each session tackles exactly one topic. If a second topic surfaces mid-session
+— a bug noticed in passing, a new idea, a tangential requirement — file it to
+the backlog immediately via a spawned background agent and do not pursue it
+further in the current session.
+
+### Geometry rule
+
+Before changing any geometric algorithm, produce a labeled ASCII diagram of the
+before/after layout with explicit column/row numbers. Get explicit confirmation
+that the diagram is correct **before writing any code**. Never reason about 2D
+tile geometry purely from algebra.
+
+### Backlog agent rule
+
+New backlog items are added by spawning a background agent:
+
+```python
+Agent(description="Add backlog item", run_in_background=True,
+      prompt="Append to kb/backlog.md with the next BL-NN ID and priority P2: [description + fix hint]")
+```
+
+The main session never edits `kb/backlog.md` directly mid-task.
+Project backlog is `kb/backlog.md`. Items use IDs BL-NN with priority P1/P2/P3.
+
+### Level generator sessions
+
+Load `kb/requirements.md` and `kb/architecture.md` at the start of every session
+that touches `levelgraph.py` or `levellayout.py`.
+
+## Knowledge base discipline
+
+### Read first
+
+Before reading any source file, read the relevant `kb/` articles. The KB is
+compressed understanding of the codebase; reading code without it means
+re-deriving facts that are already known.
+
+### Write insights
+
+Every non-trivial insight obtained during a session — a discovered invariant, a
+confirmed assumption, a clarified mechanism, a "this is already done / not done"
+finding — goes into the relevant KB article before the session ends. Do not leave
+it only in the conversation.
+
+### Link heavily
+
+KB articles cross-reference each other with explicit `→ see kb/filename.md`
+pointers when one article's content depends on or extends another.
+
+### Review for staleness
+
+At the start of any session touching a KB-covered topic, skim the relevant
+articles for stale facts before trusting them.
+
+---
+
 ## Development workflow
 
 Every non-trivial change follows this sequence. Skipping a step requires an
@@ -144,6 +204,9 @@ Use them when working on a topic that needs deeper background.
 | `kb/uglycraft-display.md` | Integer scaling, HUD layout, sprite construction notes |
 | `kb/uglycraft-sound.md` | Sound generation, music keys, trigger map, fallback behaviour |
 | `kb/findings.md` | Bugs, quirks, and key differences between Pascal original and Python remake |
+| `kb/requirements.md` | Formal numbered invariants for the level generator (load for any levelgraph/levellayout session) |
+| `kb/architecture.md` | Level generator pipeline, data structures, layout strategies, target architecture |
+| `kb/backlog.md` | Prioritised bug and improvement backlog (IDs BL-01…) |
 
 `original/kb/` covers the Pascal source — see `original/CLAUDE.md`.
 
