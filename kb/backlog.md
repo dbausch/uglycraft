@@ -343,7 +343,7 @@ player in with simpler corridor layouts. Remove the more complex strategies
 
 ---
 
-## BL-23 · P2 · Investigate silent node (room) drops during layout
+## BL-23 · P1 · Investigate silent node (room) drops during layout
 
 Discovered while implementing spec 0030: whole graph nodes (rooms) can be
 silently DROPPED during layout — they never appear in the `placed` dict, so the
@@ -374,6 +374,13 @@ Cross-reference `spec/0030-key-placement-fixes.md` (K1 notes that a dropped
 node's keys are legitimately absent and K2 opens the door),
 `kb/requirements.md` (R-P3, R-P4), and BL-17 (completely empty rooms — possibly
 related).
+
+Measured (50 seeds × 10 Act 2 feature sets = 500 levels, PYTHONHASHSEED=0): node
+drops occur in 302/500 levels (~60%), dropping 541 nodes total, of which 369 held
+content (keys/treasures/materials/plates). With planks, keys, and soft-locks now
+all at zero across the same sweep (spec 0029/0030), silent node drops are the
+dominant remaining content-loss path — hence bumped to P1. Sweep script:
+scratchpad/sweep_losses.py.
 
 ---
 
