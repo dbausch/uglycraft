@@ -10,17 +10,12 @@ Priority: **P1** = correctness bug affecting live gameplay · **P2** = logic/UX 
 
 ---
 
-## BL-02 · P2 · Bug: Multi-zone layout leaves empty wall areas
+## BL-02 · FIXED · Multi-zone layout leaves empty wall areas
 
-`_layout_corridor` distributes rooms round-robin to all valid zones.
-When `len(room_names) < len(valid_zones)`, the last zones receive 0 rooms
-and appear as large wall areas with no floor tiles or passages.
-
-**Fix:** in `layout_graph`, before `rng.choice(available)`, filter `available`
-to strategies whose zone count ≤ `len(regular_rooms)`. Zone counts per strategy
-are documented in `kb/architecture.md` (strategy table). This prevents
-over-zoned strategies from being selected for small room counts entirely, rather
-than papering over the symptom inside the strategy functions.
+Fixed: `layout_graph` filters `available` to strategies where
+`n_rooms >= _STRATEGY_MAX_ZONES[s]` before `rng.choice`; `_pick_strategy`
+does the same for the super-grid path. Both fall back to `full_border` if
+no strategy passes. Confirmed by code inspection (no spec/commit reference).
 
 ---
 

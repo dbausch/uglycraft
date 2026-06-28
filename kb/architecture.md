@@ -210,12 +210,11 @@ corner gap instead, and restrict Zone C to start at `r_break`.
 `layout_graph` itself just does `rng.choice(available)` with no exit awareness;
 it relies on the caller to pre-filter `available`.
 
-**Room-count filtering is not done.** `layout_graph` picks the strategy from
-`available` with no knowledge of `len(regular_rooms)`. A 2-room graph can draw
-`double_t` (4 zones) leaving 2 zones empty — large wall areas with no floor tiles
-or passages. This is BL-02. The fix is to filter `available` to strategies whose
-zone count ≤ `len(regular_rooms)` before calling `rng.choice`, or alternatively
-clamp the active zone count inside each strategy function.
+**Room-count filtering is done.** `layout_graph` filters `available` to strategies
+where `n_rooms >= _STRATEGY_MAX_ZONES[s]` before `rng.choice` (lines 329–333),
+falling back to `full_border` if nothing passes. `_pick_strategy` applies the same
+filter for the super-grid path (lines 268–271, 277–280). Zone counts are in
+`_STRATEGY_MAX_ZONES` (lines 185–194). BL-02 is closed.
 
 ---
 
