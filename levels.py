@@ -6,7 +6,8 @@ All coordinates are interior: cols 1-28, rows 1-14.
 enemy_starts is a list of positions; EASY always uses only the first one,
 HARD uses all of them (1 enemy for levels 1-3, 2 for 4-6, 3 for 7-9).
 
-Act 2 levels (11+) are generated from graph-based feature sets at import time.
+Act 2 levels (11+) are generated lazily from graph-based feature sets on first
+access via get_level(); see the Act 2 section below (spec 0028 / BL-11).
 """
 from constants import COLS, ROWS
 
@@ -176,17 +177,23 @@ LEVELS = [
 ]
 
 
-# ── Act 2 levels (generated from graph-based feature sets) ────────────────────
+# ── Act 2 levels (generated lazily from graph-based feature sets) ─────────────
+#
+# Levels 11-20 are procedurally generated and expensive to build (up to ~3.6 s
+# for a 10-grid level).  They are generated one at a time, on first access, and
+# cached for the rest of the game (spec 0028 / BL-11).  Nothing is generated at
+# import time.  A new game calls new_game_levels() to pick a fresh seed and
+# clear the cache, so each game gets fresh random levels without any up-front
+# generation cost.
 
-def _generate_act2():
-    import random as _rnd
-    from levelgraph import LevelGraph, EdgeType, NodeSize
-    from levellayout import build_level_dict, LayoutError
-    from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
+import random as _rnd
+from levelgraph import LevelGraph, EdgeType, NodeSize
+from levellayout import build_level_dict, LayoutError
+from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
 
-    seed = _rnd.Random().randint(0, 2**31)
 
-    feature_sets = [
+def _act2_feature_sets():
+    return [
         # Level 11: 1 grid — open + breakable only
         {
             'room_count': (6, 8),
@@ -334,29 +341,75 @@ def _generate_act2():
         },
     ]
 
-    levels = []
-    for i, features in enumerate(feature_sets):
-        base_rng = _rnd.Random(seed + i)
-        strats   = features.get('layout_strategies')
-        grids    = features.get('grid_count', 1)
-        while True:
-            rng = _rnd.Random(base_rng.randint(0, 2**31))
-            graph = LevelGraph.generate(features, rng=rng)
-            try:
-                level_dict = build_level_dict(graph, rng=rng, strategies=strats,
-                                              grid_count=grids)
-                break
-            except LayoutError:
-                pass   # base_rng advances; next iteration uses a fresh seed
-        levels.append(level_dict)
-    return levels
-
 
 _ACT1_COUNT = len(LEVELS)
-LEVELS.extend(_generate_act2())
+ACT2_FEATURE_SETS = _act2_feature_sets()
+TOTAL_LEVELS = _ACT1_COUNT + len(ACT2_FEATURE_SETS)
+
+# Per-game state for lazy Act 2 generation.
+_game_seed = _rnd.Random().randint(0, 2**31)   # base seed for the current game
+_act2_cache = {}                               # level_num -> generated level dict
 
 
-def regenerate_act2():
-    """Replace Act 2 levels with freshly generated ones (new seed)."""
-    del LEVELS[_ACT1_COUNT:]
-    LEVELS.extend(_generate_act2())
+def _generate_act2_level(index, progress=None, base_rng=None):
+    """Generate a single Act 2 level dict (0-based index into ACT2_FEATURE_SETS).
+
+    By default uses a seed derived deterministically from _game_seed and the
+    index, so the same game always produces the same level for a given index.
+    Pass an explicit base_rng (e.g. fresh entropy) to force a different level.
+    Retries with a fresh sub-seed on LayoutError (rare, always resolves).
+    """
+    features = ACT2_FEATURE_SETS[index]
+    strats   = features.get('layout_strategies')
+    grids    = features.get('grid_count', 1)
+    if base_rng is None:
+        base_rng = _rnd.Random(_game_seed + index)
+    while True:
+        rng = _rnd.Random(base_rng.randint(0, 2**31))
+        graph = LevelGraph.generate(features, rng=rng)
+        try:
+            return build_level_dict(graph, rng=rng, strategies=strats,
+                                    grid_count=grids, progress=progress)
+        except LayoutError:
+            pass   # base_rng advances; next iteration uses a fresh sub-seed
+
+
+def get_level(level_num, progress=None):
+    """Return the level dict for level_num (1-based), generating Act 2 lazily.
+
+    Act 1 levels (1.._ACT1_COUNT) are the hand-authored dicts.  Act 2 levels are
+    generated on first access and cached.  `progress(done, total)` is forwarded
+    to the generator so callers can render a loading indicator.
+    """
+    if level_num <= _ACT1_COUNT:
+        return LEVELS[level_num - 1]
+    if level_num not in _act2_cache:
+        _act2_cache[level_num] = _generate_act2_level(
+            level_num - _ACT1_COUNT - 1, progress=progress)
+    return _act2_cache[level_num]
+
+
+def regenerate_level(level_num):
+    """Force-regenerate a single Act 2 level with fresh entropy.
+
+    Used when a generated level is found to be unplayable (e.g. a stuck push
+    block): replaces the cached level with a different one.  Returns the new dict.
+    """
+    if level_num <= _ACT1_COUNT:
+        return LEVELS[level_num - 1]
+    index = level_num - _ACT1_COUNT - 1
+    _act2_cache[level_num] = _generate_act2_level(index, base_rng=_rnd.Random())
+    return _act2_cache[level_num]
+
+
+def new_game_levels():
+    """Start a fresh game: pick a new seed and clear the Act 2 cache.
+
+    Generates nothing — each Act 2 level is built on first access by get_level().
+    """
+    global _game_seed
+    new_seed = _rnd.Random().randint(0, 2**31)
+    if new_seed == _game_seed:                 # guarantee a visible reshuffle
+        new_seed = (new_seed + 1) % (2**31)
+    _game_seed = new_seed
+    _act2_cache.clear()

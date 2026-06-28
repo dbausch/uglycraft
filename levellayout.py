@@ -1968,7 +1968,7 @@ def _generate_flame_jets(placed_node, walls, rng, entry=None):
 
 def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                      required_exits=None, is_start_grid=True,
-                     occupied_sides=frozenset()):
+                     occupied_sides=frozenset(), progress=None):
     """Generate the complete level dict that game.py expects.
 
     Auto-detects multi-grid from BORDER edges in the graph.
@@ -1977,11 +1977,17 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     is_start_grid: when True, stores 'entrance' in the room dict and computes
                    player_start from the entrance tile.
     occupied_sides: sides already used by BORDER exits; entrance avoids these.
+    progress: optional callable(done, total) invoked as generation proceeds so
+              callers can render a loading indicator.  For multi-grid levels the
+              unit is one grid; for single-grid levels it fires (0, 1)/(1, 1).
     """
     rng = rng or random.Random()
 
     if any(e.edge_type == EdgeType.BORDER for e in graph.edges):
-        return _build_super_grid(graph, rng, strategies)
+        return _build_super_grid(graph, rng, strategies, progress=progress)
+
+    if progress:
+        progress(0, 1)
 
     placed = layout_graph(graph, rng=rng, strategies=strategies,
                           required_exits=required_exits)
@@ -2229,6 +2235,9 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     if dead_squares:
         room['dead_squares'] = list(dead_squares)
 
+    if progress:
+        progress(1, 1)
+
     return {
         'start_room': grid_name,
         'player_start': player_start,
@@ -2236,11 +2245,13 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     }
 
 
-def _build_super_grid(graph, rng, strategies):
+def _build_super_grid(graph, rng, strategies, progress=None):
     """Build a level spanning N 30×16 grids connected by BORDER edges.
 
     Discovers corridors via BFS from the start corridor, builds each grid
     independently, then stitches them together along their BORDER edges.
+
+    progress: optional callable(done, total) reporting grids laid out so far.
     """
     from levelgraph import LevelGraph, NodeSize, EdgeType
     from collections import deque as _deque
@@ -2329,6 +2340,9 @@ def _build_super_grid(graph, rng, strategies):
     all_player_starts = {}
     subgraphs = {}
 
+    total_grids = len(corridor_order)
+    if progress:
+        progress(0, total_grids)
     for i, corridor in enumerate(corridor_order):
         sub = _build_subgraph(corridor, is_start_grid=(i == 0))
         subgraphs[corridor] = sub
@@ -2343,6 +2357,8 @@ def _build_super_grid(graph, rng, strategies):
         gname = grid_name_map[corridor]
         all_rooms[gname] = d['rooms']['main']
         all_player_starts[gname] = d['player_start']
+        if progress:
+            progress(i + 1, total_grids)
 
     # If any stitch would fail, rebuild every multi-grid subgraph with 'full_border'.
     # 'full_border' places corridor floor tiles on all four grid edges, so any

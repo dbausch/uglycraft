@@ -15,8 +15,8 @@ Debug flags (skip menus and highscore):
 import sys
 import argparse
 import pygame
-from constants import LOGICAL_W, LOGICAL_H, FPS, TITLE, EASY, HARD
-from levels import LEVELS
+from constants import LOGICAL_W, LOGICAL_H, FPS, MAX_DT_MS, TITLE, EASY, HARD
+from levels import TOTAL_LEVELS
 from game import Game, PLAYING, QUIT_GAME
 
 
@@ -24,6 +24,27 @@ def best_scale(display_w, display_h):
     sx = display_w  // LOGICAL_W
     sy = display_h  // LOGICAL_H
     return max(1, min(sx, sy))
+
+
+def present(logical):
+    """Scale the logical surface to the current window and flip.
+
+    Used both by the main loop and by Game's loading screen (which draws frames
+    during the blocking Act 2 generation inside _start_level)."""
+    screen = pygame.display.get_surface()
+    sw, sh   = screen.get_size()
+    sc       = best_scale(sw, sh)
+    scaled_w = sc * LOGICAL_W
+    scaled_h = sc * LOGICAL_H
+    ox       = (sw - scaled_w) // 2
+    oy       = (sh - scaled_h) // 2
+
+    screen.fill((0, 0, 0))
+    if sc == 1:
+        screen.blit(logical, (ox, oy))
+    else:
+        screen.blit(pygame.transform.scale(logical, (scaled_w, scaled_h)), (ox, oy))
+    pygame.display.flip()
 
 
 def parse_args():
@@ -64,10 +85,11 @@ def main():
     logical = pygame.Surface((LOGICAL_W, LOGICAL_H))
     clock   = pygame.time.Clock()
     game    = Game(logical)
+    game.present = present   # lets the loading screen draw during generation
 
     # ── Debug start ───────────────────────────────────────────────────────────
     if args.level is not None:
-        level = max(1, min(args.level, len(LEVELS)))
+        level = max(1, min(args.level, TOTAL_LEVELS))
         game.difficulty = HARD if args.hard else EASY
         game._debug = True          # suppresses highscore entry on game-end
         game._full_reset()
@@ -78,7 +100,10 @@ def main():
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     while True:
-        dt = clock.tick(FPS)
+        # Clamp dt so a long hitch (startup, or a heavy Act 2 level generated
+        # mid-game) cannot dump a huge accumulated time into the update step and
+        # cause an enemy-movement burst (spec 0028 / BL-11).
+        dt = min(clock.tick(FPS), MAX_DT_MS)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -96,22 +121,7 @@ def main():
 
         game.update(dt)
         game.render()
-
-        sw, sh   = screen.get_size()
-        sc       = best_scale(sw, sh)
-        scaled_w = sc * LOGICAL_W
-        scaled_h = sc * LOGICAL_H
-        ox       = (sw - scaled_w) // 2
-        oy       = (sh - scaled_h) // 2
-
-        screen.fill((0, 0, 0))
-        if sc == 1:
-            screen.blit(logical, (ox, oy))
-        else:
-            scaled = pygame.transform.scale(logical, (scaled_w, scaled_h))
-            screen.blit(scaled, (ox, oy))
-
-        pygame.display.flip()
+        present(logical)
 
 
 if __name__ == '__main__':

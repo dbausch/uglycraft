@@ -6,7 +6,8 @@ from collections import deque
 import pygame
 from constants import *
 from sprites import create_sprites, draw_flame_at
-from levels import LEVELS
+from levels import (LEVELS, TOTAL_LEVELS, get_level,
+                    new_game_levels, regenerate_level)
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from hiscore import load_scores, save_score, qualifies
 from sounds import SoundManager
@@ -32,7 +33,7 @@ SHOW_SCORES = 'show_scores'
 PLAY_AGAIN  = 'play_again'
 INVENTORY   = 'inventory'
 
-NUM_LEVELS  = len(LEVELS)
+NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10
 
 
@@ -80,6 +81,10 @@ def _flame_tile_intensity(jet, tile_idx, timer_ms):
 class Game:
     def __init__(self, surface: pygame.Surface):
         self.surf = surface
+        # Set by main.py: present(logical_surface) scales + blits + flips the
+        # frame to the window.  Lets the loading screen draw during the blocking
+        # Act 2 generation that happens inside _start_level (spec 0028).
+        self.present = None
         self.sprites = create_sprites()
         self.sounds = SoundManager()
         self._init_fonts()
@@ -98,6 +103,32 @@ class Game:
         self.font_small = pygame.font.Font(ttf, 16)
         self.font_hud   = pygame.font.Font(ttf, 16)
         self.font_title = pygame.font.Font(ttf, 64)
+
+    # ── Loading screen ────────────────────────────────────────────────────────
+
+    def draw_loading(self, done, total):
+        """Render "Loading . . ." with a 10-dot progress field (white on black).
+
+        The font is monospace, so swapping filled dots for spaces keeps the line
+        width constant and the text stays centred.
+        """
+        filled = round(10 * done / max(1, total))
+        dots = ' '.join(['.'] * filled + [' '] * (10 - filled))
+        surf = self.font_big.render(f'Loading {dots}', True, (255, 255, 255))
+        self.surf.fill((0, 0, 0))
+        self.surf.blit(surf, (LOGICAL_W // 2 - surf.get_width() // 2,
+                              LOGICAL_H // 2 - surf.get_height() // 2))
+
+    def _loading_progress(self, done, total):
+        """Progress callback for get_level(): paint and present a loading frame.
+
+        Does nothing until main.py has wired up self.present (e.g. in tests).
+        """
+        if self.present is None:
+            return
+        self.draw_loading(done, total)
+        self.present(self.surf)
+        pygame.event.pump()   # keep the window responsive during long builds
 
     # ── Pathfinding ───────────────────────────────────────────────────────────
 
@@ -211,8 +242,7 @@ class Game:
     # ── Game initialisation ───────────────────────────────────────────────────
 
     def _full_reset(self):
-        from levels import regenerate_act2
-        regenerate_act2()
+        new_game_levels()
         self.score        = 0
         self.lives        = STARTING_LIVES
         self.level        = 0
@@ -233,7 +263,7 @@ class Game:
     def _start_level(self, level_num):
         self.level = level_num
         self.item_no  = 0
-        data = LEVELS[level_num - 1]
+        data = get_level(level_num, progress=self._loading_progress)
 
         # Refund one credit per placed wall being cleared
         self._place_credits += len(self._placed_walls)
@@ -401,8 +431,7 @@ class Game:
                 if pf_ok and pt_ok:
                     push_dirs += 1
             if push_dirs == 0:
-                from levels import regenerate_act2
-                regenerate_act2()
+                regenerate_level(self.level)
                 self._start_level(self.level)
                 return
 
@@ -600,7 +629,7 @@ class Game:
                              else self.item_no
         # Crown on the boss level spawns at a fixed position inside the vault
         if self.treasure_item_no == 10:
-            data = LEVELS[self.level - 1]
+            data = get_level(self.level)
             if 'crown_pos' in data:
                 self.treasure_pos = data['crown_pos']
                 return
@@ -898,7 +927,7 @@ class Game:
         if self.lives <= 0:
             self._end_game(won=False)
         else:
-            data = LEVELS[self.level - 1]
+            data = get_level(self.level)
             self.player.col, self.player.row = data['player_start']
             if self._is_multiroom:
                 self._reset_blocks()

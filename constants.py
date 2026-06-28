@@ -6,6 +6,10 @@ ROWS = 16
 STATUS_H = LOGICAL_H - ROWS * TILE  # 28
 
 FPS = 30
+# Upper bound on a single frame's dt (ms).  Caps the time fed into the update
+# step so a long hitch (startup or mid-game level generation) cannot trigger an
+# enemy-movement burst (spec 0028 / BL-11).
+MAX_DT_MS = 100
 TITLE = "UGLYCRAFT"
 def _save_file():
     import sys, os
