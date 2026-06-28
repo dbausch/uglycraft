@@ -8,7 +8,8 @@
 - [ ] A new game reshuffles Act 2 (fresh random levels), still without up-front cost
 - [ ] `--level N` debug launch generates only level N (lazily)
 - [ ] Main loop clamps `dt` so a long hitch never produces an enemy-movement burst
-- [ ] A "Generating…" frame is shown before any uncached Act 2 generation
+- [ ] A "Loading . . ." frame (white on black) is shown before/during any uncached Act 2 generation
+- [ ] The loading dots fill to indicate generation progress
 - [ ] Level music and enemy movement begin together when the level graphic first appears
 
 ## Problem (measured)
@@ -109,24 +110,53 @@ startup work nor a mid-game lazy generation of a heavy level (16/18/20) can
 produce a movement burst. The existing reset of `_enemy_timer`/`_move_timer` to
 0 in `_start_level` (`game.py:317-318`) remains as belt-and-suspenders.
 
-### 4 — Loading frame before uncached Act 2 generation
+### 4 — Loading frame with progress dots
 
-Goal: the player sees feedback during generation instead of a frozen/blank
-window, and the level's first real frame (with music + enemy motion) appears
-*after* generation, together.
+Goal: the player sees a progress indicator during generation instead of a
+frozen/blank window, and the level's first real frame (with music + enemy
+motion) appears *after* generation, together.
 
-- Add `Game.draw_loading()` that renders a simple centred "Generating level…"
-  screen to `self.surf`.
+**Appearance.** Centred white text on a black background:
+
+```
+Loading . . . . . . . . . .
+```
+
+The word `Loading` is always shown. The dot field is **10 slots wide** (so the
+text never shifts); dots **fill left-to-right to indicate progress** as
+generation proceeds. The 10-slot width is fixed regardless of how many work
+units a given level has — `filled = round(10 * done / total)`.
+
+**Progress source.** Generation reports progress as it builds:
+
+- Multi-grid levels: the work unit is **one grid**. `_build_super_grid` builds
+  grids sequentially; `total = grid_count`, `done` increments after each grid is
+  laid out. (Level 20 → 10 grids → one dot per grid; the 10-slot field then maps
+  1:1.)
+- Single-grid levels (11–13 etc.): `total = 1`; the field jumps 0 → 10 when the
+  single build completes. At ~20 ms this flashes imperceptibly.
+- On a `LayoutError` retry, progress resets to 0 for the new attempt.
+
+**Mechanism (synchronous, no threads).**
+
+- `build_level_dict` / `_build_super_grid` accept an optional
+  `progress=callable` parameter, invoked as `progress(done, total)` after each
+  grid (and once at start with `(0, total)`). `get_level(n, progress=...)`
+  forwards it.
+- `Game.draw_loading(done, total)` renders the screen above to `self.surf`.
 - Factor the scale-blit-flip from `main.py:100-114` into a small `present()`
-  helper so a frame can be shown outside the main loop.
-- Before any `_start_level(n)` that may trigger Act 2 generation, when
-  `n >= ACT2_START_LEVEL` and `n` is not yet cached, call `draw_loading()` +
-  `present()` once, then proceed. Entry points:
+  helper so a frame can be drawn outside the main loop.
+- The progress callback passed into generation does: `draw_loading(done,total)`
+  → `present()` → pump `pygame.event.get()` (so the OS does not flag the window
+  "not responding" during a multi-second grid build).
+- Before any `_start_level(n)` that may trigger Act 2 generation
+  (`n >= ACT2_START_LEVEL` and `n` not cached), paint the initial
+  `draw_loading(0, total)` frame, then run generation with the callback. Entry
+  points:
   - **Debug path** (`main.py`): before `game._start_level(level)`.
-  - **In-game** (`game.py:_advance_level`, before `_start_level` at `879`): show
-    the loading frame, since generation runs *before* the `LEVEL_INTRO` state is
-    entered. (Level 11 at ~20 ms will flash imperceptibly; levels 16/18/20 at
-    seconds will display it.)
+  - **In-game** (`game.py:_advance_level`, before `_start_level` at `879`):
+    generation runs *before* the `LEVEL_INTRO` state is entered, so the loading
+    frame must be shown here.
 
 The loading frame keeps whatever music is currently playing (title or previous
 level). `_start_level` still calls `start_music(level_num)` at its end, so level
@@ -156,8 +186,8 @@ Run with `poe test`.
 1. `poe run --level 11` (easy): graphic appears within a fraction of a second;
    enemies move at normal speed immediately (no 1–2 s burst); level music starts
    as the graphic appears.
-2. `poe run --level 20`: a "Generating level…" frame shows for a few seconds,
-   then the level appears with no enemy burst.
+2. `poe run --level 20`: the "Loading . . ." frame shows with dots filling one
+   per grid as generation proceeds, then the level appears with no enemy burst.
 3. Normal play from the title into Act 2 (level 10 → 11): transition is smooth;
    heavy levels show the loading frame; no burst on arrival.
 4. Start a new game twice and reach level 11 each time: the layout differs
@@ -170,6 +200,6 @@ Run with `poe test`.
 - [ ] `new_game_levels()` reshuffles (new seed, cleared cache) with no up-front generation — *(test)*
 - [ ] `--level N` clamps to `TOTAL_LEVELS` and generates only level N — *(manual)*
 - [ ] `--level 11` shows the graphic near-instantly with no enemy burst — *(manual / user acceptance)*
-- [ ] Heavy Act 2 levels (16/18/20) show a loading frame instead of a frozen window — *(manual / user acceptance)*
+- [ ] Heavy Act 2 levels (16/18/20) show the "Loading . . ." frame with dots filling per grid instead of a frozen window — *(manual / user acceptance)*
 - [ ] Level music and enemy movement begin together with the level graphic — *(manual / user acceptance)*
 - [ ] `poe test` green
