@@ -448,12 +448,19 @@ treasures/materials) on a corridor via `_pick(list(self._reachable))`, so those
 items were lost → key dropped → border door soft-locked. Fixed: copy the corridor
 node's keys/treasures/materials/plates/blocks/enemies/has_flames too.
 
-**Node drops are real (R-P4).** A node whose assigned zone is below minimum size
-is **silently skipped** by the packing functions (R-P4) and never enters `placed`;
-its whole room — keys, treasures, materials, enemies — vanishes. Levels stay
-solvable (dependent doors degrade to open via the coupling above), but content is
-lost. The K1 invariant is therefore "every *placed* node's keys survive", not
-strict graph equality. Under investigation: **BL-23**.
+**Node drops (BL-23).** Investigation found 432/434 dropped nodes were CLOSETS:
+multi-grid dropped 100% of closets because `_build_subgraph` copied only the
+corridor's direct room neighbours, never the closets hanging off those rooms.
+Fixed (spec 0032 step 1): closets are generated one-per-room at ~10%
+(`closet_prob`), copied into per-grid subgraphs, and **carved from the parent's
+own tiles** by `_carve_closets` (back/side office ~⅓, corner toilet ~⅕
+near-square; door to the room; carve validated to keep the room's boundary with
+corridor + every sibling).  `_place_puzzle` now raises `LayoutError` (retryable)
+if a carve shrinks a room below its push-puzzle needs.  Residual: the rare
+genuinely-tiny / dropped parent still drops its closet (content loss) — spec 0032
+C7 will spill closet content to room/corridor and elide an unfittable closet
+puzzle with its gate.  A non-closet room can also still drop via R-P4 zone
+under-capacity (rare; ~2/6617).  K1 stays "every *placed* node's keys survive".
 
 → Code: `_place_items_in_room`, `_build_subgraph`, `_build_super_grid` border
   stitch in `levellayout.py`. Spec: `spec/0030-key-placement-fixes.md`,
