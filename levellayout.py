@@ -2497,12 +2497,24 @@ def _build_super_grid(graph, rng, strategies, progress=None):
             return d
         raise LayoutError(f"no strategy placed grid {corridor!r}")
 
+    def _varied_band(side):
+        """A full_border grid covers the whole face, so it actively picks a
+        varied exit band (instead of always opening at grid centre) within a
+        range a non-full child can still continue (spec 0033)."""
+        w = rng.randint(2, 3)
+        if side in ('left', 'right'):
+            lo = rng.randint(MIN_R + 3, MAX_R - w - 2)   # rows ~4..10
+        else:
+            lo = rng.randint(MIN_C + 6, MAX_C - w - 5)   # cols ~7..21
+        return lo, w
+
     # Build grids in BFS order: a grid's spanning-tree parent is built first and
     # fixes the corridor band on the shared face, so the corridor continues
     # straight across the border (BL-29 / spec 0033).
     all_rooms = {}
     all_player_starts = {}
     built = set()
+    chosen_pos = {}   # frozenset(corridor pair) -> opening position (full_border src)
     total_grids = len(corridor_order)
     if progress:
         progress(0, total_grids)
@@ -2520,7 +2532,14 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                     parent_side = edge.params['exit_side']
                 parent_band = _face_band(all_rooms[grid_name_map[nbr]],
                                          nbr, parent_side)
-                if parent_band and parent_band != _FULL[parent_side]:
+                if parent_band == _FULL[parent_side]:
+                    # full_border parent: actively choose a varied exit band and
+                    # have the child continue it (recorded so the stitch uses it
+                    # even when the child is also full_border).
+                    lo, w = _varied_band(child_side)
+                    anchor = (child_side, lo, w)
+                    chosen_pos[frozenset((corridor, nbr))] = lo + w // 2
+                elif parent_band:
                     lo = min(parent_band)
                     w = max(parent_band) - lo + 1
                     anchor = (child_side, lo, w)
@@ -2588,7 +2607,8 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                 raise ValueError(
                     f"No shared floor row between {gname_a} ({exit_side}) "
                     f"and {gname_b} ({entry_side})")
-            pos = shared[len(shared) // 2]
+            want = chosen_pos.get(frozenset((cor_a, cor_b)))
+            pos = want if want in shared else shared[len(shared) // 2]
             room_a['walls'].pop((col_a, pos), None)
             room_b['walls'].pop((col_b, pos), None)
             exit_key_a = f'{exit_side}_{pos}'
@@ -2605,7 +2625,8 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                 raise ValueError(
                     f"No shared floor col between {gname_a} ({exit_side}) "
                     f"and {gname_b} ({entry_side})")
-            pos = shared[len(shared) // 2]
+            want = chosen_pos.get(frozenset((cor_a, cor_b)))
+            pos = want if want in shared else shared[len(shared) // 2]
             room_a['walls'].pop((pos, row_a), None)
             room_b['walls'].pop((pos, row_b), None)
             exit_key_a = f'{exit_side}_{pos}'
