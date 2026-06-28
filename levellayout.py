@@ -1248,6 +1248,11 @@ def _carve_closets(placed, closet_rooms, graph, rng, corridor_name):
     for child, parent in closet_rooms.items():
         if parent not in placed:
             continue
+        # Never carve a closet out of a push-puzzle room: shrinking it could make
+        # the plate→block puzzle unsolvable.  Leave it whole; the closet's content
+        # is spilled by C7 instead.
+        if graph.nodes[parent].plates or graph.nodes[parent].blocks:
+            continue
         pn = placed[parent]
         if pn.floor_tiles != _rect_tiles(pn.col, pn.row, pn.w, pn.h):
             continue
@@ -2537,8 +2542,12 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         sub = _build_subgraph(corridor, is_start_grid=(i == 0))
         subgraphs[corridor] = sub
         exits = required_sides[corridor]
+        # Closets are carved from their parent (they occupy no zone), so they
+        # must NOT count toward room-count strategy selection — otherwise a grid
+        # picks a layout with more zones than it has regular rooms, leaving
+        # unoccupied zones.
         n_rooms = sum(1 for name, node in sub.nodes.items()
-                      if node.size != NodeSize.CORRIDOR)
+                      if node.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET))
         chosen = [_pick_strategy(frozenset(exits), strategies, rng, n_rooms=n_rooms)]
         d = build_level_dict(sub, rng=rng, strategies=chosen, grid_count=1,
                              required_exits=frozenset(exits),

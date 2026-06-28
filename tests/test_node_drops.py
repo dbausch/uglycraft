@@ -77,6 +77,31 @@ def test_multigrid_carves_closets():
             f"grids={grids}: closet carve rate {rate:.2f} too low (omission?)")
 
 
+def test_closets_not_counted_in_strategy_selection(monkeypatch):
+    """Closets are carved from their parent and occupy no zone, so they must not
+    count toward room-count strategy selection — otherwise a grid picks a layout
+    with more zones than it has regular rooms, leaving unoccupied zones."""
+    import levellayout as L
+    overzoned = []
+    orig = L.build_level_dict
+
+    def spy(graph, rng=None, strategies=None, **kw):
+        # inner per-grid builds: a single forced strategy, no BORDER edges
+        if (strategies and len(strategies) == 1
+                and not any(e.edge_type == EdgeType.BORDER for e in graph.edges)):
+            reg = sum(1 for nd in graph.nodes.values()
+                      if nd.size in (NodeSize.ROOM, NodeSize.HALL))
+            max_zones = L._STRATEGY_MAX_ZONES.get(strategies[0], 2)
+            if reg < max_zones:
+                overzoned.append((strategies[0], reg, max_zones))
+        return orig(graph, rng=rng, strategies=strategies, **kw)
+
+    monkeypatch.setattr(L, 'build_level_dict', spy)
+    for seed in range(30):
+        _build(FS_CLOSETS_TIGHT, seed)
+    assert not overzoned, f"grids picked over-zoned strategies: {overzoned[:5]}"
+
+
 # ── C7: content is never lost — spilled to room/corridor when a node is unplaced
 
 # Closet-heavy with many (hence small) rooms, so closets frequently cannot be
