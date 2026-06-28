@@ -11,9 +11,10 @@
       parent grid's corridor cross-section** (same rows/cols + width); arm
       strategies (z/s/l) and unhonourable bands are filtered out, `full_border` is
       the per-grid last resort — commit `a564670`
-- [ ] Exception: when the parent (source) grid is `full_border`, its frame covers
-      the whole face, so the child lays out freely; the opening is placed where
-      the child's own corridor covers it
+- [ ] When the parent (source) grid is `full_border` (its frame covers the whole
+      face), it **actively picks a varied exit band** within an attachable range
+      and anchors the child to continue it — instead of always opening at grid
+      centre — see "Full_border active exit position" below
 - [x] The stitch chooses the border opening from **corridor** floor tiles only,
       on both endpoints — never room floor tiles — commit `a564670`
 - [x] `full_border` is a per-grid last resort (not the old all-or-nothing
@@ -242,6 +243,47 @@ band — deferred; 1-tile keeps R-E1.)*
   non-`full_border` grids, the two corridor face bands are identical
   (position + width). Add to `kb/requirements.md` (R-T/border section) and update
   the super-grid stitch description in `kb/architecture.md`.
+
+## Full_border active exit position
+
+**Problem.** An opening lands at grid centre only when the shared corridor band is
+the full inner line — a **full_border ↔ full_border** edge (both corridors cover
+every position → `pos = middle`). full_border↔non-full already follows the
+non-full grid's narrow band. With full_border chosen fairly often (per-grid
+fallback; more so until spine widening lands), many crossings cluster at centre,
+making the continuation hard to see.
+
+**Fix.** A full_border grid is no longer a passive **FREE** parent. When a child's
+spanning-tree parent is `full_border`, the parent **actively chooses a varied exit
+band** `(lo, w)` on the shared side, the child is anchored to continue it, and the
+chosen position is recorded so the stitch uses it even when the child is also
+`full_border` (otherwise that edge would re-centre).
+
+Before / after — grid A (`full_border`) exits right into grid B; shared face =
+A col 28 / B col 1; band = rows (interior rows 1–14):
+
+```
+BEFORE  (full↔full → centre)            AFTER (A picks band rows 4–5, w=2)
+ row : A28  A29│B0  B1                    row : A28  A29│B0  B1
+  1  :  ▓    #  │ #   ▓                     1  :  ▓    #  │ #   ▓
+  4  :  ▓    #  │ #   ▓                     4  :  ▓    ▷══▷    ▓   ← opening rows 4–5
+  7  :  ▓   ▷══▷    ▓     ← always row 7    5  :  ▓    ▷══▷    ▓     (B continues here)
+ 14  :  ▓    #  │ #   ▓                    14  :  ▓    #  │ #   ▓
+```
+
+**Attachable ranges** (so a non-full child can honour the band):
+- left/right band (rows): `w = randint(2,3)`, `lo = randint(4, 12-w)` (rows ~4–10)
+  — horizontal/off_centre/t/double_t spine fits with ≥2 room-rows each side.
+- top/bottom band (cols): `w = randint(2,3)`, `lo = randint(7, 23-w)` (cols ~7–21)
+  — guarantees the simplest top/bottom strategy (`vertical`, needs ≥5 cols each
+  side) attaches; stems attach there too.
+
+If the child's strategy still can't honour the band, the existing per-grid
+candidate loop / `full_border` fallback covers it.
+
+**Scope.** Contained to `_build_super_grid`: the anchor computation (full_border
+parent → varied band instead of `None`) plus a per-edge recorded position the
+stitch prefers. No strategy-function changes.
 
 ## Verification
 
