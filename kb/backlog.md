@@ -349,3 +349,37 @@ player in with simpler corridor layouts. Remove the more complex strategies
 
 **Fix hint:** in `levels.py` (`_act2_feature_sets`), trim the
 `'layout_strategies'` lists for indices 0-2.
+
+---
+
+## BL-23 · P2 · Investigate silent node (room) drops during layout
+
+Discovered while implementing spec 0030: whole graph nodes (rooms) can be
+silently DROPPED during layout — they never appear in the `placed` dict, so the
+room and ALL its content (keys, treasures, materials, enemies) vanish from the
+level. The generator already tolerates this: build_level_dict and the
+item-placement loop skip unplaced nodes (`if name not in placed: continue`), and
+locked/gated edges whose endpoint or prerequisite was dropped degrade to an open
+passage. So levels remain solvable, but content is lost and rooms disappear —
+the user was unaware this could happen and wants it investigated.
+
+Likely mechanism: R-P4 — packing functions SILENTLY SKIP rooms whose assigned
+zone is below minimum usable size (w < 2 or h < 2). A node assigned a too-small
+zone is therefore never placed. (See `kb/requirements.md` R-P3/R-P4 and
+`kb/architecture.md` zone packing.) There may be other drop paths in
+`layout_graph` / the greedy zone assignment.
+
+Investigate:
+1. How often nodes are dropped, across seeds and all Act 2 feature sets
+   (headless sweep counting graph nodes vs placed nodes).
+2. Exactly which code paths drop a node (R-P4 silent skip in `_pack_band` /
+   `_pack_band_vertical`; any others).
+3. Whether to eliminate drops entirely — e.g. cap room_count / sizes so every
+   node fits, or raise LayoutError to regenerate (consistent with how unsolvable
+   push puzzles and full-corridor spills are handled) instead of silently
+   dropping content.
+
+Cross-reference `spec/0030-key-placement-fixes.md` (K1 notes that a dropped
+node's keys are legitimately absent and K2 opens the door),
+`kb/requirements.md` (R-P3, R-P4), and BL-17 (completely empty rooms — possibly
+related).
