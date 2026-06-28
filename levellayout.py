@@ -656,9 +656,9 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
                 # A: above first arm
                 (MIN_C,           MIN_R,            c_break + arm_w - 1,    r_top - 2,
                  _pack_band, None),
-                # B: right of connector — extended to MIN_R, max 1 room (fills top-right gap)
+                # B: right of connector — extended to MIN_R; all rooms connect via bottom arm
                 (c_break + arm_w + 1, MIN_R,        MAX_C - c_break - arm_w, r_bot - MIN_R - 1,
-                 _pack_band_vertical, 1),
+                 _pack_band, None),
                 # C: below first arm, left of connector
                 (MIN_C,           r_top + arm_h + 1, c_break - 2,            MAX_R - r_top - arm_h,
                  _pack_band, None),
@@ -679,9 +679,9 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
                 # A: above first arm
                 (c_break,         MIN_R,            MAX_C - c_break + 1,    r_top - 2,
                  _pack_band, None),
-                # B: left of connector — extended to MIN_R, max 1 room (fills top-left gap)
+                # B: left of connector — extended to MIN_R; all rooms connect via bottom arm
                 (MIN_C,           MIN_R,            c_break - 2,             r_bot - MIN_R - 1,
-                 _pack_band_vertical, 1),
+                 _pack_band, None),
                 # C: below first arm, right of connector
                 (c_break + arm_w + 1, r_top + arm_h + 1, MAX_C - c_break - arm_w, MAX_R - r_top - arm_h,
                  _pack_band, None),
