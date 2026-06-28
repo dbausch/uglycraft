@@ -8,10 +8,12 @@ N2  No content-bearing node (keys / materials / treasures / plates / blocks) is
 """
 import random
 
+import pytest
 from hypothesis import given, settings, strategies as st
 
 from levelgraph import LevelGraph, EdgeType, NodeSize
 from levellayout import build_level_dict, LayoutError
+from levels import ACT2_FEATURE_SETS
 
 
 FS_CLOSETS = {
@@ -53,37 +55,84 @@ def _placed_names(level):
     return names
 
 
-def _has_content(node):
-    return bool(node.keys or node.materials or node.treasures
-                or node.plates or node.blocks)
+# ── C6: multi-grid no longer omits closets — they are carved, not dropped ────
+
+def test_multigrid_carves_closets():
+    """The multi-grid omission bug (BL-23) dropped 100% of closets.  With C6 they
+    are copied into per-grid subgraphs and carved; a closet is only skipped (and
+    its content spilled by C7) on the rare too-small/dropped parent, so the carve
+    rate must be high (was 0% for any grid_count > 1)."""
+    for grids in (2, 3, 4):
+        placed_ct = total = 0
+        for seed in range(40):
+            graph, level = _build(FS_CLOSETS, seed, grid_count=grids)
+            names = _placed_names(level)
+            closets = [n for n, nd in graph.nodes.items()
+                       if nd.size == NodeSize.CLOSET]
+            total += len(closets)
+            placed_ct += sum(1 for c in closets if c in names)
+        assert total > 0
+        rate = placed_ct / total
+        assert rate >= 0.9, (
+            f"grids={grids}: closet carve rate {rate:.2f} too low (omission?)")
 
 
-# ── N1: closets survive in multi-grid (and single-grid) ──────────────────────
+# ── C7: content is never lost — spilled to room/corridor when a node is unplaced
+
+# Closet-heavy with many (hence small) rooms, so closets frequently cannot be
+# carved and must spill their content (and some rooms drop and spill too).
+FS_CLOSETS_TIGHT = {
+    'room_count':       (8, 12),
+    'edge_types':       [EdgeType.OPEN, EdgeType.LOCKED],
+    'node_sizes':       [NodeSize.ROOM, NodeSize.HALL],
+    'treasure_count':   (10, 14),
+    'material_types':   ['rocks', 'metal'],
+    'material_count':   (6, 10),
+    'enemy_count':      (0, 0),
+    'closet_prob':      0.8,
+    'grid_count':       3,
+    'layout_strategies': ['horizontal', 'vertical', 'off_centre', 't',
+                          'double_t', 'z'],
+}
+
+
+def _content_graph(g):
+    return (sum(len(n.keys) for n in g.nodes.values()),
+            sum(len(n.treasures) for n in g.nodes.values()),
+            sum(len(n.materials) for n in g.nodes.values()))
+
+
+def _content_dict(level):
+    return (sum(len(rd.get('keys', [])) for rd in level['rooms'].values()),
+            sum(len(rd.get('treasures', [])) for rd in level['rooms'].values()),
+            sum(len(rd.get('materials', [])) for rd in level['rooms'].values()))
+
+
+def _assert_content_preserved(g, level, ctx, has_flames=False):
+    """Keys and materials are never lost (spilled when a node is unplaced).
+    Treasures are also preserved EXCEPT in flame levels, where flame rooms
+    intentionally relocate their treasures to jet far-tiles (R-F4), so the count
+    can legitimately fall.  (Push-puzzle plates are excluded: a dropped puzzle
+    room's gate is elided.)"""
+    gk, gt, gm = _content_graph(g)
+    dk, dt, dm = _content_dict(level)
+    assert dk == gk, f"{ctx}: keys graph={gk} dict={dk}"
+    assert dm == gm, f"{ctx}: materials graph={gm} dict={dm}"
+    if not has_flames:
+        assert dt == gt, f"{ctx}: treasures graph={gt} dict={dt}"
+
 
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=40, deadline=None)
-def test_closets_survive_multigrid(seed):
-    for grids in (1, 2, 4):
-        graph, level = _build(FS_CLOSETS, seed, grid_count=grids)
-        placed = _placed_names(level)
-        dropped = [n for n, nd in graph.nodes.items()
-                   if nd.size == NodeSize.CLOSET and n not in placed]
-        assert not dropped, (
-            f"seed={seed} grids={grids}: closets dropped {dropped}")
+def test_closet_content_never_lost(seed):
+    g, level = _build(FS_CLOSETS_TIGHT, seed)
+    _assert_content_preserved(g, level, f"tight seed={seed}")
 
 
-# ── N2: no content-bearing node dropped — closet-rich multi-grid set ─────────
-
-@given(st.integers(min_value=0, max_value=2**32 - 1))
-@settings(max_examples=40, deadline=None)
-def test_no_content_node_dropped_closet_set(seed):
-    graph, level = _build(FS_CLOSETS, seed)
-    placed = _placed_names(level)
-    dropped = [n for n, nd in graph.nodes.items()
-               if n not in placed and _has_content(nd)]
-    assert not dropped, f"seed={seed}: content-bearing nodes dropped {dropped}"
-
-
-# Note: the strict "no content-bearing node dropped" guarantee across the real
-# Act 2 sets (where a closet can land on a too-small or dropped parent) is part
-# of spec 0032 C7 (content spill / puzzle elision) and is tested in step 2.
+@pytest.mark.parametrize('idx', range(len(ACT2_FEATURE_SETS)))
+@pytest.mark.parametrize('seed', [0, 1])
+def test_content_never_lost_real_act2(idx, seed):
+    fs = ACT2_FEATURE_SETS[idx]
+    g, level = _build(fs, seed * 100 + idx)
+    _assert_content_preserved(g, level, f"idx={idx} seed={seed}",
+                              has_flames=fs.get('has_flames', False))

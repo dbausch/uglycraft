@@ -39,19 +39,6 @@ def _keys_graph(graph):
     return sum(len(n.keys) for n in graph.nodes.values())
 
 
-def _placed_node_names(level):
-    """Node names that were actually placed (appear in some room's tile_owner)."""
-    names = set()
-    for rd in level['rooms'].values():
-        names.update(rd.get('tile_owner', {}).values())
-    return names
-
-
-def _keys_in_placed_nodes(graph, level):
-    placed = _placed_node_names(level)
-    return sum(len(graph.nodes[n].keys) for n in placed if n in graph.nodes)
-
-
 def _level_key_stats(level):
     """Return (keys_dict, door_colours, surviving_key_colours)."""
     keys_dict = 0
@@ -75,26 +62,24 @@ def _build(fs, seed):
     return graph, kg, level
 
 
-# ── K1: a placed node's keys are never dropped (spill, not silent loss) ──────
+# ── K1: no key is ever dropped (spec 0032 C7 spills an unplaced node's keys) ──
 #
-# A node that the layout cannot place at all (room too small to pack, R-P4) is
-# dropped together with its keys; that is a pre-existing, accepted behaviour and
-# K2 turns the dependent door into an open passage (no soft-lock).  The K1
-# guarantee is narrower: every key belonging to a *placed* node survives layout.
+# Originally K1 was narrower ("every *placed* node's keys survive") because a node
+# the layout could not place dropped its keys.  Spec 0032 C7 now spills an
+# unplaced node's content into a placed room/corridor, so the guarantee is the
+# full one: every key in the graph reaches the level dict.
 
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=100, deadline=None)
-def test_placed_node_keys_never_dropped(seed):
+def test_keys_never_dropped(seed):
     for fs in _FEATURE_SETS:
         graph, kg, level = _build(fs, seed)
-        keys_placed = _keys_in_placed_nodes(graph, level)
-        if keys_placed == 0:
+        if kg == 0:
             continue
         kd, _, _ = _level_key_stats(level)
-        assert kd == keys_placed, (
+        assert kd == kg, (
             f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
-            f"keys in placed nodes={keys_placed} keys_dict={kd} — "
-            f"a placed node's key was dropped"
+            f"keys_graph={kg} keys_dict={kd} — a key was lost"
         )
 
 

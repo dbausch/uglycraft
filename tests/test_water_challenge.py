@@ -33,13 +33,6 @@ FS_CROWDED_WATER = {
 _FEATURE_SETS = (FS_WATER, FS_CROWDED_WATER)
 
 
-def _placed_node_names(level):
-    names = set()
-    for rd in level['rooms'].values():
-        names.update(rd.get('tile_owner', {}).values())
-    return names
-
-
 def _count_planks_dict(level):
     return sum(1 for rd in level['rooms'].values()
                for m in rd.get('materials', []) if m[2] == 'planks')
@@ -52,23 +45,22 @@ def _build(fs, seed):
     return graph, level
 
 
-# ── W1: a placed node's planks are never dropped ─────────────────────────────
+# ── W1: no plank is ever dropped (spec 0032 C7 spills an unplaced node's planks)
 
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=100, deadline=None)
-def test_placed_node_planks_never_dropped(seed):
+def test_planks_never_dropped(seed):
     for fs in _FEATURE_SETS:
         graph, level = _build(fs, seed)
-        placed = _placed_node_names(level)
-        planks_placed = sum(
-            sum(1 for m in graph.nodes[n].materials if m == ('planks',))
-            for n in placed if n in graph.nodes)
-        if planks_placed == 0:
+        planks_graph = sum(
+            sum(1 for m in nd.materials if m == ('planks',))
+            for nd in graph.nodes.values())
+        if planks_graph == 0:
             continue
-        assert _count_planks_dict(level) == planks_placed, (
+        assert _count_planks_dict(level) == planks_graph, (
             f"seed={seed} grids={fs.get('grid_count', 1)}: "
-            f"planks in placed nodes={planks_placed} "
-            f"planks_dict={_count_planks_dict(level)} — a plank was dropped"
+            f"planks_graph={planks_graph} "
+            f"planks_dict={_count_planks_dict(level)} — a plank was lost"
         )
 
 

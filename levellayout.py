@@ -2286,6 +2286,28 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         all_keys.extend(k)
         all_enemy_starts.extend(es)
 
+    # Spill the content of any UNPLACED node (a closet that could not be carved,
+    # or a room dropped by the packer) into a placed neighbour — the closet's
+    # room if it is placed, else the corridor — so nothing is lost (spec 0032
+    # C7). Push-puzzle plates of an unplaced node are not spilled: the gate is
+    # elided instead (it is created only if its plate survived — see below).
+    for name, node in graph.nodes.items():
+        if name in placed:
+            continue
+        if not (node.treasures or node.materials or node.keys):
+            continue
+        target = next((nb for nb, _ in graph.neighbors(name) if nb in placed),
+                      corridor_name)
+        if target is None or target not in placed:
+            raise LayoutError(f"no placed room to spill content of {name!r}")
+        t, m, k, _es = _place_items_in_room(
+            node, placed[target], item_walls, rng,
+            player_pos=player_start, global_used=global_used,
+            spill_floor=spill_floor)
+        all_treasures.extend(t)
+        all_materials.extend(m)
+        all_keys.extend(k)
+
     # Place a treasure on the far side of each flame jet
     item_nos = list(range(1, 10))
     for jet in all_flame_jets:
