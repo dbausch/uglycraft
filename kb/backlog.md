@@ -39,21 +39,12 @@ fall back to all `_reachable` only if that set is empty.
 
 ---
 
-## BL-04 · P2 · Bug: `validate_playability` water-crossing check too permissive
+## BL-04 · FIXED · `validate_playability` water-crossing check too permissive
 
-`validate_playability` opens a WATER edge when `has_planks OR has_block` is True.
-
-Problems:
-1. `has_planks` is True when *any* plank is reachable — not both planks required
-   to craft `CRAFT_BRIDGE`.
-2. `has_block` opens the edge when a pushable block is reachable, but blocks
-   cannot bridge water in the game (only `CRAFT_BRIDGE` can).
-
-In practice planks are always placed in pairs by `add_water_room`, so the
-"missing second plank" scenario is rare; the `has_block` path is always wrong
-but does not cause deadlocks when planks are present.
-
-**Fix:** require exactly two reachable planks; drop the `has_block` arm.
+Fixed by spec 0029 W5 (commit 4e59245). `validate_playability` now opens a
+WATER edge only when **two or more planks are reachable** (a craftable bridge),
+and the bogus `has_block` arm is gone (a pushable block cannot cross water).
+See spec/0029-water-challenge-fixes.md (W5) and tests/test_water_challenge.py.
 
 ---
 
