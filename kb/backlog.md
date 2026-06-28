@@ -416,3 +416,55 @@ Cross-reference BL-21 (reduce rooms in level 11 — this scaling subsumes/refine
 it; reconcile the two) and BL-22 (remove complex layouts from levels 11-13).
 Verify with a headless sweep that few/no grids fall back to full_border at high
 levels.
+
+---
+
+## BL-26 · P2 · Gate unfinished crafting content behind constants (hide unused recipes/tools, disable rubble & scrap-metal drops)
+
+To present a clean "unfinished but nice" build for user testing, hide crafting
+content that has no gameplay yet. (1) Add constants to disable placing the
+material pickups the user calls "rubble" (MAT_ROCKS, display 'Rocks') and "scrap
+metal" (MAT_METAL, display 'Scrap Metal') in generated levels. (2) Add constants
+to hide the currently-unused recipes — Bell, Barricade, Portal Pair, Compass —
+and the tools only those recipes use — Hammer, Chisel, Runestone — from the
+crafting UI. Used content stays: Bridge (planks) and Stone Wall
+(rocks→quick-place).
+
+**Fix hints:** material distribution lives in `levelgraph.py` (`add_materials` /
+`_act2` distribution); recipes/tools/UI live in `crafting.py` (`RECIPES`,
+`TOOL_*`, the crafting menu render in `game.py`).
+
+**CAVEAT:** MAT_ROCKS currently also feeds the *used* Stone Wall recipe and the
+quick-place-wall path (`Inventory.can_quick_place_wall`), so disabling rubble
+drops must not break wall placement — resolve in the spec (e.g. keep rocks usable
+but stop dropping them as loose pickups, or rework quick-place). Crystal (Forge
+Crystal) feeds only unused recipes too — consider including it.
+
+---
+
+## BL-27 · P2 · Key inventory display: drop the counter (keys are unique) and check for a display bug
+
+Keys are unique — at most one of each colour — so the inventory should not show a
+quantity counter next to a key. During play the key inventory sometimes looked
+wrong.
+
+**Fix hints:** find the inventory rendering in `game.py` (the inventory/crafting
+screen that lists keys alongside materials) and render keys without a count; while
+there, investigate the suspected display bug (e.g. stale entry, wrong colour,
+miscount, or a key shown/not shown incorrectly). Cross-reference spec 0030 (keys
+are now reliably placed, so a wrong display is a UI bug, not a generation bug).
+
+---
+
+## BL-28 · P3 · Auto-craft a bridge when bumping water (no crafting-menu step)
+
+Bridges are already auto-PLACED by bumping into a water tile if the player holds a
+bridge item (`game.py` `_try_auto_bridge`). Extend this so bumping water also
+auto-CRAFTS the bridge from planks when the player has none crafted: if
+`not inventory.has_item(CRAFT_BRIDGE)` but `inventory.can_craft(<bridge recipe
+index>)` (>= 2 planks), craft it then place it in one action, without opening the
+crafting menu. Keep the one-bridge-per-water-room lock (spec 0029 W2) and the
+far-side-open check unchanged.
+
+**Fix hint:** in `_try_auto_bridge`, before the `has_item` check, attempt an
+auto-craft; the bridge recipe is `CRAFT_BRIDGE` in `crafting.py` `RECIPES`.
