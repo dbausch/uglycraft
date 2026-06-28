@@ -22,71 +22,82 @@ row (`MIN_R`).  The area above those zones is never covered by any room.
 
 ---
 
-## ASCII diagram — z_h, before vs after
+## ASCII diagram — z_h (complete, all zones)
 
 Concrete values: `arm_h=2, arm_w=2, r_top=5, r_bot=9, c_break=12`  
-Interior: cols 1–28, rows 1–14.  `#` = corridor floor, `.` = room zone floor.
+Interior: cols 1–28, rows 1–14.  `#` = corridor.  First arm exits LEFT (cols 1–13);
+connector vertical (cols 12–13, rows 5–10); second arm exits RIGHT (cols 12–28).
 
 ```
-     col: 0         1         2
-           0123456789012345678901234567890
-            |         |         |       |
+      col: 0         1         2
+            0123456789012345678901234567890
+row  0:  +------------------------------+
+row  1:  |AAAAAAAAAAAAA.BBBBBBBBBBBBBB|   Zone B extended to MIN_R (fix)
+row  2:  |AAAAAAAAAAAAA.BBBBBBBBBBBBBB|
+row  3:  |AAAAAAAAAAAAA.BBBBBBBBBBBBBB|
+row  4:  |..............BBBBBBBBBBBBBB|   wall row (A → first arm)
+row  5:  |#############.BBBBBBBBBBBBBB|   first arm (exits LEFT)
+row  6:  |#############.BBBBBBBBBBBBBB|
+row  7:  |...........##.BBBBBBBBBBBBBB|   connector; last Zone B row
+row  8:  |CCCCCCCCCC.##...............|   Zone C starts; wall row (B → second arm)
+row  9:  |CCCCCCCCCC.#################|   second arm (exits RIGHT)
+row 10:  |CCCCCCCCCC.#################|
+row 11:  |CCCCCCCCCC..................|
+row 12:  |CCCCCCCCCC.DDDDDDDDDDDDDDDDD|   Zone D starts
+row 13:  |CCCCCCCCCC.DDDDDDDDDDDDDDDDD|
+row 14:  |CCCCCCCCCC.DDDDDDDDDDDDDDDDD|
+row 15:  +------------------------------+
 
-BEFORE:
-  row  1:  |.AAAAAAAAAAAAA.XXXXXXXXXXXXXX|  X = no zone (gap — bug)
-  row  2:  |.AAAAAAAAAAAAA.XXXXXXXXXXXXXX|
-  row  3:  |.AAAAAAAAAAAAA.XXXXXXXXXXXXXX|
-  row  4:  |                             |
-  row  5:  |.#############.BBBBBBBBBBBBB.|
-  row  6:  |.#############.BBBBBBBBBBBBB.|
-  row  7:  |.............##BBBBBBBBBBBBB.|
-  row  8:  |.CCCCCCCCCCC.##..............|
-  row  9:  |.CCCCCCCCCCC.################|
-  row 10:  |.CCCCCCCCCCC.################|
-  row 11:  |.CCCCCCCCCCC.................|
-  row 12:  |.CCCCCCCCCCC.DDDDDDDDDDDDDDD|
-  row 13:  |.CCCCCCCCCCC.DDDDDDDDDDDDDDD|
-  row 14:  |.CCCCCCCCCCC.DDDDDDDDDDDDDDD|
-
-  Zone A: cols  1–13, rows  1–3   (w=13, h=3)
-  Zone B: cols 15–28, rows  5–7   (w=14, h=3)  ← starts at r_top=5; gap X rows 1–4
-  Zone C: cols  1–10, rows  8–14  (w=10, h=7)
-  Zone D: cols 12–28, rows 12–14  (w=17, h=3)
-  Gap X:  cols 15–28, rows  1–4   (never covered)
-
-AFTER (Zone B always extended to MIN_R, horizontal packing):
-  row  1:  |.AAAAAAAAAAAAA.B1B1B1.B2B2B2|  (2 example rooms in Zone B)
-  row  2:  |.AAAAAAAAAAAAA.B1B1B1.B2B2B2|
-  row  3:  |.AAAAAAAAAAAAA.B1B1B1.B2B2B2|
-  row  4:  |               B1B1B1.B2B2B2|
-  row  5:  |.#############.B1B1B1.B2B2B2|
-  row  6:  |.#############.B1B1B1.B2B2B2|
-  row  7:  |.............##B1B1B1.B2B2B2|
-  ...rows 8–14 unchanged...
-
-  Zone B: cols 15–28, rows 1–7   (w=14, h=7, unlimited rooms, _pack_band)
+Zone A: cols  1–13, rows  1– 3  _pack_band  (above first arm)
+Zone B: cols 15–28, rows  1– 7  _pack_band  (extended to MIN_R; right of connector)
+Zone C: cols  1–10, rows  8–14  _pack_band  (below first arm, left of connector)
+Zone D: cols 12–28, rows 12–14  _pack_band  (below second arm)
 ```
 
-All Zone B rooms span rows 1–7 and connect to the bottom arm via the shared
-boundary at row 8 (cols 15–28 ⊆ bottom arm cols).  Multiple rooms side-by-side
-all connect — no max_rooms restriction needed.
+All zones use `_pack_band` (horizontal packing, rooms span full zone height).
+Connectivity:
+- Zone A: bottom wall → first arm top (rows `r_top..r_top+arm_h-1`, full A col range). ✓
+- Zone B: bottom wall → second arm top (rows `r_bot..r_bot+arm_h-1`, cols `c_break..MAX_C`
+  which covers full Zone B col range). Multiple rooms — all connect. ✓
+- Zone C: right wall (col `c_break-1`) → connector (col `c_break`,
+  rows `r_top+arm_h+1..r_bot+arm_h-1`). Rooms span the full zone height so they always
+  include connector rows. ✓
+- Zone D: top wall → second arm bottom (rows `r_bot..r_bot+arm_h-1`, full D col range). ✓
+
+No max_rooms cap needed on any zone.
 
 ---
 
-## Why z_h/s_h Zone B needs no room cap
+## ASCII diagram — s_h (complete, all zones)
 
-Zone B (extended) sits above the bottom arm (rows `r_bot..r_bot+arm_h-1`, cols
-`c_break..MAX_C`).  The bottom arm spans ALL cols from `c_break` to `MAX_C`,
-which includes the full width of Zone B.
+s_h is z_h reflected left-right.  First arm exits RIGHT (cols 12–28); second arm
+exits LEFT (cols 1–13).
 
-With `_pack_band` (horizontal packing), each room spans the full zone height
-(rows `MIN_R..r_bot-2`) and is placed at some column slice within
-`c_break+arm_w+1..MAX_C`.  Every such room has floor tiles immediately above the
-wall row at `r_bot-1`, which is immediately above the bottom arm floor at `r_bot`.
-Shared boundary at `(c, r_bot-1)` for c in room columns. ✓
+```
+      col: 0         1         2
+            0123456789012345678901234567890
+row  0:  +------------------------------+
+row  1:  |BBBBBBBBBB.AAAAAAAAAAAAAAAAA|   Zone B extended to MIN_R (fix)
+row  2:  |BBBBBBBBBB.AAAAAAAAAAAAAAAAA|
+row  3:  |BBBBBBBBBB.AAAAAAAAAAAAAAAAA|
+row  4:  |...........AAAAAAAAAAAAAAAAA|   wall row (B → first arm)
+row  5:  |BBBBBBBBBB.#################|   first arm (exits RIGHT)
+row  6:  |BBBBBBBBBB.#################|
+row  7:  |BBBBBBBBBB.##...............|   connector; last Zone B row
+row  8:  |...........##.CCCCCCCCCCCCCC|   Zone C starts; wall row (B → second arm)
+row  9:  |#############.CCCCCCCCCCCCCC|   second arm (exits LEFT)
+row 10:  |#############.CCCCCCCCCCCCCC|
+row 11:  |..............CCCCCCCCCCCCCC|
+row 12:  |DDDDDDDDDDDDD.CCCCCCCCCCCCCC|   Zone D starts
+row 13:  |DDDDDDDDDDDDD.CCCCCCCCCCCCCC|
+row 14:  |DDDDDDDDDDDDD.CCCCCCCCCCCCCC|
+row 15:  +------------------------------+
 
-No room in Zone B can be disconnected from the corridor regardless of horizontal
-position, so `max_rooms=None` (unlimited) is correct.
+Zone A: cols 12–28, rows  1– 3  _pack_band  (above first arm)
+Zone B: cols  1–10, rows  1– 7  _pack_band  (extended to MIN_R; left of connector)
+Zone C: cols 15–28, rows  8–14  _pack_band  (below first arm, right of connector)
+Zone D: cols  1–13, rows 12–14  _pack_band  (below second arm)
+```
 
 ---
 
@@ -179,14 +190,16 @@ Connectivity (s_v):
 
 ---
 
-## Affected variants
+## Zone packing summary
 
-| Variant | Gap location | Fix                                                        |
-|---------|--------------|------------------------------------------------------------|
-| z_h     | top-right    | Zone B extended to `MIN_R`, `_pack_band`, no cap          |
-| s_h     | top-left     | Zone B extended to `MIN_R`, `_pack_band`, no cap          |
-| z_v     | top-right    | Zone B extended to `MAX_C`, `_pack_band_vertical`, no cap; Zone C starts at `r_break`; Zone D extended to `MIN_C` |
-| s_v     | top-left     | Zone B extended to `MIN_C`, `_pack_band_vertical`, no cap; Zone C starts at `r_break`; Zone D extended to `MAX_C` |
+All four zones in every variant use a single packing function throughout, with no room cap.
+
+| Variant | Packing fn           | Zone B fix                          |
+|---------|----------------------|-------------------------------------|
+| z_h     | `_pack_band`         | extended to `MIN_R` (right of connector) |
+| s_h     | `_pack_band`         | extended to `MIN_R` (left of connector)  |
+| z_v     | `_pack_band_vertical`| extended to `MAX_C`; Zone C starts at `r_break`; Zone D extended to `MIN_C` |
+| s_v     | `_pack_band_vertical`| extended to `MIN_C`; Zone C starts at `r_break`; Zone D extended to `MAX_C` |
 
 ---
 
@@ -196,18 +209,38 @@ Connectivity (s_v):
 
 6 elements: `(col, row, w, h, fn, max_rooms)`.  `None` = unlimited.
 
-### z_h Zone B (index 1) — already done
+### z_h zones (all four) — already implemented
 
 ```python
-(c_break + arm_w + 1, MIN_R, MAX_C - c_break - arm_w, r_bot - MIN_R - 1,
- _pack_band, None)
+# A: above first arm
+(MIN_C,           MIN_R,              c_break + arm_w - 1, r_top - 2,
+ _pack_band, None),
+# B: right of connector — extended to MIN_R
+(c_break + arm_w + 1, MIN_R,          MAX_C - c_break - arm_w, r_bot - MIN_R - 1,
+ _pack_band, None),
+# C: below first arm, left of connector
+(MIN_C,           r_top + arm_h + 1,  c_break - 2,          MAX_R - r_top - arm_h,
+ _pack_band, None),
+# D: below second arm
+(c_break,         r_bot + arm_h + 1,  MAX_C - c_break + 1,  MAX_R - r_bot - arm_h,
+ _pack_band, None),
 ```
 
-### s_h Zone B (index 1) — already done
+### s_h zones (all four) — already implemented
 
 ```python
-(MIN_C, MIN_R, c_break - 2, r_bot - MIN_R - 1,
- _pack_band, None)
+# A: above first arm
+(c_break,         MIN_R,              MAX_C - c_break + 1,  r_top - 2,
+ _pack_band, None),
+# B: left of connector — extended to MIN_R
+(MIN_C,           MIN_R,              c_break - 2,           r_bot - MIN_R - 1,
+ _pack_band, None),
+# C: below first arm, right of connector
+(c_break + arm_w + 1, r_top + arm_h + 1, MAX_C - c_break - arm_w, MAX_R - r_top - arm_h,
+ _pack_band, None),
+# D: below second arm
+(MIN_C,           r_bot + arm_h + 1,  c_break + arm_w - 1,  MAX_R - r_bot - arm_h,
+ _pack_band, None),
 ```
 
 ### z_v zones (indices 0–3)
