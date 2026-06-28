@@ -127,3 +127,31 @@ tree structure is not wrong — some node is simply never placed.
 
 **Fix hint:** audit the loop in `_spanning_tree` for an off-by-one or early-exit
 condition when `branch_prob=0.0` and `n` is large.
+
+---
+
+## BL-09 · P2 · Bug: T/double-T `_layout_corridor` round-robin overloads narrow sub-zones
+
+`_layout_corridor` distributes rooms round-robin to all valid zones. When a stem
+is close to a grid border, one sub-zone (left or right of stem) can be as narrow
+as 3–5 tiles wide. With round-robin, that zone may receive 2+ rooms even though
+`_pack_band` can fit at most 1 room in a zone that narrow (minimum room width = 3,
+plus 1-tile gap between rooms = need 7 cols for 2 rooms). The second room is
+silently skipped, leaving dead wall space in the zone even though rooms were
+assigned.
+
+**Fix hint:** Replace round-robin with proportional distribution by zone capacity.
+Capacity = `zw` for `_pack_band` zones, `zh` for `_pack_band_vertical` zones.
+Each zone receives `round(n_rooms * cap / total_cap)` rooms; the last zone takes
+the remainder. This ensures narrow zones receive at most 1 room and wide zones
+receive proportionally more.
+
+**Affected code:** `levellayout.py:_layout_corridor` lines 601–610.
+
+---
+
+## BL-10 · P2 · Bug: Bridge state leaks across grids with water edges at the same position
+
+When the player crafts a bridge on one grid and places it over a water edge, the bridge also appears as traversable on every other grid that has a water edge at the same tile position. The bridge/water-crossing state is not scoped per grid — it is stored or checked globally, causing water passages on unrelated grids to behave as if they have been bridged.
+
+**Fix hint:** Scope the bridge/water-crossing state to the individual grid (room key or grid index) rather than the tile position alone. When checking whether a water edge is crossable, include the grid identifier in the lookup key so bridges placed on one grid do not affect water edges on other grids at the same coordinates.
