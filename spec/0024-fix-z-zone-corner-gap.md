@@ -80,7 +80,7 @@ row  0:  +------------------------------+
 row  1:  |BBBBBBBBBB.AAAAAAAAAAAAAAAAA|   Zone B extended to MIN_R (fix)
 row  2:  |BBBBBBBBBB.AAAAAAAAAAAAAAAAA|
 row  3:  |BBBBBBBBBB.AAAAAAAAAAAAAAAAA|
-row  4:  |...........AAAAAAAAAAAAAAAAA|   wall row (B → first arm)
+row  4:  |BBBBBBBBBB..................|   wall row (A ends; only B remains)
 row  5:  |BBBBBBBBBB.#################|   first arm (exits RIGHT)
 row  6:  |BBBBBBBBBB.#################|
 row  7:  |BBBBBBBBBB.##...............|   connector; last Zone B row
