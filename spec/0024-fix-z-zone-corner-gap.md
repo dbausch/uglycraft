@@ -7,7 +7,7 @@
 - [x] z_v/s_v Zone B extended to outer edge, packed vertically — fills top corner gap
 - [x] z_v/s_v Zone C starts at `r_break` (not `MIN_R`), packed vertically, no room cap
 - [x] z_v/s_v Zone D extended to outer edge, packed vertically
-- [ ] `poe test` passes
+- [x] `poe test` passes (1 pre-existing failure: BL-08, unrelated to this spec)
 
 ---
 
@@ -294,7 +294,7 @@ Manual — no automated test for visual layout:
 
 ## Done when
 
-- [ ] Z/S corner gap no longer appears (user confirmed).
-- [ ] Multiple rooms are placed in z_h/s_h Zone B when graph has enough rooms.
-- [ ] Multiple rooms are placed in z_v/s_v Zone B and Zone C when graph has enough rooms.
-- [ ] `poe test` passes.
+- [x] Z/S corner gap no longer appears (user confirmed — addefc7, 94e5777, b115ed1, 9f12ba6).
+- [x] Multiple rooms are placed in z_h/s_h Zone B when graph has enough rooms (user confirmed).
+- [x] Multiple rooms are placed in z_v/s_v Zone B and Zone C when graph has enough rooms (user confirmed).
+- [x] `poe test` passes (1 pre-existing failure: BL-08, unrelated to this spec).
