@@ -130,11 +130,13 @@ the most tiles; empty zones are filled before any zone gets a second room;
 
 ---
 
-## BL-10 · P2 · Bug: Bridge state leaks across grids with water edges at the same position
+## BL-10 · FIXED · Bug: Bridge state leaks across grids with water edges at the same position
 
-When the player crafts a bridge on one grid and places it over a water edge, the bridge also appears as traversable on every other grid that has a water edge at the same tile position. The bridge/water-crossing state is not scoped per grid — it is stored or checked globally, causing water passages on unrelated grids to behave as if they have been bridged.
-
-**Fix hint:** Scope the bridge/water-crossing state to the individual grid (room key or grid index) rather than the tile position alone. When checking whether a water edge is crossable, include the grid identifier in the lookup key so bridges placed on one grid do not affect water edges on other grids at the same coordinates.
+Fixed in 600b3fd (spec/0027-bridge-state-per-grid.md).
+Changed `_bridged_tiles` in `game.py` from a flat `set[(col, row)]` to a
+`dict[room_key, set[(col, row)]]`. Room keys encode the grid identity, so
+bridges on one grid no longer affect water tiles at the same coordinate on
+other grids.
 
 ---
 

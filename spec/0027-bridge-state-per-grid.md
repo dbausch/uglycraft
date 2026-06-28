@@ -2,9 +2,9 @@
 
 ## Status
 
-- [ ] `_bridged_tiles` scoped per room key — water on unrelated grids no longer auto-bridged
-- [ ] `_bridges_remaining` counter still decrements globally (one bridge consumed per placement)
-- [ ] Confirmed working by manual play test
+- [x] `_bridged_tiles` scoped per room key — water on unrelated grids no longer auto-bridged
+- [x] `_bridges_remaining` counter still decrements globally (one bridge consumed per placement)
+- [x] Confirmed working by manual play test
 
 ## Problem
 
@@ -59,7 +59,7 @@ No automated suite covers `game.py` game logic.  Verification steps:
 
 ## Done when
 
-- [ ] `_bridged_tiles` is a dict keyed by room key (commit: ___)
-- [ ] Bridge placed on one grid does not affect water on any other grid (confirmed
+- [x] `_bridged_tiles` is a dict keyed by room key (600b3fd)
+- [x] Bridge placed on one grid does not affect water on any other grid (confirmed
   by manual play test per steps above)
-- [ ] Original grid's bridge persists across grid transitions (confirmed same test)
+- [x] Original grid's bridge persists across grid transitions (confirmed same test)
