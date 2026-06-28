@@ -2,9 +2,10 @@
 
 ## Status
 
-- [ ] Zone B extended to `MIN_R` in z_h and s_h (unconditional)
-- [ ] Zone C extended to `MIN_R` in z_v and s_v (unconditional)
-- [ ] Extended zones carry `max_rooms=1`; distributor pops them before round-robin
+- [x] Zone B extended to `MIN_R` in z_h and s_h (unconditional)
+- [x] Zone C extended to `MIN_R` in z_v and s_v (unconditional)
+- [x] z_h/s_h Zone B uses `_pack_band` (horizontal) with no room cap — all rooms connect via bottom arm
+- [ ] z_v/s_v Zone C keeps `max_rooms=1` — only one room can reach the second arm's side wall
 - [ ] `poe test` passes
 
 ---
@@ -52,132 +53,110 @@ BEFORE:
   Zone D: cols 12–28, rows 12–14  (w=17, h=3)
   Gap X:  cols 15–28, rows  1–4   (never covered)
 
-AFTER (Zone B always extended to MIN_R, max_rooms=1):
-  row  1:  |.AAAAAAAAAAAAA.BBBBBBBBBBBBB.|
-  row  2:  |.AAAAAAAAAAAAA.BBBBBBBBBBBBB.|
-  row  3:  |.AAAAAAAAAAAAA.BBBBBBBBBBBBB.|
-  row  4:  |               BBBBBBBBBBBBB.|
-  row  5:  |.#############.BBBBBBBBBBBBB.|
-  row  6:  |.#############.BBBBBBBBBBBBB.|
-  row  7:  |.............##BBBBBBBBBBBBB.|
+AFTER (Zone B always extended to MIN_R, horizontal packing):
+  row  1:  |.AAAAAAAAAAAAA.B1B1B1.B2B2B2|  (2 example rooms in Zone B)
+  row  2:  |.AAAAAAAAAAAAA.B1B1B1.B2B2B2|
+  row  3:  |.AAAAAAAAAAAAA.B1B1B1.B2B2B2|
+  row  4:  |               B1B1B1.B2B2B2|
+  row  5:  |.#############.B1B1B1.B2B2B2|
+  row  6:  |.#############.B1B1B1.B2B2B2|
+  row  7:  |.............##B1B1B1.B2B2B2|
   ...rows 8–14 unchanged...
 
-  Zone B: cols 15–28, rows 1–7   (w=14, h=7, max_rooms=1)
+  Zone B: cols 15–28, rows 1–7   (w=14, h=7, unlimited rooms, _pack_band)
 ```
 
-The single room in Zone B spans rows 1–7 and is adjacent to the connector
-(cols 12–13, rows 5–7).  Shared boundary wall at col 14, rows 5–7. ✓
+All Zone B rooms span rows 1–7 and connect to the bottom arm via the shared
+boundary at row 8 (cols 15–28 ⊆ bottom arm cols).  Multiple rooms side-by-side
+all connect — no max_rooms restriction needed.
 
 ---
 
-## Why max_rooms=1 is required
+## Why z_h/s_h Zone B needs no room cap
 
-If Zone B held 2 rooms stacked vertically (rows 1–7), the top room might occupy
-rows 1–3 — entirely above the corridor.  It would have no floor tile adjacent to
-any corridor tile, violating R-E1 / R-W3, and `derive_walls` would raise.
+Zone B (extended) sits above the bottom arm (rows `r_bot..r_bot+arm_h-1`, cols
+`c_break..MAX_C`).  The bottom arm spans ALL cols from `c_break` to `MAX_C`,
+which includes the full width of Zone B.
 
-With 1 room the room spans the full zone height (rows 1–7), which includes the
-connector-adjacent rows 5–7.  The shared boundary at col 14, rows 5–7 is
-guaranteed regardless of corridor position.
+With `_pack_band` (horizontal packing), each room spans the full zone height
+(rows `MIN_R..r_bot-2`) and is placed at some column slice within
+`c_break+arm_w+1..MAX_C`.  Every such room has floor tiles immediately above the
+wall row at `r_bot-1`, which is immediately above the bottom arm floor at `r_bot`.
+Shared boundary at `(c, r_bot-1)` for c in room columns. ✓
+
+No room in Zone B can be disconnected from the corridor regardless of horizontal
+position, so `max_rooms=None` (unlimited) is correct.
+
+---
+
+## Why z_v/s_v Zone C keeps max_rooms=1
+
+Zone C (z_v / s_v) sits to the right / left of the second arm.  The second arm
+spans only rows `r_break..MAX_R`.  Zone C is extended from `MIN_R` to `MAX_R`.
+
+With vertical packing, a second room stacked above the first might occupy rows
+`MIN_R..r_break-1` — entirely above the second arm's row range.  Its only
+possible corridor adjacency is the side wall at `c_right+arm_w` (or `c_left-1`
+for s_v), but that wall is only corridor-adjacent at rows `r_break..MAX_R`.
+A room ending before `r_break` has no shared boundary → disconnected.
+
+One room spanning the full zone height (`MIN_R..MAX_R`) always reaches the
+arm rows and connects. ✓
 
 ---
 
 ## Affected variants
 
-| Variant | Gap location | Zone to extend | Index | Old start | New start | New height           |
-|---------|-------------|----------------|-------|-----------|-----------|----------------------|
-| z_h     | top-right   | B              | 1     | `r_top`   | `MIN_R`   | `r_bot − MIN_R − 1`  |
-| s_h     | top-left    | B              | 1     | `r_top`   | `MIN_R`   | `r_bot − MIN_R − 1`  |
-| z_v     | top-right   | C              | 2     | `r_break` | `MIN_R`   | `MAX_R − MIN_R + 1`  |
-| s_v     | top-left    | C              | 2     | `r_break` | `MIN_R`   | `MAX_R − MIN_R + 1`  |
+| Variant | Gap location | Zone to extend | Index | Packing fn          | max_rooms |
+|---------|-------------|----------------|-------|---------------------|-----------|
+| z_h     | top-right   | B (index 1)    |       | `_pack_band`        | `None`    |
+| s_h     | top-left    | B (index 1)    |       | `_pack_band`        | `None`    |
+| z_v     | top-right   | C (index 2)    |       | `_pack_band_vertical` | `1`     |
+| s_v     | top-left    | C (index 2)    |       | `_pack_band_vertical` | `1`     |
 
 ---
 
 ## Implementation
 
-### 1. Zone tuple format
+### Zone tuple format
 
-Add a 6th element `max_rooms` to every zone tuple in `_layout_z`.  `None` means
-unlimited; `1` means at most one room.  The existing packing functions (`_pack_band`,
-`_pack_band_vertical`) receive only the first five elements and are unaffected.
+6 elements: `(col, row, w, h, fn, max_rooms)`.  `None` = unlimited; `1` = at
+most one room.
 
-```python
-zones = [
-    (col, row, w, h, fn, None),   # A — unlimited
-    (col, row, w, h, fn, ???),    # B — None or 1 depending on variant
-    (col, row, w, h, fn, ???),    # C — None or 1 depending on variant
-    (col, row, w, h, fn, None),   # D — unlimited
-]
-```
-
-### 2. Extended zone definitions per variant
-
-**z_h** — Zone B (right of connector, index 1):
+### z_h Zone B (index 1)
 
 ```python
-# old:
-(c_break + arm_w + 1, r_top,  MAX_C - c_break - arm_w, r_bot - r_top - 1,    _pack_band_vertical, None)
-# new:
-(c_break + arm_w + 1, MIN_R,  MAX_C - c_break - arm_w, r_bot - MIN_R - 1,    _pack_band_vertical, 1)
+# was: _pack_band_vertical, 1
+(c_break + arm_w + 1, MIN_R, MAX_C - c_break - arm_w, r_bot - MIN_R - 1,
+ _pack_band, None)
 ```
 
-**s_h** — Zone B (left of connector, index 1):
+### s_h Zone B (index 1)
 
 ```python
-# old:
-(MIN_C,                r_top,  c_break - 2,              r_bot - r_top - 1,    _pack_band_vertical, None)
-# new:
-(MIN_C,                MIN_R,  c_break - 2,              r_bot - MIN_R - 1,    _pack_band_vertical, 1)
+# was: _pack_band_vertical, 1
+(MIN_C, MIN_R, c_break - 2, r_bot - MIN_R - 1,
+ _pack_band, None)
 ```
 
-**z_v** — Zone C (right of second arm, index 2):
+### z_v Zone C (index 2) — unchanged
 
 ```python
-# old:
-(c_right + arm_w + 1,  r_break, MAX_C - c_right - arm_w, MAX_R - r_break + 1, _pack_band_vertical, None)
-# new:
-(c_right + arm_w + 1,  MIN_R,   MAX_C - c_right - arm_w, MAX_R - MIN_R + 1,   _pack_band_vertical, 1)
+(c_right + arm_w + 1, MIN_R, MAX_C - c_right - arm_w, MAX_R - MIN_R + 1,
+ _pack_band_vertical, 1)
 ```
 
-**s_v** — Zone C (left of second arm, index 2):
+### s_v Zone C (index 2) — unchanged
 
 ```python
-# old:
-(MIN_C,                r_break, c_left - 2,               MAX_R - r_break + 1, _pack_band_vertical, None)
-# new:
-(MIN_C,                MIN_R,   c_left - 2,               MAX_R - MIN_R + 1,   _pack_band_vertical, 1)
+(MIN_C, MIN_R, c_left - 2, MAX_R - MIN_R + 1,
+ _pack_band_vertical, 1)
 ```
 
-### 3. Room distribution logic
+### Room distribution in `_layout_z`
 
-Replace the flat round-robin in `_layout_z` with a two-pass approach:
-
-```python
-valid = [(c, r, w, h, fn, mx) for c, r, w, h, fn, mx in zones if w >= 3 and h >= 2]
-rooms_copy = list(room_names)
-rng.shuffle(rooms_copy)
-
-per_zone = [[] for _ in valid]
-
-# Pass 1: capped zones (max_rooms=1) get one room each, allocated first
-for i, zone in enumerate(valid):
-    if zone[5] == 1 and rooms_copy:
-        per_zone[i] = [rooms_copy.pop()]
-
-# Pass 2: remaining rooms go round-robin to uncapped zones
-uncapped = [i for i, z in enumerate(valid) if z[5] != 1]
-if uncapped:
-    for k, name in enumerate(rooms_copy):
-        per_zone[uncapped[k % len(uncapped)]].append(name)
-
-for zone, rooms in zip(valid, per_zone):
-    if rooms:
-        col, row, w, h, fn, _ = zone
-        fn(placed, rooms, col, row, w, h, rng, g)
-```
-
-The existing call sites that unpack zone tuples as 5-element sequences must be
-updated to 6 elements wherever `_layout_z` builds or unpacks them.
+Two-pass: cap zones (`max_rooms=1`) get one room each first; remaining rooms
+go round-robin to uncapped zones.
 
 ---
 
@@ -185,10 +164,9 @@ updated to 6 elements wherever `_layout_z` builds or unpacks them.
 
 Manual — no automated test for visual layout:
 
-- Run `poe run --level 11` through `--level 20` multiple times (levels randomise
-  each run); look specifically for Z/S-shape grids.
-- Confirm the corner area (top-right for z_h; top-left for s_h, z_v, s_v) is
-  now occupied by a room instead of solid wall.
+- Run `poe run --level 11` through `--level 20` multiple times; look for Z/S grids.
+- Confirm corner area is occupied by a room (not solid wall).
+- Confirm multiple rooms fit in Zone B for z_h/s_h grids.
 - Confirm rooms connect correctly (no black screen / fallback to `full_border`).
 - `poe test` must pass.
 
@@ -197,4 +175,5 @@ Manual — no automated test for visual layout:
 ## Done when
 
 - [ ] Z/S corner gap no longer appears (user confirmed).
+- [ ] Multiple rooms are placed in z_h/s_h Zone B when graph has enough rooms.
 - [ ] `poe test` passes.
