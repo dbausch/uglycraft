@@ -109,25 +109,15 @@ cycles stay under ~10 seconds.
 
 ---
 
-## BL-08 · P2 · Bug: `_spanning_tree` returns fewer nodes than requested
+## BL-08 · FIXED · `_spanning_tree` returns fewer nodes than requested
 
-`_spanning_tree` can return fewer nodes than the `n` argument. A confirmed
-failing case: `_spanning_tree(9, 0.0, Random(1007084))` returns 8 nodes instead
-of 9, violating the invariant `len(result) == n`. The failure occurs for specific
-seeds with `p=0.0` (no-branching path) and is recorded in the Hypothesis
-database, replaying on every test run.
-
-The test `test_no_branching_at_zero_prob` passes (≤1 child per node), so the
-tree structure is not wrong — some node is simply never placed.
-
-**Fix hint:** replace `_spanning_tree` with **Wilson's algorithm** (loop-erased
-random walk). The current random-walk approach can snake back and surround its
-own tip, emptying the frontier before `n` nodes are placed. Wilson's algorithm
-avoids this by construction: walk randomly from any unplaced position, erase
-loops as they form, and add the resulting simple path to the tree when it hits
-an already-placed node. Repeat until `n` nodes are in the tree. Result is a
-uniform spanning tree with no trapping risk. `branch_prob` can be retired;
-tree shape diversity comes naturally from the algorithm.
+Fixed in 7cabe8a (spec/0026-wilson-spanning-tree.md).
+Replaced the biased random-walk with **randomized Prim's**: grow the tree from
+the full frontier of all placed nodes, pick a random frontier edge each step.
+Wilson's algorithm was attempted first but is unsuitable for infinite grids
+(2D random walk is null-recurrent — n=2 seed=2 took 2M+ steps). Prim's
+terminates in exactly n−1 successful steps. `branch_prob` retired; all 336
+tests green in ~92 s.
 
 ---
 

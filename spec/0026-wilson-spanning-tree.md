@@ -1,11 +1,11 @@
-# 0026 — Replace `_spanning_tree` with Wilson's algorithm
+# 0026 — Replace `_spanning_tree` with randomized Prim's algorithm
 
 ## Status
 
-- [ ] `_spanning_tree` replaced with Wilson's algorithm; `len(result) == n` always holds
-- [ ] All other spanning-tree invariants still pass (`poe test` green)
-- [ ] `branch_prob` retired from `_spanning_tree` and all call sites
-- [ ] Affected tests updated
+- [x] `_spanning_tree` replaced; `len(result) == n` always holds
+- [x] All other spanning-tree invariants still pass (`poe test` green, 336 tests)
+- [x] `branch_prob` retired from `_spanning_tree` and all call sites
+- [x] Affected tests updated
 
 ---
 
@@ -22,7 +22,16 @@ every test run.
 
 ---
 
-## Algorithm: Wilson's (loop-erased random walk)
+## Note on algorithm choice
+
+Wilson's algorithm is designed for *finite* graphs. On an infinite 2D grid the
+loop-erased random walk has unbounded expected return time (the grid is
+null-recurrent): `n=2 seed=2` took 2 million+ steps and never terminated in
+testing. Randomized Prim's was used instead — it grows the tree from the full
+frontier and terminates in exactly n−1 successful steps with no pathological
+cases.
+
+## Algorithm: randomized Prim's
 
 Wilson's algorithm is the standard way to generate a uniform random spanning tree.
 It never gets trapped because it works on the full graph and erases loops instead
