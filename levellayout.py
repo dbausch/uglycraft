@@ -2500,7 +2500,7 @@ def _build_super_grid(graph, rng, strategies, progress=None):
     def _varied_band(side):
         """A full_border grid covers the whole face, so it actively picks a
         varied exit band (instead of always opening at grid centre) within a
-        range a non-full child can still continue (spec 0033)."""
+        range a non-full child can still continue (spec 0042)."""
         w = rng.randint(2, 3)
         if side in ('left', 'right'):
             lo = rng.randint(MIN_R + 3, MAX_R - w - 2)   # rows ~4..10
@@ -2510,7 +2510,7 @@ def _build_super_grid(graph, rng, strategies, progress=None):
 
     # Build grids in BFS order: a grid's spanning-tree parent is built first and
     # fixes the corridor band on the shared face, so the corridor continues
-    # straight across the border (BL-29 / spec 0033).
+    # straight across the border (BL-29 / spec 0042).
     all_rooms = {}
     all_player_starts = {}
     built = set()

@@ -308,7 +308,7 @@ structure.
 1. BFS-discovers corridors from the start corridor (respects the predetermined
    spanning tree order). Each grid's spanning-tree **parent is built before it**.
 2. Reads `required_sides` from BORDER edge params (`exit_side`/`entry_side`).
-3. **Coordinate at layout (continuation, BL-29 / spec 0033, R-T5).** For each
+3. **Coordinate at layout (continuation, BL-29 / spec 0042, R-T5).** For each
    grid in BFS order, computes its `corridor_anchor` from the already-built
    parent's corridor band at the shared face: `(child_side, lo, w)`. Builds the
    grid with `build_level_dict(..., corridor_anchor=anchor)` so its corridor

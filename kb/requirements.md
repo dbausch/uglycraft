@@ -102,7 +102,7 @@ Closet rooms (nodes with no direct corridor edge) are nested inside their parent
 (Manhattan distance 1 on the super-grid).
 
 **R-T5** BORDER openings land on the **corridor**, and corridors **continue**
-across the border (BL-29 / spec 0033). Two parts:
+across the border (BL-29 / spec 0042). Two parts:
 - *Corridor-only stitch:* the inter-grid opening is punched only on a tile owned
   by the corridor node on **both** endpoints — never a room that happens to reach
   the border face. (Pre-fix, ~40 % of openings landed in rooms on every side; a
@@ -122,7 +122,7 @@ across the border (BL-29 / spec 0033). Two parts:
   position recorded so a `full_border`↔`full_border` edge does not collapse to
   grid centre.
   Note: only **stems** are currently width 2–5; **spines** stay 2–3 (widening
-  them regresses closet nesting, under redesign — see spec 0033 "Spine widening
+  them regresses closet nesting, under redesign — see spec 0042 "Spine widening
   deferred"). Band coverage is still complete: left/right bands come from spines
   (≤ 3) and wide top/bottom bands from stems.
 

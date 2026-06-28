@@ -502,7 +502,7 @@ that room's grid without the gate, else relocate the connection.
 
 ## BL-30 · P2 · Widen corridor spine width to 2-5 (match unified stem range) after closet redesign
 
-Spec 0033 (BL-29) unified stem widths to 2-5 but deferred spines: widening spine
+Spec 0042 (BL-29) unified stem widths to 2-5 but deferred spines: widening spine
 width regresses corner-closet nesting (a wider corridor starves the parent room
 band; `_nest_closets` fails the notch and `_place_closet_adjacent` drops the
 closet into the corridor, causing direct floor adjacency / multiple passages).
@@ -517,5 +517,5 @@ green.
 Purpose: more strategy variety when a child grid must match a wide parent
 corridor band during cross-grid continuation.
 
-**Fix hint:** see `spec/0033-border-corridor-stitch.md` "Spine widening deferred"
+**Fix hint:** see `spec/0042-border-corridor-stitch.md` "Spine widening deferred"
 and `kb/requirements.md` R-T5.

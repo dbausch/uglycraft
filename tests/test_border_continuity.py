@@ -1,4 +1,4 @@
-"""BL-29 / spec 0033 — BORDER openings land on the corridor, and corridors
+"""BL-29 / spec 0042 — BORDER openings land on the corridor, and corridors
 continue across the border (entry-grid corridor band == exit-grid corridor band).
 
 Pre-fix these are red: ~40 % of BORDER openings land in a room, and the two
@@ -122,7 +122,7 @@ def _build_forced(fs, seed, gc, strategies):
 def test_full_border_exits_are_varied():
     """With every grid forced to full_border (all edges full<->full), openings
     must not all sit at the grid centre — the source grid actively varies its
-    exit band within an attachable range (spec 0033)."""
+    exit band within an attachable range (spec 0042)."""
     positions = []
     for fs in _SETS:
         for seed in range(25):

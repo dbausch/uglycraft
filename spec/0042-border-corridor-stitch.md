@@ -1,4 +1,4 @@
-# 0033 — Corridors continue across BORDER edges (BL-29)
+# 0042 — Corridors continue across BORDER edges (BL-29)
 
 ## Status
 
