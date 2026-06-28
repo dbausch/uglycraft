@@ -456,11 +456,20 @@ Fixed (spec 0032 step 1): closets are generated one-per-room at ~10%
 own tiles** by `_carve_closets` (back/side office ~⅓, corner toilet ~⅕
 near-square; door to the room; carve validated to keep the room's boundary with
 corridor + every sibling).  `_place_puzzle` now raises `LayoutError` (retryable)
-if a carve shrinks a room below its push-puzzle needs.  Residual: the rare
-genuinely-tiny / dropped parent still drops its closet (content loss) — spec 0032
-C7 will spill closet content to room/corridor and elide an unfittable closet
-puzzle with its gate.  A non-closet room can also still drop via R-P4 zone
-under-capacity (rare; ~2/6617).  K1 stays "every *placed* node's keys survive".
+if a carve shrinks a room below its push-puzzle needs.
+
+**C7 (step 2) closes the content-loss residual.** `build_level_dict` spills the
+content of any **unplaced** node — a closet that could not be carved, or a room
+dropped by the packer (R-P4) — into a placed neighbour (the closet's room if
+placed, else the corridor), via `_place_items_in_room`'s room→corridor spill.
+So **keys, treasures, and materials are never lost** (treasures excepted in flame
+rooms, which relocate them to jet far-tiles by design). Push-puzzle plates are
+**not** spilled: a dropped puzzle room's gate is elided by the surviving-
+prerequisite coupling (gate created only if its plate is in `all_plates`). This
+also closes the W1 node-drop residual (dropped plank rooms spill their planks).
+Net invariant: `keys_dict == keys_graph`, `planks_dict == planks_graph`, and no
+content-bearing node's items vanish — a node may be unplaced, but its content is
+relocated, never dropped.
 
 → Code: `_place_items_in_room`, `_build_subgraph`, `_build_super_grid` border
   stitch in `levellayout.py`. Spec: `spec/0030-key-placement-fixes.md`,
