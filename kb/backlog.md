@@ -416,6 +416,10 @@ drops must not break wall placement — resolve in the spec (e.g. keep rocks usa
 but stop dropping them as loose pickups, or rework quick-place). Crystal (Forge
 Crystal) feeds only unused recipes too — consider including it.
 
+**Note:** crafting a stone wall currently does not increment the wall counter, so
+it does not let the player place more walls (crafted stone walls and the
+placeable-wall counter are decoupled).
+
 ---
 
 ## BL-27 · P2 · Key inventory display: drop the counter (keys are unique) and check for a display bug
