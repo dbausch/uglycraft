@@ -508,3 +508,19 @@ corridor band during cross-grid continuation.
 
 **Fix hint:** see `spec/0042-border-corridor-stitch.md` "Spine widening deferred"
 and `kb/requirements.md` R-T5.
+
+---
+
+## BL-31 · P2 · Ensure the level entrance is created next to a corridor tile, which becomes the player start position
+
+The level entrance should be guaranteed to be placed adjacent to a corridor
+floor tile, and that adjacent corridor tile should be the player's start
+position. This ensures the player always begins on the corridor spine with
+proper connectivity, rather than potentially being placed in a room interior or
+somewhere disconnected.
+
+**Fix hint:** when placing the level entrance / player_start in the layout,
+anchor it to a corridor tile (the shared spine) and validate the chosen player
+start is corridor-owned and adjacent to the entrance. Relates to BL-16 (don't
+place items on the player start tile) and the border-corridor stitch work in
+spec 0042.
