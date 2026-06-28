@@ -2,9 +2,11 @@
 
 ## Status
 
-- [ ] W1 — Planks survive layout: every plank placed in the graph reaches the
-      level dict (placed right after flames and push puzzles, before all other
-      items); `planks_dict == 2 × N_water` for every generated level
+- [ ] W1 — No collectible is ever dropped during layout: planks are placed first
+      (after flames and push puzzles); any item that overflows its room spills to
+      the corridor; enemies may share a tile with an item (no reserved tile);
+      `LayoutError` only if the corridor is also full (should never happen).
+      `planks_dict == 2 × N_water` for every generated level
 - [ ] W2 — One bridge per water **room**: as soon as a water room is made
       accessible by a bridge, no further bridge to that room can be built
       (keyed on the room, not on a tile or an edge)
@@ -68,15 +70,34 @@ for (mat_type,) in node.materials:
 Treasures (placed first, lines 1869-1874) consume the room's free tiles, so the
 planks find no tile and are lost.
 
-**Resolution:** give planks tile priority. Place planks in a dedicated pass
-**right after flame jets and push puzzles, before any other item** (treasures,
-other materials, keys, enemies) in `build_level_dict`. With at most a couple of
-planks per room and rooms guaranteed `w ≥ 2, h ≥ 2` (≥ 4 tiles), a free tile is
-always available at that point — so **no spill-across-rooms or `LayoutError`
-fallback is needed**; silent drops simply never happen. Keep the cross-grid
-fungible distribution from `add_water_room` unchanged.
+**Resolution — drop nothing; spill surplus to the corridor.**
 
-**Target:** `planks_dict == 2 × N_water` for every generated level (W6 asserts).
+1. **Planks first.** Place planks in a dedicated pass **right after flame jets and
+   push puzzles, before any other item** in `build_level_dict`, so they get first
+   dibs on their own room and tend to stay near their water room. (Cross-grid
+   fungible distribution from `add_water_room` is unchanged.)
+
+2. **Spill, never drop.** Make `_place_items_in_room`'s `_next()` never return
+   `None` for a collectible: when the room's own tiles are exhausted, draw the
+   next unused tile from the **corridor's** free floor tiles (`spill_floor`,
+   passed in from `build_level_dict`; the corridor is the single `CORRIDOR` node,
+   the reachability hub, so anything spilled there is trivially reachable). This
+   applies to planks, surplus materials, treasures, and keys — the `if p:` drops
+   at `levellayout.py:1873/1880/1886` are removed.
+
+3. **Corridor full ⇒ `LayoutError`.** If both the room and the corridor are full,
+   raise `LayoutError` so `_generate_act2_level` regenerates. With corridors large
+   and items few this should never trigger; it exists only to keep "drop nothing"
+   absolute. The corridor is the **only** spill target (no any-tile fallback).
+
+4. **Enemies are exempt from spill.** Corridor enemies put players off, so enemies
+   are never spilled. Instead they stop reserving a tile: an enemy may be placed
+   **on top of an item**. Enemy placement picks any valid in-room floor tile
+   (respecting `MIN_ENEMY_DIST` from the player, avoiding walls/flames) **without**
+   adding it to `used`, so enemies always fit in their room and never overflow.
+
+**Target:** `planks_dict == 2 × N_water` for every generated level (W6 asserts);
+no collectible silently dropped.
 
 ### W2 — One bridge per water room (user-specified; currently absent)
 
@@ -159,7 +180,9 @@ water; after these fixes the water challenge is solvable by construction.
 
 - [ ] W1 — Every graph plank reaches the level dict (`planks_dict == 2 × N_water`),
       placed after flames and push puzzles and before all other items; planks may
-      be distributed across grids; no silent drops.
+      be distributed across grids; surplus collectibles spill to the corridor and
+      nothing is silently dropped; enemies may overlap items; `LayoutError` only if
+      the corridor is full.
 - [ ] W2 — Building a bridge that makes a water room accessible marks that room
       accessed; no further bridge to it can be built; bridges cannot be wasted.
 - [ ] W3 — `_bridges_remaining` removed; bridge availability is governed solely by
