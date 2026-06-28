@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] W1 — No collectible is ever dropped during layout: planks are placed early
+- [x] W1 — No collectible is ever dropped during layout: planks are placed early
       (after flames, push puzzles, and keys, before treasures and other
       materials); any item that overflows its room spills to the corridor; enemies
       may share a tile with an item (no reserved tile); `LayoutError` only if the
@@ -10,18 +10,19 @@
       survive (empirically `planks_dict == 2 × N_water` — a dropped *node* loses
       its planks, see node-drop note / BL-23).
       **Implemented by the spec 0030 work** (shared spill + `_build_subgraph`
-      fix); plank loss measured 85% → 0%. Pending user confirmation before ✓.
-- [ ] W2 — One bridge per water **room**: as soon as a water room is made
+      fix); plank loss measured 85% → 0%, confirmed by the test suite and the
+      500-level loss sweep (0 plank loss).
+- [x] W2 — One bridge per water **room**: as soon as a water room is made
       accessible by a bridge, no further bridge to that room can be built
       (keyed on the room, not on a tile or an edge)
-- [ ] W3 — Bridge accounting is per water room; the per-grid `_bridges_remaining`
+- [x] W3 — Bridge accounting is per water room; the per-grid `_bridges_remaining`
       cap is removed (the per-room lock + plank inventory are the only limits)
-- [ ] W4 — Level dict records, per water tile, which water room it gives access
+- [x] W4 — Level dict records, per water tile, which water room it gives access
       to, so W2/W3 can be keyed on the room
-- [ ] W5 — `validate_playability` requires two reachable planks per WATER edge
+- [x] W5 — `validate_playability` requires two reachable planks per WATER edge
       (counted over non-water-reachable rooms, across grids); drop the
       `has_block` arm (closes BL-04)
-- [ ] W6 — Property tests covering W1–W5
+- [x] W6 — Property tests covering W1–W5
 
 ## Design intent (confirmed by user)
 
@@ -108,7 +109,7 @@ planks find no tile and are lost.
 **Target:** every placed node's planks survive (empirically `planks_dict ==
 2 × N_water`); no collectible silently dropped.
 
-**Update — implemented by the spec 0030 work (pending user confirmation).**
+**Update — implemented by the spec 0030 work.**
 The placement order (1) and the spill-to-corridor mechanism (2/3) were built as
 the shared collectible-placement infrastructure in spec 0030 — they apply to
 planks identically. A second, larger plank-loss path was also fixed there:
@@ -209,20 +210,20 @@ water; after these fixes the water challenge is solvable by construction.
 
 ## Done when:
 
-- [ ] W1 — Every **placed** node's planks reach the level dict (empirically
+- [x] W1 — Every **placed** node's planks reach the level dict (empirically
       `planks_dict == 2 × N_water`), placed after flames, push puzzles, and keys,
       before treasures and other materials; planks may be distributed across grids;
       surplus collectibles spill to the corridor and nothing is silently dropped;
       enemies may overlap items; `LayoutError` only if the corridor is full.
-      *(Implemented by the spec 0030 work — plank loss 85% → 0%; awaiting user
-      confirmation. Node-drop residual tracked by BL-23.)*
-- [ ] W2 — Building a bridge that makes a water room accessible marks that room
-      accessed; no further bridge to it can be built; bridges cannot be wasted.
-- [ ] W3 — `_bridges_remaining` removed; bridge availability is governed solely by
+      *(Implemented by the spec 0030 work — plank loss 85% → 0%; node-drop residual
+      tracked by BL-23.)* — 82d6ee5
+- [x] W2 — Building a bridge that makes a water room accessible marks that room
+      accessed; no further bridge to it can be built; bridges cannot be wasted. — 4e59245
+- [x] W3 — `_bridges_remaining` removed; bridge availability is governed solely by
       the per-room lock and crafted bridge inventory; multi-water-room grids are
-      fully crossable.
-- [ ] W4 — The level dict maps each water tile to the water room it gives access
-      to; `game.py` keys the bridge lock on that room.
-- [ ] W5 — `validate_playability` requires two reachable planks per WATER edge
-      (across grids) and ignores blocks; BL-04 closed.
-- [ ] W6 — Property tests for W1–W5 pass (`poe test`).
+      fully crossable. — 4e59245
+- [x] W4 — The level dict maps each water tile to the water room it gives access
+      to; `game.py` keys the bridge lock on that room. — 4e59245
+- [x] W5 — `validate_playability` requires two reachable planks per WATER edge
+      (across grids) and ignores blocks; BL-04 closed. — 4e59245
+- [x] W6 — Property tests for W1–W5 pass (`poe test`). — 4e59245, 7b07527

@@ -2,17 +2,17 @@
 
 ## Status
 
-- [ ] K1 — Keys are never dropped during layout (spill to corridor, like spec
+- [x] K1 — Keys are never dropped during layout (spill to corridor, like spec
       0029 planks); placed **first** — after flames and push puzzles, before
       planks and all other items; `keys_dict == keys_graph` for every generated
       level
-- [ ] K2 — A locked door / gate is placed **iff** its key / plate+block actually
+- [x] K2 — A locked door / gate is placed **iff** its key / plate+block actually
       survived layout; otherwise the passage degrades to open. One guarded
       placement path shared by interior **and** border barriers; stitching only
       resolves the tile position, it never unconditionally invents a barrier
-- [ ] K3 — Document that graph-side key reachability is sound (no fix needed);
+- [x] K3 — Document that graph-side key reachability is sound (no fix needed);
       add a regression test that every locked door has a surviving, reachable key
-- [ ] K4 — Property tests covering K1–K3 (no soft-locks across many seeds)
+- [x] K4 — Property tests covering K1–K3 (no soft-locks across many seeds)
 
 ## Investigation summary (answers to the two questions)
 
@@ -137,13 +137,13 @@ assert for every generated level:
 
 ## Done when:
 
-- [ ] K1 — `keys_dict == keys_graph` for every generated level; keys spill to the
+- [x] K1 — `keys_dict == keys_graph` for every generated level; keys spill to the
       corridor rather than dropping; keys placed first — before planks, treasures,
-      and other materials (after flames and push puzzles).
-- [ ] K2 — Locked doors and gates (interior and border) are placed only when
+      and other materials (after flames and push puzzles). — 82d6ee5
+- [x] K2 — Locked doors and gates (interior and border) are placed only when
       their key / plate+block survived; otherwise the passage is open; border
       barriers go through the same guarded path as interior ones; stitching only
-      resolves position. No soft-locks.
-- [ ] K3 — Regression test confirms every locked door has a surviving, reachable
-      key; graph-side reachability documented as sound.
-- [ ] K4 — Property tests for K1–K3 pass (`poe test`).
+      resolves position. No soft-locks. — 82d6ee5
+- [x] K3 — Regression test confirms every locked door has a surviving, reachable
+      key; graph-side reachability documented as sound. — 82d6ee5, 7b07527
+- [x] K4 — Property tests for K1–K3 pass (`poe test`). — 82d6ee5, 7b07527
