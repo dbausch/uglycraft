@@ -2,10 +2,10 @@
 
 ## Status
 
-- [ ] `LayoutError` exception class defined in `levellayout.py`
-- [ ] `_next_room_tiles` helper computes tile count for the next room added to a zone
-- [ ] Greedy assignment replaces round-robin in `_layout_corridor` (lines 601–610)
-- [ ] Retry loop in `_generate_act2` catches `LayoutError` and retries with a fresh RNG
+- [x] `LayoutError` exception class defined in `levellayout.py`
+- [x] `_next_room_tiles` helper computes tile count for the next room added to a zone
+- [x] Greedy assignment replaces round-robin in `_layout_corridor` (lines 601–610)
+- [x] Retry loop in `_generate_act2` catches `LayoutError` and retries with a fresh RNG
 
 ---
 
@@ -176,9 +176,10 @@ Run the full existing test suite (`poe test`); zero new failures.
 
 ## Done when
 
-- [ ] `_next_room_tiles` unit tests pass (confirmed by `poe test`)
-- [ ] No rooms are silently dropped when total zone capacity ≥ room count (test passes)
-- [ ] `LayoutError` is raised when room count > total zone capacity (test passes)
-- [ ] Greedy assignment puts a single room in the wider of two zones (test passes)
-- [ ] Retry loop in `_generate_act2` exercises `LayoutError` and succeeds eventually
-- [ ] Full test suite passes with zero regressions (`poe test`)
+- [x] `_next_room_tiles` unit tests pass (confirmed by `poe test`) — c921ca8
+- [x] No rooms are silently dropped when total zone capacity ≥ room count (test passes) — c921ca8
+- [x] `LayoutError` is raised when room count > total zone capacity (test passes) — c921ca8
+- [x] Greedy assignment puts a single room in the wider of two zones (test passes) — c921ca8
+- [x] Empty zones receive a room before any zone gets a second (test passes) — ad25ef0
+- [x] Retry loop in `_generate_act2` catches `LayoutError` and retries with a fresh RNG — c921ca8
+- [x] Full test suite passes with zero regressions (`poe test`) — ad25ef0

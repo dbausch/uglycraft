@@ -133,6 +133,32 @@ fits n_max = (5+1)//3 = 2 rooms (2+1+2=5), whereas the old min w=3 allowed only
 
 → See R-P4 and R-P6 in `kb/requirements.md`.
 
+### Room-to-zone distribution (greedy, BL-09 fix)
+
+`_layout_corridor` uses a greedy algorithm to assign rooms to zones, replacing
+the old round-robin that silently dropped rooms in narrow zones.
+
+**`_next_room_tiles(zw, zh, fn, k)`** — tile count the `(k+1)`-th room would
+receive in a zone.  With `k+1` rooms there are `k` inter-room gaps:
+
+```
+_pack_band:          base = (zw - k) // (k + 1);  tiles = base * zh  (0 if base < 2)
+_pack_band_vertical: base = (zh - k) // (k + 1);  tiles = zw * base  (0 if base < 2)
+```
+
+**Assignment loop:** for each room in the (pre-shuffled) queue:
+1. If any zone has 0 rooms assigned, restrict candidates to those empty zones
+   (every zone must receive at least one room before any zone gets a second).
+2. Among candidates, pick the zone with the highest tile count.
+3. Tie-break: larger zone area (`zw × zh`) → fewer rooms already assigned →
+   per-zone random shuffle index.
+4. If no candidate has tiles > 0, raise `LayoutError` (all zones full).
+
+**`LayoutError`** propagates through `layout_graph` → `build_level_dict` to
+`_generate_act2`, which retries indefinitely with a fresh RNG on each failure.
+Failure is rare and always resolves: some seed will produce a room count within
+the chosen strategy's zone capacity.
+
 ### Zone connectivity invariant
 
 The packing function must be chosen so that **every placed room** has a wall tile
