@@ -504,7 +504,7 @@ def _random_stem(rng):
     """Return one stem spec (side, col_frac, w_range) for a T layout."""
     side = rng.choice(['near', 'far'])
     col_frac = rng.uniform(0.25, 0.75)
-    return (side, col_frac, (3, 5))
+    return (side, col_frac, (2, 5))
 
 
 def _double_t_stems(rng):
@@ -522,7 +522,7 @@ def _double_t_stems(rng):
         if frac_far > 0.75:
             frac_far = frac_near - delta
         frac_far = min(0.75, max(0.25, frac_far))
-    return [('near', frac_near, (3, 5)), ('far', frac_far, (3, 5))]
+    return [('near', frac_near, (2, 5)), ('far', frac_far, (2, 5))]
 
 
 def _next_room_tiles(zw, zh, fn, k):
