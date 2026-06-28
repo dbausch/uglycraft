@@ -628,9 +628,12 @@ def _layout_corridor(corridor_name, room_names, rng, stems=(),
         per_zone   = [[] for _ in valid]
 
         for name in room_names:
+            empty      = [i for i in range(len(valid)) if n_assigned[i] == 0]
+            candidates = empty if empty else range(len(valid))
             best_i   = -1
             best_key = (-1, -1, 0, -1)
-            for i, (zc, zr, zw, zh, fn) in enumerate(valid):
+            for i in candidates:
+                zc, zr, zw, zh, fn = valid[i]
                 t = _next_room_tiles(zw, zh, fn, n_assigned[i])
                 if t <= 0:
                     continue

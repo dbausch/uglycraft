@@ -523,6 +523,19 @@ class TestGreedyZoneAssignment:
         with pytest.raises(LayoutError):
             self._call_corridor(room_names)
 
+    def test_empty_zones_filled_before_non_empty(self):
+        """Every valid zone gets a room before any zone gets a second one."""
+        # col_frac=0.2 → 3 valid zones: Zone A (w=3), Zone B (w=20), Zone C (w=28).
+        # Without empty-zones-first, greedy stacks rooms in Zone C (most tiles),
+        # leaving Zone A empty.  With the rule, all 3 zones receive exactly 1 room.
+        # A room in Zone A has w=3; assert that width appears among placed rooms.
+        placed = self._call_corridor(['r0', 'r1', 'r2'])
+        room_widths = [pn.w for name, pn in placed.items() if name != 'corridor']
+        assert any(w == 3 for w in room_widths), (
+            "No room landed in the narrow Zone A (w=3); "
+            "empty-zones-first rule not enforced"
+        )
+
     def test_single_room_goes_to_wide_zone(self):
         """With 1 room, greedy skips the narrow Zone A (w=3) for a wider zone."""
         # Round-robin takes index 0 → Zone A (w=3).
