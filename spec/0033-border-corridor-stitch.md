@@ -2,6 +2,10 @@
 
 ## Status
 
+- [ ] **Unified corridor segment model**: every spine and stem has width/height
+      drawn from a single range **2–5** (was: spines 2–3, stems 3–5), with a
+      widened position range, so almost any band can be reproduced regardless of
+      strategy
 - [ ] A child grid's corridor segment at the shared border face **reproduces the
       parent grid's corridor cross-section there** — same rows/cols and same
       width (deterministic continuation), so the corridor tube continues through
@@ -123,15 +127,23 @@ left/right, cols at `row 1`/`row ROWS-2` for top/bottom. For every non-
 described by `(lo, width)`. For `full_border` the corridor covers the entire inner
 line → treated as the sentinel **FREE** (covers any band).
 
-A grid's face segment widths by strategy/side:
+**Unified segment model.** Today spines draw width 2–3 and stems draw 3–5, so a
+band of width 2 can only be produced by a spine and a band of width 4–5 only by a
+stem — a cross-type mismatch that forces fallback. This spec **unifies every spine
+and stem (and z/s/l arm) to a single width/height range 2–5**, applied in *all*
+levels (single- and multi-grid), and **widens each segment's position range** to
+the full extent where the strategy's room zones still satisfy R-P4 (minimum
+dims). Consequences:
 
-| Reaches side via | width range |
-|------------------|-------------|
-| horizontal / off_centre / t / double_t / z·s_h spine (left/right) | 2–3 |
-| vertical / z·s_v spine (top/bottom) | 2–3 |
-| t / double_t / z·s stem (top/bottom or left/right tip) | 3–5 |
-| l arm | per arm draw |
-| full_border frame | full line (FREE) |
+- Any band width in 2–5 can be reproduced by a spine *or* a stem → strategy type
+  no longer constrains width matching.
+- A wider span of band positions is honorable, so most continuations fit without
+  fallback.
+- `full_border` keeps the **FREE** sentinel (frame covers the whole inner line).
+
+This widens corridors and shrinks room zones somewhat; the greedy room→zone
+assignment already caps and spills (R-P6, spec 0030) and `_generate_act2` retries
+on `LayoutError`, so room placement stays sound — see "Invariants impact" below.
 
 ## Fix
 
@@ -153,26 +165,31 @@ entered from side `eb` (= opposite of the parent's exit side `ea`):
    chosen _layout_*`, which sets the position+width of the segment that reaches
    `eb` instead of drawing them randomly:
 
-   | strategy | anchored side | segment set to the band |
+   | strategy | anchored side | segment set to the band (`w∈2–5`) |
    |----------|---------------|-------------------------|
    | horizontal / off_centre | left/right | spine `cor_h=w`, `cor_row=lo` |
    | vertical | top/bottom | spine `cor_w=w`, `cor_col=lo` |
    | t / double_t | left/right | spine rows = `[lo,lo+w)` |
-   | t / double_t | top/bottom | the stem on `eb`: cols `[lo,lo+w)` |
+   | t / double_t | top/bottom | the stem on `eb`: cols `[lo,lo+w)`, `stem_w=w` |
    | z·s_h | left/right | the arm reaching `eb`: rows `[lo,lo+w)` |
    | z·s_v | top/bottom | the arm reaching `eb`: cols `[lo,lo+w)` |
    | l | one lr + one tb | the arm reaching `eb` |
    | full_border | any | frame already covers it |
 
-4. **Strategy pre-filter by width** (keeps fallback low): when an anchor is
-   active, `_pick_strategy` for *B* is restricted to strategies whose `eb`-segment
-   width range includes `w` (e.g. `w=2` ⇒ only spine-type reaches; `w∈{4,5}` ⇒
-   only stem-type), in addition to the existing `required_exits` filter.
-5. **Per-grid `full_border` fallback**: if no width-compatible strategy can place
-   the segment at `[lo,lo+w)` within the interior geometry (band too close to a
-   border for the strategy's room zones, etc.), build *B* with `full_border`,
-   whose frame covers every position and therefore continues any band. This is the
-   only fallback and it is **per grid**, not whole-level.
+   With the unified 2–5 model, `w` is always in-range for the anchored segment, so
+   matching never fails on width alone — only on whether position `lo` admits a
+   valid layout for that strategy.
+
+4. **Candidate filtering** (replaces independent strategy choice): build *B*'s
+   strategy candidate set as those that (a) reach `eb` per `required_exits` and
+   (b) admit a valid layout with the `eb`-segment fixed at `[lo, lo+w)` — i.e. the
+   resulting room zones still satisfy R-P4. Incompatible strategies are filtered
+   out. Pick among the survivors.
+5. **Per-grid `full_border` fallback**: if the candidate set is empty (no strategy
+   can place the segment at `[lo,lo+w)` without starving a required room zone),
+   build *B* with `full_border`, whose frame covers every position and therefore
+   continues any band. This is the only fallback and it is **per grid**, not
+   whole-level. With the unified widths + widened positions this should be rare.
 
 The start grid (i = 0) has no parent → built freely; its children continue it,
 grandchildren continue children, etc.
@@ -196,6 +213,19 @@ existing `ValueError("No shared floor …")` becomes a should-never-fire asserti
 barrier placement are unchanged. *(Open: whether to widen the opening to the full
 band — deferred; 1-tile keeps R-E1.)*
 
+## Invariants impact (`kb/requirements.md`, `kb/architecture.md`)
+
+- **R-S1/R-S2/R-S3** (corridor reaches required sides; zones derived from corridor
+  geometry) still hold — zones are recomputed from the actual chosen segment
+  width/position, now from the unified 2–5 range and widened positions.
+- **R-P4/R-P6** (room minimums, zone capacity) unchanged as rules, but wider
+  corridors shrink zones, so `LayoutError` retries may rise slightly; the greedy
+  assignment + spill (spec 0030) + `_generate_act2` retry absorb it.
+- New invariant to record: **corridor continuity** — for a BORDER edge between two
+  non-`full_border` grids, the two corridor face bands are identical
+  (position + width). Add to `kb/requirements.md` (R-T/border section) and update
+  the super-grid stitch description in `kb/architecture.md`.
+
 ## Verification
 
 1. **Regression test** (`tests/test_act2_solvability.py` or focused new test):
@@ -213,6 +243,8 @@ band — deferred; 1-tile keeps R-E1.)*
 
 ## Done when
 
+- [ ] Spines and stems use the unified width/height range 2–5 and widened
+      position ranges across all strategies (commit ____).
 - [ ] Child grids reproduce the parent's corridor band (position + width) at the
       shared face; FREE when parent is `full_border` (commit ____).
 - [ ] `corridor_anchor` threaded through layout; each strategy honours it on the
