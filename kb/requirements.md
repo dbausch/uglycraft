@@ -29,8 +29,10 @@ No two `PlacedNode` instances share a tile. Violation = layout error.
 **R-P3** Every node in the graph appears in the `placed` dict.
 Unplaced nodes are a bug; `derive_walls` will raise on any edge whose endpoint is absent.
 
-**R-P4** Minimum usable room dimensions: `w ≥ 3`, `h ≥ 2`.
-Smaller rooms are silently skipped by the packing functions.
+**R-P4** Minimum usable room dimensions: `w ≥ 2`, `h ≥ 2`.
+Rooms below these thresholds are silently skipped by the packing functions.
+Note: `_pack_band_vertical` rooms span the full zone width, and vertical zones are
+always ≥ 3 wide by construction, so effective minimum width is 3 for those rooms.
 
 **R-P5** Packing functions leave exactly 1 wall tile gap between adjacent rooms.
 `_pack_band` advances `col += widths[i] + 1`; `_pack_band_vertical` advances `row += h + 1`.
@@ -40,7 +42,7 @@ This 1-tile gap is what becomes the shared-boundary wall tile.
 dimensions (min w=3 for `_pack_band`; min h=2 for `_pack_band_vertical`) accounting for
 the (n−1) inter-room gaps:
 
-  n_max = (band_w + 1) // 4   for `_pack_band`       [3 cols/room + 1 gap = 4]
+  n_max = (band_w + 1) // 3   for `_pack_band`       [2 cols/room + 1 gap = 3]
   n_max = (band_h + 1) // 3   for `_pack_band_vertical`  [2 rows/room + 1 gap = 3]
 
 Without this cap, a zone that receives more rooms than it can hold gets an inflated

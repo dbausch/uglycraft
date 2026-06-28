@@ -117,7 +117,7 @@ rather than leaving dead wall area when too many rooms are assigned to a narrow 
 
 | Packer | Min room dim | Per-room cost | n_max formula |
 |--------|-------------|---------------|---------------|
-| `_pack_band` | w ≥ 3 | 3 + 1 gap = 4 cols | `(band_w + 1) // 4` |
+| `_pack_band` | w ≥ 2 | 2 + 1 gap = 3 cols | `(band_w + 1) // 3` |
 | `_pack_band_vertical` | h ≥ 2 | 2 + 1 gap = 3 rows | `(band_h + 1) // 3` |
 
 After capping, `base = usable // n` is always ≥ the minimum (3 or 2 respectively),
@@ -127,7 +127,9 @@ so no special-case branch is needed.
 gave `base=3`, placed the first room at h=3, then dropped the second because
 `row+2 > band_end`. The placed room occupied 3 of 4 rows, leaving 1 row wasted.
 With the cap: n_max = (4+1)//3 = 1, so only 1 room is assigned and it gets h=4
-(full zone).
+(full zone). The same logic applies horizontally: a 5-col zone with min w=2 now
+fits n_max = (5+1)//3 = 2 rooms (2+1+2=5), whereas the old min w=3 allowed only
+1 room (3 of 5 cols used).
 
 → See R-P4 and R-P6 in `kb/requirements.md`.
 

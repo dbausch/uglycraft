@@ -748,7 +748,7 @@ def _layout_z(corridor_name, room_names, rng, edge_map=None, node_sizes=None,
     placed = {corridor_name: PlacedNode(corridor_name, MIN_C, MIN_R, INT_W, INT_H,
                                          floor_tiles=cor_tiles)}
     valid = [(zc, zr, zw, zh, fn, mx) for (zc, zr, zw, zh, fn, mx) in zones
-             if zw >= 3 and zh >= 2]
+             if zw >= 2 and zh >= 2]
     if valid:
         per_zone = [[] for _ in valid]
         rooms_copy = list(room_names)
@@ -837,13 +837,13 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h,
         return
 
     n = len(room_names)
-    # Cap to rooms that can actually fit: each needs min w=3 plus 1-tile gap (4 cols/room)
-    n = min(n, (band_w + 1) // 4)
+    # Cap to rooms that can actually fit: each needs min w=2 plus 1-tile gap (3 cols/room)
+    n = min(n, (band_w + 1) // 3)
     if n == 0:
         return
     walls_between = n - 1
     usable = band_w - walls_between
-    base = usable // n  # always ≥ 3 after capping
+    base = usable // n  # always ≥ 2 after capping
 
     widths = [base] * n
     leftover = usable - base * n
@@ -856,7 +856,7 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h,
     i = 0
     while i < n:
         name = room_names[i]
-        if col + 3 > band_end:
+        if col + 2 > band_end:
             break
 
         # Try horizontal L-pair for adjacent OPEN-edge rooms
@@ -884,7 +884,7 @@ def _pack_band(placed, room_names, rng, band_col, band_row, band_w, band_h,
         if band_row + h > MAX_R + 1:
             h = MAX_R + 1 - band_row
 
-        if w >= 3 and h >= 2:
+        if w >= 2 and h >= 2:
             placed[name] = PlacedNode(name, col, band_row, w, h)
 
         col += widths[i] + 1
