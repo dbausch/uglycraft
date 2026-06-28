@@ -172,26 +172,52 @@ the entry tile reflects what the player crossed to get there.
 
 ---
 
-## BL-13 · P2 · Investigate how unplayable levels still slip through "playability-preserving" transformations
+## BL-13 · CLOSED (investigated) · How unplayable levels slip through "playability-preserving" transformations
 
-The level generator builds levels via a chain of graph transformations
-(`levelgraph.py` / `levellayout.py`), each of which is supposed to preserve a
-playability invariant — playable before, playable after. Yet `game.py` keeps a
-runtime safety net `_verify_blocks` that detects stuck push-blocks and
-force-regenerates the level (now via `levels.regenerate_level()`). The mere
-existence of that net proves unplayable levels still slip through: some
-transformation does *not* in fact preserve the invariant.
+Root cause found: it is NOT a lossy graph transformation. The graph transforms
+and single-grid push-puzzle placement are sound (`_place_puzzle` runs a full
+backward Sokoban BFS; `validate_push_puzzles` re-checks and raises). The leak is
+a MODEL MISMATCH: `puzzle_passable` (block placement) and `validate_push_puzzles`
+both OMIT `water_tiles` (treating water as walkable floor), while
+`_build_walls_multiroom` makes unbridged water SOLID. WATER edges place a stream
+on the 1-tile wall between rooms, so water sits adjacent to room floor and can
+land on a block's only push axis. Result: a block "solvable" on paper but
+wall-flanked at runtime. Every other thing the `_verify_blocks` net can fire on
+(another block / closed gate / locked door in the sole axis) is a false positive
+the solver already models. Empirical sweep (25 seeds × 10 levels, 175
+block-bearing levels): 2 stuck blocks, both 100% water-caused. Full analysis:
+kb/architecture.md "Playability validation: the model boundary (BL-13)" and
+kb/findings.md. The fix is tracked as a new backlog item (see below). Related:
+BL-04.
 
-The task is to find which one. Candidate culprits:
-1. **Layout / packing step** placing a push-block flush against walls so it has
-   zero pushable directions.
-2. **Multi-grid stitching** (`_build_super_grid`) altering tiles *after*
-   per-grid playability was already validated, invalidating the earlier check.
-3. **`validate_playability` gaps** already tracked in BL-04 (water-crossing
-   check too permissive).
+---
 
-**Fix hint:** Audit each transformation to determine where the invariant is
-actually violated, then either tighten that transformation's validation or add
-a post-transformation playability check so the runtime `_verify_blocks` net
-becomes redundant. Cross-reference `kb/requirements.md` (the formal playability
-invariants) and `kb/architecture.md` (the pipeline and super-grid stitching).
+## BL-14 · P2 · Make the push-puzzle subsystem water-aware (remove the _verify_blocks safety net)
+
+The level generator can place a pushable block beside an inter-room water stream
+so that the block's only clear push axis runs along/onto a water tile.
+`puzzle_passable` (in `build_level_dict`, levellayout.py) is computed as
+`interior - walls - gate_tiles - lock_tiles` and never subtracts `water_tiles`;
+`validate_push_puzzles` builds `all_obstacles` from walls+doors+gates+blocks
+only. Both treat water as walkable floor. But `_build_walls_multiroom` (game.py)
+makes unbridged water solid, so such a block is unsolvable/stuck at runtime. The
+runtime `_verify_blocks` net masks this by force-regenerating the level (and also
+produces false-positive regenerations on already-visited grids the player has
+rearranged).
+
+Fix hint:
+1. Subtract `water_tiles` from `puzzle_passable` before placing puzzles, and add
+   them to `all_obstacles` in `validate_push_puzzles`. Water is solid until a
+   bridge is crafted, which the puzzle solver has no model for, so treat it as a
+   permanent obstacle for puzzle solvability.
+2. Add a global post-stitch playability check in `_build_super_grid` (validation
+   currently runs per-grid inside `build_level_dict` and never on the stitched
+   whole).
+3. Once placement is water-aware and the global check exists, `_verify_blocks` in
+   game.py becomes a should-never-fire assertion rather than a load-bearing
+   safety net — downgrade or remove it.
+Verification: extend the headless sweep in scratchpad/repro_bl13.py (or a proper
+test) to confirm zero water-caused stuck blocks across many seeds. Cross-reference
+kb/architecture.md "Playability validation: the model boundary (BL-13)". Related:
+BL-04 (water-crossing check too permissive) is part of the same water-model story
+and may be folded into this fix.

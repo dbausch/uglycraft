@@ -339,6 +339,86 @@ _build_super_grid()
 
 ---
 
+## Playability validation: the model boundary (BL-13)
+
+**Why the runtime `_verify_blocks` safety net still fires even though every
+generator step "preserves playability."** The answer is *not* that a graph
+transformation is secretly lossy. The graph-level transformations and the
+single-grid push-puzzle placement are genuinely sound:
+
+- `_place_puzzle` (levellayout) selects each `(plate, block)` pair via a full
+  **backward Sokoban BFS** — block confined to the room floor, player
+  reachability computed across the whole grid, every *other* block treated as a
+  fixed obstacle. It raises if no solvable pair exists.
+- `validate_push_puzzles` then re-verifies all puzzles together and `build_level_dict`
+  **raises** on failure (→ `_generate_act2_level` retries with a fresh seed).
+
+So at placement time every block provably has ≥1 clear push axis. That makes the
+net's `push_dirs == 0` condition **unreachable from any obstacle the solver knew
+about** (walls, other blocks, gates, locked doors — the solver models blocks as
+movable and gates/locks as openable, or conservatively excludes their tiles).
+
+The real leak is a **model mismatch between the puzzle subsystem and the runtime
+collision map**, not a lossy transform:
+
+| Tile kind | `puzzle_passable` / `validate_push_puzzles` | runtime `_build_walls_multiroom` |
+|-----------|---------------------------------------------|----------------------------------|
+| reinforced / breakable wall | obstacle ✓ | solid ✓ |
+| locked door (interior) | obstacle ✓ | solid ✓ |
+| gate (interior) | obstacle ✓ | solid (until plate pressed) ✓ |
+| other block | obstacle ✓ | solid ✓ |
+| **water tile** | **OMITTED — treated as walkable floor** | **solid (until bridged)** |
+
+`build_level_dict` computes `puzzle_passable = interior − walls − gate_tiles −
+lock_tiles` (it never subtracts `water_tiles`), and `validate_push_puzzles`
+builds `all_obstacles` from walls+doors+gates+blocks only (no water). But
+`_build_walls_multiroom` sets `self.walls[wc][wr] = True` for every unbridged
+water tile. WATER edges convert the 1-tile wall *between two rooms* into stream,
+so a water tile is cardinally adjacent to room floor (R-E2/R-W3) — it can sit on
+a block's only clear push axis or be a player push-from tile. The solver routes
+the block over/along it; at runtime it's a wall. → genuinely unplayable, and the
+subset where it leaves the block with zero push axes is exactly what
+`_verify_blocks` catches.
+
+Everything else the net can fire on is a **false positive**: a block whose sole
+push axis is momentarily blocked by another block, a *closed* gate, or a locked
+door — all of which the solver already accounted for as movable/openable.
+`_verify_blocks` is a crude single-frame static check (treats blocks, closed
+gates, locked doors, and water all as immovable) and re-runs on every
+`_enter_room`, so it can also regenerate the whole level after the *player*
+pushes a block into a corner on a previously-visited grid.
+
+**Two further scope gaps (latent, not the block culprit):**
+1. `validate_push_puzzles` runs **per grid** inside `build_level_dict`;
+   `_build_super_grid` never re-validates the stitched whole. For push-blocks
+   this is harmless — stitching only *opens* border walls and places barriers on
+   out-of-bounds border tiles (col 0/29, row 0/15), which can't trap an interior
+   block — but it matters for cross-grid water/key reachability.
+2. Water-crossing solvability (reaching the *plate room across water*, bridge
+   craftability) is separately loose — see BL-04.
+
+**Empirical confirmation.** A headless sweep of 25 seeds × 10 Act 2 levels
+(175 generated levels that contain blocks) replicated `_build_walls_multiroom`
++ `_verify_blocks` on start positions. **2 stuck blocks, both 100% water-caused**
+(`(26,3)`: right+up water; `(26,12)`: right+down water — each wedged in an L of
+two water tiles, one per axis, beside a vertical inter-room stream near the right
+border). No wall/block/gate/door-only stuck cases occurred, matching the proof
+that those are unreachable. Rate ≈ 1% of block-bearing multi-grid levels — rare
+but real. Script: `scratchpad/repro_bl13.py`.
+
+**Fix direction:** feed `water_tiles` into both `puzzle_passable` and
+`validate_push_puzzles`' `all_obstacles` (water is solid until a bridge is
+crafted, which the puzzle solver has no model for), and add a global post-stitch
+playability check. After that, `_verify_blocks` becomes a should-never-fire
+assertion rather than a load-bearing safety net.
+
+→ Invariants: R-V2/R-V3 in `kb/requirements.md`. Water-reachability: BL-04.
+→ Block-placement code: `_place_puzzle`, `validate_push_puzzles`, `_compute_dead_squares`
+  in `levellayout.py`; runtime collision: `_build_walls_multiroom`, `_verify_blocks`
+  in `game.py`.
+
+---
+
 ## Target architecture (backlog BL-05)
 
 All corridor shapes can be derived from a single parametric model:

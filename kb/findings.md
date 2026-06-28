@@ -42,6 +42,19 @@
 
 **`_full_reset` and `_start_level` both set `item_no = 0`:** `_full_reset` calls `_start_level(1)`, so the second assignment is redundant. No functional impact.
 
+**Water is invisible to the push-puzzle solver but solid at runtime (BL-13):**
+`puzzle_passable` (block placement) and `validate_push_puzzles` both omit
+`water_tiles`, treating water as walkable floor, while `_build_walls_multiroom`
+makes unbridged water solid (`self.walls[wc][wr] = True`). A block placed beside
+an inter-room water stream can therefore be "solvable" on paper yet wall-flanked
+in play. This — not any lossy graph transform — is why the runtime
+`_verify_blocks` net still catches unplayable levels. Empirically every stuck
+block found was water-caused (2/175 block-bearing multi-grid levels). Every
+*other* thing the net can fire on (block/closed gate/locked door in the sole push
+axis) is a false positive the solver already accounted for. → see
+`kb/architecture.md` "Playability validation: the model boundary (BL-13)" and
+BL-04 for the related water-crossing looseness.
+
 **STORY state is unreachable:** The `STORY` game state has a renderer and event handler but no transition into it. No code sets `self.state = STORY` except inside the STORY handler itself. The only way to see it is to manually set the state in code.
 
 **Music deduplication on same level:** `start_music(key)` returns early if `_current_key == key`. Dying and restarting on the same level does not restart the music — it continues mid-track. This is intentional for smooth UX, not a bug.
