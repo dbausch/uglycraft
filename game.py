@@ -308,10 +308,10 @@ class Game:
                                            for gc, gr, gid in rdata.get('gates', [])}
             self.treasure_pos = None
             self._opened_doors = set()
-            # Count water edges for bridge limit (one bridge per edge)
-            self._bridges_remaining = sum(
-                1 for rdata in data['rooms'].values()
-                if rdata.get('water_tiles'))
+            # Water rooms already made accessible by a bridge.  One bridge per
+            # water room (spec 0029 W2): once a room is reachable, no further
+            # bridge to it can be built.  Replaces the old per-grid bridge cap.
+            self._bridged_water_rooms = set()
             self._tile_owner = {}
             self._room_blocks_initial = {
                 rk: list(self._room_blocks[rk])
@@ -405,6 +405,8 @@ class Game:
 
         self._tile_owner = room_data.get('tile_owner', {})
         self._water_tiles = set(tuple(t) for t in room_data.get('water_tiles', []))
+        self._water_tile_room = {tuple(k): v
+                                 for k, v in room_data.get('water_tile_room', {}).items()}
         self._dead_squares = set(tuple(t) for t in room_data.get('dead_squares', []))
         self._flame_jets = room_data.get('flame_jets', [])
         for jet in self._flame_jets:
@@ -945,19 +947,24 @@ class Game:
     def _try_auto_bridge(self, col, row):
         """Build a bridge on a water tile when the player bumps it.
 
-        Only builds if: player has a bridge item, this stream hasn't
-        been bridged yet (one bridge per water edge), and the tile
-        connects to open floor on the opposite side.
+        One bridge per water ROOM (spec 0029 W2): once a water room has been
+        made accessible, no further bridge to it can be built — so a bridge can
+        never be wasted.  Builds only if the player has a bridge item, the
+        target room is not yet accessible, and the tile connects to open floor
+        on the opposite side.
         """
         if not self._is_multiroom:
             return False
         water = getattr(self, '_water_tiles', set())
-        bridged = self._bridged_tiles.get(self._current_room, set())
-        if (col, row) not in water or (col, row) in bridged:
+        if (col, row) not in water:
+            return False
+        # The water room this tile grants access to; fall back to the tile
+        # itself if the mapping is missing (older level data).
+        water_room = getattr(self, '_water_tile_room', {}).get(
+            (col, row), (col, row))
+        if water_room in self._bridged_water_rooms:
             return False
         if not self.inventory.has_item(CRAFT_BRIDGE):
-            return False
-        if self._bridges_remaining <= 0:
             return False
         # Check that the opposite side has open floor (not wall/water)
         pc, pr = self.player.col, self.player.row
@@ -967,7 +974,7 @@ class Game:
                 and not self.walls[far_c][far_r]):
             self.inventory.use_item(CRAFT_BRIDGE)
             self._bridged_tiles.setdefault(self._current_room, set()).add((col, row))
-            self._bridges_remaining -= 1
+            self._bridged_water_rooms.add(water_room)
             self._build_walls_multiroom()
             self.sounds.play('place_wall')
             return True

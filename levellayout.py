@@ -2070,6 +2070,20 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                   for c in range(MIN_C, MAX_C + 1)
                   for r in range(MIN_R, MAX_R + 1)
                   if (c, r) not in all_floor_tiles}
+
+    # Map each water tile to the water room it gives access to (the node behind
+    # the WATER edge, edge.node_b).  The runtime keys the one-bridge-per-water-
+    # room lock on this (spec 0029 W2/W4).
+    water_tile_room = {}
+    for _edge in graph.edges:
+        if _edge.edge_type != EdgeType.WATER:
+            continue
+        if _edge.node_a not in placed or _edge.node_b not in placed:
+            continue
+        for wt in _build_water_stream(
+                placed[_edge.node_a], placed[_edge.node_b], orig_walls):
+            water_tile_room[wt] = _edge.node_b
+
     gate_tiles = set()
     lock_tiles = set()
     for _edge in graph.edges:
@@ -2234,6 +2248,8 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         room['gates'] = all_gates
     if water_tiles:
         room['water_tiles'] = water_tiles
+    if water_tile_room:
+        room['water_tile_room'] = water_tile_room
     if all_flame_jets:
         room['flame_jets'] = all_flame_jets
     if is_start_grid:

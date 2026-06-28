@@ -266,17 +266,14 @@ class LevelGraph:
                         changed = True
 
                 elif edge.edge_type == EdgeType.WATER:
-                    has_planks = any(
-                        'planks' in [m for m, in node.materials]
+                    # A bridge costs two planks; a pushable block cannot cross
+                    # water.  Require >= 2 reachable planks (BL-04 / spec 0029 W5).
+                    reachable_planks = sum(
+                        sum(1 for m in node.materials if m == ('planks',))
                         for name, node in self.nodes.items()
                         if name in reachable
                     )
-                    has_block = any(
-                        node.blocks
-                        for name, node in self.nodes.items()
-                        if name in reachable
-                    )
-                    if has_planks or has_block:
+                    if reachable_planks >= 2:
                         opened_edges.add(id(edge))
                         new_node = edge.node_b if a_reachable else edge.node_a
                         _expand({new_node})
