@@ -55,6 +55,11 @@ When two zones give equal tile counts, break ties in this priority order:
 
 ### Greedy loop
 
+**Empty-zones-first rule:** while any valid zone has `n_assigned == 0`, the
+candidate set is restricted to those empty zones.  Only once every zone has at
+least one room does the unconstrained greedy apply.  This ensures every zone
+receives at least one room before any zone receives a second.
+
 ```python
 zone_rand = list(range(len(valid)))
 rng.shuffle(zone_rand)
@@ -63,9 +68,13 @@ n_assigned = [0] * len(valid)
 per_zone   = [[] for _ in valid]
 
 for name in room_names:
+    empty      = [i for i in range(len(valid)) if n_assigned[i] == 0]
+    candidates = empty if empty else range(len(valid))
+
     best_i    = -1
     best_key  = (-1, -1, 0, -1)   # sentinel below any real key
-    for i, (zc, zr, zw, zh, fn) in enumerate(valid):
+    for i in candidates:
+        zc, zr, zw, zh, fn = valid[i]
         t = _next_room_tiles(zw, zh, fn, n_assigned[i])
         if t <= 0:
             continue
@@ -147,6 +156,12 @@ node itself).  Use a room count ≤ total capacity across zones.
 
 Call `_layout_corridor` with enough rooms to exceed total zone capacity.
 Assert `LayoutError` is raised.
+
+### Integration: empty zones filled before non-empty
+
+With N rooms and N valid zones, every zone must receive exactly one room.
+Without the empty-zones-first rule, greedy would stack multiple rooms in the
+widest zone and leave the narrowest empty.
 
 ### Integration: greedy prefers wide zones
 
