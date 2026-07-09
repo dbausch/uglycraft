@@ -6,6 +6,20 @@
 
 Recalculated every frame from the current window size. The game renders to a `LOGICAL_W × LOGICAL_H` (960 × 540) surface, then `pygame.transform.scale` stretches it to `scale × logical_size`. Black bars fill the remainder. F11 toggles fullscreen via `pygame.display.toggle_fullscreen()`.
 
+**Screens smaller than 960×540 crop the playfield.** `best_scale` clamps to a
+minimum of 1, and `present()` centres the logical surface, so on e.g. an
+800×480 display the blit offsets go negative (−80 px left/right, −30 px
+top/bottom): the outer border tiles and part of the HUD row are cut off.
+Downscaling to fit would need a fractional-scale branch in `present()` (or
+`pygame.SCALED` display mode); there is no support for it today.
+
+**Sprite `size` parameters are partly vestigial.** Every `draw_*` function in
+`sprites.py` takes `size=TILE`, but most bodies use hard-coded pixel
+coordinates that assume 32 px (e.g. `draw_ogre_1` ears at x = 5/27). Only a few
+(e.g. `draw_player`) derive geometry from `size`. Changing `TILE` therefore
+breaks most sprites — reducing the logical resolution is a rework of ~40 sprite
+functions, not a constant change.
+
 ## HUD Layout
 
 Single row at `y = ROWS * TILE = 512`, height `STATUS_H = 28 px`. Elements spaced evenly across full width in this order:
