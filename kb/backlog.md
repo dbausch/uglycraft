@@ -509,3 +509,14 @@ anchor it to a corridor tile (the shared spine) and validate the chosen player
 start is corridor-owned and adjacent to the entrance. Relates to BL-16 (don't
 place items on the player start tile) and the border-corridor stitch work in
 spec 0042.
+
+---
+
+## BL-32 · P3 · Native-resolution rendering port (GamePi 800×480 + desktop native TILE)
+
+Implement spec/0043-native-resolution.md: grid 29×15, per-display TILE
+(27/66/35), sprite proportionalization, HUD font fit rule,
+poe render-sprites / render-levels tasks.
+
+**Fix hint:** spec 0043 is committed and awaiting confirmation; start with the
+render tasks as verification harness.
