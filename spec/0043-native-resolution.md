@@ -15,6 +15,11 @@
       (no hard-coded 960×540 coordinates left in `game.py`)
 - [ ] Window resize (desktop windowed mode) re-derives `TILE`, rebuilds the
       sprite dict and relayouts — still playable mid-game
+- [ ] **`poe render-sprites`** — renders every sprite into one labelled grid
+      PNG per target tile size (27, 32, 35, 66), or specific sizes via
+      arguments: `poe render-sprites 41 99`
+- [ ] **`poe render-levels`** — renders all Act 1 levels to PNG files, or
+      specific levels via arguments: `poe render-levels 4 7`
 - [ ] Act 1 levels (1–10) adapted to 29×15 (mechanical adaptation; artistic
       odd-symmetry redesign is a separate spec)
 - [ ] Act 2 generator produces valid levels at 29×15 — full pytest suite green,
@@ -108,10 +113,40 @@ necklace Bézier, flame edges/nozzles, crack overlays.
 The sprite dict is rebuilt whenever `TILE` changes (startup, resize,
 fullscreen toggle) — procedural generation is cheap enough for that.
 
+## Render-check poe tasks
+
+Two headless render tasks (pygame with a hidden/dummy surface, output PNG)
+serve as the visual verification tooling for this spec and for the later
+level redesign:
+
+- **`poe render-sprites [SIZE ...]`** — draws every sprite in the sprite dict
+  into a single grid image per tile size, each cell labelled with the sprite
+  key, written to e.g. `build/sprites-27.png`. With no arguments it renders
+  all four target sizes (27, 32, 35, 66); any number of explicit sizes can be
+  given instead: `poe render-sprites 41 99`. Multi-variant sprites (boss
+  phases 0–3, crack levels, key/door colours, gate open/closed) each get
+  their own cell.
+- **`poe render-levels [N ...]`** — renders Act 1 levels as they would appear
+  in-game (walls, floor, treasure, enemy start positions, player start) to
+  `build/level-01.png` … `build/level-10.png`. With no arguments it renders
+  all ten; any number of level numbers can be given: `poe render-levels 4 7`.
+  Primary tool for checking the 29×15 adaptation and, later, the artistic
+  redesign.
+
 ## Fonts & menus
 
 - Font sizes become `TILE`-relative (current 64/36/22/16 pt were tuned for
   TILE 32 → factor `TILE/32`, rounded, minimum sizes guarded).
+- **HUD font is the exception — it is width-constrained, not TILE-constrained.**
+  The single HUD row is already horizontally full (7 elements: SCORE, LEVEL,
+  LIVES, SEEK, BOSS/HARD, SHIELD, WALLS → see `kb/uglycraft-display.md`), so
+  scaling its font by `TILE/32` would overflow on some targets (at 1080p the
+  font factor 66/32 = 2.06 outgrows the width factor 1920/960 = 2.0). Instead
+  the HUD font size is chosen by a **fit check**: render the worst-case
+  content string (max-width values for every element, longest treasure name)
+  and pick the largest size that fits the display width with a safety margin.
+  The generous HUD heights (75–105 px) become vertical padding — they must
+  not tempt the font upward past the fit check.
 - All menu/overlay coordinates in `game.py` currently hard-code the 960×540
   layout (title at y=140, footer at y=510, …). These become fractions of the
   surface size.
@@ -141,9 +176,12 @@ fullscreen toggle) — procedural generation is cheap enough for that.
 Python work has no automated UI suite; verification is:
 
 1. `poe test` — full pytest suite (generator invariants at 29×15) green.
-2. Manual: `poe run` on the desktop at 1920×1080 fullscreen and in a resized
+2. `poe render-sprites` — visual review of the sprite sheets at all four
+   target sizes (plus spot-checks at odd sizes like 41).
+3. `poe render-levels` — visual review of all ten adapted Act 1 levels.
+4. Manual: `poe run` on the desktop at 1920×1080 fullscreen and in a resized
    window; visual check of bezels, HUD, sprites at TILE 66 and odd sizes.
-3. Manual: run from source on the GamePi34 at 800×480 fullscreen; visual
+5. Manual: run from source on the GamePi34 at 800×480 fullscreen; visual
    check of pixel-perfect rendering and bezels; play a full Act 1 level and
    an Act 2 level.
 
@@ -153,8 +191,12 @@ Python work has no automated UI suite; verification is:
 - [ ] `TILE` derived from display size; no `transform.scale` call remains in
       the render path
 - [ ] HUD rule implemented as specified (75 px @ GamePi, 90 px @ 1080p,
-      105 px @ 1024×768)
-- [ ] All sprites proportional; visual spot-check at TILE 27, 32, 35, 66
+      105 px @ 1024×768); HUD font passes the worst-case fit check at all
+      three targets
+- [ ] All sprites proportional; sprite sheets from `poe render-sprites`
+      reviewed at TILE 27, 32, 35, 66
+- [ ] `poe render-sprites` and `poe render-levels` work with no arguments
+      (all sizes / all levels) and with multiple explicit arguments
 - [ ] Menus readable and centred at all three target resolutions
 - [ ] Live resize re-derives everything without crash or artefact
 - [ ] Act 1 levels playable at 29×15; Act 2 pytest suite + seed sweep green
