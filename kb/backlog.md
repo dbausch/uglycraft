@@ -19,7 +19,7 @@ no strategy passes. Confirmed by code inspection (no spec/commit reference).
 
 ---
 
-## BL-03 · P2 · Bug: Challenge items placed in wrong grid for border barriers
+## BL-03 · P1 · Bug: Challenge items placed in wrong grid for border barriers
 
 `LevelGraphBuilder.start_next_grid` picks challenge items using
 `self._current_corridor`, not the `source` (prev_corridor) argument.
@@ -168,7 +168,7 @@ BL-04.
 
 ---
 
-## BL-14 · P2 · Make the push-puzzle subsystem water-aware (remove the _verify_blocks safety net)
+## BL-14 · P1 · Make the push-puzzle subsystem water-aware (remove the _verify_blocks safety net)
 
 The level generator can place a pushable block beside an inter-room water stream
 so that the block's only clear push axis runs along/onto a water tile.
@@ -277,7 +277,7 @@ Dependencies / interactions:
 
 ---
 
-## BL-19 · P2 · Push plates must not be placed next to a room's entrance tile
+## BL-19 · P1 · Push plates must not be placed next to a room's entrance tile
 
 Pressure plates for push puzzles can currently land on a tile cardinally
 adjacent to the room's entrance/connection tile. That is awkward (the player
