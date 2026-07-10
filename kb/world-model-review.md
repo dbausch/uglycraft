@@ -376,9 +376,11 @@ dispatch that Stage 4 rewrites.
 Two sequencing notes. (1) The first Act 1 screenshot test will be **red**:
 that is BL-33 — the harness's first red→green pair is the BL-33 fix (own
 commit). (2) Interaction with spec 0043 (native resolution): state/sound
-traces are resolution-independent, but the 0043 sprite/HUD rework
-invalidates every screenshot golden. Either land 0043 before recording
-screenshots, or record now and re-record once after 0043.
+traces are resolution-independent, but the 0043 sprite/HUD rework would
+invalidate every screenshot golden. Decision (2026-07-10): 0043 is
+unscheduled / possibly out of scope — do **not** sequence on it; record
+screenshots now, on trial, and drop or reduce them if re-recording costs
+more than they catch (H4–H6 traces are unaffected either way).
 
 ### 6.4 Strangler stages with shadow verification
 

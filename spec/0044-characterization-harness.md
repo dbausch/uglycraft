@@ -139,9 +139,15 @@ Small set: title, difficulty, one Act 1 field (level 3), boss level field,
 one Act 2 fixture field (door+gate+water visible), inventory screen, HUD
 row. Same `UGLYCRAFT_REGOLD` procedure.
 
-**Known interaction:** spec 0043 (native resolution) will invalidate every
-screenshot golden when it lands; traces (H4–H6) are resolution-independent.
-Accepted: record now, re-record once after 0043.
+**These are the fragile tests — adopted deliberately, on trial.** Any
+intentional visual change invalidates them wholesale (that is what
+`UGLYCRAFT_REGOLD=1` + reviewed re-record is for), and a hash mismatch
+says only *that* pixels changed, not where. We try them out; if in
+practice they cost more re-recording than they catch regressions, they
+get dropped or reduced without touching H4–H6. Spec 0043 (native
+resolution) would invalidate all of them, but 0043 is unscheduled /
+possibly out of scope — noted, **not** a dependency or sequencing input;
+traces (H4–H6) are resolution-independent regardless.
 
 ### H8 — BL-33 fix (test-first)
 
