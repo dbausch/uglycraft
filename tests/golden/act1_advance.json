@@ -1,0 +1,83 @@
+{
+ "meta": {
+  "difficulty": "easy",
+  "dt": 33,
+  "fixture": false,
+  "level": 1,
+  "seed": 1234
+ },
+ "music": [
+  [
+   0,
+   "start",
+   1
+  ],
+  [
+   1,
+   "start",
+   2
+  ]
+ ],
+ "sounds": [
+  [
+   1,
+   "level_up"
+  ]
+ ],
+ "ticks": [
+  [
+   "level_intro",
+   2,
+   0,
+   10,
+   15,
+   3,
+   null
+  ],
+  [
+   "level_intro",
+   2,
+   0,
+   10,
+   15,
+   3,
+   null
+  ],
+  [
+   "level_intro",
+   2,
+   0,
+   10,
+   15,
+   3,
+   null
+  ],
+  [
+   "level_intro",
+   2,
+   0,
+   10,
+   15,
+   3,
+   null
+  ],
+  [
+   "level_intro",
+   2,
+   0,
+   10,
+   15,
+   3,
+   null
+  ],
+  [
+   "level_intro",
+   2,
+   0,
+   10,
+   15,
+   3,
+   null
+  ]
+ ]
+}

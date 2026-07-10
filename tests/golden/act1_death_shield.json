@@ -1,0 +1,127 @@
+{
+ "meta": {
+  "difficulty": "easy",
+  "dt": 33,
+  "fixture": false,
+  "level": 1,
+  "seed": 1234
+ },
+ "music": [
+  [
+   0,
+   "start",
+   1
+  ]
+ ],
+ "sounds": [
+  [
+   1,
+   "move"
+  ],
+  [
+   1,
+   "caught_shield"
+  ]
+ ],
+ "ticks": [
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ],
+  [
+   "playing",
+   1,
+   700,
+   9,
+   14,
+   8,
+   null
+  ]
+ ]
+}
