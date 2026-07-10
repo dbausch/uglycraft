@@ -1234,7 +1234,8 @@ class Game:
                         self.surf.blit(sp['floor'], (x, y))
 
         # Level entrance sprite at the start-grid entry border tile
-        if 'entrance' in self._current_room_data:
+        # (_current_room_data exists only on the multiroom path — BL-33)
+        if self._is_multiroom and 'entrance' in self._current_room_data:
             ec, er = self._current_room_data['entrance']
             self.surf.blit(sp['level_entrance'], (ec * TILE, er * TILE))
 
