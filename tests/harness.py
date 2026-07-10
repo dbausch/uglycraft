@@ -74,6 +74,12 @@ class Harness:
         levels.set_game_seed(seed)       # after _full_reset (which reseeds)
         if level != 1:
             self.game._start_level(level)
+        # Multiroom fixtures served as level 1 skip _spawn_treasure, which
+        # normally initialises treasure_item_no on the way through Act 1;
+        # _render_hud reads it unconditionally.  Production can't hit this
+        # (level 1 is always single-room); give the fixture path a default.
+        if not hasattr(self.game, 'treasure_item_no'):
+            self.game.treasure_item_no = 0
         self.game.state = PLAYING
 
     # ── plumbing ──────────────────────────────────────────────────────────────

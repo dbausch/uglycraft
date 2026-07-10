@@ -111,6 +111,23 @@ def forge_level():
     return _level({'main': main}, player=(11, 8))
 
 
+def showcase_level():
+    """Screenshot fixture: locked door, gate, plate, block, and a water
+    stream all visible in one divider (spec 0044 H7)."""
+    passages = {(15, 5), (15, 8), (15, 11)}
+    main = _room(_divider(passages), tile_owner=_owner(),
+                 keys=[(5, 8, 'red')],
+                 locked_doors=[(15, 5, 'red')],
+                 pressure_plates=[(4, 8, 'g1')],
+                 pushable_blocks=[(6, 8)],
+                 gates=[(15, 8, 'g1')],
+                 water_tiles=[(15, 11)],
+                 water_tile_room={(15, 11): 'right'},
+                 materials=[(7, 4, 'planks')],
+                 treasures=[(20, 8, 1)])
+    return _level({'main': main})
+
+
 def patrol_level():
     """Patrol guard walking a rectangle; the player just watches."""
     main = _room({}, tile_owner={(c, r): 'main'
