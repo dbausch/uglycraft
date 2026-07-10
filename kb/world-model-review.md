@@ -373,6 +373,13 @@ this review (BL-33) was in `_render_field`. With the clock pinned,
 (level, state) and compare. Cheap, headless, and guards the sprite
 dispatch that Stage 4 rewrites.
 
+Two sequencing notes. (1) The first Act 1 screenshot test will be **red**:
+that is BL-33 — the harness's first red→green pair is the BL-33 fix (own
+commit). (2) Interaction with spec 0043 (native resolution): state/sound
+traces are resolution-independent, but the 0043 sprite/HUD rework
+invalidates every screenshot golden. Either land 0043 before recording
+screenshots, or record now and re-record once after 0043.
+
 ### 6.4 Strangler stages with shadow verification
 
 - **Never a rewrite branch.** Each stage lands on `main`,
