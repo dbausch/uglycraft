@@ -523,7 +523,10 @@ render tasks as verification harness.
 
 ---
 
-## BL-33 · P1 · Act 1 crashes on first render: `_current_room_data` unset in single-room path
+## BL-33 · FIXED · Act 1 crashes on first render: `_current_room_data` unset in single-room path
+
+Fixed in ec6ffcd ("fix: guard entrance sprite render for single-room levels").
+Test-first via tests/test_render.py::test_act1_render_smoke (spec 0044 H8).
 
 `_render_field` (game.py:1230) unconditionally reads `self._current_room_data`,
 which is only assigned in `_enter_room` (multiroom/Act 2 path). Any Act 1 game
@@ -542,7 +545,11 @@ already is), or initialise `self._current_room_data = None` in the
 
 ---
 
-## BL-34 · P1 · Act 1 enemies never chase the player — wander on both difficulties
+## BL-34 · FIXED · Act 1 enemies never chase the player — wander on both difficulties
+
+Fixed in df1456f ("fix: Act 1 enemies chase again — unconfined enemies pursue").
+Test-first via tests/test_harness.py::test_act1_enemy_chases; the 17 spec-0044
+goldens were re-recorded and reviewed.
 
 Act 1 enemies wander randomly regardless of difficulty. The enemy-dispatch
 condition in `_update_playing` (game.py,
