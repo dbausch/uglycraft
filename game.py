@@ -93,6 +93,13 @@ class Game:
         self.state = TITLE
         self._title_init()
 
+    # ── Clock seam ────────────────────────────────────────────────────────────
+
+    def now(self):
+        """Current time in ms. Tests override this (game.now = lambda: fake_ms)
+        to make key repeat and animation frames deterministic (spec 0044 H1)."""
+        return pygame.time.get_ticks()
+
     # ── Font setup ────────────────────────────────────────────────────────────
 
     def _init_fonts(self):
@@ -794,7 +801,7 @@ class Game:
                 self._advance_level()  # cheat: skip to next level
             # Register key-down for movement
             if k in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN):
-                now = pygame.time.get_ticks()
+                now = self.now()
                 self._key_repeat[k] = (now, now)
                 self._try_move_key(k)
 
@@ -1060,7 +1067,7 @@ class Game:
                 self.sounds.play('shield_expire')
 
         # Key repeat
-        now = pygame.time.get_ticks()
+        now = self.now()
         for key, (first, last) in list(self._key_repeat.items()):
             elapsed_first = now - first
             elapsed_last  = now - last
@@ -1322,7 +1329,7 @@ class Game:
 
         # Enemies / boss
         if self.level == ACT1_BOSS_LEVEL:
-            phase = (pygame.time.get_ticks() // 120) % 4
+            phase = (self.now() // 120) % 4
             for enemy in self.enemies:
                 self.surf.blit(sp[f'boss_{phase}'], (enemy.col * TILE, enemy.row * TILE))
         else:
@@ -1618,7 +1625,7 @@ class Game:
         sp = self.sprites
 
         # Corner ogres (drawn first, behind all text)
-        phase = (pygame.time.get_ticks() // 120) % 4
+        phase = (self.now() // 120) % 4
         ogre_keys = ['enemy_1', 'enemy_2', 'enemy_3', f'boss_{phase}']
         for i, ogre in enumerate(self._title_ogres):
             self.surf.blit(sp[ogre_keys[i]], (int(ogre[0]), int(ogre[1])))
@@ -1787,7 +1794,7 @@ class Game:
         by = 360
         pygame.draw.rect(self.surf, DKGRAY, (bx, by, bw, bh), border_radius=4)
         pygame.draw.rect(self.surf, WHITE,  (bx, by, bw, bh), 2, border_radius=4)
-        cursor = "|" if int(pygame.time.get_ticks() / 500) % 2 == 0 else ""
+        cursor = "|" if int(self.now() / 500) % 2 == 0 else ""
         name_img = self.font_med.render(self._name_input + cursor, True, WHITE)
         self.surf.blit(name_img, (bx + 10, by + 8))
 
