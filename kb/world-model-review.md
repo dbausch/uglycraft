@@ -142,16 +142,28 @@ code fork. Kills P4 (and the class of bugs behind the Act 1 render crash).
 A cell is a **stack of layers**, not one object:
 
 ```
-occupants   Player, Enemy, PushBlock          (things that move)
-items       Treasure, Material, Key           (things you pick up)
-fixture     Door, Gate, Plate, Bridge, Nozzle (built-in, at most one)
-terrain     floor | water | wall(type, hits)  (exactly one)
+occupants   Player, Enemy, PushBlock            (things that move; many)
+items       Treasure, Material, Key             (things you pick up; many)
+fixtures    Door, Gate, Plate, Bridge, Nozzle,  (built or installed; many,
+            Wiring, Lever, …                     each with an attachment)
+terrain     floor | water | wall(type, hits)    (exactly one)
 ```
 
-Passability becomes a *query* over the stack
-(`passable(pos) = terrain and fixture and occupants agree`) instead of a
-cached boolean grid — no rebuild calls to forget (P1, P2). Render order =
-layer order (generic loop). Critically, the generator's Sokoban solver and
+Only terrain is a singleton — it partitions space. Fixtures are a **set**;
+each fixture declares an *attachment*: cell-filling (door, gate, bridge,
+plate), face-mounted (nozzle, lever — carries a direction, so one wall cell
+can hold two nozzles on opposite faces, each firing into its own room), or
+pass-through (wiring, which coexists with anything). What may *not* combine
+(two doors in one cell) is a **placement rule** checked at
+build/install time, not a capacity of the container — the data model
+permits, rules restrict. That keeps future player-installed fixtures
+(ignition wiring, electrical wiring) from requiring a schema change.
+
+Passability becomes a *query* folded over the stack
+(`passable(pos) = terrain allows ∧ every fixture allows ∧ occupants agree`)
+instead of a cached boolean grid — no rebuild calls to forget (P1, P2).
+Render order = layer order, face-mounted fixtures drawn per face (generic
+loop). Critically, the generator's Sokoban solver and
 `validate_push_puzzles` consume the **same** passability function, closing
 the BL-13 model-mismatch class structurally instead of patching water in.
 
@@ -220,6 +232,14 @@ world.channel(gate.channel)`. The generator already creates these links
 (`gate_id` — it becomes the channel name); momentary buttons are a channel
 with a timer. This one mechanism gives the entire spec-0007 machine list
 (levers, buttons, valves, pistons) a uniform implementation.
+A channel is a *named net*, and nets can be defined two ways: **declared**
+(generator links plate→gate abstractly, as today) or **traced** — a
+connected component of wiring fixtures (R1 pass-through attachment) plus
+the emitters/receivers touching it, computed by flood fill on demand.
+Player-installed ignition/electrical wiring is therefore not a new
+mechanism: laying wire extends a net; the spark switch drives it; the
+nozzle on the same net fires. Both net styles coexist because receivers
+only ever ask `world.channel(name)`.
 Key → door is the degenerate case that needs **no** channel: the link is
 attribute *matching* (door.colour vs key in inventory), resolved at
 interaction time. Not everything needs wiring.
@@ -261,7 +281,9 @@ the runtime model has to change shape.
 | Situation | Model |
 |---|---|
 | Bridge over water, player on top | R1: terrain `water` + fixture `bridge` + occupant `player` |
-| Nozzle in the wall | R1: fixture `emitter` embedded in a wall-terrain cell |
+| Nozzle in the wall | R1: face-mounted fixture on a wall-terrain cell |
+| Two nozzles, opposite wall faces | R1: two face-mounted fixtures, one per face |
+| Player installs ignition/electrical wiring | R1: pass-through wiring fixture + R2 traced net |
 | Fire across a room | R3: beam traced from emitter against opacity, per phase |
 | Block on a pressure plate | R1 stack; plate pressed-ness derived; R2 drives the gate channel |
 | Items on the floor | R1: item layer over floor terrain |
