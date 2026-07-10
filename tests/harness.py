@@ -62,7 +62,9 @@ class Harness:
                      'fixture': level_dict is not None},
             'sounds': [],   # [tick, key]
             'music':  [],   # [tick, action, key]
-            'ticks':  [],   # [state, level, score, lives, pcol, prow, room]
+            # [state, level, score, lives, pcol, prow, room,
+            #  [[ecol, erow], ...], treasure_pos]
+            'ticks':  [],
         }
         self._tick = 0
         self._spy_sounds()
@@ -119,7 +121,9 @@ class Harness:
         g = self.game
         self.trace['ticks'].append([
             g.state, g.level, g.score, g.lives,
-            g.player.col, g.player.row, g._current_room])
+            g.player.col, g.player.row, g._current_room,
+            [[e.col, e.row] for e in g.enemies],
+            list(g.treasure_pos) if g.treasure_pos else None])
 
     def run(self, script):
         """Execute a script: list of 'press:k', 'release:k', 'key:k',
