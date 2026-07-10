@@ -539,3 +539,28 @@ state=playing.
 levels — guard it with `if self._is_multiroom:` (the staircase loop below it
 already is), or initialise `self._current_room_data = None` in the
 `_start_level` single-room branch and guard both reads.
+
+---
+
+## BL-34 · P1 · Act 1 enemies never chase the player — wander on both difficulties
+
+Act 1 enemies wander randomly regardless of difficulty. The enemy-dispatch
+condition in `_update_playing` (game.py,
+`elif (enemy.room_name and player_room == enemy.room_name)`) requires a truthy
+`enemy.room_name`, but Act 1 enemies keep the `Enemy.__init__` default
+`room_name = None`, so the chase branch (greedy easy / BFS hard) is unreachable
+and every Act 1 enemy falls through to `wander()`. Hard mode computes the BFS
+distance map and never uses it.
+
+Regression introduced by 9b9ed4a (fix: enemies wander when player is on
+doorway/connection tiles, 2026-06-25), i.e. after v1.5 — unreleased.
+
+Found by the spec-0044 characterization harness (hard and easy level-1 traces
+came out identical).
+
+**Fix hint:** chase when unconfined OR the player is in the enemy's room —
+e.g. `elif enemy.room_name is None or player_room == enemy.room_name:` — while
+preserving 9b9ed4a's intent (Act 2 enemies wander when the player is outside
+their room / on connection tiles, where `_player_room()` returns None). After
+fixing, re-record the affected spec-0044 goldens (`UGLYCRAFT_REGOLD=1`) and
+review the diff.
