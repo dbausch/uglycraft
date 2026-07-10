@@ -56,9 +56,11 @@ def test_wall_break_and_place():
 
 
 def test_shield_buy_and_expiry():
-    """Buy the shield (seeded score), let it run out: 10 s timer."""
+    """Buy the shield (seeded score), let it run out: 10 s timer.
+    Enemies removed — a chasing enemy would consume the shield first."""
     with Harness(level=1, seed=1234) as h:
         h.game.score = 1000
+        h.game.enemies.clear()
         trace = h.run(['key:return', 'wait:320'])   # 320*33 ms > 10 s
     keys = _sound_keys(trace)
     assert 'shield_buy' in keys

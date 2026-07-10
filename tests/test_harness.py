@@ -34,16 +34,33 @@ def test_trace_deterministic():
     assert t1 == t2
 
 
-def test_hard_difficulty_runs():
-    """BFS enemies (hard) drive without error.
+def test_hard_difficulty_differs():
+    """Hard (BFS chase) and easy (greedy chase) produce different traces.
 
-    Hard and easy traces are currently IDENTICAL: Act 1 enemies always
-    wander (chase branch unreachable — post-v1.5 regression, see
-    kb/backlog.md "Act 1 enemies never chase").  Strengthen this to
-    t_hard != t_easy when that item is fixed.
-    """
+    Was == while BL-34 stood (Act 1 enemies always wandered, so both
+    difficulties consumed the same random calls)."""
     with Harness(level=1, difficulty='hard', seed=7) as h:
         t_hard = h.run(WALK)
     with Harness(level=1, difficulty='easy', seed=7) as h:
         t_easy = h.run(WALK)
-    assert t_hard['ticks'] == t_easy['ticks']   # documents the regression
+    assert t_hard['ticks'] != t_easy['ticks']
+
+
+def _dist_to_player(trace, tick_idx):
+    t = trace['ticks'][tick_idx]
+    pc, pr = t[4], t[5]
+    ec, er = t[7][0]
+    return abs(pc - ec) + abs(pr - er)
+
+
+def test_act1_enemy_chases():
+    """BL-34: with the player standing still, the enemy must close in
+    decisively on both difficulties (wander never nets this)."""
+    for difficulty in ('easy', 'hard'):
+        with Harness(level=1, difficulty=difficulty, seed=7) as h:
+            trace = h.run(['wait:60'])       # ~6 enemy moves at 294 ms
+        start = _dist_to_player(trace, 0)    # 13 tiles apart on level 1
+        end = _dist_to_player(trace, -1)
+        assert end <= start - 5, (
+            f'{difficulty}: enemy closed only {start - end} tiles '
+            f'({start} -> {end}) — wandering, not chasing')

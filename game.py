@@ -1090,8 +1090,12 @@ class Game:
                 reserved.discard((enemy.col, enemy.row))
                 if isinstance(enemy, PatrolEnemy):
                     enemy.move_patrol(self.walls, occupied=reserved)
-                elif (enemy.room_name and
-                      player_room == enemy.room_name):
+                elif (enemy.room_name is None
+                      or player_room == enemy.room_name):
+                    # Unconfined enemies (Act 1: no room) always chase;
+                    # room-confined enemies chase only while the player is
+                    # inside their room and wander otherwise (BL-34, keeps
+                    # the 9b9ed4a doorway behaviour for Act 2).
                     if dist is not None:
                         enemy.move_bfs(dist, occupied=reserved)
                     else:
