@@ -324,3 +324,89 @@ membership). Every stored copy of derivable state in the current code
 (`walls` grid, `_gate_open`, `jet['tiles']`, `enemy.room_tiles`) is a
 synchronisation obligation, and each has produced either a bug (BL-13) or
 a rebuild-call convention that must never be forgotten.
+
+## 6. Migration safety: how not to break the game
+
+The staged plan touches nearly every line of `game.py` — close to a
+rewrite. The protection is: **pin current behaviour before moving any
+code, and never let the old and new implementations diverge unverified.**
+
+### 6.1 Determinism audit (done, 2026-07-10)
+
+The game is fully pinnable. Sources of nondeterminism:
+
+- **RNG** — all gameplay randomness uses the global `random` module
+  (enemy BFS tie-breaks `entities.py:119`, wander, treasure spawn/respawn
+  `game.py:645/659/1020`, title ogres). `random.seed(k)` fixes it.
+  Level content: set `levels._game_seed` directly (module global).
+- **Wall clock** — `pygame.time.get_ticks()` reaches *gameplay* in exactly
+  two places: key-repeat registration (`game.py:797`) and the repeat check
+  (`game.py:1063`). The other three uses (boss frame, title, cursor blink)
+  are render-only. One tiny **clock seam** (injected `now`, or
+  monkeypatched `get_ticks` in tests) makes playthroughs reproducible.
+- Headless operation works today: `SDL_VIDEODRIVER=dummy` +
+  `SDL_AUDIODRIVER=dummy`, construct `Game(Surface((960,540)))` — proven
+  in-session (it is how BL-33 was found).
+
+### 6.2 Step 0 — characterization (golden-master) harness
+
+Before Stage 1, write tests against the **current** `Game` through its
+outermost seams only — construct headlessly, feed `pygame.event.Event`s /
+key registrations, step `update(dt)` with fixed `dt`, and record a
+**trace**: player position, score, lives, state, and the sequence of
+`sounds.play(key)` calls (the SFX trigger map is already a complete event
+log of game semantics — spy on it instead of listening). Record golden
+traces for scripted input runs: all 10 Act 1 levels, plus Act 2 levels
+under a fixed `_game_seed` exercising doors/gates/blocks/water/flames.
+After every refactor commit, traces must match exactly.
+
+These tests are deliberately coupled to observable behaviour, not
+internals, so they survive all five stages unchanged. They are
+scaffolding: once real `World` unit tests accumulate (Stage 1+), the
+golden traces demote to a smoke suite.
+
+### 6.3 Golden screenshots for the render path
+
+State traces cannot see rendering — and the one regression found during
+this review (BL-33) was in `_render_field`. With the clock pinned,
+`render()` into the logical surface is deterministic: hash the pixels per
+(level, state) and compare. Cheap, headless, and guards the sprite
+dispatch that Stage 4 rewrites.
+
+### 6.4 Strangler stages with shadow verification
+
+- **Never a rewrite branch.** Each stage lands on `main`,
+  behaviour-preserving, gated by the harness. No long-lived divergence.
+- **Shadow the derived state while migrating (parallel change).** During
+  Stage 3, keep the boolean `walls` grid alive as a *shadow*: after every
+  mutation, in test/debug mode, assert
+  `walls[c][r] == (not passable(c,r))` for the whole grid. Delete the grid
+  only after the assertion has been silent across the full suite + play
+  sessions. Same pattern for `_gate_open` vs channel query and
+  `jet['tiles']` vs traced beam.
+- **Freeze the generator seam.** The level dict is the contract between
+  `levellayout` and the runtime. Snapshot generated dicts for fixed seeds
+  (structural hash) so runtime refactors can't silently ride on generator
+  drift; the existing `tests/` suite keeps guarding the producer side.
+
+### 6.5 Process gates (existing discipline, applied per stage)
+
+Each stage gets its own numbered spec with a status checklist and
+"Done when:", red-first tests, and **user acceptance by actually playing
+the build** before checklist items are marked `- [x]`. What the harness
+cannot catch — feel (key-repeat rhythm, flame timing), performance
+(BFS per tick), platform builds — is exactly what the manual-acceptance
+gate at each stage boundary is for; add a timed 1000-tick headless run to
+the suite as a coarse performance tripwire.
+
+### 6.6 Order
+
+```
+Step 0a  clock seam + RNG pinning          (tiny, mechanical)
+Step 0b  characterization harness + golden traces + golden screenshots
+Stage 1  extract World (events)            — harness green
+Stage 2  Act 1 as one-room Act 2           — harness green
+Stage 3  layered cells, walls→barriers     — shadow grid until silent
+Stage 4  behaviour dispatch, channels      — harness + screenshots green
+Stage 5  Room objects, delete RoomState    — harness green
+```
