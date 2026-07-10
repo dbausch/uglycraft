@@ -216,6 +216,7 @@ Use them when working on a topic that needs deeper background.
 
 | File | Contents |
 |---|---|
+| `kb/feature-inventory.md` | Hierarchical map of all implemented aspects with spec links and test-coverage status |
 | `kb/uglycraft-mechanics.md` | Scoring, lives, shield, speed formula, state machine, boss behaviour |
 | `kb/uglycraft-levels.md` | Wall layouts and enemy start positions for all 10 levels |
 | `kb/uglycraft-display.md` | Integer scaling, HUD layout, sprite construction notes |
