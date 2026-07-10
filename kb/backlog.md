@@ -520,3 +520,22 @@ poe render-sprites / render-levels tasks.
 
 **Fix hint:** spec 0043 is committed and awaiting confirmation; start with the
 render tasks as verification harness.
+
+---
+
+## BL-33 · P1 · Act 1 crashes on first render: `_current_room_data` unset in single-room path
+
+`_render_field` (game.py:1230) unconditionally reads `self._current_room_data`,
+which is only assigned in `_enter_room` (multiroom/Act 2 path). Any Act 1 game
+(`_full_reset` → `_start_level(1)` → render) raises `AttributeError`.
+
+Regression introduced by 04be23e (feat: render level_entrance sprite,
+2026-06-28), i.e. after v1.5 — unreleased.
+
+Repro: headless `Game(surface); g._full_reset(); g.render()` with
+state=playing.
+
+**Fix hint:** the entrance/staircase render block only applies to multiroom
+levels — guard it with `if self._is_multiroom:` (the staircase loop below it
+already is), or initialise `self._current_room_data = None` in the
+`_start_level` single-room branch and guard both reads.
