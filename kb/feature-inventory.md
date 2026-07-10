@@ -165,12 +165,11 @@ predate the spec-first workflow; their reference documentation is the linked
   packages: [0006](../spec/0006-arch-packaging.md); tables in root
   `CLAUDE.md`.
 
-## 7. Existing automated test coverage
+## 7. Automated test coverage
 
-`poe test` runs `pytest tests/ -v`. **Everything covered today is level
-generation** — §4 above. §§1–3 and 5 (the runtime gameplay in `game.py`,
-`entities.py`, `crafting.py`, `rooms.py`, `hiscore.py`, `sounds.py`) have no
-automated tests.
+`poe test` runs `pytest tests/ -v` — two tiers since spec 0044:
+
+**Generator unit tests** (§4):
 
 | Test file | Covers |
 |---|---|
@@ -186,6 +185,24 @@ automated tests.
 | `tests/test_act2_solvability.py` | 4.2 end-to-end solvability |
 | `tests/test_border_continuity.py` | 4.8 border stitching (0042) |
 | `tests/test_lazy_levels.py` | 4.9 lazy generation (0028) |
+
+**Gameplay characterization** (§§1–3; golden-master traces via
+`tests/harness.py`, spec [0044](../spec/0044-characterization-harness.md) —
+re-record only with `UGLYCRAFT_REGOLD=1`):
+
+| Test file | Covers |
+|---|---|
+| `tests/test_harness.py` | harness self-tests, seed/trace determinism |
+| `tests/test_golden_act1.py` | §2: walks L1–10, wall break/place, shield, death/penalty, shielded catch, game over, advance, pause |
+| `tests/test_golden_act2.py` | §3: door/key, plate/block/gate + reset, water/planks/craft/bridge, flames + shield, grid transition persistence, forge ogre, patrol; seeded L11/L13 walks |
+| `tests/test_render.py` | §1.3/1.4: render smoke (BL-33) + golden screenshots (fragile tier, on trial) |
+| `tests/test_perf.py` | throughput tripwire (2000 ticks < 5 s) |
+
+Still without automated coverage: `hiscore.py` (file I/O deliberately kept
+out of tests), sound *content* (`sounds.py` waveforms — only trigger keys
+are traced), and the menu flows outside the traced states. Root-level
+`test_levelgraph.py` remains an older unittest suite not collected by
+`poe test`.
 
 Root-level `test_levelgraph.py` is an older unittest-style suite covering the
 graph/layout basics; it is **not** run by `poe test` (which only collects
