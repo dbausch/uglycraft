@@ -8,20 +8,20 @@ seam, H2 seed helper, H8 BL-33 fix).
 
 ## Status
 
-- [ ] H1 — Clock seam: all five `pygame.time.get_ticks()` call sites in
+- [x] H1 — Clock seam: all five `pygame.time.get_ticks()` call sites in
       `game.py` route through an overridable `Game.now()`
-- [ ] H2 — Determinism helpers: `levels.set_game_seed(seed)` + pytest fixture
+- [x] H2 — Determinism helpers: `levels.set_game_seed(seed)` + pytest fixture
       pinning the global `random`
-- [ ] H3 — Headless harness: fixtures + script driver (`tests/harness.py`)
-- [ ] H4 — Trace recorder: per-tick state + `sounds.play` event log, golden
+- [x] H3 — Headless harness: fixtures + script driver (`tests/harness.py`)
+- [x] H4 — Trace recorder: per-tick state + `sounds.play` event log, golden
       JSON files, explicit re-golden procedure
-- [ ] H5 — Golden traces: Act 1, levels 1–10
-- [ ] H6 — Golden traces: Act 2 mechanics (hand-written fixture levels) +
+- [x] H5 — Golden traces: Act 1, levels 1–10
+- [x] H6 — Golden traces: Act 2 mechanics (hand-written fixture levels) +
       two seeded generator levels
-- [ ] H7 — Golden screenshots (small set, pinned clock)
-- [ ] H8 — BL-33 fixed test-first: Act 1 render test red → guard → green
-- [ ] H9 — Performance tripwire (timed headless run)
-- [ ] H10 — Suite integration: everything runs under `poe test`;
+- [x] H7 — Golden screenshots (small set, pinned clock)
+- [x] H8 — BL-33 fixed test-first: Act 1 render test red → guard → green
+- [x] H9 — Performance tripwire (timed headless run)
+- [x] H10 — Suite integration: everything runs under `poe test`;
       `kb/feature-inventory.md` §7 updated
 
 ## Motivation
@@ -198,18 +198,18 @@ This spec's deliverable is itself an automated suite; the gates are:
 
 ## Done when:
 
-- [ ] H1 — all five `get_ticks` sites route through `Game.now()`; game
-      plays identically (user-confirmed)
-- [ ] H2 — `set_game_seed` + `pin_rng` fixture exist; same seed ⇒ same
-      Act 2 level, twice in a row
-- [ ] H3 — a scripted headless run of level 1 completes with no display
-- [ ] H4 — trace JSON written and exactly reproduced on a second run;
-      `UGLYCRAFT_REGOLD=1` rewrites
-- [ ] H5 — Act 1 goldens for levels 1–10 committed and green
-- [ ] H6 — one fixture-level golden per Act 2 mechanic + seeded levels 11
-      and 13 committed and green
-- [ ] H7 — screenshot goldens committed and green
-- [ ] H8 — BL-33 test committed red, fix committed separately, test green
-- [ ] H9 — timed run present and green
-- [ ] H10 — `poe test` runs everything; `kb/feature-inventory.md` §7
-      updated
+- [x] H1 — all five `get_ticks` sites route through `Game.now()`; game
+      plays identically (user-confirmed) (d672ad9)
+- [x] H2 — `set_game_seed` + `pin_rng` fixture exist; same seed ⇒ same
+      Act 2 level, twice in a row (5a16fa2, f157c52)
+- [x] H3 — a scripted headless run of level 1 completes with no display (f157c52)
+- [x] H4 — trace JSON written and exactly reproduced on a second run;
+      `UGLYCRAFT_REGOLD=1` rewrites (f157c52, fa1155d)
+- [x] H5 — Act 1 goldens for levels 1–10 committed and green (422c433, fa1155d, df1456f)
+- [x] H6 — one fixture-level golden per Act 2 mechanic + seeded levels 11
+      and 13 committed and green (a7fae25)
+- [x] H7 — screenshot goldens committed and green (ee6b404)
+- [x] H8 — BL-33 test committed red, fix committed separately, test green (0f3713b, ec6ffcd)
+- [x] H9 — timed run present and green (e710d72)
+- [x] H10 — `poe test` runs everything; `kb/feature-inventory.md` §7
+      updated (1ee0937)
