@@ -144,20 +144,44 @@ A cell is a **stack of layers**, not one object:
 ```
 occupants   Player, Enemy, PushBlock            (things that move; many)
 items       Treasure, Material, Key             (things you pick up; many)
-fixtures    Door, Gate, Plate, Bridge, Nozzle,  (built or installed; many,
-            Wiring, Lever, …                     each with an attachment)
-terrain     floor | water | wall(type, hits)    (exactly one)
+fixtures    Barrier(policy), Plate, Bridge,     (built or installed; many,
+            Nozzle, Wiring, Lever, …             each with an attachment)
+terrain     floor | water                       (ground; exactly one)
 ```
 
-Only terrain is a singleton — it partitions space. Fixtures are a **set**;
-each fixture declares an *attachment*: cell-filling (door, gate, bridge,
-plate), face-mounted (nozzle, lever — carries a direction, so one wall cell
-can hold two nozzles on opposite faces, each firing into its own room), or
-pass-through (wiring, which coexists with anything). What may *not* combine
-(two doors in one cell) is a **placement rule** checked at
-build/install time, not a capacity of the container — the data model
-permits, rules restrict. That keeps future player-installed fixtures
-(ignition wiring, electrical wiring) from requiring a schema change.
+Terrain is **ground only** — what the cell is underfoot — and the single
+singleton layer. Walls are *not* terrain: they are **barriers**, one
+family of cell-filling fixtures unified with doors and gates, all sharing
+"partitions the grid, entities bump into it" and differing only in their
+*opening policy*:
+
+```
+Barrier(policy):
+  border / reinforced   never opens
+  stone                 breaks after 3 bumps      (hits state)
+  wooden                breaks after 2 bumps
+  placed                player-installed; forge ogre breaks in 2
+  door(colour)          opens by key match on bump
+  gate(channel)         open iff its channel is high
+```
+
+This is the runtime mirror of the generator's `EdgeType` (OPEN = no
+barrier, BREAKABLE/LOCKED/GATED = barrier policies), so the edge semantics
+survive to runtime (P5). Breaking a wall = removing a fixture, revealing
+the floor beneath — never a terrain mutation. Placing a wall = the same
+*install* operation as laying wiring. `_register_bump`'s if-chain becomes
+`barrier.on_bump(world)` dispatch, and `_is_unbumpable` disappears.
+
+Fixtures are a **set**; each declares an *attachment*: cell-filling
+(barriers, bridge, plate), face-mounted (nozzle, lever — carries a
+direction and a **host barrier**, so one wall cell can hold two nozzles on
+opposite faces, each firing into its own room; destroying the host removes
+its mounted fixtures), or pass-through (wiring, which coexists with
+anything). What may *not* combine (two barriers in one cell) is a
+**placement rule** checked at build/install time, not a capacity of the
+container — the data model permits, rules restrict. That keeps future
+player-installed fixtures (ignition wiring, electrical wiring) from
+requiring a schema change.
 
 Passability becomes a *query* folded over the stack
 (`passable(pos) = terrain allows ∧ every fixture allows ∧ occupants agree`)
@@ -281,8 +305,9 @@ the runtime model has to change shape.
 | Situation | Model |
 |---|---|
 | Bridge over water, player on top | R1: terrain `water` + fixture `bridge` + occupant `player` |
-| Nozzle in the wall | R1: face-mounted fixture on a wall-terrain cell |
-| Two nozzles, opposite wall faces | R1: two face-mounted fixtures, one per face |
+| Nozzle in the wall | R1: face-mounted fixture hosted by a barrier |
+| Two nozzles, opposite wall faces | R1: two face-mounted fixtures on one barrier, one per face |
+| Destructible vs indestructible wall | R1: same `Barrier` fixture, different opening policy |
 | Player installs ignition/electrical wiring | R1: pass-through wiring fixture + R2 traced net |
 | Fire across a room | R3: beam traced from emitter against opacity, per phase |
 | Block on a pressure plate | R1 stack; plate pressed-ness derived; R2 drives the gate channel |
