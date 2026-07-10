@@ -413,3 +413,16 @@ def new_game_levels():
         new_seed = (new_seed + 1) % (2**31)
     _game_seed = new_seed
     _act2_cache.clear()
+
+
+def set_game_seed(seed):
+    """Pin the Act 2 base seed (spec 0044 H2 — tests only).
+
+    Same as new_game_levels() minus the entropy: deterministic level content
+    for a given seed.  Must be called AFTER Game._full_reset() (which calls
+    new_game_levels() and would overwrite the pin) and before the first
+    get_level() call for the level under test.
+    """
+    global _game_seed
+    _game_seed = seed
+    _act2_cache.clear()
