@@ -135,15 +135,23 @@ mechanic — sequential random treasure spawning vs pre-placed loot — becomes
 a per-level rule (`spawn_mode: 'sequential' | 'preplaced'`), not a global
 code fork. Kills P4 (and the class of bugs behind the Act 1 render crash).
 
-### Stage 3 — Authoritative tile map
+### Stage 3 — Authoritative layered cell model
 
-Replace the parallel dicts with one map per room:
-`tiles: dict[(c,r), Tile]` where `Tile` carries `kind` + params (wall type,
-hit count, door colour, gate id, water room, plate gate id, …). Items
-(treasures/materials/keys) live in an `items: dict[(c,r), Item]` layer;
-enemies stay an entity list. Passability becomes a *query*
-(`tile.blocks(world_state)`) instead of a cached boolean grid — no rebuild
-calls to forget (P1, P2). Critically, the generator's Sokoban solver and
+*(Refined by the §5 stress test — a single `Tile` per cell is not enough.)*
+
+A cell is a **stack of layers**, not one object:
+
+```
+occupants   Player, Enemy, PushBlock          (things that move)
+items       Treasure, Material, Key           (things you pick up)
+fixture     Door, Gate, Plate, Bridge, Nozzle (built-in, at most one)
+terrain     floor | water | wall(type, hits)  (exactly one)
+```
+
+Passability becomes a *query* over the stack
+(`passable(pos) = terrain and fixture and occupants agree`) instead of a
+cached boolean grid — no rebuild calls to forget (P1, P2). Render order =
+layer order (generic loop). Critically, the generator's Sokoban solver and
 `validate_push_puzzles` consume the **same** passability function, closing
 the BL-13 model-mismatch class structurally instead of patching water in.
 
@@ -180,3 +188,92 @@ tests watching it. Stages 2–5 are then independent commits, roughly in
 order of pain relieved per effort. Stage 3 is the load-bearing one — it is
 what makes "more elements and interactions" cheap and what unifies the
 solver/runtime world view.
+
+## 5. Stress test: the four kinds of relations
+
+Probing the model with concrete situations ("a bridge over water with the
+player on top", "a nozzle in the wall, fire across the room", "a block on a
+pressure plate", "the key to a door", "an enemy in a room", "a room on a
+grid", "a floor above", "a switch of a laser beam") shows the world needs
+exactly **four relation mechanisms**, each with one representation:
+
+### R1 — Stacking (things at the same cell)
+
+*Bridge over water, player on top; block on plate; item on floor.*
+The layer stack from Stage 3. A bridged water tile is terrain `water` +
+fixture `bridge` — the water is still *there* (identity preserved for the
+one-bridge-per-water-room rule), the bridge changes the passability answer.
+"Player on top" is just the occupant layer. **Plate pressed-ness is not
+stored state** — it is a query: `pressed(plate) = occupants(plate.pos) or
+block_at(plate.pos)`. Today `_update_pressure_plates` recomputes this per
+tick and then mutates `_gate_open` + rebuilds walls; derived state deletes
+that whole synchronisation.
+
+### R2 — Wiring (identity links between distant objects)
+
+*Plate → gate, switch → laser, lever → drawbridge, button (momentary) →
+piston; key → door.*
+A **signal-channel table** on `World`: emitters (plate, lever, button)
+drive named channels; receivers (gate, laser emitter, drawbridge) compute
+their state from their channel. `gate.blocks() = not
+world.channel(gate.channel)`. The generator already creates these links
+(`gate_id` — it becomes the channel name); momentary buttons are a channel
+with a timer. This one mechanism gives the entire spec-0007 machine list
+(levers, buttons, valves, pistons) a uniform implementation.
+Key → door is the degenerate case that needs **no** channel: the link is
+attribute *matching* (door.colour vs key in inventory), resolved at
+interaction time. Not everything needs wiring.
+
+### R3 — Fields (emissions across cells)
+
+*Nozzle in the wall, fire across the room; laser beam; water flow.*
+An emitter is a fixture (position in the wall, direction, phase/cycle); the
+affected cells are **derived by ray-casting against the opacity query**,
+not stored as a tile list. Today `flame_jets` carry a precomputed
+`tiles` list, so "flame blockable by walls/blocks" (spec 0009) needs manual
+recomputation when a block moves; a derived field is occluded automatically
+the moment a block enters the path. `hazard_at(pos, t)` is a query like
+passability. A laser is the same abstraction as a flame jet with different
+damage/phase parameters — R2 switches its channel, R3 traces its beam.
+
+### R4 — Containment (the spatial hierarchy)
+
+*Enemy in a room, room on a grid, grid in a level, a floor above.*
+
+```
+Level → Grid (super-grid pos, later (col,row,z)) → Room (graph node) → cell → stack
+```
+
+Two consequences. First, positions become **global**: `(grid_id, col,
+row)`. `World` holds *all* grids as live objects; "the current grid" is a
+render-time view, not a data-model state — which is what Stage 5's
+persistence-by-identity needs anyway, and what deletes the `_enter_room`
+attribute-swapping. Second, membership is a *query*, not a copy:
+`room_of(pos)` via the tile→node owner map replaces `_tile_owner` lookups
+plus the per-enemy `room_tiles` frozensets; enemy confinement becomes
+`enemy.home_room` + the query. "A floor above" is then a third coordinate
+on grid positions plus STAIRS edges between grids — the graph model
+(`EdgeType.STAIRS`, `node.super_pos`) already anticipates it; nothing in
+the runtime model has to change shape.
+
+### Mapping the examples
+
+| Situation | Model |
+|---|---|
+| Bridge over water, player on top | R1: terrain `water` + fixture `bridge` + occupant `player` |
+| Nozzle in the wall | R1: fixture `emitter` embedded in a wall-terrain cell |
+| Fire across a room | R3: beam traced from emitter against opacity, per phase |
+| Block on a pressure plate | R1 stack; plate pressed-ness derived; R2 drives the gate channel |
+| Items on the floor | R1: item layer over floor terrain |
+| The key to a door | Attribute matching (colour) at interaction time — no link object |
+| Enemy in a room | R4: `enemy.home_room` + `room_of(pos)` query |
+| Room on a grid / grid in level | R4 hierarchy, global `(grid_id, col, row)` positions |
+| A floor above | R4: z-coordinate on grids + STAIRS edges (graph already has both) |
+| Switch of a laser beam | R2 channel (switch → emitter enabled) + R3 beam |
+
+The unifying principle across all four: **store identity and structure;
+derive state by query** (passability, pressed-ness, beam paths, room
+membership). Every stored copy of derivable state in the current code
+(`walls` grid, `_gate_open`, `jet['tiles']`, `enemy.room_tiles`) is a
+synchronisation obligation, and each has produced either a bug (BL-13) or
+a rebuild-call convention that must never be forgotten.
