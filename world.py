@@ -151,7 +151,7 @@ class World:
                 nc, nr = c + dc, r + dr
                 if ((nc, nr) not in dist
                         and 0 <= nc < COLS and 0 <= nr < ROWS
-                        and not self.walls[nc][nr]):
+                        and not self.blocked(nc, nr)):
                     dist[(nc, nr)] = dist[(c, r)] + 1
                     q.append((nc, nr))
         return dist
@@ -207,21 +207,6 @@ class World:
             w[c][r] = True
         self.walls = w
 
-    def _is_unbumpable(self, col, row):
-        """Check if (col, row) is a door, gate, or pushable block."""
-        rk = self._current_room
-        for dc, dr, _ in self._room_doors.get(rk, []):
-            if dc == col and dr == row:
-                return True
-        for gc, gr in self._room_gates.get(rk, {}).values():
-            if gc == col and gr == row:
-                return True
-        if (col, row) in self._room_blocks.get(rk, []):
-            return True
-        if (col, row) in getattr(self, '_water_tiles', set()):
-            return True
-        return False
-
     def _register_bump(self, key, col, row):
         """Called when the player walks into wall (col, row) via direction key."""
         if key in self._bump_consumed:
@@ -233,18 +218,18 @@ class World:
             return
         if is_border(col, row):
             return  # indestructible border (no door/bridge here)
-        wall_type = self._level_walls.get((col, row))
-        if wall_type == WALL_REINFORCED:
-            return  # indestructible — bumping has no effect
-        if self._is_unbumpable(col, row):
-            return  # gates and blocks are not breakable by bumping
+        barrier = self.cells.barrier(col, row)
+        if barrier is None:
+            return  # pushable block or unbridged water — not bumpable
+        if barrier.kind in (WALL_REINFORCED, 'door', 'gate'):
+            return  # indestructible / keyless door / gate
         self._bump_consumed.add(key)
-        hits_needed = WALL_BUMPS.get(wall_type, WALL_HITS_TO_BREAK)
-        hits = self._wall_hits.get((col, row), 0) + 1
+        hits_needed = WALL_BUMPS.get(barrier.kind, WALL_HITS_TO_BREAK)
+        hits = barrier.hits + 1
         if hits >= hits_needed:
             self._break_wall(col, row)
         else:
-            self.cells.barrier(col, row).hits = hits
+            barrier.hits = hits
             self._wall_hits[(col, row)] = hits
             self._emit('bumped')
 
@@ -418,9 +403,9 @@ class World:
                 pf_c, pf_r = bc - dc, br - dr
                 pt_c, pt_r = bc + dc, br + dr
                 pf_ok = (0 < pf_c < COLS - 1 and 0 < pf_r < ROWS - 1
-                         and not self.walls[pf_c][pf_r])
+                         and not self.blocked(pf_c, pf_r))
                 pt_ok = (0 < pt_c < COLS - 1 and 0 < pt_r < ROWS - 1
-                         and not self.walls[pt_c][pt_r])
+                         and not self.blocked(pt_c, pt_r))
                 if pf_ok and pt_ok:
                     push_dirs += 1
             if push_dirs == 0:
@@ -583,7 +568,7 @@ class World:
             if bx == bc and by == br:
                 nc, nr = bc + dcol, br + drow
                 if (0 < nc < COLS - 1 and 0 < nr < ROWS - 1
-                        and not self.walls[nc][nr]
+                        and not self.blocked(nc, nr)
                         and (nc, nr) not in self._dead_squares):
                     blocks[i] = (nc, nr)
                     self._build_walls_multiroom()
@@ -594,20 +579,23 @@ class World:
 
     def _try_auto_open_door(self, col, row):
         """Open a locked door at (col, row) if the player has the key."""
+        barrier = self.cells.barrier(col, row)
+        if barrier is None or barrier.kind != 'door':
+            return False
+        if not self.inventory.has_key(barrier.colour):
+            return False
+        self.inventory.use_key(barrier.colour)
+        self.cells.remove_barrier((col, row))
         room_key = self._current_room
-        doors = self._room_doors.get(room_key, [])
-        for i, (door_c, door_r, door_color) in enumerate(doors):
+        doors = self._room_doors.get(room_key, [])   # shadow duplicate (T8)
+        for i, (door_c, door_r, _color) in enumerate(doors):
             if door_c == col and door_r == row:
-                if self.inventory.has_key(door_color):
-                    self.inventory.use_key(door_color)
-                    self.cells.remove_barrier((col, row))
-                    doors.pop(i)
-                    self._opened_doors.add((room_key, col, row, door_color))
-                    self._build_walls_multiroom()
-                    self._emit('door_opened')
-                    return True
-                return False
-        return False
+                doors.pop(i)
+                break
+        self._opened_doors.add((room_key, col, row, barrier.colour))
+        self._build_walls_multiroom()
+        self._emit('door_opened')
+        return True
 
     def _try_auto_bridge(self, col, row):
         """Build a bridge on a water tile when the player bumps it.
@@ -618,13 +606,11 @@ class World:
         target room is not yet accessible, and the tile connects to open floor
         on the opposite side.
         """
-        water = getattr(self, '_water_tiles', set())
-        if (col, row) not in water:
+        if not self.cells.is_water(col, row):
             return False
         # The water room this tile grants access to; fall back to the tile
         # itself if the mapping is missing (older level data).
-        water_room = getattr(self, '_water_tile_room', {}).get(
-            (col, row), (col, row))
+        water_room = self.cells.water_room(col, row) or (col, row)
         if water_room in self._bridged_water_rooms:
             return False
         if not self.inventory.has_item(CRAFT_BRIDGE):
@@ -634,7 +620,7 @@ class World:
         dc, dr = col - pc, row - pr
         far_c, far_r = col + dc, row + dr
         if (0 < far_c < COLS - 1 and 0 < far_r < ROWS - 1
-                and not self.walls[far_c][far_r]):
+                and not self.blocked(far_c, far_r)):
             self.inventory.use_item(CRAFT_BRIDGE)
             self.cells.add_bridge((col, row))
             self._bridged_tiles.setdefault(self._current_room, set()).add((col, row))
@@ -660,7 +646,7 @@ class World:
                 return
         open_tiles = [
             (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
-            if not self.walls[c][r]
+            if not self.blocked(c, r)
             and (c, r) != (self.player.col, self.player.row)
             and (c, r) not in {(e.col, e.row) for e in self.enemies}
         ]
@@ -673,7 +659,7 @@ class World:
             return
         open_tiles = [
             (c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
-            if not self.walls[c][r]
+            if not self.blocked(c, r)
             and (c, r) != (self.player.col, self.player.row)
             and (c, r) not in {(e.col, e.row) for e in self.enemies}
         ]
@@ -689,7 +675,7 @@ class World:
         key is an opaque id used for bump-consumption tracking (a bump
         requires releasing the key before it counts again).  Returns True
         if the player stepped onto a new tile."""
-        moved = self.player.try_move(dcol, drow, self.walls)
+        moved = self.player.try_move(dcol, drow, self.blocked)
         if moved:
             self._bump_consumed.discard(key)
             self._emit('moved')
@@ -700,7 +686,7 @@ class World:
         if not (0 <= tc < COLS and 0 <= tr < ROWS):
             self._try_room_transition()
             return False
-        if self.walls[tc][tr]:
+        if self.blocked(tc, tr):
             if self._try_push_block(tc, tr, dcol, drow):
                 self.player.col, self.player.row = tc, tr
                 self._bump_consumed.discard(key)
@@ -722,7 +708,7 @@ class World:
 
     def _place_wall(self):
         c, r = self.player.col, self.player.row
-        if self._place_credits > 0 and not self.walls[c][r]:
+        if self._place_credits > 0 and not self.blocked(c, r):
             self._place_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
             self._placed_walls.add((c, r))
@@ -734,7 +720,7 @@ class World:
         c, r = self.player.col, self.player.row
         active = self.inventory.active_item
         if active == CRAFT_STONE_WALL:
-            if not self.walls[c][r]:
+            if not self.blocked(c, r):
                 if self.inventory.has_item(CRAFT_STONE_WALL):
                     self.inventory.use_item(CRAFT_STONE_WALL)
                 elif self.inventory.can_quick_place_wall():
@@ -830,7 +816,7 @@ class World:
             candidates = [p for p in dist if _valid(p, 4)]
         if not candidates and room is not None:
             candidates = [p for p in room
-                          if not self.walls[p[0]][p[1]] and p not in others]
+                          if not self.blocked(p[0], p[1]) and p not in others]
         if candidates:
             enemy.col, enemy.row = random.choice(candidates)
 
@@ -877,7 +863,7 @@ class World:
             for enemy in self.enemies:
                 reserved.discard((enemy.col, enemy.row))
                 if isinstance(enemy, PatrolEnemy):
-                    enemy.move_patrol(self.walls, occupied=reserved)
+                    enemy.move_patrol(self.blocked, occupied=reserved)
                 elif (enemy.room_name is None
                       or player_room == enemy.room_name):
                     # Unconfined enemies (Act 1: no room) always chase;
@@ -888,9 +874,9 @@ class World:
                         enemy.move_bfs(dist, occupied=reserved)
                     else:
                         enemy.move_toward(self.player.col, self.player.row,
-                                          self.walls, occupied=reserved)
+                                          self.blocked, occupied=reserved)
                 else:
-                    enemy.wander(self.walls, occupied=reserved)
+                    enemy.wander(self.blocked, occupied=reserved)
                 reserved.add((enemy.col, enemy.row))
             # Forge ogres damage adjacent player-placed walls
             for enemy in self.enemies:

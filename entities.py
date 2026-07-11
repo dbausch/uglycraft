@@ -22,10 +22,11 @@ class Player(Entity):
         super().__init__(col, row)
         self.last_dir = (1, 0)    # (dcol, drow) of last attempted move
 
-    def try_move(self, dcol, drow, walls):
-        """Move if destination is open. Returns True if moved."""
+    def try_move(self, dcol, drow, blocked):
+        """Move if destination is open (blocked is a (c, r) -> bool
+        passability query, spec 0047). Returns True if moved."""
         nc, nr = self.col + dcol, self.row + drow
-        if 0 <= nc < COLS and 0 <= nr < ROWS and not walls[nc][nr]:
+        if 0 <= nc < COLS and 0 <= nr < ROWS and not blocked(nc, nr):
             self.col, self.row = nc, nr
             self.last_dir = (dcol, drow)
             return True
@@ -40,13 +41,13 @@ class Enemy(Entity):
         self.room_name = None       # graph node this enemy belongs to
         self.room_tiles = None      # set of (col, row) tiles in this room
 
-    def wander(self, walls, occupied=frozenset()):
+    def wander(self, blocked, occupied=frozenset()):
         """Move to a random adjacent tile within this enemy's room."""
         options = []
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nc, nr = self.col + dc, self.row + dr
             if (0 <= nc < COLS and 0 <= nr < ROWS
-                    and not walls[nc][nr]
+                    and not blocked(nc, nr)
                     and (nc, nr) not in occupied
                     and (self.room_tiles is None
                          or (nc, nr) in self.room_tiles)):
@@ -54,7 +55,7 @@ class Enemy(Entity):
         if options:
             self.col, self.row = random.choice(options)
 
-    def move_toward(self, px, py, walls, occupied=frozenset()):
+    def move_toward(self, px, py, blocked, occupied=frozenset()):
         dx = px - self.col
         dy = py - self.row
         if dx == 0 and dy == 0:
@@ -63,7 +64,7 @@ class Enemy(Entity):
         def can(dc, dr):
             nc, nr = self.col + dc, self.row + dr
             return (0 <= nc < COLS and 0 <= nr < ROWS
-                    and not walls[nc][nr]
+                    and not blocked(nc, nr)
                     and (nc, nr) not in occupied
                     and (self.room_tiles is None
                          or (nc, nr) in self.room_tiles))
@@ -132,7 +133,7 @@ class PatrolEnemy(Enemy):
         self._wp_idx = 0
         self._forward = True
 
-    def move_patrol(self, walls, occupied=frozenset()):
+    def move_patrol(self, blocked, occupied=frozenset()):
         if not self.waypoints:
             return
         target_col, target_row = self.waypoints[self._wp_idx]
@@ -160,10 +161,10 @@ class PatrolEnemy(Enemy):
 
         if dc != 0:
             nc = self.col + dc
-            if 0 <= nc < COLS and not walls[nc][self.row] and (nc, self.row) not in occupied:
+            if 0 <= nc < COLS and not blocked(nc, self.row) and (nc, self.row) not in occupied:
                 self.col = nc
                 return
         if dr != 0:
             nr = self.row + dr
-            if 0 <= nr < ROWS and not walls[self.col][nr] and (self.col, nr) not in occupied:
+            if 0 <= nr < ROWS and not blocked(self.col, nr) and (self.col, nr) not in occupied:
                 self.row = nr
