@@ -84,16 +84,24 @@ when no candidate room remains in the entire level.  Enforced by
 `_distribute_enemies` in `levellayout.py`; locked by
 `tests/test_enemy_room_size.py`.
 
-**R-P10** Award items exist only as challenge rewards (spec 0058): each
-locked, gated, flame, or water room carries one graph-placed award (one
-per **room**, not per protection — a locked room that also gains flames
-keeps a single award); each enemy adds one layout-placed guard award to
-its room.  Total awards per level = `#challenge rooms + #enemies placed`
-(modulo full-room spill to the corridor, the only exception).  Challenge
-counts scale with the grid count: `max(1, G // 2)` flame rooms and
-`max(1, G // 3)` water rooms per enabled level; closets are never flame
-candidates (an uncarvable closet would spill its award into its parent
-and break the accounting).  → `spec/0058-enemy-award-placement.md`.
+**R-P10** Award items exist only as challenge rewards (specs 0058/0062):
+each locked, gated, or water room carries one graph-placed award; each
+flame room carries one **layout-placed** award behind its jet (a
+doubly-protected room keeps a single award — one per **room**, not per
+protection: the flame pass moves the existing graph award to the far
+tiles); each enemy adds one layout-placed guard award to its room.
+Total awards per level = `#challenge rooms + #enemies placed` (modulo
+full-room spill to the corridor, the only exception).  Challenge counts
+scale with the grid count: `max(1, G // 2)` flame rooms (jet-capable
+rooms only, `_place_flames` — never corridors, closets, puzzle or water
+rooms; zero hostable rooms on a flame level is a loud `LayoutError`)
+and `max(1, G // 3)` water rooms per enabled level.
+*Design note (Daniel, 2026-07-12):* on EASY, `Room.from_data` keeps at
+most one regular chaser per grid, leaving ~half the guard awards
+unguarded — **a feature**, not a bug; do not re-fix.  Player-visible
+economy checks (`scratchpad/sweep_award_visibility2.py`) run on HARD.
+→ `spec/0058-enemy-award-placement.md`,
+`spec/0062-layout-stage-flames.md`.
 
 ---
 

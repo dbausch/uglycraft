@@ -543,16 +543,36 @@ into the level's biggest room. Enemy tile choice keeps the old
 enemy-pass semantics (`_pick_enemy_tile`).
 
 **Every award is a challenge reward.** Graph phase: each locked, gated,
-water, or flame room gets exactly one award at creation (one per room,
-not per protection); no unconditional sprinkles (`add_treasures` is
-gone, `treasure_count`/`enemy_count` retired). Layout phase: each enemy
-adds one guard award to its room. Flame rooms' awards are relocated to
-jet far-tiles (fallback: room floor, then corridor spill — never lost).
-Challenge scaling: `max(1, G // 2)` flame rooms, `max(1, G // 3)` water
-rooms via WATER entries prepended to `required` (`has_water` flag;
-WATER left the stochastic edge draw). Closets are never flame
-candidates. → R-P9/R-P10 in `kb/requirements.md`;
-tests: `tests/test_enemy_room_size.py`.
+or water room gets exactly one award at creation; no unconditional
+sprinkles (`add_treasures` is gone, `treasure_count`/`enemy_count`
+retired). Layout phase: each enemy adds one guard award to its room,
+and each flame room gets its award behind the jet. Challenge scaling:
+`max(1, G // 2)` flame rooms (via `graph.flame_count`),
+`max(1, G // 3)` water rooms via WATER entries prepended to `required`
+(`has_water` flag; WATER left the stochastic edge draw).
+→ R-P9/R-P10 in `kb/requirements.md`; tests:
+`tests/test_enemy_room_size.py`, `tests/test_flames.py`.
+
+**Flames are a layout concern too (spec 0062).** `add_flames` /
+`Node.has_flames` are gone — the graph records only `graph.flame_count`.
+`_place_flames` (`levellayout.py`) runs level-wide after stitching and
+**before** `_distribute_enemies`: it picks jet-capable rooms by actual
+geometry (non-corridor/closet, no plates/blocks, no WATER passage, a
+real `_generate_flame_jets` cut with far tiles from the dict-derived
+entry), relocates items off the jet line (near-side first, corridor
+spill fallback, never onto far tiles), and places the flame award on a
+far tile — a doubly-protected room's existing graph award *moves* there
+(one award per room). Zero jet-capable rooms on a `has_flames` level is
+a loud `LayoutError`. Rationale: jet generation silently failed in
+small post-0060 rooms, leaving flameless "flame rooms" with free awards
+(~1 per 4–5 levels, found by the final-world sweep
+`scratchpad/sweep_award_visibility2.py`).
+
+**EASY free awards are a feature (design decision, Daniel 2026-07-12).**
+`Room.from_data` keeps at most one regular chaser per grid on EASY, so
+about half the guard awards stand unguarded there — intentional
+difficulty tuning. Do not "re-fix" by trimming awards or retiring the
+cap; player-visible economy checks run on HARD.
 
 ## Item placement, spill, and barrier prerequisites (spec 0030)
 
