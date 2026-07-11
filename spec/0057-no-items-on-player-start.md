@@ -2,18 +2,18 @@
 
 ## Status
 
-- [ ] `build_level_dict` seeds `global_used` with `player_start` and the
+- [x] `build_level_dict` seeds `global_used` with `player_start` and the
       entrance tile for the start grid, before any item placement
-- [ ] Property test (grid counts 1–6): no treasure, material, or key of the
+- [x] Property test (grid counts 1–6): no treasure, material, or key of the
       start room sits on `player_start` or `entrance`; plates and blocks
       locked too (already safe by construction)
-- [ ] Pinned regression seed from the sweep: red before the fix, green after
-- [ ] Detector sweep (validated against the pre-fix commit): 0 violations
+- [x] Pinned regression seed from the sweep: red before the fix, green after
+- [x] Detector sweep (validated against the pre-fix commit): 0 violations
       post-fix across many seeds × levels 11–20
-- [ ] Goldens `act2_L11_walk` / `act2_L13_walk` verified byte-identical, or
+- [x] Goldens `act2_L11_walk` / `act2_L13_walk` verified byte-identical, or
       re-recorded once with a reviewed diff if their seeds are affected
-- [ ] `poe test` exits 0
-- [ ] kb updated (new invariant R-P8 in `kb/requirements.md`; item-placement
+- [x] `poe test` exits 0
+- [x] kb updated (new invariant R-P8 in `kb/requirements.md`; item-placement
       section in `kb/architecture.md`); BL-16 closed in `kb/backlog.md`
 
 ## Problem
@@ -162,16 +162,22 @@ The project has a pytest suite (`poe test`).
 
 ## Done when:
 
-- [ ] `global_used` is seeded with `player_start` and the entrance tile for
+- [x] `global_used` is seeded with `player_start` and the entrance tile for
       the start grid before push-puzzle and item placement in
-      `build_level_dict`; non-start grids unchanged
-- [ ] Property test over grid counts 1–6 asserts no treasure, material, key,
+      `build_level_dict`; non-start grids unchanged — 8ddf94b
+- [x] Property test over grid counts 1–6 asserts no treasure, material, key,
       plate, or block on `player_start`/`entrance` in the start room; a
       pre-fix violating seed is pinned and was red before the fix
-- [ ] Detector sweep validated against the pre-fix commit (≥ 1 violation
+      — tests 2c4476c (pinned: game seed 4, level 13, rocks on (14,14)),
+      fix 8ddf94b
+- [x] Detector sweep validated against the pre-fix commit (≥ 1 violation
       found there), 0 violations post-fix across ~40 seeds × levels 11–20
-- [ ] `act2_L11_walk` / `act2_L13_walk` byte-identical, or re-recorded once
+      — 8 violations pre-fix, 0 post-fix over 3612 start-room items
+      (scratchpad/sweep_items_on_start.py, 2c4476c)
+- [x] `act2_L11_walk` / `act2_L13_walk` byte-identical, or re-recorded once
       with the diff reviewed (only an item moving off `player_start`)
-- [ ] `poe test` exits 0
-- [ ] R-P8 added to `kb/requirements.md`; `kb/architecture.md` item-placement
-      section updated; BL-16 closed in `kb/backlog.md`
+      — byte-identical, no re-record
+- [x] `poe test` exits 0 — 544 passed at 8ddf94b
+- [x] R-P8 added to `kb/requirements.md`; `kb/architecture.md` item-placement
+      section updated (4fa5dc7); BL-16 closed in `kb/backlog.md`
+      — confirmed by Daniel 2026-07-11

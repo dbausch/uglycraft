@@ -239,7 +239,12 @@ resolution.
 
 ---
 
-## BL-16 · P2 · Don't place items on the player start tile (next to the entrance)
+## BL-16 · FIXED · Don't place items on the player start tile (next to the entrance)
+
+Fixed in 8ddf94b (spec/0057-no-items-on-player-start.md), confirmed by
+Daniel 2026-07-11. `global_used` is seeded with `player_start` and the
+entrance tile on the start grid (invariant R-P8 in kb/requirements.md);
+sweep went from 8 violations in 40 seeds to 0, goldens byte-identical.
 
 Treasures, materials, and keys can currently spawn on the `player_start` tile
 because `player_start` is never added to `global_used` in `build_level_dict`
