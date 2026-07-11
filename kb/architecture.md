@@ -417,16 +417,30 @@ border). No wall/block/gate/door-only stuck cases occurred, matching the proof
 that those are unreachable. Rate ≈ 1% of block-bearing multi-grid levels — rare
 but real. Script: `scratchpad/repro_bl13.py`.
 
-**Fix direction:** feed `water_tiles` into both `puzzle_passable` and
-`validate_push_puzzles`' `all_obstacles` (water is solid until a bridge is
-crafted, which the puzzle solver has no model for), and add a global post-stitch
-playability check. After that, `_verify_blocks` becomes a should-never-fire
-assertion rather than a load-bearing safety net.
+**FIXED (spec 0048, 2026-07-12).** Exactly the fix direction above, plus
+structural unification: `RoomCells.blocked` (`cells.py`, spec 0047) is now
+THE passability semantics — `World.blocked` folds in live gate state and
+blocks at runtime, and `validate_push_puzzles` builds its obstacle model
+from `build_room_cells(room_data)` with gates closed and its own block
+set, so any future barrier kind or terrain reaches both consumers
+automatically. `puzzle_passable` subtracts `water_tiles` at placement;
+`_build_super_grid` re-validates every stitched room (`LayoutError` →
+fresh-seed retry). `_verify_blocks` is demoted to a should-never-fire
+last resort: it runs only on first entry of a freshly generated room
+(player-wedged blocks on revisited rooms never regenerate the level —
+BL-36), and a mid-transition regeneration no longer teleports the player
+to the stale entry tile. Sweep: `scratchpad/sweep_stuck_blocks.py`
+(successor to the lost repro_bl13.py) — 0 stuck blocks post-fix.
+
+*Note on the table above:* the runtime column predates the spec-0047
+refactor — `_build_walls_multiroom` and the walls grid no longer exist;
+their semantics (water solid until bridged, etc.) live on byte-identically
+in `World.blocked` / `RoomCells.blocked`.
 
 → Invariants: R-V2/R-V3 in `kb/requirements.md`. Water-reachability: BL-04.
 → Block-placement code: `_place_puzzle`, `validate_push_puzzles`, `_compute_dead_squares`
-  in `levellayout.py`; runtime collision: `_build_walls_multiroom`, `_verify_blocks`
-  in `world.py` (spec 0045; → `kb/world-model-review.md`).
+  in `levellayout.py`; runtime collision: `World.blocked` + `_verify_blocks`
+  in `world.py` (specs 0045/0047/0048; → `kb/world-model-review.md`).
 
 ---
 

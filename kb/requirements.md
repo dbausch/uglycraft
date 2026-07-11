@@ -175,7 +175,10 @@ zone satisfies this invariant.
 Any non-empty return is a bug in the layout algorithm, not the validator.
 
 **R-V2** `validate_push_puzzles(room_data, tile_owner)` must return `[]` for every
-puzzle to be solvable.
+puzzle to be solvable.  Since spec 0048 its obstacle model is the runtime's own
+(`RoomCells.blocked` from `cells.py`: walls, doors, closed gates, **unbridged
+water**), it is re-run per stitched room after `_build_super_grid`, and a
+failure raises `LayoutError` (fresh-seed retry) instead of `ValueError`.
 
 **R-V3** `graph.validate_playability()` must return `[]` before `build_level_dict` is called.
 Unplayable graphs must never reach the layout stage.
