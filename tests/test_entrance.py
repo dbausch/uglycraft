@@ -7,6 +7,7 @@ grid sits in the adjacent cell, and its face toward the origin
 sits on that face, with the player start on the corridor tile directly
 inside.
 """
+import collections
 import random
 
 from hypothesis import given, settings, strategies as st
@@ -95,9 +96,26 @@ def test_grid_zero_reserved(seed, gc):
     assert g.entrance_side not in _border_sides(g, start)
 
 
+# ── Single-grid: uniform entrance side (spec 0055) ────────────────────────────
+
+def test_single_grid_entrance_side_uniform():
+    """Single-grid graphs draw their entrance side from grid zero too;
+    over 400 seeds every side gets a substantial share (uniform = 25 %).
+    Pre-fix: entrance_side is None and level-11 entrances were 64 % left /
+    30 % top / 6 % bottom / 0 % right (fixed scan order)."""
+    counts = collections.Counter()
+    for seed in range(400):
+        g = LevelGraph.generate({**FS_ALL, 'grid_count': 1},
+                                random.Random(seed))
+        assert g.entrance_side in SIDES
+        counts[g.entrance_side] += 1
+    for side in SIDES:
+        assert counts[side] >= 60, f"side share skewed: {dict(counts)}"
+
+
 # ── Level level: entrance anchoring ───────────────────────────────────────────
 
-@given(st.integers(0, 2**32 - 1), st.integers(2, 6))
+@given(st.integers(0, 2**32 - 1), st.integers(1, 6))
 @settings(max_examples=15, deadline=None)
 def test_entrance_anchored_to_player_start(seed, gc):
     g, lv = _build(seed, gc)
