@@ -571,3 +571,19 @@ preserving 9b9ed4a's intent (Act 2 enemies wander when the player is outside
 their room / on connection tiles, where `_player_room()` returns None). After
 fixing, re-record the affected spec-0044 goldens (`UGLYCRAFT_REGOLD=1`) and
 review the diff.
+
+---
+
+## BL-35 · P2 (in progress) · World-model refactor, staged
+
+World-model refactor, staged (→ kb/world-model-review.md §3, §6.6): make
+gameplay logic testable and new elements cheap to add. Step 0 (spec 0044
+characterization harness) and Stage 1 (spec 0045 World extraction, commit
+abe3d16) are DONE; remaining: Stage 2 (Act 1 as one-room Act 2 level, delete
+the `_is_multiroom` fork), Stage 3 (layered cell model, walls→barriers,
+shadow-grid migration), Stage 4 (behaviour dispatch table + signal channels),
+Stage 5 (Room as live object, delete RoomState).
+
+**Fix hint:** one numbered spec per stage, each behaviour-preserving and gated
+by the spec-0044 goldens; next up is Stage 2; fine-grained World unit tests
+accumulate from Stage 2 onward.
