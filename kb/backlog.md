@@ -19,7 +19,21 @@ no strategy passes. Confirmed by code inspection (no spec/commit reference).
 
 ---
 
-## BL-03 · P1 · Bug: Challenge items placed in wrong grid for border barriers
+## BL-03 · BY-DESIGN · Bug: Challenge items placed in wrong grid for border barriers
+
+Closed by design decision (Daniel, 2026-07-12): this item was originally about
+SOLVABILITY, and hunting across grids for a border barrier's key/plate is an
+intentional part of the challenge — prerequisite locality is not a goal. A
+review measured the scope (40 seeds x grid_count>=3 levels: 75% of
+locked-border keys and 58% of gated-border plates sit in a grid other than the
+source) and confirmed solvability is guaranteed on three layers:
+(1) validate_playability (R-V3) proves prerequisites reachable before their
+barrier at graph level; (2) layout drops of prerequisite rooms degrade the
+border to an open passage instead of leaving it locked; (3) cross-grid
+channels persist at runtime (spec 0050 errata cad68ba — the only real
+solvability threat found here, already fixed and test-locked). No unsolvable
+level was observed across the refactor play-testing. See the design note in
+kb/requirements.md.
 
 `LevelGraphBuilder.start_next_grid` picks challenge items using
 `self._current_corridor`, not the `source` (prev_corridor) argument.
