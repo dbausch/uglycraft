@@ -2,9 +2,12 @@
 
 Two placement rules for pressure plates, plus one runtime rule:
 
-1. **BL-19 (P1):** a plate must not be placed on or cardinally adjacent to
-   a room's entrance — nor adjacent to the tile the player lands on when
-   stepping through it ("step in and you're immediately beside the plate").
+1. **BL-19 (P1):** a plate must never be placed on a doorway's **landing
+   tile** (the floor tile just inside a room's entrance). Motivating idea
+   (Daniel, 2026-07-12): the solved state of the puzzle is a block parked
+   on the plate — a plate on the landing tile would let the solved puzzle
+   seal the doorway, trapping the player after they succeed. The player
+   must always be able to leave the room after solving.
 2. **New rule (Daniel, 2026-07-12):** no bridge can be built next to a
    pressure plate. Generator side: a plate is never placed cardinally
    adjacent to a water tile (so the situation cannot be generated).
@@ -16,9 +19,9 @@ Two placement rules for pressure plates, plus one runtime rule:
 
 - [ ] P1 — `_place_puzzle` takes a `plate_excluded` set; plate candidates
       (`P` loop) skip it — blocks and solution paths are NOT restricted
-- [ ] P2 — `build_level_dict` computes per-room exclusions: connection
-      tiles + their cardinal neighbours + the landing tile's cardinal
-      neighbours, for every edge of the plate's room (entrance rule)
+- [ ] P2 — `build_level_dict` computes per-room exclusions: the **landing
+      tile** of every doorway of the plate's room (entrance rule — a
+      solved puzzle must never seal an exit)
 - [ ] P3 — exclusions also cover every tile cardinally adjacent to a
       water tile (bridge rule, generator side)
 - [ ] P4 — `World._try_auto_bridge` refuses water tiles cardinally
@@ -40,23 +43,25 @@ Two placement rules for pressure plates, plus one runtime rule:
 
 Doorway `E` at **(13,5)** in the wall line between the corridor (row 4)
 and the room (rows 6+). The player stepping through lands on `L` =
-**(13,6)**. Excluded plate positions are `E`, `L`, and the cardinal
-neighbours of both (only floor tiles matter — wall/corridor tiles were
-never candidates):
+**(13,6)** — and so does a block leaving through / a block parked at the
+doorway approach. **Only `L` is forbidden**: with the plate anywhere
+else, a block sitting on it can never seal the doorway.
 
 ```
       col:  10  11  12  13  14  15  16
 row 4        .   .   .   e   .   .   .    corridor floor (e = E's outside neighbour)
 row 5        #   #   #   E   #   #   #    wall line, doorway E = (13,5)
-row 6        .   .   x   L   x   .   .    room floor;  L = (13,6) landing tile
-row 7        .   .   .   x   .   .   .
-row 8        .   .   .   .   .   .   .    ← nearest allowed plate row on this axis
+row 6        .   .   .   L   .   .   .    room floor;  L = (13,6): the ONLY
+row 7        .   .   .   .   .   .   .        excluded plate tile
+row 8        .   .   .   .   .   .   .
 ```
 
-Excluded floor tiles in the room: **L=(13,6)**, **(12,6)**, **(14,6)**,
-**(13,7)**. Applied for **every** edge incident to the plate's room
-(rooms can be entered through any of their doorways, not just the
-corridor one).
+A plate at (12,6) or (13,7) — beside the landing tile — is fine: the
+solved block stands beside the walking line, not on it. Applied for
+**every** edge incident to the plate's room (rooms can be entered
+through any of their doorways, not just the corridor one), so no exit
+can be sealed by a solved puzzle. (`E` itself is in the wall line, never
+in `floor_tiles`, so it was never a candidate.)
 
 ### Water clearance (P3, generator) — and the runtime mirror (P4)
 
@@ -107,9 +112,8 @@ per plate room:
 
 - entrance part: for each `graph.neighbors(room)` edge with both ends
   placed, `conn = _find_connection_tile(...)` (the flame-jet entry
-  pattern); exclude `conn`, its 4 cardinal neighbours, and — for each
-  conn-neighbour inside the room's `floor_tiles` (the landing tile) —
-  that tile's 4 cardinal neighbours.
+  pattern); exclude each conn-neighbour inside the room's `floor_tiles`
+  — the landing tile — and nothing else.
 - water part: 4 cardinal neighbours of every tile in the grid's
   `water_tiles`.
 
@@ -144,7 +148,7 @@ inventory use), like every other refused bridge.
 3. Property (multi-seed, mirroring the existing generation tests): for
    generated levels across the standard seed range, every plate is
    (a) not cardinally adjacent to any `water_tiles` entry of its room,
-   (b) not on/adjacent to any connection tile or landing tile of its
+   (b) not on any landing tile of its
    room. Red today for whatever fraction of seeds currently violates it;
    green after.
 
