@@ -251,7 +251,7 @@ Or directly: `.venv/bin/python main.py --level N --easy/--hard`
 
 In debug mode (`--level`) the high-score entry screen is suppressed.
 
-## Architecture (13 Python files)
+## Architecture (14 Python files)
 
 | File | Role |
 |---|---|
@@ -261,7 +261,8 @@ In debug mode (`--level`) the high-score entry screen is suppressed.
 | `entities.py` | `Player`, `Enemy`, `PatrolEnemy` — tile-grid movement, BFS pathfinding, room confinement |
 | `hiscore.py` | Top-10 score persistence to `uglycraft.hsc` |
 | `sounds.py` | `SoundManager` — 14 procedural SFX + 12 music tracks |
-| `world.py` | **Pygame-free** gameplay rules: all world state, movement/push/bump, rooms, hazards, pickups; emits a typed event stream (spec 0045) |
+| `cells.py` | Layered cell model: terrain (floor/water) + Barrier/Bridge fixtures per cell, one parser from room data (spec 0047) |
+| `world.py` | **Pygame-free** gameplay rules: all world state, movement/push/bump, rooms, hazards, pickups; passability as a query over cells; emits a typed event stream (specs 0045–0047) |
 | `game.py` | Presentation: menu state machine, input translation, rendering, inventory/crafting UI; maps world events → sounds/music/flash |
 | `main.py` | Window creation, integer scaling, top-level event loop |
 | `crafting.py` | Materials, tools, keys, recipes, `Inventory` class |
