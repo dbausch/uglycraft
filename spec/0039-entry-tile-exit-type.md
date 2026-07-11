@@ -1,5 +1,10 @@
 # Spec 0039 — Grid entry tile reflects the source exit type (BL-12)
 
+> **SUPERSEDED by spec/0056-grid-entry-tile-type.md.** Written before the
+> world-model refactor (specs 0044–0052); its game.py line references, the
+> `_gate_open` set, and the render-read mechanisms are stale. Do not implement
+> from this file.
+
 ## Status
 
 - [ ] T1 — Each multi-grid BORDER tile records its barrier type (open / locked /
