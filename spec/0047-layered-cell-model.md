@@ -13,30 +13,30 @@ Zero behaviour change, proven by byte-identical spec-0044 goldens.
 
 ## Status
 
-- [ ] T1 — `cells.py`: pygame-free cell model (`Terrain`, `Barrier`,
+- [x] T1 — `cells.py`: pygame-free cell model (`Terrain`, `Barrier`,
       `Bridge`, `RoomCells`) built once per room from the level dict
-- [ ] T2 — Dual-write + shadow assertion: every mutation updates the cell
+- [x] T2 — Dual-write + shadow assertion: every mutation updates the cell
       model; the old `walls` grid is still rebuilt and compared cell-by-cell
       (`UGLYCRAFT_SHADOW=1`, always on in the test suite)
-- [ ] T3 — All passability consumers flipped to the query: entities take a
+- [x] T3 — All passability consumers flipped to the query: entities take a
       `blocked(c, r)` callable; `_bfs_from`, spawn/relocate scans,
       push/place/bridge/bump logic, `_verify_blocks`, `_respawn_enemy`
-- [ ] T4 — Barrier-ish parallel structures die: `_level_walls`,
+- [x] T4 — Barrier-ish parallel structures die: `_level_walls`,
       `_placed_walls`, `_wall_hits`, `_room_doors`, `_room_gates`,
       `_water_tiles`, `_bridged_tiles` replaced by cell queries;
       `RoomState` snapshots `cells` instead of four wall-ish fields;
       `_update_pressure_plates` stops rebuilding anything
-- [ ] T5 — Renderer reads barriers/terrain from cells (sprite from barrier
+- [x] T5 — Renderer reads barriers/terrain from cells (sprite from barrier
       kind, crack overlay from `hits`); facade updated
-- [ ] T6 — Unit tests: `tests/test_cells.py` (red-first model tests) +
+- [x] T6 — Unit tests: `tests/test_cells.py` (red-first model tests) +
       `tests/test_world.py` extended through the query path; perf tripwire
       extended with an Act 2 hard-difficulty (BFS) case
-- [ ] T7 — All spec-0044 goldens **byte-identical**, full suite green,
+- [x] T7 — All spec-0044 goldens **byte-identical**, full suite green,
       shadow assertion silent across the suite
-- [ ] T8 — Shadow gate: user plays with `UGLYCRAFT_SHADOW=1`; **then** the
+- [x] T8 — Shadow gate: user plays with `UGLYCRAFT_SHADOW=1`; **then** the
       `walls` grid, `_build_walls`, `_build_walls_multiroom`, and the
       shadow code are deleted (separate commit, after that play session)
-- [ ] T9 — Docs: kb review Stage 3 status, feature-inventory, BL-35 note
+- [x] T9 — Docs: kb review Stage 3 status, feature-inventory, BL-35 note
 
 ## Motivation
 
@@ -240,12 +240,21 @@ Parallel change, never a flag-day:
 
 ## Done when:
 
-- [ ] T1 — `cells.py` model in place, one parser from room data
-- [ ] T2 — dual-write + shadow assertion on in the suite
-- [ ] T3 — every `walls[c][r]` consumer reads `blocked()` / the model
-- [ ] T4 — parallel wall structures deleted; `RoomState` carries `cells`
-- [ ] T5 — renderer reads the model; facade updated
-- [ ] T6 — new unit tests red→green; Act 2 perf case added
-- [ ] T7 — suite green, goldens byte-identical, shadow silent
-- [ ] T8 — user shadow-play done; grid + builders + shadow code deleted
-- [ ] T9 — docs updated
+- [x] T1 — `cells.py` model in place, one parser from room data (182367a)
+- [x] T2 — dual-write + shadow assertion on in the suite (20cb44f)
+- [x] T3 — every `walls[c][r]` consumer reads `blocked()` / the model
+      (efa18ee)
+- [x] T4 — parallel wall structures deleted; `RoomState` carries `cells`
+      (32361be)
+- [x] T5 — renderer reads the model; facade updated (a62b77d)
+- [x] T6 — new unit tests red→green; Act 2 perf case added (182367a,
+      a9f602c)
+- [x] T7 — suite green, goldens byte-identical, shadow silent (482 passed
+      with the assertion active for the whole suite before deletion)
+- [x] T8 — user shadow-play done; grid + builders + shadow code deleted
+      (32361be)
+- [x] T9 — docs updated (1e5e53f, 3c0ac02)
+
+User acceptance 2026-07-11, both gates: shadow play session
+(`UGLYCRAFT_SHADOW=1`) ran without a divergence ("works"), and the
+post-deletion normal play check passed ("yes, looks right").
