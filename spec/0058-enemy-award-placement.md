@@ -11,8 +11,9 @@
       copies dropped); `add_treasures` replaced by challenge rewards — one
       award per locked / gated / flame / water room; feature-set
       `treasure_count` / `enemy_count` keys retired
-- [ ] Challenge scaling: flame rooms doubled (`flame_count: 2`), WATER
-      draw weight ×1.5 in every water feature set
+- [ ] Challenge scaling: exactly `max(1, G // 2)` flame rooms and
+      `max(1, G // 3)` water rooms per level; WATER removed from the
+      stochastic edge draw
 - [ ] Layout phase: enemy total fixed at `2 × G`; distribution by
       the size rule (fewest-enemies candidate, largest effective size
       `e = s − k`, forge ogre first); one award item placed alongside each
@@ -27,9 +28,12 @@
 ## Revision history
 
 - **v4.1 (2026-07-11).** Enemy count fixed at exactly `2 × G` (no random
-  draw, no per-grid counter). Challenge compensation for the removed
-  award sprinkle: flame rooms doubled (`flame_count: 2`, was one), water
-  rooms' draw weight raised ×1.5.
+  draw, no per-grid counter). Challenge counts become deterministic
+  rules, compensating the removed award sprinkle: **one fire room per 2
+  grids and one water room per 3 grids in total** (`⌊G/2⌋` / `⌊G/3⌋`,
+  min 1 where the feature is enabled). WATER leaves the stochastic
+  edge-type draw. (An intermediate draw-weight variant was discarded —
+  Daniel wants counts, not probabilities.)
 - **v4 (2026-07-11).** Objective widened (Daniel): enemies and award items
   become one economy. Enemies leave the graph phase entirely (they never
   affected solvability); the layout distributor places exactly 2 per grid
@@ -91,10 +95,9 @@ Therefore an award item exists in exactly two forms, and no other:
 There are no unconditional award items. Total award count per level
 becomes `#challenge rooms + #enemies` instead of the feature set's
 `treasure_count` draw — fewer than today's 6–18 sprinkle. To compensate,
-the number of challenges grows (v4.1): flame rooms are doubled and the
-water-room draw weight rises by 50% (see "Challenge scaling" below), so
-the award economy shrinks less and the game gains challenge density —
-which is the point.
+challenge counts follow deterministic per-grid rules (v4.1, see
+"Challenge scaling" below), so the award economy shrinks less and the
+game gains challenge density — which is the point.
 
 ### Graph phase: enemies removed, awards attached to challenges
 
@@ -119,31 +122,36 @@ which is the point.
 Existing flame-room behaviour is unchanged: layout relocates a flame
 room's award to jet far-tiles, so the reward stays collectable.
 
-**Challenge scaling (v4.1)** — compensation for the retired award
-sprinkle:
+**Challenge scaling (v4.1)** — deterministic counts derived from the
+grid count `G`, compensating the retired award sprinkle. No
+probabilities: previously flame rooms were fixed at one (`has_flames` →
+one `add_flames()` call) and water rooms emerged stochastically from the
+repetition-weighted `edge_types` draw (one guaranteed via `required`,
+extras by `rng.choice`). Now:
 
-- **Flame rooms doubled.** The boolean `has_flames` feature key becomes
-  `flame_count` (levels 15–20: `2`, previously effectively 1);
-  `generate()` calls `add_flames()` that many times. Each call places one
-  flame room or silently no-ops if no candidate remains (candidates
-  exclude push-puzzle and water rooms) — the sweep verifies 2 in
-  practice.
-- **Water rooms +50% draw weight.** Room edge types are drawn from the
-  repetition-weighted `edge_types` list (`required` guarantees each
-  distinct type once; the rest is `rng.choice`). In every feature set
-  containing WATER, each entry is doubled and WATER tripled — WATER's
-  relative weight becomes exactly 1.5× (e.g. level 14:
-  `[O, B, L, W]` → `[O, O, B, B, L, L, W, W, W]`). Caveat, flagged: the
-  per-draw *probability* rises less than 50% because the total weight
-  grows too (level 14: 1/4 → 3/9 = +33%); if exactly +50% expected water
-  rooms is wanted instead, the WATER weight must be
-  `1.5 (n−1) / (n−1.5)` for an `n`-entry list — the simple 2:3 convention
-  is the default here for readability.
+- **Fire: one flame room per 2 grids** — `flame_count = max(1, G // 2)`
+  where `has_flames` is set (levels 15–20: 5–10 grids → 2–5 flame
+  rooms); `generate()` calls `add_flames()` that many times. Each call
+  marks one candidate room or silently no-ops if none remains
+  (candidates exclude push-puzzle and water rooms) — the graph test
+  asserts the exact count, tolerating fewer only when candidates ran
+  out.
+- **Water: one water room per 3 grids** — `water_count = max(1, G // 3)`
+  where water is enabled (level 14: 4 grids → 1; level 20: 10 grids →
+  3). **WATER is removed from the `edge_types` draw list**; instead
+  `water_count` WATER entries are prepended to the `required` room list
+  (which already guarantees one room per distinct edge type), so exactly
+  that many water rooms are built and the remaining `room_count` slots
+  draw from the non-WATER types. Feature sets signal water with a
+  `has_water: True` key replacing WATER's presence in `edge_types`.
+- Rounding is `floor` with a minimum of 1 wherever the feature is
+  enabled (interpretation to confirm; `G // 2` / `G // 3` never hit 0 on
+  the current feature sets anyway).
 - Plank provisioning auto-scales: `add_water_room` places 2 planks per
   water room (spec 0029 W1), so bridges stay craftable without changes.
-- More flame rooms slightly shrink the enemy-candidate pool (flame rooms
-  are never enemy hosts); the capacity check `Σ max(0, s − 2) ≥ 2G`
-  in the tests covers this.
+- Flame rooms are never enemy hosts, so more of them slightly shrink the
+  enemy-candidate pool; the capacity check `Σ max(0, s − 2) ≥ 2G` in the
+  tests covers this.
 
 ### Layout phase: enemy count, distribution, guard awards
 
@@ -264,14 +272,14 @@ New `tests/test_enemy_room_size.py` (or extension of
    `forge_ogre` among the starts, standing in a room of maximal `s`.
 7. **Graph phase:** generated graphs carry no enemy data; every
    locked/gated/flame/water room has exactly one graph award; no other
-   node has graph awards; `flame_count: 2` feature sets produce 2 flame
-   rooms (over seeds where candidates suffice).
+   node has graph awards; flame levels carry exactly `max(1, G // 2)`
+   flame rooms (fewer only if candidates ran out) and water levels
+   exactly `max(1, G // 3)` water rooms.
 8. **Manual detector sweep** (not in suite, per the statistical-sweep
    discipline): scratchpad script counting violations (over-capacity
    rooms, corridor starts, unmotivated awards), validated against the
    pre-fix commit (must find violations there), then 0 violations across
-   ≥ 100 generated levels; also reports water-rooms-per-level and
-   flame-rooms-per-level averages before/after (expect ~+50% / ×2).
+   ≥ 100 generated levels.
 
 ## Done when:
 
@@ -282,8 +290,8 @@ New `tests/test_enemy_room_size.py` (or extension of
       largest-effective within round, capacity stop, drop past capacity,
       guard-award pairing
 - [ ] Graph tests green: no enemy data on generated graphs; exactly one
-      award per challenge room and none elsewhere; 2 flame rooms on
-      `flame_count: 2` levels
+      award per challenge room and none elsewhere; `max(1, G // 2)` flame
+      and `max(1, G // 3)` water rooms per enabled level
 - [ ] Manual detector sweep: violations found pre-fix, 0 post-fix across
       ≥ 100 levels
 - [ ] All shifted goldens and canonical hashes re-recorded once and
