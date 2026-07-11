@@ -721,3 +721,23 @@ validation, wiring nets) remain listed in kb/world-model-review.md §7 for
 their future feature specs.
 
 ---
+
+## BL-39 · P2 · Placing a second crafted bridge silently consumes it without effect
+
+Long-standing observation from kb/findings.md that claimed to be "Backlog." but
+was never actually filed (discovered during the 2026-07-12 housekeeping audit).
+When the player has crafted multiple bridges, only the first placement
+succeeds; subsequent attempts consume the bridge item from inventory without
+placing anything. Root cause unknown — suspicion: `_try_auto_bridge` (world.py)
+checks the one-bridge-per-water-room rule via `_bridged_water_rooms` BEFORE the
+inventory check, so a refused re-bridge should NOT consume... the reported
+consumption path needs reproducing first. May predate spec 0029's per-room
+bridge lock.
+
+**Fix hint:** reproduce headlessly first (craft two bridges via inventory, bump
+the same/another stream, assert inventory count) — the world.py API makes this
+a ~10-line unit test now; if the consumption is real, the bug is in the
+ordering of `inventory.use_item` vs the refusal conditions in
+`_try_auto_bridge`; add the red test to tests/test_world.py.
+
+---
