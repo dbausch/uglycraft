@@ -105,7 +105,8 @@ class Game:
         def _is_reinforced(c, r):
             if c == 0 or c == COLS - 1 or r == 0 or r == ROWS - 1:
                 return True  # border is always reinforced
-            return self._level_walls.get((c, r)) == WALL_REINFORCED
+            b = self.cells.barrier(c, r)
+            return b is not None and b.kind == WALL_REINFORCED
         left  = col > 0 and _is_reinforced(col - 1, row)
         right = col < COLS - 1 and _is_reinforced(col + 1, row)
         if left or right:
@@ -454,19 +455,23 @@ class Game:
         for c in range(COLS):
             for r in range(ROWS):
                 x, y = c * TILE, r * TILE
-                if self.walls[c][r]:
+                if self.blocked(c, r):
+                    b = self.cells.barrier(c, r)
                     if is_border(c, r):
                         self.surf.blit(sp['border_wall'], (x, y))
-                    elif (c, r) in self._placed_walls:
+                    elif b is not None and b.kind == 'placed':
                         self.surf.blit(sp['placed_wall'], (x, y))
-                        hits = self._wall_hits.get((c, r), 0)
-                        if hits:
-                            self.surf.blit(sp[f'crack{hits}'], (x, y))
+                        if b.hits:
+                            self.surf.blit(sp[f'crack{b.hits}'], (x, y))
                     else:
-                        wt = self._level_walls.get((c, r), WALL_STONE)
+                        # Barrier kinds equal the WALL_* constants; door,
+                        # gate, block, and water cells fall back to the
+                        # stone base tile their overlay is drawn over,
+                        # exactly as the grid renderer did.
+                        wt = b.kind if b is not None else None
                         self.surf.blit(sp[_WALL_SPRITE.get(wt, 'wall')], (x, y))
                         if wt != WALL_REINFORCED:
-                            hits = self._wall_hits.get((c, r), 0)
+                            hits = b.hits if b is not None else 0
                             if hits:
                                 self.surf.blit(sp[f'crack{hits}'], (x, y))
                 else:
@@ -512,19 +517,19 @@ class Game:
                        'metal': 'mat_metal', 'crystal': 'mat_crystal'}
         for pc, pr, _gid in self._room_plates.get(rk, []):
             self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
-        for gate_id, (gc, gr) in self._room_gates.get(rk, {}).items():
+        for (gc, gr), gate in self.cells.barriers('gate'):
             o = self._door_orient(gc, gr)
-            base = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
+            base = 'gate_open' if gate.channel in self._gate_open else 'gate_closed'
             self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
         for bc, br in self._room_blocks.get(rk, []):
             self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
         # Detect water orientation: if any neighbor up/down is also
         # water, the stream is vertical; otherwise horizontal.
-        for wc, wr in self._water_tiles:
-            vert = ((wc, wr - 1) in self._water_tiles or
-                    (wc, wr + 1) in self._water_tiles)
+        for wc, wr in self.cells.water_tiles():
+            vert = (self.cells.is_water(wc, wr - 1) or
+                    self.cells.is_water(wc, wr + 1))
             o = 'v' if vert else 'h'
-            if (wc, wr) in self._bridged_tiles.get(self._current_room, set()):
+            if self.cells.bridge(wc, wr):
                 self.surf.blit(sp[f'bridge_{o}'], (wc * TILE, wr * TILE))
             else:
                 self.surf.blit(sp[f'water_{o}'], (wc * TILE, wr * TILE))
@@ -553,9 +558,9 @@ class Game:
                         nozzle.add(side)
                 draw_flame_at(self.surf, fc * TILE, fr * TILE,
                               intensity, connected, nozzle_sides=nozzle)
-        for dc, dr, door_color in self._room_doors.get(rk, []):
+        for (dc, dr), door in self.cells.barriers('door'):
             o = self._door_orient(dc, dr)
-            dkey = f'door_{door_color}_{o}'
+            dkey = f'door_{door.colour}_{o}'
             if dkey in sp:
                 self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
         for ok, dc, dr, _color in self._opened_doors:
@@ -1094,6 +1099,7 @@ _WORLD_ATTRS = (
     'player', 'enemies', 'inventory',
     'treasure_pos', 'treasure_item_no', 'item_no',
     'move_ms', 'enemy_ms', 'walls',
+    'cells', 'blocked',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_level_walls', '_placed_walls', '_wall_hits',
     '_place_credits', '_breaks_toward_credit',
