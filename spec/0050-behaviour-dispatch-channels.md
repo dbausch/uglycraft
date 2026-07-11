@@ -173,6 +173,8 @@ dicts and `_gate_open`.
 - [x] Q6 — docs + BL-35 updated (cd2309a, dd858af)
 
 User acceptance 2026-07-12: played — "plates and gates feel fine".
-(The cross-grid errata was found and fixed after that session; its
-red-first regression test stands in as the verification, the mechanic
-being unreachable in a quick play session.)
+The cross-grid errata (cad68ba) was found and fixed after that session;
+in a follow-up play session the user then hit the exact scenario — a
+push puzzle controlling a gate on another grid — and confirmed it
+opened and **stayed open** correctly. Errata verified in play on top of
+its red-first regression test.
