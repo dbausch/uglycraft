@@ -588,3 +588,35 @@ RoomState).
 **Fix hint:** one numbered spec per stage, each behaviour-preserving and gated
 by the spec-0044 goldens; next up is Stage 3; fine-grained World unit tests
 accumulate from Stage 2 onward.
+
+---
+
+## BL-36 · P1 · Room re-entry with a stuck block silently regenerates the whole level
+
+Reported during spec-0046 acceptance play (2026-07-11): "sometimes a grid exit
+leads you to a completely different level (you can't go back)". Root mechanism,
+reproduced headlessly and confirmed identical on pre-refactor commit 6fc59a7
+(NOT a 0045/0046 regression): `_verify_blocks` (world.py) runs on every
+`_enter_room` and, if any pushable block in the entered room has zero push
+directions, calls `regenerate_level` + `start_level` — the entire level is
+rebuilt and all progress (loot, opened doors, broken walls) is lost. Two
+triggers: (a) the player legitimately wedges a block into a corner/dead end,
+leaves the room, and returns; (b) generator-produced stuck blocks from the
+water-unaware push-puzzle validation (BL-14's known masking effect).
+Compounding bug: `_try_room_transition` continues after the regeneration and
+overwrites the player position with the STALE entry coordinates (e.g. a border
+tile like (29,8)) in the freshly regenerated start room — the player can
+materialise on a border/wall tile of an unrelated layout.
+
+**Fix hint:** `_verify_blocks` should never fire for rooms whose blocks moved
+only by player pushes (a player-wedged block is a solved/failed puzzle, not a
+broken level) — restrict the check to first entry of a freshly generated room,
+or drop the regeneration net entirely once BL-14 makes the generator's
+push-puzzle validation water-aware (kb/architecture.md fix direction). If any
+regeneration path is kept, `_try_room_transition` must not reposition the
+player after a regeneration (check whether `start_level` ran, e.g. compare
+`_level_data` identity, and skip the entry-coordinate write). Repro script: was
+scratch repro_regen.py (job tmp, wedge block at (2,2) behind three walls in a
+two-grid fixture, exit right, return).
+
+---
