@@ -85,17 +85,18 @@ unchanged and listed for completeness:
 |---|---|---|
 | 11 | horizontal, vertical, double_t, t, z, l | **horizontal, vertical** |
 | 12 | horizontal, vertical, double_t, t, z | **horizontal, vertical** |
-| 13 | horizontal, vertical, off_centre, double_t, t, z | **horizontal, vertical, t** |
-| 14 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
-| 15 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
-| 16 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
-| 17 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
-| 18 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
-| 19 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
-| 20 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
+| 13 | horizontal, vertical, off_centre, double_t, t, z | **horizontal, vertical, l** |
+| 14 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z, **+ l** |
+| 15 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z, **+ l** |
+| 16 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z, **+ l** |
+| 17 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z, **+ l** |
+| 18 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z, **+ l** |
+| 19 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z, **+ l** |
+| 20 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z, **+ l** |
 
 Levels 11–12 keep only the two plain spines; level 13 introduces the
-first stem (`t`).
+corner (`l`), and `l` joins every later level's pool (review,
+2026-07-11 — replaces the earlier `t`-at-13 trim).
 
 ### Exit sides constrained by the strategy list (review, 2026-07-11)
 
@@ -123,10 +124,19 @@ use.**
   Filtering iterates ordered side lists (process determinism, spec
   0054). A straight chain is always admissible whenever any spine is
   listed, so constrained growth cannot dead-end short of `grid_count`.
+- **The coverage pool is anchor-aware.** R-T5 filters arm strategies
+  (`z`/`s`/`l`) out on anchored grids — every non-start grid continues
+  its parent's corridor band, so only the **start grid** (built first,
+  unanchored) can lay out an `l`. `coverable_sides` therefore takes the
+  grid's anchor status: for non-start grids the pool drops `z`/`s`/`l`
+  before classification. Without this, level 13 child grids drawn with
+  perpendicular sides would pass the graph check yet still fall to
+  `full_border` at layout — the exact mismatch this spec abolishes.
 - Geometric consequence, intended: levels 11–12 grids form a **straight
-  line** along the entrance axis; level 13's `t` allows one
-  perpendicular branch per grid; richer lists (14–20) are barely
-  constrained in practice.
+  line** along the entrance axis; level 13 may **turn once, at the
+  start grid** (entrance and exit perpendicular via `l`), children
+  continuing straight; richer lists (14–20, `double_t` spine+stems in
+  the anchored pool) are barely constrained in practice.
 - `full_border` stays as the layout-time last resort (R-T5) for
   anchor-honouring failures — but side-mismatch fallbacks become
   structurally absent: a test asserts that on levels 11–13 every grid's
@@ -169,13 +179,14 @@ bounds of the table) happens inside this spec, not silently later.
    (levels 14–20 sit near 1 room per grid).
 3. **Strategy contract**: exact lists — levels 11 and 12 are
    `['horizontal', 'vertical']`, level 13 is
-   `['horizontal', 'vertical', 't']`, levels 14–20 unchanged from today.
-   Red today.
+   `['horizontal', 'vertical', 'l']`, levels 14–20 gain `l` and are
+   otherwise unchanged. Red today.
 4. **Coverable side sets**: for generated graphs of every Act 2 level,
    each grid's required side set (BORDER faces + entrance on the start
-   grid) is a subset of at least one listed strategy's coverage — i.e.
-   no grid is forced into `full_border` by side mismatch. Red today on
-   trimmed levels (mixed-axis draws exist). A companion assertion checks
+   grid) is coverable by a listed strategy **under that grid's anchor
+   status** (non-start grids: pool minus `z`/`s`/`l`) — i.e. no grid is
+   forced into `full_border` by side mismatch. Red today on trimmed
+   levels (mixed-axis draws exist). A companion assertion checks
    levels 11–12 grids are collinear (the chain consequence).
 5. **Sweep**: `scratchpad/sweep_enemy_awards.py` over ≥ 120 levels —
    0 violations of any kind.
