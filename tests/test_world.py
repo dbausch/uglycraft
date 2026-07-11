@@ -131,3 +131,78 @@ def test_buy_shield_needs_score(act1):
     act1.buy_shield()
     assert _kinds(act1.drain_events()) == ['shield_bought']
     assert act1.shield and act1.score == 50   # SHIELD_COST_PTS == 250
+
+
+# ── Cell-model behaviour through the World API (spec 0047 T6) ─────────────────
+
+def _fixture(make_level):
+    """World running a hand-built level dict via patched get_level."""
+    orig_get, orig_regen = world_mod.get_level, world_mod.regenerate_level
+    world_mod.get_level = lambda n, progress=None: make_level()
+    world_mod.regenerate_level = lambda n: make_level()
+    try:
+        random.seed(42)
+        return World('easy'), (orig_get, orig_regen)
+    finally:
+        pass
+
+
+def _restore(saved):
+    world_mod.get_level, world_mod.regenerate_level = saved
+
+
+def test_door_opens_with_key_through_query():
+    w, saved = _fixture(fx.door_level)
+    try:
+        assert w.blocked(15, 8)                       # locked door blocks
+        w.drain_events()
+        w.inventory.add_key('red')
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                          # bump -> auto-open
+        assert _kinds(w.drain_events()) == ['door_opened']
+        assert w.cells.barrier(15, 8) is None
+        assert not w.blocked(15, 8)
+        assert not w.inventory.has_key('red')
+    finally:
+        _restore(saved)
+
+
+def test_gate_follows_gate_open_state():
+    w, saved = _fixture(fx.gate_level)
+    try:
+        assert w.blocked(15, 8)                        # gate closed
+        w._gate_open.add('g1')
+        assert not w.blocked(15, 8)                    # channel high -> open
+        w._gate_open.clear()
+        assert w.blocked(15, 8)
+        assert w.cells.barrier(15, 8).kind == 'gate'   # barrier persists
+    finally:
+        _restore(saved)
+
+
+def test_block_blocks_and_push_updates_query():
+    w, saved = _fixture(fx.gate_level)
+    try:
+        rk = w._current_room
+        (bc, br) = w._room_blocks[rk][0]
+        assert w.blocked(bc, br)
+        w.drain_events()
+        w.player.col, w.player.row = bc + 1, br
+        w.try_move(-1, 0, KEY)                         # push left
+        assert _kinds(w.drain_events()) == ['bumped', 'moved']
+        assert not w.blocked(bc, br)                   # vacated
+        assert w.blocked(bc - 1, br)                   # new position blocks
+    finally:
+        _restore(saved)
+
+
+def test_bridge_makes_water_passable():
+    w, saved = _fixture(fx.water_level)
+    try:
+        water = next(iter(w.cells.water_tiles()))
+        assert w.blocked(*water)
+        w.cells.add_bridge(water)
+        assert not w.blocked(*water)
+        assert w.cells.is_water(*water)                # water is still there
+    finally:
+        _restore(saved)

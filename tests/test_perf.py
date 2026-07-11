@@ -17,3 +17,15 @@ def test_update_throughput():
         elapsed = time.perf_counter() - start
     assert len(h.trace['ticks']) == 2000
     assert elapsed < 5.0, f'2000 ticks took {elapsed:.2f}s (limit 5s)'
+
+
+def test_update_throughput_act2_hard():
+    """1000 Act 2 ticks on hard: BFS floods the grid through the
+    blocked() query every enemy tick (spec 0047) — the plausible
+    passability-as-query regression."""
+    with Harness(level=11, difficulty='hard', seed=777) as h:
+        start = time.perf_counter()
+        h.run(['press:right', 'wait:999'])          # 1000 ticks total
+        elapsed = time.perf_counter() - start
+    assert len(h.trace['ticks']) == 1000
+    assert elapsed < 5.0, f'1000 ticks took {elapsed:.2f}s (limit 5s)'
