@@ -858,6 +858,39 @@ the spec.
 
 ---
 
+## BL-45 · P1 · Unsolvable push puzzle: block on the entrance landing tile of a 2-high room
+
+Observed in play by Daniel 2026-07-12. A 2-row room entered from the top; the
+pushable block sits directly inside the entrance (on its landing tile), the
+plate in the same top row further right:
+
+```
+Wall:                      #### #######
+1st row of the room        #   B   P  #
+2nd (last row of the room) #          #
+Wall:                      ############
+
+B = Moveable Block, P = Push Plate
+```
+
+Entering the room forces a push (the only way in is through B's tile), shoving
+B into the bottom row. In a 2-high room a block in the bottom row can never be
+pushed back up (no standing row below), so the plate is unreachable — the level
+is unsolvable. The `_verify_blocks` net stays blind: the block still has free
+left/right push axes, so `push_dirs > 0`.
+
+**Fix hint:** this is the block-side mirror of R-P7 (spec 0049, plates never on
+landing tiles): `_place_puzzle` / `validate_push_puzzles` in levellayout.py
+should never place (or accept) a block START on a doorway landing tile — the
+first entry is a forced, unmodelled push. Alternatively/additionally the
+Sokoban solver's initial state must model entry: the player begins OUTSIDE the
+room, and if the sole entrance's landing tile holds the block, the forced entry
+push must be part of the search. Frequency likely raised by spec 0060's smaller
+rooms (2-high rooms are common now). Needs its own spec; verify with a detector
+sweep validated on a reproducing seed.
+
+---
+
 ## BL-44 · P1 · Interior locked doors silently elided when their key sits on another grid (orphan keys)
 
 Found in play 2026-07-11 (level 13: 5 keys, 3 doors). The spec-0030
