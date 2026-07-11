@@ -8,21 +8,21 @@ change**, proven by the spec-0044 goldens staying byte-identical.
 
 ## Status
 
-- [ ] W1 — `world.py`: `World` class owning all gameplay state + rules;
+- [x] W1 — `world.py`: `World` class owning all gameplay state + rules;
       importing it must not import pygame
-- [ ] W2 — Event stream: `World` emits typed events; `Game` drains them
+- [x] W2 — Event stream: `World` emits typed events; `Game` drains them
       once per frame and maps them to sounds/music/flash/state changes,
       preserving today's exact ordering
-- [ ] W3 — `Game` delegates: input handlers call `World` methods; per-frame
+- [x] W3 — `Game` delegates: input handlers call `World` methods; per-frame
       `update(dt)` forwards to `world.update(dt)`; key-repeat scheduling
       stays in `Game`
-- [ ] W4 — Rendering reads `World` state (draw-only; no game logic left in
+- [x] W4 — Rendering reads `World` state (draw-only; no game logic left in
       `_render_*`)
-- [ ] W5 — All spec-0044 golden files **byte-identical** (traces and
+- [x] W5 — All spec-0044 golden files **byte-identical** (traces and
       screenshots; `git diff --quiet tests/golden/`), full suite green
-- [ ] W6 — Import-isolation test: `world` (and the modules it pulls in)
+- [x] W6 — Import-isolation test: `world` (and the modules it pulls in)
       never import pygame
-- [ ] W7 — Docs: root `CLAUDE.md` architecture table, `kb/architecture.md`
+- [x] W7 — Docs: root `CLAUDE.md` architecture table, `kb/architecture.md`
       pointer, `kb/feature-inventory.md`, `kb/world-model-review.md`
       Stage 1 marked done
 
@@ -150,11 +150,23 @@ files are not re-recorded**.
 
 ## Done when:
 
-- [ ] W1 — `world.py` exists, owns the state/logic listed above; `game.py`
-      contains no gameplay rules
-- [ ] W2 — event stream in place; sound/music calls only in `Game`
-- [ ] W3 — input → `World` API; `Game.update` forwards and drains
-- [ ] W4 — `_render_*` read-only against `World`
-- [ ] W5 — full suite green with byte-identical goldens
-- [ ] W6 — import-isolation test green
-- [ ] W7 — docs updated (architecture table, kb links, Stage 1 ticked)
+- [x] W1 — `world.py` exists, owns the state/logic listed above; `game.py`
+      contains no gameplay rules (abe3d16)
+- [x] W2 — event stream in place; sound/music calls only in `Game`
+      (abe3d16 — Game pumps synchronously after every world entry point,
+      which is what preserves the exact ordering; see commit message)
+- [x] W3 — input → `World` API; `Game.update` forwards and drains
+      (abe3d16 — key repeat runs as an `input_phase` callback inside
+      `World.update`, at the old inline block's exact position)
+- [x] W4 — `_render_*` read-only against `World` (abe3d16, via read-only
+      facade properties on `Game`)
+- [x] W5 — full suite green with byte-identical goldens (abe3d16 —
+      461 passed, `tests/golden/` untouched, no re-record)
+- [x] W6 — import-isolation test green (bf155e8 dropped the dead
+      `Entity.rect()` that made entities.py import pygame; abe3d16 adds
+      `tests/test_world_isolation.py`, written red-first)
+- [x] W7 — docs updated (architecture table, kb links, Stage 1 ticked)
+      (2ca591b)
+
+User acceptance 2026-07-11: played the build — menus, Act 1, Act 2 spot
+checks fine ("didn't test everything but it seems to be ok").

@@ -115,11 +115,11 @@ This is the single biggest obstacle to the gameplay test suite.
 
 ### Stage 1 — Extract `World` from `Game`  ← do this first
 
-**Status: implemented 2026-07-11** (spec `spec/0045-world-extraction.md`) —
-`world.py` exists exactly as sketched below; all spec-0044 goldens stayed
-byte-identical, and an import-isolation test pins the no-pygame property.
-P7 is resolved. Awaiting the user's play-test before the spec checklist is
-ticked.
+**Status: done 2026-07-11** (spec `spec/0045-world-extraction.md`,
+commit `abe3d16`) — `world.py` exists exactly as sketched below; all
+spec-0044 goldens stayed byte-identical, an import-isolation test pins
+the no-pygame property, and the user play-tested the build. P7 is
+resolved.
 
 New module (e.g. `world.py`): a `World` class owning player position,
 enemies, rooms, inventory, and all world mutation rules — **no pygame
