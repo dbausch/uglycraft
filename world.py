@@ -38,6 +38,29 @@ def is_border(col, row):
     return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
 
 
+def _as_multiroom(data):
+    """Normalise a level dict to the multiroom shape (spec 0046).
+
+    Act 1 dicts (no 'rooms') become one-room multiroom levels.  The single
+    room is keyed None — the 0044 golden traces record _current_room every
+    tick, and Act 1 has always reported None.  Only 'walls' and
+    'enemy_starts' go into the room dict; every other room key is read
+    with .get(..., default) downstream, so the empty defaults apply.
+    The wrapper is runtime-only: levels.py's authoring format, and the
+    direct get_level() reads of 'player_start'/'crown_pos', are untouched.
+    """
+    if 'rooms' in data:
+        return data
+    return {
+        'rooms': {None: {'walls': data['walls'],
+                         'enemy_starts': data['enemy_starts']}},
+        'start_room': None,
+        'player_start': data['player_start'],
+        'spawn_mode': 'sequential',
+        'crafting': False,
+    }
+
+
 def _flame_tile_intensity(jet, tile_idx, timer_ms):
     """Compute flame intensity (0.0-1.0) for a tile in a jet.
 
@@ -151,8 +174,6 @@ class World:
 
     def _is_unbumpable(self, col, row):
         """Check if (col, row) is a door, gate, or pushable block."""
-        if not self._is_multiroom:
-            return False
         rk = self._current_room
         for dc, dr, _ in self._room_doors.get(rk, []):
             if dc == col and dr == row:
@@ -195,10 +216,7 @@ class World:
         self._wall_hits.pop((col, row), None)
         self._level_walls.pop((col, row), None)
         self._placed_walls.discard((col, row))
-        if self._is_multiroom:
-            self._build_walls_multiroom()
-        else:
-            self._build_walls()
+        self._build_walls_multiroom()
         self._emit('wall_broken')
         self._breaks_toward_credit += 1
         if self._breaks_toward_credit >= BREAKS_PER_CREDIT:
@@ -211,7 +229,11 @@ class World:
     def start_level(self, level_num):
         self.level = level_num
         self.item_no  = 0
-        data = get_level(level_num, progress=self._progress)
+        data = _as_multiroom(get_level(level_num, progress=self._progress))
+        # Per-level rules (spec 0046): generated dicts carry neither key
+        # and get the Act 2 defaults; the Act 1 wrapper sets both.
+        self.spawn_mode = data.get('spawn_mode', 'preplaced')
+        self.crafting   = data.get('crafting', True)
 
         # Refund one credit per placed wall being cleared
         self._place_credits += len(self._placed_walls)
@@ -219,60 +241,47 @@ class World:
         self._wall_hits.clear()
         self._bump_consumed.clear()
 
-        # Multi-room setup
-        self._is_multiroom = 'rooms' in data
         self._room_states = {}
-        self._current_room = None
         self._level_data = data
         self._transition_timer = 0
 
-        if self._is_multiroom:
-            self._current_room = data['start_room']
-            pc, pr = data['player_start']
-            self.player = Player(pc, pr)
-            # Pre-placed treasures and materials: gather from all rooms
-            self._loot_total = 0
-            self._loot_collected = 0
-            self._room_treasures = {}
-            self._room_materials = {}
-            self._room_keys = {}
-            self._room_doors = {}
-            self._room_blocks = {}
-            self._room_plates = {}
-            self._room_gates = {}
-            self._bridged_tiles = {}
-            self._gate_open = set()  # set of currently open gate_ids
-            for rkey, rdata in data['rooms'].items():
-                treasures = list(rdata.get('treasures', []))
-                self._room_treasures[rkey] = treasures
-                self._loot_total += len(treasures)
-                self._room_materials[rkey] = list(rdata.get('materials', []))
-                self._room_keys[rkey] = list(rdata.get('keys', []))
-                self._room_doors[rkey] = list(rdata.get('locked_doors', []))
-                self._room_blocks[rkey] = list(rdata.get('pushable_blocks', []))
-                self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
-                self._room_gates[rkey] = {gid: (gc, gr)
-                                           for gc, gr, gid in rdata.get('gates', [])}
-            self.treasure_pos = None
-            self._opened_doors = set()
-            # Water rooms already made accessible by a bridge.  One bridge per
-            # water room (spec 0029 W2): once a room is reachable, no further
-            # bridge to it can be built.  Replaces the old per-grid bridge cap.
-            self._bridged_water_rooms = set()
-            self._tile_owner = {}
-            self._room_blocks_initial = {
-                rk: list(self._room_blocks[rk])
-                for rk in self._room_blocks}
-            self._enter_room(self._current_room)
-        else:
-            self._level_walls = parse_level_walls(data['walls'])
-            self._build_walls()
-            pc, pr = data['player_start']
-            self.player = Player(pc, pr)
-            starts = data['enemy_starts']
-            active = starts if (self.difficulty == HARD and level_num != ACT1_BOSS_LEVEL) \
-                     else starts[:1]
-            self.enemies = [Enemy(ec, er) for ec, er in active]
+        self._current_room = data['start_room']
+        pc, pr = data['player_start']
+        self.player = Player(pc, pr)
+        # Pre-placed treasures and materials: gather from all rooms
+        self._loot_total = 0
+        self._loot_collected = 0
+        self._room_treasures = {}
+        self._room_materials = {}
+        self._room_keys = {}
+        self._room_doors = {}
+        self._room_blocks = {}
+        self._room_plates = {}
+        self._room_gates = {}
+        self._bridged_tiles = {}
+        self._gate_open = set()  # set of currently open gate_ids
+        for rkey, rdata in data['rooms'].items():
+            treasures = list(rdata.get('treasures', []))
+            self._room_treasures[rkey] = treasures
+            self._loot_total += len(treasures)
+            self._room_materials[rkey] = list(rdata.get('materials', []))
+            self._room_keys[rkey] = list(rdata.get('keys', []))
+            self._room_doors[rkey] = list(rdata.get('locked_doors', []))
+            self._room_blocks[rkey] = list(rdata.get('pushable_blocks', []))
+            self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
+            self._room_gates[rkey] = {gid: (gc, gr)
+                                       for gc, gr, gid in rdata.get('gates', [])}
+        self.treasure_pos = None
+        self._opened_doors = set()
+        # Water rooms already made accessible by a bridge.  One bridge per
+        # water room (spec 0029 W2): once a room is reachable, no further
+        # bridge to it can be built.  Replaces the old per-grid bridge cap.
+        self._bridged_water_rooms = set()
+        self._tile_owner = {}
+        self._room_blocks_initial = {
+            rk: list(self._room_blocks[rk])
+            for rk in self._room_blocks}
+        self._enter_room(self._current_room)
 
         # Speed scaling
         if level_num >= ACT2_START_LEVEL:
@@ -290,7 +299,7 @@ class World:
 
         self.shield = False
         self._shield_timer = 0
-        if not self._is_multiroom:
+        if self.spawn_mode == 'sequential':
             self._spawn_treasure()
         self._move_timer   = 0
         self._enemy_timer  = 0
@@ -363,8 +372,6 @@ class World:
 
     def _verify_blocks(self):
         """Check blocks are pushable. Regenerate level if any are stuck."""
-        if not self._is_multiroom:
-            return
         rk = self._current_room
         for bc, br in self._room_blocks.get(rk, []):
             push_dirs = 0
@@ -448,8 +455,6 @@ class World:
 
     def _try_room_transition(self):
         """Check if the player is on an exit tile and transition if so."""
-        if not self._is_multiroom:
-            return False
         result = find_exit(self.player.col, self.player.row,
                            self._current_room_data)
         if result is None:
@@ -481,8 +486,6 @@ class World:
 
     def _collect_materials(self):
         """Check if the player is standing on a material pickup (Act 2)."""
-        if not self._is_multiroom:
-            return
         pc, pr = self.player.col, self.player.row
         room_key = self._current_room
         materials = self._room_materials.get(room_key, [])
@@ -495,8 +498,6 @@ class World:
 
     def _collect_keys(self):
         """Check if the player is standing on a key pickup (Act 2)."""
-        if not self._is_multiroom:
-            return
         pc, pr = self.player.col, self.player.row
         room_key = self._current_room
         keys = self._room_keys.get(room_key, [])
@@ -511,8 +512,6 @@ class World:
 
     def _update_pressure_plates(self):
         """Check pressure plates and open/close linked gates."""
-        if not self._is_multiroom:
-            return
         room_key = self._current_room
         plates = self._room_plates.get(room_key, [])
         if not plates:
@@ -537,8 +536,6 @@ class World:
 
     def _try_push_block(self, bc, br, dcol, drow):
         """Try to push a block at (bc, br) in direction (dcol, drow)."""
-        if not self._is_multiroom:
-            return False
         room_key = self._current_room
         blocks = self._room_blocks.get(room_key, [])
         for i, (bx, by) in enumerate(blocks):
@@ -556,8 +553,6 @@ class World:
 
     def _try_auto_open_door(self, col, row):
         """Open a locked door at (col, row) if the player has the key."""
-        if not self._is_multiroom:
-            return False
         room_key = self._current_room
         doors = self._room_doors.get(room_key, [])
         for i, (door_c, door_r, door_color) in enumerate(doors):
@@ -581,8 +576,6 @@ class World:
         target room is not yet accessible, and the tile connects to open floor
         on the opposite side.
         """
-        if not self._is_multiroom:
-            return False
         water = getattr(self, '_water_tiles', set())
         if (col, row) not in water:
             return False
@@ -662,8 +655,7 @@ class World:
         tr = self.player.row + drow
         # Off-screen: grid transition if at an exit
         if not (0 <= tc < COLS and 0 <= tr < ROWS):
-            if self._is_multiroom:
-                self._try_room_transition()
+            self._try_room_transition()
             return False
         if self.walls[tc][tr]:
             if self._try_push_block(tc, tr, dcol, drow):
@@ -679,8 +671,8 @@ class World:
         self._bump_consumed.discard(key)
 
     def place(self):
-        """SPACE: place the active item (Act 1 wall / Act 2 crafted item)."""
-        if self._is_multiroom:
+        """SPACE: place the active item (credit wall / crafted item)."""
+        if self.crafting:
             self._act2_place()
         else:
             self._place_wall()
@@ -690,7 +682,7 @@ class World:
         if self._place_credits > 0 and not self.walls[c][r]:
             self._place_credits -= 1
             self._placed_walls.add((c, r))
-            self._build_walls()
+            self._build_walls_multiroom()
             self._emit('wall_placed')
 
     def _act2_place(self):
@@ -706,10 +698,7 @@ class World:
                 else:
                     return
                 self._placed_walls.add((c, r))
-                if self._is_multiroom:
-                    self._build_walls_multiroom()
-                else:
-                    self._build_walls()
+                self._build_walls_multiroom()
                 self._emit('wall_placed')
 
     def buy_shield(self):
@@ -750,8 +739,7 @@ class World:
         else:
             data = get_level(self.level)
             self.player.col, self.player.row = data['player_start']
-            if self._is_multiroom:
-                self._reset_blocks()
+            self._reset_blocks()
 
     def _reset_blocks(self):
         """Reset all pushable blocks to their starting positions and close
@@ -759,8 +747,7 @@ class World:
         for rk, initial in self._room_blocks_initial.items():
             self._room_blocks[rk] = list(initial)
         self._gate_open.clear()
-        if self._is_multiroom:
-            self._build_walls_multiroom()
+        self._build_walls_multiroom()
 
     def _forge_ogre_attack(self, enemy):
         """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""
@@ -835,7 +822,7 @@ class World:
         if self._enemy_timer >= self.enemy_ms:
             self._enemy_timer -= self.enemy_ms
             reserved = {(e.col, e.row) for e in self.enemies}
-            player_room = self._player_room() if self._is_multiroom else None
+            player_room = self._player_room()
 
             if self.difficulty == HARD:
                 dist = self._bfs_from(self.player.col, self.player.row)
@@ -864,7 +851,7 @@ class World:
                 if isinstance(enemy, ForgeOgre):
                     self._forge_ogre_attack(enemy)
 
-            if not self._is_multiroom:
+            if self.spawn_mode == 'sequential':
                 for enemy in self.enemies:
                     if (enemy.col, enemy.row) == self.treasure_pos:
                         self._relocate_treasure()
@@ -872,7 +859,7 @@ class World:
 
         # Treasure collection (checked before enemy collision so the player
         # can grab a treasure even if an enemy is on the same tile)
-        if self._is_multiroom:
+        if self.spawn_mode == 'preplaced':
             self._collect_loot()
         else:
             if (self.player.col, self.player.row) == self.treasure_pos:
@@ -890,7 +877,7 @@ class World:
                 return
 
         # Flame jets (Act 2)
-        if self._is_multiroom and self._flame_jets:
+        if self._flame_jets:
             self._flame_timer += dt
             if not self.shield:
                 pc, pr = self.player.col, self.player.row

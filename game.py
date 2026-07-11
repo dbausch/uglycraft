@@ -297,7 +297,7 @@ class Game:
                 self.world.buy_shield()
             elif k == pygame.K_SPACE:
                 self.world.place()
-            elif k == pygame.K_TAB and self._is_multiroom:
+            elif k == pygame.K_TAB and self.crafting:
                 self.state = INVENTORY
                 self._inv_cursor = 0
                 self.sounds.pause_music()
@@ -475,100 +475,102 @@ class Game:
                     else:
                         self.surf.blit(sp['floor'], (x, y))
 
+        # Every level is a one-or-more-room multiroom level (spec 0046):
+        # the room collections below always exist and are simply empty on
+        # Act 1, so none of these blocks needs an act gate any more.
+        rk = self._current_room
+
         # Level entrance sprite at the start-grid entry border tile
-        # (_current_room_data exists only on the multiroom path — BL-33)
-        if self._is_multiroom and 'entrance' in self._current_room_data:
+        if 'entrance' in self._current_room_data:
             ec, er = self._current_room_data['entrance']
             self.surf.blit(sp['level_entrance'], (ec * TILE, er * TILE))
 
         # Staircase sprite at grid border exits
-        if self._is_multiroom:
-            for exit_key in self._current_room_data.get('exits', {}):
-                side, pos_str = exit_key.rsplit('_', 1)
-                pos = int(pos_str)
-                if side == 'right':    sc, sr = COLS - 1, pos
-                elif side == 'left':   sc, sr = 0,        pos
-                elif side == 'bottom': sc, sr = pos, ROWS - 1
-                else:                  sc, sr = pos, 0
-                self.surf.blit(sp['staircase'], (sc * TILE, sr * TILE))
+        for exit_key in self._current_room_data.get('exits', {}):
+            side, pos_str = exit_key.rsplit('_', 1)
+            pos = int(pos_str)
+            if side == 'right':    sc, sr = COLS - 1, pos
+            elif side == 'left':   sc, sr = 0,        pos
+            elif side == 'bottom': sc, sr = pos, ROWS - 1
+            else:                  sc, sr = pos, 0
+            self.surf.blit(sp['staircase'], (sc * TILE, sr * TILE))
 
-        # Treasure
-        if self._is_multiroom:
-            rk = self._current_room
-            for tc, tr, item_no in self._room_treasures.get(rk, []):
-                if item_no in sp:
-                    self.surf.blit(sp[item_no], (tc * TILE, tr * TILE))
-        elif self.treasure_pos:
+        # Treasure: pre-placed loot (Act 2) and the sequential item (Act 1)
+        # are mutually exclusive by data — room treasures are empty on Act 1,
+        # treasure_pos is None on Act 2.
+        for tc, tr, item_no in self._room_treasures.get(rk, []):
+            if item_no in sp:
+                self.surf.blit(sp[item_no], (tc * TILE, tr * TILE))
+        if self.treasure_pos:
             tc, tr = self.treasure_pos
             tz = self.treasure_item_no
             if tz in sp:
                 self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
         # Act 2 overlays: plates, gates, blocks, doors, keys, materials
-        if self._is_multiroom:
-            _MAT_SPRITE = {'rocks': 'mat_rocks', 'planks': 'mat_planks',
-                           'metal': 'mat_metal', 'crystal': 'mat_crystal'}
-            for pc, pr, _gid in self._room_plates.get(rk, []):
-                self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
-            for gate_id, (gc, gr) in self._room_gates.get(rk, {}).items():
-                o = self._door_orient(gc, gr)
-                base = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
-                self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
-            for bc, br in self._room_blocks.get(rk, []):
-                self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
-            # Detect water orientation: if any neighbor up/down is also
-            # water, the stream is vertical; otherwise horizontal.
-            for wc, wr in self._water_tiles:
-                vert = ((wc, wr - 1) in self._water_tiles or
-                        (wc, wr + 1) in self._water_tiles)
-                o = 'v' if vert else 'h'
-                if (wc, wr) in self._bridged_tiles.get(self._current_room, set()):
-                    self.surf.blit(sp[f'bridge_{o}'], (wc * TILE, wr * TILE))
-                else:
-                    self.surf.blit(sp[f'water_{o}'], (wc * TILE, wr * TILE))
-            _DIR_SUFFIX = {(1,0): 'r', (-1,0): 'l', (0,1): 'd', (0,-1): 'u'}
-            for jet in self._flame_jets:
-                dc, dr = jet.get('dir', (1, 0))
-                d = _DIR_SUFFIX.get((dc, dr), 'r')
-                sc, sr = jet.get('source', jet['tiles'][0])
-                src_key = f'flame_source_{d}'
-                if src_key in sp:
-                    self.surf.blit(sp[src_key], (sc * TILE, sr * TILE))
-                tile_set = jet['_tile_set']
-                source = jet.get('source')
-                for idx, (fc, fr) in enumerate(jet['tiles']):
-                    intensity = _flame_tile_intensity(
-                        jet, idx, self._flame_timer)
-                    connected = set()
-                    nozzle = set()
-                    for side, (dc, dr) in (('l', (-1, 0)), ('r', (1, 0)),
-                                            ('u', (0, -1)), ('d', (0, 1))):
-                        adj = (fc + dc, fr + dr)
-                        if adj in tile_set:
-                            connected.add(side)
-                        elif adj == source:
-                            connected.add(side)
-                            nozzle.add(side)
-                    draw_flame_at(self.surf, fc * TILE, fr * TILE,
-                                  intensity, connected, nozzle_sides=nozzle)
-            for dc, dr, door_color in self._room_doors.get(rk, []):
-                o = self._door_orient(dc, dr)
-                dkey = f'door_{door_color}_{o}'
-                if dkey in sp:
-                    self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
-            for ok, dc, dr, _color in self._opened_doors:
-                if ok != rk:
-                    continue
-                o = self._door_orient(dc, dr)
-                self.surf.blit(sp[f'door_open_{o}'], (dc * TILE, dr * TILE))
-            for kc, kr, key_color in self._room_keys.get(rk, []):
-                kkey = f'key_{key_color}'
-                if kkey in sp:
-                    self.surf.blit(sp[kkey], (kc * TILE, kr * TILE))
-            for mc, mr, mat_type in self._room_materials.get(rk, []):
-                skey = _MAT_SPRITE.get(mat_type)
-                if skey and skey in sp:
-                    self.surf.blit(sp[skey], (mc * TILE, mr * TILE))
+        _MAT_SPRITE = {'rocks': 'mat_rocks', 'planks': 'mat_planks',
+                       'metal': 'mat_metal', 'crystal': 'mat_crystal'}
+        for pc, pr, _gid in self._room_plates.get(rk, []):
+            self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
+        for gate_id, (gc, gr) in self._room_gates.get(rk, {}).items():
+            o = self._door_orient(gc, gr)
+            base = 'gate_open' if gate_id in self._gate_open else 'gate_closed'
+            self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
+        for bc, br in self._room_blocks.get(rk, []):
+            self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
+        # Detect water orientation: if any neighbor up/down is also
+        # water, the stream is vertical; otherwise horizontal.
+        for wc, wr in self._water_tiles:
+            vert = ((wc, wr - 1) in self._water_tiles or
+                    (wc, wr + 1) in self._water_tiles)
+            o = 'v' if vert else 'h'
+            if (wc, wr) in self._bridged_tiles.get(self._current_room, set()):
+                self.surf.blit(sp[f'bridge_{o}'], (wc * TILE, wr * TILE))
+            else:
+                self.surf.blit(sp[f'water_{o}'], (wc * TILE, wr * TILE))
+        _DIR_SUFFIX = {(1,0): 'r', (-1,0): 'l', (0,1): 'd', (0,-1): 'u'}
+        for jet in self._flame_jets:
+            dc, dr = jet.get('dir', (1, 0))
+            d = _DIR_SUFFIX.get((dc, dr), 'r')
+            sc, sr = jet.get('source', jet['tiles'][0])
+            src_key = f'flame_source_{d}'
+            if src_key in sp:
+                self.surf.blit(sp[src_key], (sc * TILE, sr * TILE))
+            tile_set = jet['_tile_set']
+            source = jet.get('source')
+            for idx, (fc, fr) in enumerate(jet['tiles']):
+                intensity = _flame_tile_intensity(
+                    jet, idx, self._flame_timer)
+                connected = set()
+                nozzle = set()
+                for side, (dc, dr) in (('l', (-1, 0)), ('r', (1, 0)),
+                                        ('u', (0, -1)), ('d', (0, 1))):
+                    adj = (fc + dc, fr + dr)
+                    if adj in tile_set:
+                        connected.add(side)
+                    elif adj == source:
+                        connected.add(side)
+                        nozzle.add(side)
+                draw_flame_at(self.surf, fc * TILE, fr * TILE,
+                              intensity, connected, nozzle_sides=nozzle)
+        for dc, dr, door_color in self._room_doors.get(rk, []):
+            o = self._door_orient(dc, dr)
+            dkey = f'door_{door_color}_{o}'
+            if dkey in sp:
+                self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
+        for ok, dc, dr, _color in self._opened_doors:
+            if ok != rk:
+                continue
+            o = self._door_orient(dc, dr)
+            self.surf.blit(sp[f'door_open_{o}'], (dc * TILE, dr * TILE))
+        for kc, kr, key_color in self._room_keys.get(rk, []):
+            kkey = f'key_{key_color}'
+            if kkey in sp:
+                self.surf.blit(sp[kkey], (kc * TILE, kr * TILE))
+        for mc, mr, mat_type in self._room_materials.get(rk, []):
+            skey = _MAT_SPRITE.get(mat_type)
+            if skey and skey in sp:
+                self.surf.blit(sp[skey], (mc * TILE, mr * TILE))
 
         # Enemies / boss
         if self.level == ACT1_BOSS_LEVEL:
@@ -624,7 +626,7 @@ class Game:
             (f"LEVEL {self.level:>2}",               HUD_TEXT),
             (f"LIVES {self.lives:>2}",               HUD_LIFE),
         ]
-        if self._is_multiroom:
+        if self.spawn_mode == 'preplaced':
             elems.append((f"LOOT {self._loot_collected:>2}/{self._loot_total}", GOLD))
         else:
             elems.append((f"SEEK: {item_name:<{max_name}}", HUD_TEXT))
@@ -1092,7 +1094,7 @@ _WORLD_ATTRS = (
     'player', 'enemies', 'inventory',
     'treasure_pos', 'treasure_item_no', 'item_no',
     'move_ms', 'enemy_ms', 'walls',
-    '_is_multiroom', '_current_room', '_current_room_data',
+    'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_level_walls', '_placed_walls', '_wall_hits',
     '_place_credits', '_breaks_toward_credit',
     '_room_treasures', '_room_materials', '_room_keys', '_room_doors',
