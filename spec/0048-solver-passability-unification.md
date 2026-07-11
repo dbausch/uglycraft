@@ -11,28 +11,28 @@ generator-integration traces must stay byte-identical.
 
 ## Status
 
-- [ ] U1 — `RoomCells.blocked(c, r, gate_open)` extracted as THE barrier/
+- [x] U1 — `RoomCells.blocked(c, r, gate_open)` extracted as THE barrier/
       water passability semantics; `World.blocked` delegates to it
       (behaviour-preserving, goldens byte-identical)
-- [ ] U2 — `validate_push_puzzles` builds its obstacle model from
+- [x] U2 — `validate_push_puzzles` builds its obstacle model from
       `build_room_cells(room_data)` via U1's query — water becomes an
       obstacle exactly as at runtime (red-first fixture test)
-- [ ] U3 — Placement side: `puzzle_passable` in `build_level_dict`
+- [x] U3 — Placement side: `puzzle_passable` in `build_level_dict`
       subtracts `water_tiles`, so solutions are never routed across water
       in the first place
-- [ ] U4 — Post-stitch check: `_build_super_grid` re-runs
+- [x] U4 — Post-stitch check: `_build_super_grid` re-runs
       `validate_push_puzzles` on every room of the stitched level;
       failure raises `LayoutError` (→ fresh-seed retry)
-- [ ] U5 — `_verify_blocks` demoted: runs only on **first entry of a
+- [x] U5 — `_verify_blocks` demoted: runs only on **first entry of a
       freshly generated room** (never on `RoomState` restore, so
       player-wedged blocks never regenerate the level); after a
       mid-transition regeneration the transition code no longer
       repositions the player onto the stale entry tile
-- [ ] U6 — Recreated headless sweep (`scratchpad/sweep_stuck_blocks.py`):
+- [x] U6 — Recreated headless sweep (`scratchpad/sweep_stuck_blocks.py`):
       0 stuck blocks across ≥ 25 seeds × block-bearing Act 2 levels
-- [ ] U7 — Full suite green; goldens byte-identical except, at most, the
+- [x] U7 — Full suite green; goldens byte-identical except, at most, the
       two seeded generator traces (see "Golden policy")
-- [ ] U8 — Docs: `kb/architecture.md` BL-13/BL-14 section updated (fix
+- [x] U8 — Docs: `kb/architecture.md` BL-13/BL-14 section updated (fix
       recorded + stale post-0047 code references refreshed), BL-14 and
       BL-36 closed in the backlog, `kb/requirements.md` R-V2 note
 
@@ -179,12 +179,25 @@ golden must stay byte-identical. No other re-record is acceptable.
 
 ## Done when:
 
-- [ ] U1 — `RoomCells.blocked` extracted, `World.blocked` delegates
-- [ ] U2 — validator obstacle model comes from `build_room_cells`
-- [ ] U3 — `puzzle_passable` subtracts water tiles
-- [ ] U4 — post-stitch `validate_push_puzzles` gate in `_build_super_grid`
-- [ ] U5 — `_verify_blocks` fresh-entry-only; no stale reposition after
-      mid-transition regeneration
-- [ ] U6 — sweep recreated, 0 stuck blocks
-- [ ] U7 — suite green; golden policy honoured
-- [ ] U8 — docs + backlog (BL-14, BL-36 closed; BL-35 fix hint updated)
+- [x] U1 — `RoomCells.blocked` extracted, `World.blocked` delegates (bcfd1b7)
+- [x] U2 — validator obstacle model comes from `build_room_cells` (bcfd1b7)
+- [x] U3 — `puzzle_passable` subtracts water tiles (bcfd1b7)
+- [x] U4 — post-stitch `validate_push_puzzles` gate in `_build_super_grid`
+      (bcfd1b7 — with `require_plates=False`: cross-grid border gates carry
+      their plate+block puzzle in another grid by design, discovered when
+      the first version false-positived on 4 branching generation tests;
+      both validation raises are now retryable `LayoutError`)
+- [x] U5 — `_verify_blocks` fresh-entry-only; no stale reposition after
+      mid-transition regeneration (bcfd1b7)
+- [x] U6 — sweep recreated (`scratchpad/sweep_stuck_blocks.py`, e053630):
+      0 stuck blocks across 250 levels / 175 block-bearing
+      (kb baseline before the fix: 2/175)
+- [x] U7 — 488 passed; ALL goldens byte-identical — levels 11/13 (seed 777)
+      have no water-adjacent puzzles, so not even the two permitted
+      re-records were needed (bcfd1b7)
+- [x] U8 — docs (fcb1db0) + backlog (BL-14, BL-36 closed via agent)
+
+User acceptance 2026-07-12: wedged two blocks against each other in play,
+left and re-entered the room — the level was not regenerated.  (The
+mutual-wedge observation also fed BL-37: group ignition, and the explode
+feature superseding the on-death block reset.)
