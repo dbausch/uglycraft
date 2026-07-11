@@ -17,8 +17,9 @@ layered-cell / Room-object / channel architecture.
 - [ ] B2 — The border-exit render loop selects the tile sprite from the
       recorded barrier type via a pure sprite-key helper — locked door
       (open or closed, tracking the source door's true state) / gate (open
-      or closed, tracking its channel) — with stairs drawn only for a plain
-      open border
+      or closed, tracking its channel) — and draws **nothing** for a plain
+      open border (the punched gap in the border wall is the marker); the
+      staircase blit is removed from this loop entirely
 - [ ] B3 — Automated tests green: unit tests for the sprite-key mapping,
       a stitch test asserting matching records on both room dicts, and the
       full suite (`poe test`) passes with the spec-0044 goldens unchanged
@@ -83,6 +84,15 @@ consumption, channel/gate logic, bump dispatch, and `find_exit` transitions
 stay exactly as they are. The source barrier's *appearance* — including its
 live open/closed state — is mirrored onto the entry tile.
 
+**Design constraint (review, 2026-07-11): stairs are reserved for future
+floor-to-floor travel. No entry/exit within the same floor may ever show the
+staircase sprite.** All BORDER crossings are same-floor, so this spec does
+not merely stop showing stairs on barrier tiles — it removes the staircase
+blit from the border-exit loop altogether. An open border is rendered as
+nothing: the punched gap in the border wall (plain floor) is the visual
+marker. The `staircase` sprite itself stays in `sprites.py` for the future
+inter-floor feature.
+
 ### B1 — record the barrier type on both room dicts at stitch time
 
 The renderer has no access to graph edges, so the barrier type must travel on
@@ -133,22 +143,24 @@ so no runtime entity is mirrored — render-only, both kinds.
 
 In the border-exit loop (`game.py` 504–512), after `(sc, sr)` is computed
 from the exit key, look up `self._current_room_data.get('border_barriers',
-{}).get(exit_key)` and blit **one** sprite chosen by a **pure helper**
-(module-level function taking the record, the orientation, the set of open
-channels, and the opened-doors set; returning a sprite-key string — no
-pygame, unit-testable):
+{}).get(exit_key)` and blit **at most one** sprite chosen by a **pure
+helper** (module-level function taking the record, the orientation, the set
+of open channels, and the opened-doors set; returning a sprite-key string,
+or `None` for "draw nothing" — no pygame, unit-testable):
 
 | Record | Condition | Sprite key |
 |---|---|---|
-| missing or `('open', None, None)` | — | `staircase` (today's behaviour) |
+| missing or `('open', None, None)` | — | `None` — nothing blitted; the tile shows the plain floor gap |
 | `('locked', colour, home)` | `(home_room, hc, hr, colour)` in `self._opened_doors` | `door_open_{o}` |
 | `('locked', colour, home)` | otherwise | `door_{colour}_{o}` |
 | `('gated', gate_id, None)` | `self.channel(gate_id)` | `gate_open_{o}` |
 | `('gated', gate_id, None)` | otherwise | `gate_closed_{o}` |
 
 All sprites already exist in the sprite dict: `door_{colour}_{v|h}`
-(sprites.py:1191–1192), `door_open_{v|h}` (1193–1194), `staircase` (1195),
-`gate_closed_{v|h}` / `gate_open_{v|h}` (1207–1210).
+(sprites.py:1191–1192), `door_open_{v|h}` (1193–1194),
+`gate_closed_{v|h}` / `gate_open_{v|h}` (1207–1210). The `staircase` sprite
+(1195) is no longer referenced by this loop (reserved for inter-floor
+travel).
 
 **Orientation** `o` comes from the existing `self._door_orient(sc, sr)`
 helper (game.py:112), the same one the door/gate overlay passes use. On a
@@ -158,12 +170,13 @@ border tiles (col 0 or 29) have floor beside them and border above/below →
 left/right → `'v'`. So the entry sprite's orientation always matches the
 source's.
 
-**The sprite is drawn instead of the staircase, not under it.** On the exit
-side this is idempotent: the later overlay passes (gate pass, door pass,
-opened-door pass) repaint the very same sprite at the same tile, because the
-record's state conditions coincide with the entity state by construction
-(same channel, same `_opened_doors` entry). On the entry side there is no
-overlay, so the record-selected sprite is what shows.
+**The unconditional staircase blit is deleted, not overdrawn.** On the exit
+side the record-selected sprite is idempotent with the later overlay passes
+(gate pass, door pass, opened-door pass), which repaint the very same sprite
+at the same tile, because the record's state conditions coincide with the
+entity state by construction (same channel, same `_opened_doors` entry). On
+the entry side there is no overlay, so the record-selected sprite — or the
+bare floor gap, for open borders — is what shows.
 
 **State semantics** (why the two conditional rows are correct):
 
@@ -205,7 +218,8 @@ manual user-acceptance check.
 1. **Unit tests — sprite-key helper** (no display needed; string in,
    string out; alongside the existing headless render tests in
    `tests/test_render.py` or a small new module):
-   - missing record and `('open', None, None)` → `staircase`
+   - missing record and `('open', None, None)` → `None` (nothing drawn —
+     and in particular never `staircase`)
    - `('locked', 'red', home)` with the home tuple absent from the
      opened-doors set → `door_red_h` / `door_red_v` per orientation
    - same with the home tuple present → `door_open_h` / `door_open_v`
@@ -225,7 +239,8 @@ manual user-acceptance check.
 4. **Manual visual check** (user acceptance, B4): `poe run --level 13` (and
    higher multi-grid levels, e.g. 15/18/20) until a border of each kind is
    found; cross it and look back at the entry tile:
-   - open border → stairs, as today;
+   - open border → a plain floor gap in the border wall, **no stairs on
+     either side**;
    - locked border → the just-opened door is shown **open** on the entry
      tile (not stairs, not a closed door demanding a second key);
    - gated border → the gate, mirroring its live state — open while the
@@ -240,10 +255,11 @@ manual user-acceptance check.
       checks; degraded borders record `('open', None, None)`; `exits` and
       `border_barriers` keys are 1:1. (stitch test of Verification 2 green)
 - [ ] B2 — The border-exit render loop draws the record-selected sprite via
-      the pure sprite-key helper — stairs only for open borders; locked
-      doors track the source door's opened state through `_opened_doors`
-      via the record's `home`; gates track their channel. (helper unit
-      tests of Verification 1 green)
+      the pure sprite-key helper — nothing (plain floor gap) for open
+      borders, the staircase sprite never appearing on any same-floor
+      entry/exit; locked doors track the source door's opened state through
+      `_opened_doors` via the record's `home`; gates track their channel.
+      (helper unit tests of Verification 1 green)
 - [ ] B3 — Full `poe test` suite green, spec-0044 goldens unchanged (no
       re-recording).
 - [ ] B4 — Manual check per Verification 4: the user has explicitly
