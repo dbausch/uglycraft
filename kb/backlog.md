@@ -736,7 +736,7 @@ their future feature specs.
 
 ---
 
-## BL-39 · P2 · Placing a second crafted bridge silently consumes it without effect
+## BL-39 · UNREPRODUCIBLE · Placing a second crafted bridge silently consumes it without effect
 
 Long-standing observation from kb/findings.md that claimed to be "Backlog." but
 was never actually filed (discovered during the 2026-07-12 housekeeping audit).
@@ -753,5 +753,15 @@ the same/another stream, assert inventory count) — the world.py API makes this
 a ~10-line unit test now; if the consumption is real, the bug is in the
 ordering of `inventory.use_item` vs the refusal conditions in
 `_try_auto_bridge`; add the red test to tests/test_world.py.
+
+Closed as unreproducible (2026-07-12, prompted by Daniel suspecting staleness):
+the prescribed reproduction (two crafted bridges, repeated bumps on an
+already-bridged water room across multiple stream tiles) passes on current
+code — every refusal path in `_try_auto_bridge` (world.py) returns before
+`inventory.use_item`, so a refused bridge cannot consume. The permanent guard
+test `test_refused_bridge_never_consumes_the_item` (tests/test_world.py,
+commit 7343bbb) pins the ordering. The original observation probably predates
+spec 0029, whose per-water-room lock replaced the old per-grid
+`_bridges_remaining` cap. kb/findings.md entry updated accordingly (97d41bc).
 
 ---
