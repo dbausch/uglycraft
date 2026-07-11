@@ -10,27 +10,27 @@ costing ~10 touch points.
 
 ## Status
 
-- [ ] Q1 — Signal channels: plates are emitters, `World.channel(name)` is
+- [x] Q1 — Signal channels: plates are emitters, `World.channel(name)` is
       the query, gates receive; the channel table is **latched once per
       tick at exactly the point `_update_pressure_plates` runs today**
       (and re-latched in `_reset_blocks`), so gate-opening timing is
       byte-identical; `_gate_open` is deleted
-- [ ] Q2 — Bump dispatch: `_register_bump`'s kind-chain becomes barrier
+- [x] Q2 — Bump dispatch: `_register_bump`'s kind-chain becomes barrier
       policy dispatch (door → key-open, breakable → damage/break,
       border/reinforced/gate → inert) + water-terrain → bridge attempt;
       precedence provably identical
-- [ ] Q3 — Items become a cell layer: treasures/materials/keys move from
+- [x] Q3 — Items become a cell layer: treasures/materials/keys move from
       the three per-room list-dicts into `cells` (item layer, indexed by
       position); collection dispatches on item kind **at the two existing
       collection points** (loot before enemy collision, pickups at tick
       end), at most one item per category per tick, exactly as today;
       `RoomState` drops three more fields
-- [ ] Q4 — Render dispatch: barrier-kind → sprite and item-kind → sprite
+- [x] Q4 — Render dispatch: barrier-kind → sprite and item-kind → sprite
       come from tables; blit **category order stays hardcoded and
       identical** (golden screenshots pin the pixels)
-- [ ] Q5 — All goldens byte-identical; unit tests red-first (channel
+- [x] Q5 — All goldens byte-identical; unit tests red-first (channel
       latch, barrier policies, item dispatch)
-- [ ] Q6 — Docs: kb review Stage 4 done, feature-inventory, BL-35 note
+- [x] Q6 — Docs: kb review Stage 4 done, feature-inventory, BL-35 note
 
 ## Motivation
 
@@ -156,9 +156,23 @@ dicts and `_gate_open`.
 
 ## Done when:
 
-- [ ] Q1 — channels latched, `_gate_open` deleted
-- [ ] Q2 — bump via barrier policies, kind-chain gone
-- [ ] Q3 — items in cells, three room dicts + RoomState fields deleted
-- [ ] Q4 — render tables, category order pinned
-- [ ] Q5 — suite green, goldens byte-identical, unit tests red→green
-- [ ] Q6 — docs + BL-35 updated
+- [x] Q1 — channels latched, `_gate_open` deleted (401ac18; **errata
+      cad68ba**: the first latch recomputed wholesale and wiped channels
+      held high from other grids — cross-grid gated barriers closed on
+      grid entry.  Neither goldens nor the 23-test net covered cross-grid
+      channel persistence; found during Stage 5 design review, fixed
+      red-first: the latch now touches only the local plates' channels,
+      exactly the old add/discard scope)
+- [x] Q2 — bump via barrier policies, kind-chain gone (401ac18)
+- [x] Q3 — items in cells, three room dicts + RoomState fields deleted
+      (401ac18)
+- [x] Q4 — render tables, category order pinned (401ac18)
+- [x] Q5 — suite green, goldens byte-identical, unit tests red→green
+      (401ac18 — 23-test net: 18 behaviour locks + 5 API pins; cad68ba
+      adds the cross-grid channel lock; 517 passed)
+- [x] Q6 — docs + BL-35 updated (cd2309a, dd858af)
+
+User acceptance 2026-07-12: played — "plates and gates feel fine".
+(The cross-grid errata was found and fixed after that session; its
+red-first regression test stands in as the verification, the mechanic
+being unreachable in a quick play session.)
