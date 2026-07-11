@@ -333,6 +333,43 @@ The old all-or-nothing fallback (any unstitchable edge → rebuild *every* grid 
 frame layouts once openings were corridor-restricted. `full_border` is now chosen
 per grid only when no spine/stem strategy can honour that grid's anchor.
 
+### Entrance & grid zero (spec 0053, BL-31)
+
+The outside of the dungeon is **grid zero** at super-grid origin `(0,0)` —
+reserved, empty, invisible, non-reachable (no `Node`, no `Edge`; the entrance
+border tile stays solid wall and the entrance is a sprite, `game.py`).
+
+- `LevelGraph.generate` (multi-grid only) draws grid zero's pseudo-exit side
+  `S`, puts the spanning-tree root at `delta(S)`, sets the root corridor's
+  `super_pos` explicitly, and records `graph.entrance_side = opposite(S)`.
+  `_spanning_tree(n, rng, root, blocked)` skips blocked cells (`{(0,0)}`) on
+  every Prim step, so no grid — root child or later frontier growth — can
+  occupy the origin, and no BORDER edge can ever use the entrance face.
+  Start grid branching is therefore capped at 3 BORDER exits.
+- `_build_super_grid` adds `entrance_side` to the start corridor's
+  `required_sides` (strategy must cover it; R-S1 makes the corridor reach it;
+  3 BORDER exits + entrance ⇒ `full_border`) and threads it into
+  `build_level_dict` → `_pick_entrance`.
+- `_pick_entrance` has two modes: with `entrance_side` (start grid) it places
+  the entrance deterministically — centre-most on-side corridor tile =
+  `player_start`, border tile outside = `entrance` — and raises `LayoutError`
+  if the corridor misses the side (unreachable per R-S1). Without it
+  (single-grid levels, and non-start grids' enemy-distance reference tile) it
+  scans sides in (left, top, bottom, right) order skipping `occupied_sides`;
+  the old col-0 fallback survives only as the never-surfaced reference-tile
+  case for non-start grids whose reached sides are all BORDER-occupied.
+- Golden note: the multi-grid rng stream shifted (one extra draw + blocked
+  origin); `act2_L13_walk` was re-recorded. It remains flaky per process due
+  to PYTHONHASHSEED-dependent generation (pre-existing, exposed by the new
+  L13 layout) — see BL-40.
+- Grid zero must stay upgradeable to a real grid: a future spec may open the
+  entrance on a condition (e.g. all loot collected) into a generated
+  grid-zero area (per-level boss arena). The entrance sits at a stitch-
+  compatible border-face position, so the upgrade is an `exits` entry plus a
+  condition-gated barrier.
+
+→ Invariant: R-T6 in `kb/requirements.md`. Tests: `tests/test_entrance.py`.
+
 ### Data flow summary
 
 ```

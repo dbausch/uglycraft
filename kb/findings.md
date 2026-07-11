@@ -36,6 +36,18 @@
 
 ### Python
 
+**Level generation depends on PYTHONHASHSEED (BL-40):** the same game seed
+produces different Act 2 level content in different Python processes —
+`get_level(13)` under `set_game_seed(777)` yields 4 distinct canonical
+hashes for `PYTHONHASHSEED=0..3`. Cause: iteration order over str-keyed
+sets/dicts feeding `rng.choice` or placement (e.g.
+`_pick(list(self._reachable))` in `levelgraph.py`). Pre-dates spec 0053
+(verified by stash-diff on ffdbf12) but was exposed by it: the new level-13
+layout makes the variance trace-visible, so the golden
+`act2_L13_walk` passes/fails per process until BL-40 is fixed.
+Entrance/player-start positions were hash-stable in all observed variants;
+the varying part is other content. → `kb/backlog.md` BL-40.
+
 **`_respawn_enemy` may leave enemy on player tile:** If BFS finds no tile ≥ 8 tiles away AND no tile ≥ 4 tiles away, the enemy is not moved. On the next update tick, the player-on-enemy check will immediately trigger another catch (instant repeated death).
 
 **Level 9 player start near the divider:** Player starts at (15, 8). The double divider walls are at cols 14 and 15, but only for rows 1–5 and 10–14. Row 8 is open at col 15, so the start is valid — but the player is one step from the divider, mirroring the Pascal original's tight start position.

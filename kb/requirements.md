@@ -142,6 +142,20 @@ across the border (BL-29 / spec 0042). Two parts:
   deferred"). Band coverage is still complete: left/right bands come from spines
   (≤ 3) and wide top/bottom bands from stems.
 
+**R-T6** Grid zero (spec 0053): multi-grid graphs reserve the super-grid
+origin `(0,0)` as the outside of the dungeon. The spanning tree may never
+occupy it (blocked on every Prim step); the start grid sits at `delta(S)` of
+grid zero's random pseudo-exit side `S`, and `graph.entrance_side =
+opposite(S)` — the start grid's face toward the origin — never carries a
+BORDER edge. That side is part of the start grid's required exits, so the
+corridor reaches it (R-S1), and holds the **level entrance**: the border tile
+outside the centre-most on-side corridor tile, with `player_start` on the
+corridor tile directly inside (adjacent by construction, and never beside a
+locked/gated border door). Single-grid graphs have `entrance_side = None` and
+use the unoccupied-side scan. Grid zero must stay upgradeable to a real grid
+(condition-gated entrance opening, e.g. boss arena) — see spec 0053 "Future
+extension".
+
 ---
 
 ## S — Layout strategies
