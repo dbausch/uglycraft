@@ -501,11 +501,11 @@ class Game:
             self.surf.blit(sp['staircase'], (sc * TILE, sr * TILE))
 
         # Treasure: pre-placed loot (Act 2) and the sequential item (Act 1)
-        # are mutually exclusive by data — room treasures are empty on Act 1,
+        # are mutually exclusive by data — the item layer is empty on Act 1,
         # treasure_pos is None on Act 2.
-        for tc, tr, item_no in self._room_treasures.get(rk, []):
-            if item_no in sp:
-                self.surf.blit(sp[item_no], (tc * TILE, tr * TILE))
+        for (tc, tr), item in self.cells.items_of_kind('treasure'):
+            if item.payload in sp:
+                self.surf.blit(sp[item.payload], (tc * TILE, tr * TILE))
         if self.treasure_pos:
             tc, tr = self.treasure_pos
             tz = self.treasure_item_no
@@ -519,7 +519,7 @@ class Game:
             self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
         for (gc, gr), gate in self.cells.barriers('gate'):
             o = self._door_orient(gc, gr)
-            base = 'gate_open' if gate.channel in self._gate_open else 'gate_closed'
+            base = 'gate_open' if self.channel(gate.channel) else 'gate_closed'
             self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
         for bc, br in self._room_blocks.get(rk, []):
             self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
@@ -568,12 +568,12 @@ class Game:
                 continue
             o = self._door_orient(dc, dr)
             self.surf.blit(sp[f'door_open_{o}'], (dc * TILE, dr * TILE))
-        for kc, kr, key_color in self._room_keys.get(rk, []):
-            kkey = f'key_{key_color}'
+        for (kc, kr), item in self.cells.items_of_kind('key'):
+            kkey = f'key_{item.payload}'
             if kkey in sp:
                 self.surf.blit(sp[kkey], (kc * TILE, kr * TILE))
-        for mc, mr, mat_type in self._room_materials.get(rk, []):
-            skey = _MAT_SPRITE.get(mat_type)
+        for (mc, mr), item in self.cells.items_of_kind('material'):
+            skey = _MAT_SPRITE.get(item.payload)
             if skey and skey in sp:
                 self.surf.blit(sp[skey], (mc * TILE, mr * TILE))
 
@@ -1099,11 +1099,10 @@ _WORLD_ATTRS = (
     'player', 'enemies', 'inventory',
     'treasure_pos', 'treasure_item_no', 'item_no',
     'move_ms', 'enemy_ms',
-    'cells', 'blocked',
+    'cells', 'blocked', 'channel',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_place_credits', '_breaks_toward_credit',
-    '_room_treasures', '_room_materials', '_room_keys',
-    '_room_blocks', '_room_plates', '_gate_open',
+    '_room_blocks', '_room_plates',
     '_opened_doors', '_dead_squares',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',

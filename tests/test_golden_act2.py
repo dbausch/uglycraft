@@ -39,7 +39,7 @@ def test_gate_plate_block():
     # after death the block is back at (6,8): gate closed again
     rk = h.game._current_room
     assert h.game._room_blocks[rk] == [(6, 8)]
-    assert not h.game._gate_open
+    assert not h.game.world._channels
     assert_golden('act2_gate', trace)
 
 

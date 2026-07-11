@@ -5,20 +5,15 @@ from constants import COLS, ROWS, WALL_STONE
 class RoomState:
     """Snapshot of a single room's mutable state.
 
-    cells (the spec-0047 layered model) carries the room's walls, doors,
-    gates, water/bridges, and bump damage; items and enemies keep their
-    own lists until their refactor stages."""
+    cells (the spec-0047/0050 layered model) carries the room's walls,
+    doors, gates, water/bridges, bump damage, and items; enemies and
+    pushable blocks keep their own lists until Stage 5."""
 
-    __slots__ = ('cells', 'enemies', 'treasures', 'materials', 'keys',
-                 'blocks')
+    __slots__ = ('cells', 'enemies', 'blocks')
 
-    def __init__(self, cells, enemies,
-                 treasures=None, materials=None, keys=None, blocks=None):
+    def __init__(self, cells, enemies, blocks=None):
         self.cells = cells
         self.enemies = enemies
-        self.treasures = treasures or []
-        self.materials = materials or []
-        self.keys = keys or []
         self.blocks = blocks or []
 
 

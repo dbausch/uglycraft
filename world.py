@@ -29,7 +29,7 @@ from levels import (TOTAL_LEVELS, get_level, new_game_levels,
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import RoomState, find_exit
 from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
-from cells import Barrier, RoomCells, build_room_cells
+from cells import BARRIER_BUMP, Barrier, RoomCells, build_room_cells
 
 NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10
@@ -162,32 +162,39 @@ class World:
         the cached walls grid — nothing to rebuild, nothing to forget."""
         if not (0 <= c < COLS and 0 <= r < ROWS):
             return True
-        if self.cells.blocked(c, r, self._gate_open):
+        if self.cells.blocked(c, r, self._channels):
             return True
         if (c, r) in self._room_blocks.get(self._current_room, []):
             return True
         return False
 
+    def channel(self, name):
+        """Signal-channel query (spec 0050 Q1, kb review R2): receivers
+        (gate barriers — later levers, lasers, pistons) ask only this.
+        The table is latched once per tick at the plate pass, so state
+        changes become visible exactly when the old _gate_open did."""
+        return name in self._channels
+
     def _register_bump(self, key, col, row):
         """Called when the player walks into wall (col, row) via direction key."""
         if key in self._bump_consumed:
             return  # key not released since last hit — ignore
-        # Doors and bridges can be on border tiles (grid transitions)
-        if self._try_auto_open_door(col, row):
-            return
-        if self._try_auto_bridge(col, row):
-            return
-        if is_border(col, row):
-            return  # indestructible border (no door/bridge here)
         barrier = self.cells.barrier(col, row)
         if barrier is None:
-            return  # pushable block or unbridged water — not bumpable
-        if barrier.kind in (WALL_REINFORCED, 'door', 'gate'):
-            return  # indestructible / keyless door / gate
+            # No fixture: unbridged water (a bridge attempt) or a pushable
+            # block (inert; the push already failed before we got here).
+            self._try_auto_bridge(col, row)
+            return
+        action = BARRIER_BUMP[barrier.kind]
+        if action == 'key':
+            self._try_auto_open_door(col, row)
+            return
+        if action is None:
+            return  # border / reinforced / gate: inert
+        # breakable: `action` is the hits threshold
         self._bump_consumed.add(key)
-        hits_needed = WALL_BUMPS.get(barrier.kind, WALL_HITS_TO_BREAK)
         hits = barrier.hits + 1
-        if hits >= hits_needed:
+        if hits >= action:
             self._break_wall(col, row)
         else:
             barrier.hits = hits
@@ -229,18 +236,11 @@ class World:
         # Pre-placed treasures and materials: gather from all rooms
         self._loot_total = 0
         self._loot_collected = 0
-        self._room_treasures = {}
-        self._room_materials = {}
-        self._room_keys = {}
         self._room_blocks = {}
         self._room_plates = {}
-        self._gate_open = set()  # set of currently open gate_ids
+        self._channels = set()   # latched high channel names (spec 0050)
         for rkey, rdata in data['rooms'].items():
-            treasures = list(rdata.get('treasures', []))
-            self._room_treasures[rkey] = treasures
-            self._loot_total += len(treasures)
-            self._room_materials[rkey] = list(rdata.get('materials', []))
-            self._room_keys[rkey] = list(rdata.get('keys', []))
+            self._loot_total += len(rdata.get('treasures', []))
             self._room_blocks[rkey] = list(rdata.get('pushable_blocks', []))
             self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
         self.treasure_pos = None
@@ -292,9 +292,6 @@ class World:
             st = self._room_states[room_key]
             self.cells = st.cells
             self.enemies = st.enemies
-            self._room_treasures[room_key] = st.treasures
-            self._room_materials[room_key] = st.materials
-            self._room_keys[room_key] = st.keys
             self._room_blocks[room_key] = st.blocks
         else:
             self.cells = build_room_cells(room_data)
@@ -386,9 +383,6 @@ class World:
         self._room_states[rk] = RoomState(
             cells=self.cells,
             enemies=list(self.enemies),
-            treasures=list(self._room_treasures.get(rk, [])),
-            materials=list(self._room_materials.get(rk, [])),
-            keys=list(self._room_keys.get(rk, [])),
             blocks=list(self._room_blocks.get(rk, [])),
         )
 
@@ -416,64 +410,61 @@ class World:
 
     # ── Pickups ───────────────────────────────────────────────────────────────
 
+    def _collect_item(self, kind):
+        """Collect at most ONE item of `kind` at the player's tile —
+        the per-category one-per-tick semantics the goldens pin."""
+        pos = (self.player.col, self.player.row)
+        for item in self.cells.items(*pos):
+            if item.kind != kind:
+                continue
+            self.cells.remove_item(pos, item)
+            return item
+        return None
+
     def _collect_loot(self):
-        """Check if the player is standing on a pre-placed treasure (Act 2)."""
-        pc, pr = self.player.col, self.player.row
-        room_key = self._current_room
-        treasures = self._room_treasures.get(room_key, [])
-        for i, (tc, tr, item_no) in enumerate(treasures):
-            if pc == tc and pr == tr:
-                self.score += TREASURE_POINTS.get(item_no, 0)
-                self._emit('collected')
-                treasures.pop(i)
-                self._loot_collected += 1
-                if self._loot_collected >= self._loot_total:
-                    self.advance_level()
-                return
+        """Pre-placed treasure at the player's tile (Act 2)."""
+        item = self._collect_item('treasure')
+        if item is not None:
+            self.score += TREASURE_POINTS.get(item.payload, 0)
+            self._emit('collected')
+            self._loot_collected += 1
+            if self._loot_collected >= self._loot_total:
+                self.advance_level()
 
     def _collect_materials(self):
-        """Check if the player is standing on a material pickup (Act 2)."""
-        pc, pr = self.player.col, self.player.row
-        room_key = self._current_room
-        materials = self._room_materials.get(room_key, [])
-        for i, (mc, mr, mat_type) in enumerate(materials):
-            if pc == mc and pr == mr:
-                self.inventory.add_material(mat_type)
-                self._emit('collected')
-                materials.pop(i)
-                return
+        """Material pickup at the player's tile (Act 2)."""
+        item = self._collect_item('material')
+        if item is not None:
+            self.inventory.add_material(item.payload)
+            self._emit('collected')
 
     def _collect_keys(self):
-        """Check if the player is standing on a key pickup (Act 2)."""
-        pc, pr = self.player.col, self.player.row
-        room_key = self._current_room
-        keys = self._room_keys.get(room_key, [])
-        for i, (kc, kr, key_color) in enumerate(keys):
-            if pc == kc and pr == kr:
-                self.inventory.add_key(key_color)
-                self._emit('collected')
-                keys.pop(i)
-                return
+        """Key pickup at the player's tile (Act 2)."""
+        item = self._collect_item('key')
+        if item is not None:
+            self.inventory.add_key(item.payload)
+            self._emit('collected')
 
     # ── Act 2 mechanics ───────────────────────────────────────────────────────
 
-    def _update_pressure_plates(self):
-        """Check pressure plates and open/close linked gates."""
+    def _latch_channels(self):
+        """THE plate pass (spec 0050 Q1): recompute the channel table
+        wholesale from plate occupancy.  Runs once per tick at exactly the
+        position the old _update_pressure_plates mutated _gate_open, so
+        gate-opening timing is unchanged.  Future emitters (levers,
+        buttons) fold into this same latch."""
         room_key = self._current_room
         plates = self._room_plates.get(room_key, [])
-        if not plates:
+        if not plates and not self._channels:
             return
 
         occupied = {(self.player.col, self.player.row)}
         occupied.update((e.col, e.row) for e in self.enemies)
         block_set = set(self._room_blocks.get(room_key, []))
 
-        for pc, pr, gate_id in plates:
-            pressed = (pc, pr) in occupied or (pc, pr) in block_set
-            if pressed:
-                self._gate_open.add(gate_id)
-            else:
-                self._gate_open.discard(gate_id)
+        self._channels = {
+            gate_id for pc, pr, gate_id in plates
+            if (pc, pr) in occupied or (pc, pr) in block_set}
 
     def _try_push_block(self, bc, br, dcol, drow):
         """Try to push a block at (bc, br) in direction (dcol, drow)."""
@@ -686,7 +677,9 @@ class World:
         any gates that were held open by blocks on plates."""
         for rk, initial in self._room_blocks_initial.items():
             self._room_blocks[rk] = list(initial)
-        self._gate_open.clear()
+        # Close everything synchronously (the old _gate_open.clear()):
+        # the next plate pass re-latches from the reset occupancy.
+        self._channels = set()
 
     def _forge_ogre_attack(self, enemy):
         """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""
@@ -832,8 +825,8 @@ class World:
                                 self._lose_life()
                                 return
 
-        # Pressure plates (Act 2)
-        self._update_pressure_plates()
+        # Pressure plates (Act 2): the channel latch pass
+        self._latch_channels()
 
         # Pickups (Act 2)
         self._collect_materials()

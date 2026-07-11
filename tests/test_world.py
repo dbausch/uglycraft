@@ -58,7 +58,7 @@ def test_act1_is_wrapped_single_room(act1):
     assert act1._current_room is None
     assert act1.spawn_mode == 'sequential'
     assert act1.crafting is False
-    assert act1._room_treasures == {None: []}
+    assert list(act1.cells.items_of_kind('treasure')) == []
     assert act1._level_data['start_room'] is None
 
 
@@ -168,13 +168,13 @@ def test_door_opens_with_key_through_query():
         _restore(saved)
 
 
-def test_gate_follows_gate_open_state():
+def test_gate_follows_channel_state():
     w, saved = _fixture(fx.gate_level)
     try:
         assert w.blocked(15, 8)                        # gate closed
-        w._gate_open.add('g1')
+        w._channels.add('g1')
         assert not w.blocked(15, 8)                    # channel high -> open
-        w._gate_open.clear()
+        w._channels.clear()
         assert w.blocked(15, 8)
         assert w.cells.barrier(15, 8).kind == 'gate'   # barrier persists
     finally:

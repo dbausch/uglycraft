@@ -16,14 +16,15 @@ Barrier opening policies mirror the generator's EdgeType semantics:
     gate(channel)         blocks iff its channel is low
 
 Passability is NOT answered here: World.blocked(c, r) folds barrier,
-terrain/bridge, and the occupant block list together, because gate state
-(_gate_open) and blocks live on the World.  This module is pygame-free
+terrain/bridge, and the occupant block list together, because the latched
+channel state and the blocks live on the World.  This module is pygame-free
 (pinned by the spec-0045 import-isolation test via world.py).
 """
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from constants import COLS, ROWS
+from constants import (COLS, ROWS, WALL_BUMPS, WALL_HITS_TO_BREAK,
+                       WALL_STONE, WALL_WOODEN)
 from rooms import parse_level_walls
 
 
@@ -35,19 +36,41 @@ class Terrain(Enum):
 @dataclass
 class Barrier:
     """Cell-filling fixture: partitions the grid, entities bump into it.
-    Kinds 'stone'/'wooden'/'reinforced' equal the WALL_* constants, so
-    WALL_BUMPS.get(kind, WALL_HITS_TO_BREAK) yields today's exact hit
-    counts (placed walls fall through to the default 3)."""
+    Kinds 'stone'/'wooden'/'reinforced' equal the WALL_* constants;
+    what bumping does is the BARRIER_BUMP table below."""
     kind: str                   # 'border' | 'reinforced' | 'stone' | 'wooden'
                                 #   | 'placed' | 'door' | 'gate'
     colour: str = None          # doors
     channel: str = None         # gates: the gate_id
     hits: int = 0               # bump damage (breakable kinds)
 
-    def blocks(self, gate_open=frozenset()):
+    def blocks(self, channels=frozenset()):
         if self.kind == 'gate':
-            return self.channel not in gate_open
+            return self.channel not in channels
         return True
+
+
+# Bump dispatch table (spec 0050 Q2): what bumping a barrier does.
+#   None  → inert (never opens by bumping)
+#   'key' → door: opens on key match
+#   int   → breakable: hits required to break
+BARRIER_BUMP = {
+    'border':     None,
+    'reinforced': None,
+    'gate':       None,
+    'door':       'key',
+    WALL_STONE:   WALL_BUMPS[WALL_STONE],      # 3
+    WALL_WOODEN:  WALL_BUMPS[WALL_WOODEN],     # 2
+    'placed':     WALL_HITS_TO_BREAK,          # 3
+}
+
+
+@dataclass
+class Item:
+    """Pickup lying on a cell (spec 0050 Q3): kind ∈ 'treasure' |
+    'material' | 'key'; payload = item_no / material type / colour."""
+    kind: str
+    payload: object
 
 
 class RoomCells:
@@ -59,6 +82,7 @@ class RoomCells:
         self._water = {}        # (c, r) -> water_room node (or None)
         self._barriers = {}     # (c, r) -> Barrier, insertion-ordered
         self._bridges = set()   # (c, r) with a Bridge fixture
+        self._items = {}        # (c, r) -> [Item, ...], insertion-ordered
 
     # ── Queries ───────────────────────────────────────────────────────────────
 
@@ -86,16 +110,39 @@ class RoomCells:
     def bridge(self, c, r):
         return (c, r) in self._bridges
 
-    def blocked(self, c, r, gate_open=frozenset()):
+    def blocked(self, c, r, channels=frozenset()):
         """THE barrier/terrain passability semantics (spec 0048 U1):
-        a blocking barrier (gates consult gate_open) or unbridged water.
-        Bounds and occupants (pushable blocks) are the caller's layers —
-        the runtime folds in live gate state and the block list, the
-        push-puzzle validator uses gate_open=∅ and its own block set."""
+        a blocking barrier (gates consult the high channels) or unbridged
+        water.  Bounds and occupants (pushable blocks) are the caller's
+        layers — the runtime folds in the latched channel state and the
+        block list, the push-puzzle validator uses channels=∅ (all gates
+        closed) and its own block set."""
         b = self._barriers.get((c, r))
-        if b is not None and b.blocks(gate_open):
+        if b is not None and b.blocks(channels):
             return True
         return (c, r) in self._water and (c, r) not in self._bridges
+
+    # ── Item layer (spec 0050 Q3) ─────────────────────────────────────────────
+
+    def items(self, c, r):
+        return tuple(self._items.get((c, r), ()))
+
+    def items_of_kind(self, kind):
+        """Iterate (pos, item), insertion order (= room-data order)."""
+        for pos, items in self._items.items():
+            for item in items:
+                if item.kind == kind:
+                    yield pos, item
+
+    def add_item(self, pos, item):
+        self._items.setdefault(pos, []).append(item)
+
+    def remove_item(self, pos, item):
+        bucket = self._items.get(pos)
+        if bucket and item in bucket:
+            bucket.remove(item)
+            if not bucket:
+                del self._items[pos]
 
     # ── Mutators ──────────────────────────────────────────────────────────────
 
@@ -152,6 +199,13 @@ def build_room_cells(room_data):
 
     for gc, gr, gate_id in room_data.get('gates', []):
         cells.set_barrier((gc, gr), Barrier('gate', channel=gate_id))
+
+    for tc, tr, item_no in room_data.get('treasures', []):
+        cells.add_item((tc, tr), Item('treasure', item_no))
+    for mc, mr, mat_type in room_data.get('materials', []):
+        cells.add_item((mc, mr), Item('material', mat_type))
+    for kc, kr, colour in room_data.get('keys', []):
+        cells.add_item((kc, kr), Item('key', colour))
 
     water_room_map = {tuple(k): v
                       for k, v in room_data.get('water_tile_room', {}).items()}
