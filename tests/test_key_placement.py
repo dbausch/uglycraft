@@ -110,3 +110,139 @@ def test_graph_keys_reachable(seed):
         assert graph.validate_playability() == [], (
             f"seed={seed}: validate_playability reported unreachable nodes"
         )
+
+
+# ── R-K1 (spec 0061): barrier↔prerequisite pairing, prerequisites roam ────────
+# Keys are never lost, so every LOCKED edge must yield a door: per colour,
+# #keys == #locked doors.  Pre-fix, the per-grid coupling check elided any
+# interior door whose key sat on another grid (orphan keys — 6/8 level-13
+# seeds).  Gates: plates may roam like keys (D2); elision happens only at
+# global surviving-plate scope.
+
+import collections
+
+import pytest
+
+from levellayout import LayoutError
+
+COLS, ROWS = 30, 16
+
+
+def _build_retry(fs, seed):
+    """Build with the standard fresh-rng retry (mirrors _generate_act2)."""
+    base = random.Random(seed)
+    for _ in range(60):
+        rng = random.Random(base.randint(0, 2 ** 31))
+        g = LevelGraph.generate(fs, rng)
+        try:
+            return g, build_level_dict(g, rng=rng,
+                                       strategies=fs.get('layout_strategies'))
+        except LayoutError:
+            continue
+    raise AssertionError(f"build never succeeded seed={seed}")
+
+
+def _colour_counts(level):
+    keys = collections.Counter()
+    doors = collections.Counter()
+    for rd in level['rooms'].values():
+        for k in rd.get('keys', []):
+            keys[k[2]] += 1
+        for d in rd.get('locked_doors', []):
+            doors[d[2]] += 1
+    return keys, doors
+
+
+@given(st.integers(min_value=0, max_value=2**32 - 1))
+@settings(max_examples=25, deadline=None)
+def test_key_door_pairing(seed):
+    """R-K1: for every colour, #keys == #locked doors (interior+border)."""
+    import levels as _levels
+    for fs in (*_FEATURE_SETS, _levels.ACT2_FEATURE_SETS[2]):
+        graph, kg, level = _build(fs, seed)
+        keys, doors = _colour_counts(level)
+        assert keys == doors, (
+            f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
+            f"keys={dict(keys)} != doors={dict(doors)} — orphan keys or "
+            f"key-less doors")
+
+
+def test_pinned_L13_orphan_keys():
+    """Level-13 build seed 7 had 6 keys but only 2 doors pre-fix (spec 0061
+    diagnosis, 2026-07-11): 4 interior doors elided because their keys sat
+    on other grids."""
+    import levels as _levels
+    _g, lv = _build_retry(_levels.ACT2_FEATURE_SETS[2], 7)
+    keys, doors = _colour_counts(lv)
+    assert keys == doors, f"keys={dict(keys)} doors={dict(doors)}"
+
+
+def test_missing_key_raises_loudly():
+    """A LOCKED edge whose colour has no key anywhere in the graph must
+    abort the build (LayoutError → fresh-seed retry), never silently
+    degrade the door to an open passage."""
+    from levelgraph import LevelGraphBuilder
+    b = LevelGraphBuilder(random.Random(3))
+    b.add_open_room()
+    b.add_locked_room('red')
+    g = b.build()
+    for nd in g.nodes.values():
+        nd.keys = [k for k in nd.keys if k[0] != 'red']
+    with pytest.raises(LayoutError):
+        build_level_dict(g, rng=random.Random(1))
+
+
+def _gate_plate_grids(level):
+    """([(gate_id, grid, is_interior)], {gate_id: plate_grid})."""
+    gates = []
+    plates = {}
+    for gn, rd in level['rooms'].items():
+        for c, r, gid in rd.get('gates', []):
+            interior = 0 < c < COLS - 1 and 0 < r < ROWS - 1
+            gates.append((gid, gn, interior))
+        for c, r, gid in rd.get('pressure_plates', []):
+            plates[gid] = gn
+    return gates, plates
+
+
+def test_interior_gate_plates_roam():
+    """Spec 0061 D2: add_gated_room draws its puzzle room from every
+    reachable room (any grid), so across a handful of builds some interior
+    gate's plate must sit on a different grid.  Red pre-fix: structurally
+    impossible (plates were same-grid by construction)."""
+    from tests.test_border_continuity import FS_CROWDED_GATED
+    cross = 0
+    for seed in range(15):
+        _g, lv = _build_retry(FS_CROWDED_GATED, seed)
+        gates, plates = _gate_plate_grids(lv)
+        cross += sum(1 for gid, gn, interior in gates
+                     if interior and plates.get(gid) not in (None, gn))
+    assert cross > 0, (
+        "no interior gate with a cross-grid plate in 15 builds")
+
+
+@given(st.integers(min_value=0, max_value=2**32 - 1))
+@settings(max_examples=15, deadline=None)
+def test_gate_elision_scope(seed):
+    """Gates are elided only when their plate genuinely did not survive
+    (global scope): every gate entity has a surviving plate of its id,
+    and every GATED edge between placed nodes whose plate survived has
+    its gate entity — no over- or under-elision."""
+    from tests.test_border_continuity import FS_CROWDED_GATED
+    graph, _kg, lv = _build(FS_CROWDED_GATED, seed)
+    gates, plates = _gate_plate_grids(lv)
+    gate_ids = {gid for gid, _gn, _i in gates}
+    for gid, gn, _interior in gates:
+        assert gid in plates, (
+            f"seed={seed}: gate {gid!r} on {gn} has no surviving plate")
+    placed_names = {o for rd in lv['rooms'].values()
+                    for o in rd['tile_owner'].values()}
+    for e in graph.edges:
+        if e.edge_type != EdgeType.GATED:
+            continue
+        gid = e.params['gate_id']
+        if (e.node_a in placed_names and e.node_b in placed_names
+                and gid in plates):
+            assert gid in gate_ids, (
+                f"seed={seed}: GATED edge {e.node_a}->{e.node_b} placed, "
+                f"plate survived, but gate {gid!r} was elided")
