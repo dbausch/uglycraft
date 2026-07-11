@@ -24,6 +24,9 @@ predate the spec-first workflow; their reference documentation is the linked
   `LEVEL_INTRO`, `PLAYING`, `PAUSED`, `WIN`, `GAME_OVER`, `ENTER_SCORE`,
   `SHOW_SCORES`, `PLAY_AGAIN`, terminal `QUIT_GAME`; `STORY` exists but is
   unreachable). No spec; diagram in `kb/uglycraft-mechanics.md`.
+  Since spec [0045](../spec/0045-world-extraction.md), `game.py` is
+  presentation only: all gameplay rules live in the pygame-free `world.py`,
+  connected by a typed event stream (→ `kb/world-model-review.md` Stage 1).
 - **1.3 Rendering** — `sprites.py` (all sprites procedural via `pygame.draw`,
   no image files), boss 4-frame animation, title-screen bouncing ogres, red
   death flash, transition flash. No spec; `kb/uglycraft-display.md`.
@@ -38,7 +41,7 @@ predate the spec-first workflow; their reference documentation is the linked
 - **1.6 Title-screen history text** — `translations/history_en.txt`,
   `_load_history_text` + word wrap. No spec.
 
-## 2. Act 1 core gameplay (`game.py`, `entities.py`)
+## 2. Act 1 core gameplay (`world.py`, `entities.py`)
 
 - **2.1 Player movement & key repeat** — tile-grid movement, first-press
   immediate, 180 ms initial repeat delay, level-scaled repeat interval,

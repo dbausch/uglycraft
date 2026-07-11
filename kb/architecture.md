@@ -23,7 +23,7 @@ water_tiles: [(c,r), ...]    ← water stream tiles (from WATER edges)
     │
     │  build_level_dict()
     ▼
-level dict                   ← game.py format: walls, enemies, treasures, …
+level dict                   ← runtime format (world.py): walls, enemies, …
 ```
 
 Multi-grid levels use `_build_super_grid()` instead, which runs the single-grid
@@ -426,7 +426,7 @@ assertion rather than a load-bearing safety net.
 → Invariants: R-V2/R-V3 in `kb/requirements.md`. Water-reachability: BL-04.
 → Block-placement code: `_place_puzzle`, `validate_push_puzzles`, `_compute_dead_squares`
   in `levellayout.py`; runtime collision: `_build_walls_multiroom`, `_verify_blocks`
-  in `game.py`.
+  in `world.py` (spec 0045; → `kb/world-model-review.md`).
 
 ---
 
@@ -508,7 +508,7 @@ the node behind its WATER edge (`edge.node_b`), computed via
 `_build_water_stream` over `orig_walls`. WATER edges are always intra-grid (never
 BORDER), so each grid's room dict carries its own map.
 
-**One bridge per water room (W2/W3).** Runtime `_try_auto_bridge` (`game.py`)
+**One bridge per water room (W2/W3).** Runtime `_try_auto_bridge` (`world.py`)
 looks up the bumped tile's water room and refuses if it is already in
 `self._bridged_water_rooms`; otherwise it builds the one bridge, records the tile
 in `_bridged_tiles[room_key]` (per-grid, spec 0027/BL-10) and the room in
@@ -525,8 +525,8 @@ layout is the W1 guarantee (a dropped node still loses planks — BL-23 — with
 graceful fallback for water, unlike keys).
 
 → Code: `build_level_dict` (`water_tile_room`), `validate_playability` WATER block
-  in `levelgraph.py`; `_try_auto_bridge`, `_start_level`, `_enter_room` in
-  `game.py`. Spec: `spec/0029-water-challenge-fixes.md`. Tests:
+  in `levelgraph.py`; `_try_auto_bridge`, `start_level`, `_enter_room` in
+  `world.py`. Spec: `spec/0029-water-challenge-fixes.md`. Tests:
   `tests/test_water_challenge.py`.
 
 ---

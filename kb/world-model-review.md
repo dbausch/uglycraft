@@ -115,6 +115,12 @@ This is the single biggest obstacle to the gameplay test suite.
 
 ### Stage 1 — Extract `World` from `Game`  ← do this first
 
+**Status: implemented 2026-07-11** (spec `spec/0045-world-extraction.md`) —
+`world.py` exists exactly as sketched below; all spec-0044 goldens stayed
+byte-identical, and an import-isolation test pins the no-pygame property.
+P7 is resolved. Awaiting the user's play-test before the spec checklist is
+ticked.
+
 New module (e.g. `world.py`): a `World` class owning player position,
 enemies, rooms, inventory, and all world mutation rules — **no pygame
 import**. `Game` keeps the state machine, input translation, rendering,
@@ -411,9 +417,9 @@ the suite as a coarse performance tripwire.
 ### 6.6 Order
 
 ```
-Step 0a  clock seam + RNG pinning          (tiny, mechanical)
-Step 0b  characterization harness + golden traces + golden screenshots
-Stage 1  extract World (events)            — harness green
+Step 0a  clock seam + RNG pinning          (tiny, mechanical)      ✓ spec 0044
+Step 0b  characterization harness + goldens (traces + screenshots) ✓ spec 0044
+Stage 1  extract World (events)            — harness green         ✓ spec 0045
 Stage 2  Act 1 as one-room Act 2           — harness green
 Stage 3  layered cells, walls→barriers     — shadow grid until silent
 Stage 4  behaviour dispatch, channels      — harness + screenshots green
