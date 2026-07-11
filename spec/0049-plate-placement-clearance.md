@@ -113,9 +113,16 @@ entrance, only the plate may not sit there.
 per plate room:
 
 - entrance part: for each `graph.neighbors(room)` edge with both ends
-  placed, `conn = _find_connection_tile(...)` (the flame-jet entry
-  pattern); exclude each conn-neighbour inside the room's `floor_tiles`
-  — the landing tile — and nothing else.
+  placed, find the **passage tiles** on the shared boundary — tiles
+  cardinally adjacent to floor of both rooms that are not reinforced
+  walls (an open doorway hole, a door, a gate, or a breakable wall the
+  player can mine through) — and exclude each passage tile's neighbour
+  inside the room's `floor_tiles`: the landing tile, and nothing else.
+  *(Implementation note: the flame-jet pattern's `_find_connection_tile`
+  turned out unsuitable — it returns the centre-most WALL tile of the
+  boundary, which for open doorways sits beside the actual hole; the
+  helper `_plate_exclusions` enumerates real passage tiles instead,
+  which also covers boundaries with several passages.)*
 - water part: 4 cardinal neighbours of every tile in the grid's
   `water_tiles`.
 

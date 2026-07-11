@@ -52,6 +52,16 @@ at the overflow check, and leaves dead wall space inside the zone.  With the cap
 
 → See "Zone capacity and n-capping" in `kb/architecture.md`.
 
+**R-P7** A pressure plate never sits on a **landing tile** (spec 0049): the
+floor tile just inside any passage of its room — existing (doorway hole, door,
+gate, breakable boundary wall) or buildable (the floor flanks of a water tile,
+where a bridge would create a passage).  Rationale: the solved state of a push
+puzzle is a block parked on the plate; a block on a landing tile seals that
+passage, so a plate there would let the player trap themselves *by solving the
+puzzle*.  Enforced at placement (`_plate_exclusions` in `levellayout.py`) and
+mirrored at runtime (`World._try_auto_bridge` refuses to create a passage whose
+landing tile carries a plate).
+
 ---
 
 ## W — Walls
