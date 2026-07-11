@@ -61,16 +61,20 @@ validation are untouched because the room graph gains no members.
 
 ### At graph generation (`LevelGraph.generate`, multi-grid only)
 
-1. Draw `entrance_side` ∈ {left, top, bottom, right} with the graph rng —
-   grid zero's pseudo exit into the dungeon sits at a random side.
-2. Grid zero's cell is `(0,0) + delta(entrance_side)`. `_spanning_tree`
-   gains a `blocked` parameter checked on **every** Prim step, not only the
-   root's children: the frontier may approach that cell from any direction
-   later in the growth (e.g. a grid at `(1,-1)` proposing `(0,-1)`), and
-   every such proposal is skipped. No dungeon grid can ever occupy the cell,
-   and consequently **no BORDER edge can ever exist on the entrance side**
-   (a BORDER edge on that face would require a grid in exactly that cell).
-3. Record `graph.entrance_side` for the layout stage.
+1. Grid zero **is the super-grid origin `(0,0)`** — the outside of the
+   dungeon. Draw its pseudo-exit side `S` ∈ {left, top, bottom, right} with
+   the graph rng.
+2. The start grid sits at the non-zero cell `delta(S)` (the spanning-tree
+   root position), and its entrance side is `opposite(S)` — the face looking
+   back at grid zero. The root corridor's `super_pos` is set to `delta(S)`
+   explicitly (today the root implicitly keeps the default `(0,0)`).
+3. `_spanning_tree` gains a `blocked` parameter (here `{(0,0)}`) checked on
+   **every** Prim step, not only the root's children: the frontier may
+   approach the origin from any direction later in the growth, and every such
+   proposal is skipped. No dungeon grid can ever occupy grid zero, and
+   consequently **no BORDER edge can ever exist on the entrance side** (a
+   BORDER edge on that face would require a grid at exactly `(0,0)`).
+4. Record `graph.entrance_side` for the layout stage.
 
 Consequence: the start grid has at most **3** BORDER exits (root branching
 capped at 3). Trees of any grid count still span — the infinite grid minus
@@ -105,15 +109,16 @@ would invalidate the single-grid golden trace `act2_L11_walk` too.)
 
 ## Geometry
 
-Super-grid view (entrance side `top` drawn; `Z` = grid zero):
+Super-grid view (grid zero at the origin; pseudo-exit side `S = bottom`
+drawn, so the start grid sits at `(0,1)` with entrance side `top`):
 
 ```
-super-grid    (0,-1)
+super-grid    (0,0)
              ┌──────┐
-             │  Z   │   reserved cell: never built, never reachable,
+             │  Z   │   grid zero = the origin: never built, never reachable,
       ┌──────┼──────┼──────┐   no BORDER edge may cross this face
       │ g2   │ START│ g1   │
-      │(-1,0)│ (0,0)│ (1,0)│   START's BORDER exits: left + right only
+      │(-1,1)│ (0,1)│ (1,1)│   START's BORDER exits: left + right only
       └──────┴──────┴──────┘   top face carries the entrance exclusively
 ```
 
