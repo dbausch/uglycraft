@@ -857,3 +857,17 @@ Mind death/reset semantics (does the door stay open after death?) — decide in
 the spec.
 
 ---
+
+## BL-44 · P1 · Interior locked doors silently elided when their key sits on another grid (orphan keys)
+
+Found in play 2026-07-11 (level 13: 5 keys, 3 doors). The spec-0030
+barrier↔prerequisite coupling checked `placed_key_colours` per grid, but keys
+roam cross-grid (R-V3), so doors were degraded to open passages and their keys
+orphaned — also exposed challenge awards (spec 0058) in seemingly open rooms.
+
+Note: fix already implemented in `spec/0061-no-silent-door-elision.md`
+(commit c941f9c: unconditional doors + loud LayoutError; gate elision moved to
+global scope; interior-gate plates roam) — awaiting Daniel's play-test
+confirmation before closing this entry.
+
+---
