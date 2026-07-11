@@ -83,6 +83,16 @@ class Item:
     payload: object
 
 
+@dataclass
+class Fixture:
+    """Generic non-blocking fixture (spec 0052 G2): kind ∈ 'plate'
+    (payload = channel name) | 'flame_nozzle' (payload = the jet dict,
+    tiles precomputed — ray-cast beams are future work).  Blocking
+    fixtures (barriers) keep their specialized one-per-cell store."""
+    kind: str
+    payload: object
+
+
 class RoomCells:
     """One room's terrain + fixtures.  Sparse: only water terrain and
     cells with fixtures are stored; everything else is bare floor.
@@ -93,6 +103,7 @@ class RoomCells:
         self._barriers = {}     # (c, r) -> Barrier, insertion-ordered
         self._bridges = set()   # (c, r) with a Bridge fixture
         self._items = {}        # (c, r) -> [Item, ...], insertion-ordered
+        self._fixtures = {}     # (c, r) -> [Fixture, ...], insertion-ordered
 
     # ── Queries ───────────────────────────────────────────────────────────────
 
@@ -154,6 +165,25 @@ class RoomCells:
             if not bucket:
                 del self._items[pos]
 
+    # ── Generic fixture layer (spec 0052 G2) ──────────────────────────────────
+
+    def fixtures_of_kind(self, kind):
+        """Iterate ((c, r), fixture), insertion order (= room-data order)."""
+        for pos, fixtures in self._fixtures.items():
+            for fixture in fixtures:
+                if fixture.kind == kind:
+                    yield pos, fixture
+
+    def add_fixture(self, pos, fixture):
+        self._fixtures.setdefault(pos, []).append(fixture)
+
+    def remove_fixture(self, pos, fixture):
+        bucket = self._fixtures.get(pos)
+        if bucket and fixture in bucket:
+            bucket.remove(fixture)
+            if not bucket:
+                del self._fixtures[pos]
+
     # ── Mutators ──────────────────────────────────────────────────────────────
 
     def set_barrier(self, pos, barrier):
@@ -183,12 +213,71 @@ def _exit_tiles(exits):
     return tiles
 
 
-def build_room_cells(room_data):
-    """THE one parser from a room dict to the cell model.
+def _parse_walls(cells, room_data):
+    for pos, wall_type in parse_level_walls(room_data['walls']).items():
+        cells.set_barrier(pos, Barrier(wall_type))
 
-    Insertion order (border, level walls, doors, gates) makes later
-    entries win a cell — a door on a border exit tile is a door barrier,
-    exactly as the old grid+overlay semantics resolved it."""
+
+def _parse_doors(cells, room_data):
+    for dc, dr, colour in room_data.get('locked_doors', []):
+        cells.set_barrier((dc, dr), Barrier('door', colour=colour))
+
+
+def _parse_gates(cells, room_data):
+    for gc, gr, gate_id in room_data.get('gates', []):
+        cells.set_barrier((gc, gr), Barrier('gate', channel=gate_id))
+
+
+def _parse_water(cells, room_data):
+    water_room_map = {tuple(k): v
+                      for k, v in room_data.get('water_tile_room', {}).items()}
+    for tile in room_data.get('water_tiles', []):
+        pos = tuple(tile)
+        cells._water[pos] = water_room_map.get(pos)
+
+
+def _parse_items(kind, dict_key):
+    def parse(cells, room_data):
+        for c, r, payload in room_data.get(dict_key, []):
+            cells.add_item((c, r), Item(kind, payload))
+    return parse
+
+
+def _parse_plates(cells, room_data):
+    for pc, pr, channel in room_data.get('pressure_plates', []):
+        cells.add_fixture((pc, pr), Fixture('plate', channel))
+
+
+def _parse_nozzles(cells, room_data):
+    for jet in room_data.get('flame_jets', []):
+        jet['_tile_set'] = frozenset(tuple(t) for t in jet['tiles'])
+        source = tuple(jet.get('source', jet['tiles'][0]))
+        cells.add_fixture(source, Fixture('flame_nozzle', jet))
+
+
+# The parse registry (spec 0052 G1): one entry per cells-parsed room-dict
+# content key.  Occupants (pushable_blocks, enemy_starts, patrol_enemies)
+# belong to Room.from_data; tile_owner/dead_squares/exits are room
+# metadata handled elsewhere.  Adding a content kind = adding one entry.
+CONTENT_PARSERS = (
+    ('walls',           _parse_walls),
+    ('locked_doors',    _parse_doors),
+    ('gates',           _parse_gates),
+    ('water_tiles',     _parse_water),
+    ('treasures',       _parse_items('treasure', 'treasures')),
+    ('materials',       _parse_items('material', 'materials')),
+    ('keys',            _parse_items('key', 'keys')),
+    ('pressure_plates', _parse_plates),
+    ('flame_jets',      _parse_nozzles),
+)
+
+
+def build_room_cells(room_data):
+    """THE one parser from a room dict to the cell model: border (minus
+    exit gaps), then the CONTENT_PARSERS registry in order.  Insertion
+    order (border, walls, doors, gates) makes later entries win a cell —
+    a door on a border exit tile is a door barrier, exactly as the old
+    grid+overlay semantics resolved it."""
     cells = RoomCells()
 
     exit_gaps = _exit_tiles(room_data.get('exits', {}))
@@ -201,26 +290,7 @@ def build_room_cells(room_data):
             if (c, r) not in exit_gaps:
                 cells.set_barrier((c, r), Barrier('border'))
 
-    for pos, wall_type in parse_level_walls(room_data['walls']).items():
-        cells.set_barrier(pos, Barrier(wall_type))
-
-    for dc, dr, colour in room_data.get('locked_doors', []):
-        cells.set_barrier((dc, dr), Barrier('door', colour=colour))
-
-    for gc, gr, gate_id in room_data.get('gates', []):
-        cells.set_barrier((gc, gr), Barrier('gate', channel=gate_id))
-
-    for tc, tr, item_no in room_data.get('treasures', []):
-        cells.add_item((tc, tr), Item('treasure', item_no))
-    for mc, mr, mat_type in room_data.get('materials', []):
-        cells.add_item((mc, mr), Item('material', mat_type))
-    for kc, kr, colour in room_data.get('keys', []):
-        cells.add_item((kc, kr), Item('key', colour))
-
-    water_room_map = {tuple(k): v
-                      for k, v in room_data.get('water_tile_room', {}).items()}
-    for tile in room_data.get('water_tiles', []):
-        pos = tuple(tile)
-        cells._water[pos] = water_room_map.get(pos)
+    for _key, parse in CONTENT_PARSERS:
+        parse(cells, room_data)
 
     return cells

@@ -1,7 +1,7 @@
 """Live Room objects and exit detection for multi-room levels."""
 from constants import COLS, ROWS, HARD
 from cells import build_room_cells
-from entities import Enemy, ForgeOgre, PatrolEnemy
+from entities import Block, Enemy, ForgeOgre, PatrolEnemy
 
 
 class Room:
@@ -10,22 +10,42 @@ class Room:
     swaps World.room to this object; there is no snapshot copying."""
 
     __slots__ = ('key', 'data', 'cells', 'enemies', 'blocks',
-                 'blocks_initial', 'plates', 'tile_owner',
-                 'dead_squares', 'flame_jets')
+                 'blocks_initial', 'tile_owner', 'dead_squares')
 
-    def __init__(self, key, data, cells, enemies, blocks, plates):
+    def __init__(self, key, data, cells, enemies, blocks):
         self.key = key
         self.data = data
         self.cells = cells
         self.enemies = enemies
-        self.blocks = blocks
-        self.blocks_initial = tuple(blocks)   # death-reset positions
-        self.plates = plates
+        self.blocks = blocks                  # [Block, ...] — occupants
+        self.blocks_initial = tuple((b.col, b.row) for b in blocks)
         self.tile_owner = data.get('tile_owner', {})
         self.dead_squares = set(tuple(t) for t in data.get('dead_squares', []))
-        self.flame_jets = data.get('flame_jets', [])
-        for jet in self.flame_jets:
-            jet['_tile_set'] = frozenset(tuple(t) for t in jet['tiles'])
+
+    # ── Occupant helpers (spec 0052 G3) ───────────────────────────────────────
+
+    def block_at(self, c, r):
+        for b in self.blocks:
+            if b.col == c and b.row == r:
+                return b
+        return None
+
+    def block_positions(self):
+        return [(b.col, b.row) for b in self.blocks]
+
+    # ── Compat views over the fixture layer (spec 0052 G2) ────────────────────
+
+    @property
+    def plates(self):
+        """[(c, r, channel), ...] — a view over the plate fixtures."""
+        return [(c, r, f.payload)
+                for (c, r), f in self.cells.fixtures_of_kind('plate')]
+
+    @property
+    def flame_jets(self):
+        """Jet dicts — a view over the flame-nozzle fixtures."""
+        return [f.payload
+                for _, f in self.cells.fixtures_of_kind('flame_nozzle')]
 
     @classmethod
     def from_data(cls, key, data, difficulty):
@@ -59,14 +79,14 @@ class Room:
         return cls(key, data,
                    cells=cells,
                    enemies=enemies,
-                   blocks=list(data.get('pushable_blocks', [])),
-                   plates=list(data.get('pressure_plates', [])))
+                   blocks=[Block(b[0], b[1])
+                           for b in data.get('pushable_blocks', [])])
 
     @classmethod
     def placeholder(cls):
         """Empty room so World is queryable before the first level loads."""
         from cells import RoomCells
-        return cls(None, {}, RoomCells(), [], [], [])
+        return cls(None, {}, RoomCells(), [], [])
 
 
 def find_exit(col, row, room_data):

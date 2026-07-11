@@ -37,7 +37,7 @@ def test_gate_plate_block():
     keys = _sound_keys(trace)
     assert 'caught' in keys
     # after death the block is back at (6,8): gate closed again
-    assert h.game.room.blocks == [(6, 8)]
+    assert h.game.room.block_positions() == [(6, 8)]
     assert not h.game.world._channels
     assert_golden('act2_gate', trace)
 

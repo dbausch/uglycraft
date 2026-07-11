@@ -62,7 +62,7 @@ def test_from_data_populates_fields():
     assert room.key == 'g1'
     assert room.data is data
     assert room.cells.barrier(11, 8).kind == WALL_WOODEN
-    assert room.blocks == [(6, 8)]
+    assert room.block_positions() == [(6, 8)]
     assert room.blocks_initial == ((6, 8),)
     assert room.plates == [(4, 8, 'g1')]
     assert (2, 2) in room.dead_squares
@@ -115,9 +115,10 @@ def test_rooms_persist_by_identity():
 def test_reset_blocks_covers_visited_only_and_unvisited_stay_initial():
     w, orig = _world(_two_grids)
     try:
-        w.room.blocks[:] = [(9, 9)]           # moved in g1 (visited)
+        from entities import Block
+        w.room.blocks[:] = [Block(9, 9)]      # moved in g1 (visited)
         w._reset_blocks()                     # death reset
-        assert w.room.blocks == [(6, 8)]      # back at initial
+        assert w.room.block_positions() == [(6, 8)]  # back at initial
         assert 'g2' not in w._rooms           # unvisited: nothing to reset
         w.player.col, w.player.row = 28, 8
         _cross(w, 1)                          # first entry AFTER the death

@@ -16,6 +16,7 @@ import pytest
 import world as world_mod
 from world import World
 from constants import WALL_STONE, WALL_WOODEN, WALL_REINFORCED
+from entities import Block
 from tests import act2_fixtures as fx
 
 KEY = 7
@@ -101,7 +102,7 @@ def test_enemy_on_plate_opens_gate():
 def test_block_on_plate_holds_gate_open():
     w, orig = _world(_gate_world)
     try:
-        w.room.blocks[:] = [PLATE]            # park the block on the plate
+        w.room.blocks[:] = [Block(*PLATE)]    # park the block on the plate
         w.update(DT)
         assert not w.blocked(*GATE)
         # ... and the plate tile itself is blocked (the block sits there)
@@ -115,12 +116,12 @@ def test_reset_blocks_closes_gates_immediately():
     gate survives until the next tick's plate pass."""
     w, orig = _world(_gate_world)
     try:
-        w.room.blocks[:] = [PLATE]
+        w.room.blocks[:] = [Block(*PLATE)]
         w.update(DT)
         assert not w.blocked(*GATE)
         w._reset_blocks()
         assert w.blocked(*GATE)               # closed synchronously
-        assert w.room.blocks == [BLOCK]       # block back at start
+        assert w.room.block_positions() == [BLOCK]   # block back at start
     finally:
         _restore(orig)
 
@@ -157,7 +158,7 @@ def test_foreign_channels_survive_local_latch():
 
     w, orig = _world(make)
     try:
-        w.room.blocks[:] = [(4, 8)]           # block parked on the plate
+        w.room.blocks[:] = [Block(4, 8)]      # block parked on the plate
         w.update(DT)
         assert w.channel('x1')
         w.player.col, w.player.row = 28, 8

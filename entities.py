@@ -17,6 +17,11 @@ class Entity:
         return self.row * TILE
 
 
+class Block(Entity):
+    """Pushable block: an occupant with identity (spec 0052 G3) — the
+    hook for per-block state such as BL-37's explosion countdown."""
+
+
 class Player(Entity):
     def __init__(self, col, row):
         super().__init__(col, row)

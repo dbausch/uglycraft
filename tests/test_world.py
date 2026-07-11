@@ -184,7 +184,8 @@ def test_gate_follows_channel_state():
 def test_block_blocks_and_push_updates_query():
     w, saved = _fixture(fx.gate_level)
     try:
-        (bc, br) = w.room.blocks[0]
+        block = w.room.blocks[0]
+        bc, br = block.col, block.row
         assert w.blocked(bc, br)
         w.drain_events()
         w.player.col, w.player.row = bc + 1, br
@@ -290,7 +291,7 @@ def test_reentry_with_wedged_block_never_regenerates():
         for _ in range(4):                       # walk up, push block twice
             w.try_move(0, -1, 1)
             w.key_released(1)
-        assert w.room.blocks == [(2, 2)]         # wedged: zero push dirs
+        assert w.room.block_positions() == [(2, 2)]  # wedged: 0 push dirs
         level_data = w._level_data
 
         w.player.col, w.player.row = 28, 8
@@ -305,7 +306,7 @@ def test_reentry_with_wedged_block_never_regenerates():
         assert not regen_calls                   # net did not fire
         assert w._level_data is level_data       # same level, same progress
         assert all(e[0] != 'level_started' for e in events)
-        assert w.room.blocks == [(2, 2)]         # block stays wedged
+        assert w.room.block_positions() == [(2, 2)]  # block stays wedged
     finally:
         world_mod.get_level, world_mod.regenerate_level = orig
 

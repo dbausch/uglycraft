@@ -34,6 +34,17 @@ SHOW_SCORES = 'show_scores'
 PLAY_AGAIN  = 'play_again'
 INVENTORY   = 'inventory'
 
+# Item sprite dispatch (spec 0052 G4): kind + payload -> sprite key.
+# The sprite dict is keyed by ints for treasures and by str keys
+# otherwise; a None/missing key renders nothing, as before.
+_MAT_SPRITE = {'rocks': 'mat_rocks', 'planks': 'mat_planks',
+               'metal': 'mat_metal', 'crystal': 'mat_crystal'}
+_ITEM_SPRITE = {
+    'treasure': lambda payload: payload,
+    'key':      lambda payload: f'key_{payload}',
+    'material': _MAT_SPRITE.get,
+}
+
 
 class Game:
     def __init__(self, surface: pygame.Surface):
@@ -503,9 +514,7 @@ class Game:
         # Treasure: pre-placed loot (Act 2) and the sequential item (Act 1)
         # are mutually exclusive by data — the item layer is empty on Act 1,
         # treasure_pos is None on Act 2.
-        for (tc, tr), item in self.cells.items_of_kind('treasure'):
-            if item.payload in sp:
-                self.surf.blit(sp[item.payload], (tc * TILE, tr * TILE))
+        self._blit_items('treasure', sp)
         if self.treasure_pos:
             tc, tr = self.treasure_pos
             tz = self.treasure_item_no
@@ -513,16 +522,14 @@ class Game:
                 self.surf.blit(sp[tz], (tc * TILE, tr * TILE))
 
         # Act 2 overlays: plates, gates, blocks, doors, keys, materials
-        _MAT_SPRITE = {'rocks': 'mat_rocks', 'planks': 'mat_planks',
-                       'metal': 'mat_metal', 'crystal': 'mat_crystal'}
         for pc, pr, _gid in self.room.plates:
             self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
         for (gc, gr), gate in self.cells.barriers('gate'):
             o = self._door_orient(gc, gr)
             base = 'gate_open' if self.channel(gate.channel) else 'gate_closed'
             self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
-        for bc, br in self.room.blocks:
-            self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
+        for b in self.room.blocks:
+            self.surf.blit(sp['pushable_block'], (b.col * TILE, b.row * TILE))
         # Detect water orientation: if any neighbor up/down is also
         # water, the stream is vertical; otherwise horizontal.
         for wc, wr in self.cells.water_tiles():
@@ -568,14 +575,8 @@ class Game:
                 continue
             o = self._door_orient(dc, dr)
             self.surf.blit(sp[f'door_open_{o}'], (dc * TILE, dr * TILE))
-        for (kc, kr), item in self.cells.items_of_kind('key'):
-            kkey = f'key_{item.payload}'
-            if kkey in sp:
-                self.surf.blit(sp[kkey], (kc * TILE, kr * TILE))
-        for (mc, mr), item in self.cells.items_of_kind('material'):
-            skey = _MAT_SPRITE.get(item.payload)
-            if skey and skey in sp:
-                self.surf.blit(sp[skey], (mc * TILE, mr * TILE))
+        self._blit_items('key', sp)
+        self._blit_items('material', sp)
 
         # Enemies / boss
         if self.level == ACT1_BOSS_LEVEL:
@@ -598,6 +599,15 @@ class Game:
         if self.shield:
             self.surf.blit(sp['shield'],
                            (self.player.col * TILE, self.player.row * TILE))
+
+    def _blit_items(self, kind, sp):
+        """Draw all items of one kind via the _ITEM_SPRITE table (spec
+        0052 G4).  Call sites keep the pinned category blit order."""
+        sprite_key = _ITEM_SPRITE[kind]
+        for (c, r), item in self.cells.items_of_kind(kind):
+            skey = sprite_key(item.payload)
+            if skey is not None and skey in sp:
+                self.surf.blit(sp[skey], (c * TILE, r * TILE))
 
     def _render_hud(self):
         hud_y = ROWS * TILE

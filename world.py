@@ -26,7 +26,7 @@ from collections import deque
 from constants import *
 from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
-from entities import Player, Enemy, PatrolEnemy, ForgeOgre
+from entities import Block, Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import Room, find_exit
 from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
 from cells import BARRIER_BUMP, Barrier
@@ -164,7 +164,7 @@ class World:
             return True
         if self.cells.blocked(c, r, self._channels):
             return True
-        if (c, r) in self.room.blocks:
+        if self.room.block_at(c, r) is not None:
             return True
         return False
 
@@ -325,7 +325,7 @@ class World:
 
     def _verify_blocks(self):
         """Check blocks are pushable. Regenerate level if any are stuck."""
-        for bc, br in self.room.blocks:
+        for bc, br in self.room.block_positions():
             push_dirs = 0
             for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 pf_c, pf_r = bc - dc, br - dr
@@ -432,7 +432,7 @@ class World:
 
         occupied = {(self.player.col, self.player.row)}
         occupied.update((e.col, e.row) for e in self.enemies)
-        block_set = set(self.room.blocks)
+        block_set = set(self.room.block_positions())
 
         # Relatch ONLY the channels emitted by this room's plates: a
         # channel held high by a block parked in another grid must
@@ -446,17 +446,16 @@ class World:
 
     def _try_push_block(self, bc, br, dcol, drow):
         """Try to push a block at (bc, br) in direction (dcol, drow)."""
-        blocks = self.room.blocks
-        for i, (bx, by) in enumerate(blocks):
-            if bx == bc and by == br:
-                nc, nr = bc + dcol, br + drow
-                if (0 < nc < COLS - 1 and 0 < nr < ROWS - 1
-                        and not self.blocked(nc, nr)
-                        and (nc, nr) not in self._dead_squares):
-                    blocks[i] = (nc, nr)
-                    self._emit('bumped')
-                    return True
-                return False
+        block = self.room.block_at(bc, br)
+        if block is None:
+            return False
+        nc, nr = bc + dcol, br + drow
+        if (0 < nc < COLS - 1 and 0 < nr < ROWS - 1
+                and not self.blocked(nc, nr)
+                and (nc, nr) not in self._dead_squares):
+            block.col, block.row = nc, nr
+            self._emit('bumped')
+            return True
         return False
 
     def _try_auto_open_door(self, col, row):
@@ -655,7 +654,7 @@ class World:
         # Visited rooms only (spec 0051): an unvisited room's blocks were
         # never moved — its eventual first entry builds from pristine data.
         for room in self._rooms.values():
-            room.blocks = list(room.blocks_initial)
+            room.blocks = [Block(c, r) for c, r in room.blocks_initial]
         # Close everything synchronously (the old _gate_open.clear()):
         # the next plate pass re-latches from the reset occupancy.
         self._channels = set()
@@ -714,7 +713,15 @@ class World:
         stays in the presentation layer); it runs exactly where the old
         inline key-repeat block sat — after the shield timer, before enemy
         movement — and is skipped entirely while a room transition holds
-        the world frozen."""
+        the world frozen.
+
+        SYSTEM ORDER CONTRACT (spec 0052 G5): transition gate → shield
+        timer → input phase → enemy movement (incl. forge attacks and
+        boss relocation) → treasure/loot collection → player-enemy
+        collision → flame damage → channel latch (plate pass) → material
+        pickup → key pickup.  The goldens pin this sequence; any future
+        registry entry that ticks or collects must slot into it
+        explicitly, never reorder it."""
         if self._transition_timer > 0:
             self._transition_timer -= dt
             return
