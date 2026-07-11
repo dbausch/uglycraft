@@ -1,12 +1,15 @@
-# 0053 — Entrance / player-start anchoring (BL-31)
+# 0053 — Entrance / player-start anchoring via reserved grid zero (BL-31)
 
 ## Status
 
-- [ ] `_pick_entrance` fallback places the entrance adjacent to the player start
-- [ ] Unit test: fallback path returns adjacent (entrance, player_start) pair
-- [ ] Property test: generated level's entrance is border-placed, cardinally
-      adjacent to `player_start`, and `player_start` is corridor-owned
-- [ ] Property test: entrance tile never coincides with a border-exit tile
+- [ ] Graph generation reserves an entrance side on the start grid ("grid
+      zero" super-grid cell blocked for the spanning tree)
+- [ ] Start-grid layout must cover the entrance side; entrance placed there,
+      player start on the corridor tile inside
+- [ ] `_pick_entrance` col-0 fallback deleted (replaced by a LayoutError guard)
+- [ ] Property tests: entrance side carries no BORDER exit; entrance is
+      border-placed, adjacent to `player_start`; `player_start` corridor-owned
+- [ ] Golden trace `act2_L13_walk` re-baselined (multi-grid rng stream shifts)
 - [ ] Sweep re-run shows 0 adjacency violations (was 6/150)
 
 ## Problem
@@ -16,23 +19,16 @@ corridor tile must be the player start.
 
 `_pick_entrance` (levellayout.py:225) has two paths:
 
-- **Main path** — already correct: it walks sides in order (left, top, bottom,
+- **Main path** — already correct: walks sides in order (left, top, bottom,
   right), skips sides occupied by BORDER exits, and on the first side the
-  corridor reaches it picks the centre-most on-side corridor tile as
+  corridor reaches picks the centre-most on-side corridor tile as
   `player_start` and the border tile directly outside as `entrance`.
-  Adjacency and corridor ownership hold by construction.
-- **Fallback** — fires when *every* side the corridor reaches is occupied by a
-  BORDER exit (e.g. a `horizontal` spine with BORDER exits on both left and
-  right, or a 4-exit start grid). It returns:
-
-  ```python
-  any_tile = min(corridor_tiles, key=lambda t: (t[1], t[0]))   # topmost-leftmost
-  return (0, any_tile[1]), any_tile
-  ```
-
-  The entrance lands at `(0, row)` on the left border regardless of where
-  `any_tile` is — typically 13–14 tiles away from the player start, embedded
-  in the border next to some unrelated room.
+- **Fallback** — fires when *every* side the corridor reaches is occupied by
+  a BORDER exit (e.g. a `horizontal` spine with BORDER exits left and right,
+  or a 4-exit start grid). It returns
+  `(0, any_tile[1]), any_tile` with `any_tile` = topmost-leftmost corridor
+  tile — the entrance lands on the left border regardless of where the player
+  starts, typically 13–14 tiles away, embedded next to an unrelated room.
 
 Measured incidence (15 seeds × levels 11–20 = 150 generated levels):
 
@@ -42,108 +38,142 @@ Measured incidence (15 seeds × levels 11–20 = 150 generated levels):
 | player_start corridor-owned | 0 |
 | entrance collides with a border-exit tile | 0 |
 
-All six failures: entrance `(0, 1)`, player start `(13–14, 1)` — the fallback
-fired on a multi-grid start grid (3–8 grids) whose corridor's reachable sides
-were all BORDER-occupied.
+All six failures were multi-grid start grids (3–8 grids) whose corridor's
+reachable sides were all BORDER-occupied.
 
-So the player start is *always* corridor-owned already (both paths pick a
-corridor floor tile); the defect is solely the broken entrance ↔ player-start
-adjacency in the fallback.
+**Rejected approach (rev 1 of this spec):** keep the entrance on an occupied
+side, anchored at the low end of the corridor's face band so it cannot collide
+with the stitch opening. Rejected by Daniel: an always-open entrance door
+sitting beside a locked/gated border door on the same face is unrealistic.
+The entrance must live on a side that carries **no** BORDER exit at all —
+which requires forcing the layout and the spanning-tree branching to keep one
+side of the start grid free.
+
+## Design: reserved entrance side ("grid zero")
+
+Concept: the outside of the dungeon is modelled as a virtual pre-start grid
+**zero** — a super-grid cell adjacent to the start grid that is *reserved,
+empty, invisible, and non-reachable*. It exists only as a blocked cell in the
+spanning tree plus a recorded side; no `Node`, no `Edge`, nothing is ever
+placed, rendered, or reachable there (the entrance border tile stays solid
+wall; the entrance is a sprite, `game.py:499`). R-P3/R-T4/playability
+validation are untouched because the room graph gains no members.
+
+### At graph generation (`LevelGraph.generate`, multi-grid only)
+
+1. Draw `entrance_side` ∈ {left, top, bottom, right} with the graph rng —
+   grid zero's pseudo exit into the dungeon sits at a random side.
+2. Grid zero's cell is `(0,0) + delta(entrance_side)`. `_spanning_tree`
+   gains a `blocked` parameter checked on **every** Prim step, not only the
+   root's children: the frontier may approach that cell from any direction
+   later in the growth (e.g. a grid at `(1,-1)` proposing `(0,-1)`), and
+   every such proposal is skipped. No dungeon grid can ever occupy the cell,
+   and consequently **no BORDER edge can ever exist on the entrance side**
+   (a BORDER edge on that face would require a grid in exactly that cell).
+3. Record `graph.entrance_side` for the layout stage.
+
+Consequence: the start grid has at most **3** BORDER exits (root branching
+capped at 3). Trees of any grid count still span — the infinite grid minus
+one cell stays connected.
+
+### At layout (`_build_super_grid` / `build_level_dict`)
+
+1. `required_sides[start corridor] += entrance_side` — strategy selection
+   (`_pick_strategy`) must cover it and R-S1 then guarantees the corridor
+   reaches that side. With 3 BORDER exits + entrance this means all 4 sides →
+   `full_border` (existing filter handles it).
+2. `build_level_dict` receives `entrance_side` for the start grid and passes
+   it to `_pick_entrance`, which places the entrance **deterministically on
+   that side**: centre-most on-side corridor tile = `player_start`, border
+   tile directly outside = `entrance`. No side scanning, no `occupied_sides`.
+3. The col-0 fallback is **deleted**. If the corridor does not reach the
+   entrance side (impossible per R-S1), raise `LayoutError` (fresh-seed
+   retry) instead of silently misplacing the entrance.
+4. Non-start grids keep the current scanning behaviour solely to derive the
+   corridor enemy-distance reference tile (`player_pos` →
+   `MIN_ENEMY_DIST` in `_place_items_in_room`); its result is never surfaced
+   as an entrance. Unchanged, so enemy placement streams stay stable.
+
+### Single-grid levels
+
+Unchanged. With no BORDER edges nothing is occupied, so the existing main
+path already yields an adjacent, corridor-owned pair on a free side, and the
+fallback is unreachable. (Full uniformity — reserving an entrance side even
+for `grid_count == 1` — was considered and dropped: it would constrain the
+already-trimmed strategy lists of levels 11–13 for no observable gain, and
+would invalidate the single-grid golden trace `act2_L11_walk` too.)
 
 ## Geometry
 
-Before (fallback today; seed 4, level 13 shape — top stem band at cols 13–14,
-all reachable sides BORDER-occupied):
+Super-grid view (entrance side `top` drawn; `Z` = grid zero):
 
 ```
-col:   0 1 2 ......... 12 13 14 15 ......... 29
-row 0: # # # ......... #  #  ▓  # .......... #   ▓ = BORDER opening (top_14)
-row 1: E . . room .... #  P  c  # .. room ... #   c = corridor stem tile
-                          ↑
-       ↑ entrance (0,1)   player start (14,1) — Manhattan distance 14
+super-grid    (0,-1)
+             ┌──────┐
+             │  Z   │   reserved cell: never built, never reachable,
+      ┌──────┼──────┼──────┐   no BORDER edge may cross this face
+      │ g2   │ START│ g1   │
+      │(-1,0)│ (0,0)│ (1,0)│   START's BORDER exits: left + right only
+      └──────┴──────┴──────┘   top face carries the entrance exclusively
 ```
 
-(The exact start tile is the topmost-leftmost corridor tile; entrance is
-always forced to col 0 at that tile's row.)
-
-After (fix): the fallback picks an occupied side the corridor *does* reach —
-first in the same (left, top, bottom, right) order — and anchors the entrance
-at the **low end** of the corridor's face band on that side:
+In-grid view of START (entrance side `top`, corridor stem band at cols
+13–14; centre-most on-side tile for `(MIN_C+MAX_C)//2 = 14` is col 14):
 
 ```
-col:   0 1 2 ......... 12 13 14 15 ......... 29
-row 0: # # # ......... #  E  ▓  # .......... #   E = entrance (13,0)
-row 1: # . . room .... #  P  c  # .. room ... #   P = player start (13,1)
-                          ↑ adjacent: distance 1
+col:    0 1 .......... 12 13 14 15 .......... 29
+row 0:  # # .......... #  #  E  # ........... #    E = entrance (14, 0)
+row 1:  # . . room ... #  c  P  # ... room ... #    P = player start (14, 1)
+                          ↑  ↑ corridor stem tiles (c)
+        Manhattan distance E↔P = 1; border tile E stays solid wall (sprite only)
 ```
 
-Face band = the corridor's floor positions on the innermost ring of that side
-(rows at col 1/28 for left/right, cols at row 1/14 for top/bottom) — the same
-positions the border stitch intersects.
+Before (the bug this replaces): same layout, but left+right occupied and top
+not required ⇒ a horizontal-spine start grid reaches no free side ⇒ fallback
+puts `E` at `(0, 1)` — 14 tiles from `P`, beside a room, on a face that may
+carry a locked border door.
 
-### Why the low end never collides with the border opening
+Adjacency, corridor ownership, and "no barrier door on the entrance side" all
+hold **by construction**: the entrance side has no BORDER edge, hence no
+opening and no locked/gated border door anywhere on that face.
 
-The stitch (in `_build_super_grid`) opens the border at
-`pos = shared[len(shared) // 2]`, where `shared` is the intersection of both
-corridors' face bands:
+## Golden-trace impact
 
-- Continuation (R-T5) makes the child's band equal the parent's, so
-  `shared` equals the start grid's own band; with band width ≥ 2 (spines 2–3,
-  stems 2–5, `full_border` frame = full face), `shared[len // 2]` is never
-  `shared[0]`.
-- A `full_border` start grid's child is anchored to a `_varied_band`
-  (`chosen_pos` ∈ rows 4–10 / cols 7–21), which never includes the full-face
-  band's low end (position 1).
-
-So `entrance ≠ opening` holds structurally; the property test pins it.
-
-Worst case (band width 2): entrance and opening sit on adjacent border tiles —
-accepted cosmetic outcome, both remain functionally correct (the entrance
-border tile stays solid wall; it is a sprite only, `game.py:499`).
-
-## Fix
-
-Replace the `_pick_entrance` fallback (levellayout.py:243–245):
-
-1. Walk `_ENTRANCE_SIDES` in the same fixed order, this time **ignoring**
-   `occupied_sides`.
-2. On the first side the corridor reaches, take the on-side corridor tile with
-   the **lowest position** (min row for left/right, min col for top/bottom) as
-   `player_start`; `entrance` is the border tile directly outside it.
-3. The old col-0 fallback is deleted. (Every corridor strategy reaches ≥ 1
-   border — R-S1 — so step 2 always succeeds.)
-
-No signature change; callers (`build_level_dict` single-grid and per-grid via
-`_build_grid`) are untouched. `player_start` keeps being computed before item
-placement, so the corridor enemy min-distance logic (`MIN_ENEMY_DIST` in
-`_place_items_in_room`) is unaffected. BL-16 (items may spawn on the player
-start tile) stays an independent follow-up.
+Drawing `entrance_side` (multi-grid only) prepends one rng draw and the
+blocked cell changes spanning-tree growth: every multi-grid generation stream
+shifts. `act2_L13_walk` (level 13, seed 777, 3 grids) must be re-baselined.
+`act2_L11_walk` (single-grid) keeps its stream: no draw is added for
+`grid_count == 1`.
 
 ## Tests (red first)
 
-In `tests/test_layout.py` (or a new `tests/test_entrance.py`):
+New `tests/test_entrance.py`:
 
-1. **Unit, deterministically red today** — call `_pick_entrance` with a
-   corridor reaching only left+right (e.g. a horizontal band of tiles) and
-   `occupied_sides={'left', 'right'}`; assert the returned pair is cardinally
-   adjacent, `player_start` is in the corridor tiles, and `entrance` is on the
-   border ring.
-2. **Property (hypothesis over seeds, multi-grid)** — build levels with
-   `grid_count` 3–8 (reusing the `_build` retry helper style from
-   `test_border_continuity.py`); assert for the start grid:
-   - `entrance` is on the border ring,
-   - Manhattan distance to `player_start` == 1,
+1. **Graph property** (hypothesis over seeds, `grid_count` 3–8): generate,
+   read `graph.entrance_side` and the start corridor's BORDER edge sides —
+   the entrance side must not be among them, and no corridor node may sit at
+   grid zero's cell. Red today (`entrance_side` does not exist — API pin).
+2. **Level property** (same builds, retry helper style from
+   `test_border_continuity.py`), for the start grid:
+   - `entrance` on the border ring, Manhattan distance 1 to `player_start`,
    - `tile_owner[player_start]` is the corridor node,
-   - `entrance` ∉ the border-exit tiles derived from `rooms[start]['exits']`.
+   - no key in `rooms[start]['exits']` names the entrance side, and no
+     locked door / gate sits on any border tile of the entrance side.
+   Red today at ~4 % incidence; pin at least one failing seed from the sweep
+   (e.g. seed 4 / level 13 shape) as a deterministic regression case.
 3. **Sweep** — re-run the BL-31 detector (15 seeds × levels 11–20): 0
    violations on all three checks (pre-fix: 6 adjacency violations).
+4. `poe test` green, including re-baselined `act2_L13_walk`.
 
 ## Done when:
 
-- [ ] Fallback replaced; `_pick_entrance` always returns an adjacent
-      (entrance, player_start) pair with `player_start` corridor-owned
-- [ ] New unit test red before the fix, green after
-- [ ] Property tests green (`poe test` exits 0, no existing test broken)
+- [ ] Multi-grid graphs reserve grid zero; start grid never has a BORDER
+      edge on `graph.entrance_side`
+- [ ] Start-grid entrance placed on the entrance side, player start on the
+      adjacent corridor tile (both properties hold across the test sweep)
+- [ ] `_pick_entrance` col-0 fallback removed; LayoutError guard in place
+- [ ] New tests red before the fix, green after; `poe test` exits 0
+- [ ] `act2_L13_walk` golden re-baselined; `act2_L11_walk` byte-identical
 - [ ] Detector sweep shows 0/150 violations
-- [ ] BL-31 closed in `kb/backlog.md`; insight recorded in `kb/architecture.md`
-      (entrance selection + fallback semantics)
+- [ ] BL-31 closed in `kb/backlog.md`; kb updated (`kb/architecture.md`
+      entrance selection; new invariant in `kb/requirements.md`)
