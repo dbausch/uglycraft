@@ -78,12 +78,17 @@ class Edge:
 _OPPOSITE = {'right': 'left', 'left': 'right', 'top': 'bottom', 'bottom': 'top'}
 
 
-def _spanning_tree(n, rng):
+def _spanning_tree(n, rng, root=(0, 0), blocked=frozenset()):
     """Return a spanning-tree description for n grids on the super-grid.
 
     Uses randomized Prim's algorithm: at each step pick a random edge from the
     frontier of all tree nodes and add the neighbour. Terminates in exactly n-1
     successful steps; never wanders on the infinite grid.
+
+    root:    super-grid cell of the tree root (index 0).
+    blocked: cells no grid may ever occupy, checked on every Prim step (the
+             frontier can approach them from any direction) — reserves grid
+             zero, the outside of the dungeon (spec 0053).
 
     Returns a list of length exactly n where entry i is
         (parent_idx, exit_side, (super_col, super_row))
@@ -93,16 +98,16 @@ def _spanning_tree(n, rng):
     All super-grid positions are unique.
     """
     if n <= 1:
-        return [(None, None, (0, 0))]
+        return [(None, None, root)]
 
     _DIRS = [('right', 1, 0), ('left', -1, 0), ('bottom', 0, 1), ('top', 0, -1)]
     _DELTA_TO_SIDE = {(1, 0): 'right', (-1, 0): 'left', (0, 1): 'bottom', (0, -1): 'top'}
 
-    result  = [(None, None, (0, 0))]
-    in_tree = {(0, 0): 0}
+    result  = [(None, None, root)]
+    in_tree = {root: 0}
 
     # frontier: list of (parent_idx, child_pos) — edges from tree to unvisited
-    frontier = [(0, (dx, dy)) for _, dx, dy in _DIRS]
+    frontier = [(0, (root[0] + dx, root[1] + dy)) for _, dx, dy in _DIRS]
 
     while len(in_tree) < n:
         i = rng.randrange(len(frontier))
@@ -110,7 +115,7 @@ def _spanning_tree(n, rng):
         frontier[i] = frontier[-1]
         frontier.pop()
 
-        if child_pos in in_tree:
+        if child_pos in in_tree or child_pos in blocked:
             continue
 
         parent_pos = result[parent_idx][2]
@@ -149,6 +154,10 @@ class LevelGraph:
         self.nodes = {}    # {name: Node}
         self.edges = []    # [Edge]
         self.rng = rng or random.Random()
+        # Side of the start grid reserved for the level entrance — the face
+        # toward grid zero at super-grid origin (0,0), the outside of the
+        # dungeon (spec 0053).  None for single-grid graphs.
+        self.entrance_side = None
 
     def add_node(self, name, size=NodeSize.ROOM, is_start=False):
         node = Node(name, size, is_start)
@@ -398,7 +407,23 @@ class LevelGraph:
                 return {'barrier': 'gated', 'gate_id': gid}
             return {}
 
-        tree = _spanning_tree(grid_count, rng)
+        # Grid zero (spec 0053): the outside of the dungeon occupies the
+        # super-grid origin (0,0).  Its pseudo exit points at the start grid,
+        # which therefore sits in the adjacent cell; the start grid's face
+        # back toward the origin is reserved for the level entrance — no
+        # BORDER edge can ever use it because no grid may occupy (0,0).
+        entrance_side = None
+        root = (0, 0)
+        if grid_count >= 2:
+            _DELTA = {'right': (1, 0), 'left': (-1, 0),
+                      'bottom': (0, 1), 'top': (0, -1)}
+            _OPPOSITE = {'right': 'left', 'left': 'right',
+                         'bottom': 'top', 'top': 'bottom'}
+            pseudo_exit = rng.choice(['right', 'left', 'bottom', 'top'])
+            root = _DELTA[pseudo_exit]
+            entrance_side = _OPPOSITE[pseudo_exit]
+
+        tree = _spanning_tree(grid_count, rng, root=root, blocked={(0, 0)})
         # tree[i] = (parent_idx, exit_side, (sc, sr)); root has parent_idx=None
 
         def _idx_to_name(i):
@@ -414,6 +439,8 @@ class LevelGraph:
                 b.start_next_grid(sc, sr, exit_side,
                                   source=_idx_to_name(parent_idx),
                                   **_barrier_kw())
+            else:
+                b._graph.nodes[_idx_to_name(0)].super_pos = (sc, sr)
 
             for _ in range(rooms_per_grid[i]):
                 et = required[room_idx] if room_idx < len(required) else rng.choice(edge_types)
@@ -442,7 +469,9 @@ class LevelGraph:
         b._has_forge = feature_set.get('has_forge_ogre', False)
         b.add_enemies(max(1, rng.randint(e_min, e_max)))
 
-        return b.build()
+        graph = b.build()
+        graph.entrance_side = entrance_side
+        return graph
 
 
 # ── Level graph builder ───────────────────────────────────────────────────────

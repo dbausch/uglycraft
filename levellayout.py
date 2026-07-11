@@ -222,15 +222,40 @@ _BORDER_EDGE_TILES = {
 }
 
 
-def _pick_entrance(corridor_tiles, occupied_sides=frozenset()):
-    """Return (entrance_tile, player_start_tile) for the start corridor.
+def _pick_entrance(corridor_tiles, occupied_sides=frozenset(),
+                   entrance_side=None):
+    """Return (entrance_tile, player_start_tile) for a corridor.
 
     entrance_tile:    a border-wall tile (col 0, col COLS-1, row 0, row ROWS-1)
     player_start_tile: the adjacent corridor floor tile
 
-    Tries left, top, bottom, right in order; skips sides in occupied_sides.
-    Guaranteed to find a match because every corridor strategy reaches ≥1 border.
+    entrance_side set (multi-grid start grid, spec 0053): the side reserved by
+    grid zero — the entrance is placed there deterministically, on the border
+    tile outside the centre-most on-side corridor tile.  The corridor is
+    guaranteed to reach that side (it is in required_exits → R-S1); if it does
+    not, LayoutError triggers a fresh-seed retry.
+
+    entrance_side None: scanning mode — first side in (left, top, bottom,
+    right) order that the corridor reaches and occupied_sides does not name.
+    Single-grid levels always resolve here (nothing is occupied).  Non-start
+    grids use this mode solely to derive the corridor enemy-distance reference
+    tile; only in that role can every reached side be occupied, so the
+    reference fallback below returns an arbitrary corridor tile whose
+    entrance value is never surfaced.
     """
+    if entrance_side is not None:
+        entry = next((e for e in _ENTRANCE_SIDES if e[0] == entrance_side),
+                     None)
+        if entry is None:
+            raise LayoutError(f"unknown entrance side {entrance_side!r}")
+        _, to_entrance, pick_center = entry
+        on_side = _BORDER_EDGE_TILES[entrance_side]() & corridor_tiles
+        if not on_side:
+            raise LayoutError(
+                f"corridor does not reach entrance side {entrance_side!r}")
+        player_tile = pick_center(on_side)
+        return to_entrance(player_tile), player_tile
+
     for side, to_entrance, pick_center in _ENTRANCE_SIDES:
         if side in occupied_sides:
             continue
@@ -240,7 +265,8 @@ def _pick_entrance(corridor_tiles, occupied_sides=frozenset()):
             continue
         player_tile = pick_center(on_side)
         return to_entrance(player_tile), player_tile
-    # Fallback: pick any corridor tile and derive entrance from col 0
+    # Reference fallback (non-start grids only, see docstring): any corridor
+    # tile; the derived entrance is never used as a level entrance.
     any_tile = min(corridor_tiles, key=lambda t: (t[1], t[0]))
     return (0, any_tile[1]), any_tile
 
@@ -2222,7 +2248,7 @@ def _generate_flame_jets(placed_node, walls, rng, entry=None):
 def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                      required_exits=None, is_start_grid=True,
                      occupied_sides=frozenset(), progress=None,
-                     corridor_anchor=None):
+                     corridor_anchor=None, entrance_side=None):
     """Generate the complete level dict that game.py expects.
 
     Auto-detects multi-grid from BORDER edges in the graph.
@@ -2231,6 +2257,9 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     is_start_grid: when True, stores 'entrance' in the room dict and computes
                    player_start from the entrance tile.
     occupied_sides: sides already used by BORDER exits; entrance avoids these.
+    entrance_side: the side reserved by grid zero for the level entrance
+                   (multi-grid start grid, spec 0053); the entrance is placed
+                   there deterministically.
     progress: optional callable(done, total) invoked as generation proceeds so
               callers can render a loading indicator.  For multi-grid levels the
               unit is one grid; for single-grid levels it fires (0, 1)/(1, 1).
@@ -2256,7 +2285,8 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
             start_name = name
             break
     pn = placed[start_name]
-    entrance_tile, player_start = _pick_entrance(pn.floor_tiles, occupied_sides)
+    entrance_tile, player_start = _pick_entrance(pn.floor_tiles, occupied_sides,
+                                                 entrance_side=entrance_side)
 
     # Generate flame jets first so we can exclude their tiles from items
     all_flame_jets = []
@@ -2636,6 +2666,14 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         required_sides[edge.node_a].add(edge.params['exit_side'])
         required_sides[edge.node_b].add(edge.params['entry_side'])
 
+    # The start grid's face toward grid zero is reserved for the level
+    # entrance (spec 0053); the corridor must reach it like any BORDER face
+    # so the entrance lands on a corridor tile there.  Grid zero guarantees
+    # no BORDER edge ever names this side.
+    entrance_side = getattr(graph, 'entrance_side', None)
+    if entrance_side:
+        required_sides[corridor_order[0]].add(entrance_side)
+
     grid_name_map = {cor: (f'grid_{i}' if i > 0 else 'grid_a')
                      for i, cor in enumerate(corridor_order)}
 
@@ -2703,7 +2741,8 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                 d = build_level_dict(
                     sub, rng=rng, strategies=[strat], grid_count=1,
                     required_exits=frozenset(exits), is_start_grid=(i == 0),
-                    occupied_sides=exits, corridor_anchor=anchor)
+                    occupied_sides=exits, corridor_anchor=anchor,
+                    entrance_side=(entrance_side if i == 0 else None))
             except (LayoutError, ValueError):
                 continue
             if anchor is not None:
