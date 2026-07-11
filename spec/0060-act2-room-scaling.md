@@ -4,9 +4,12 @@
 
 - [ ] Red tests: enemy capacity/total (2 × G) extended to **all** ten
       feature sets; per-grid room-count bounds contract; strategy-trim
-      contract for levels 11–13
+      contract for levels 11–13; coverable-side-set test (no structural
+      full_border fallback on trimmed levels)
 - [ ] `room_count` rescaled per the table below (levels 11–20)
 - [ ] Strategy lists trimmed for levels 11–13 (BL-22)
+- [ ] Spanning tree + entrance draw constrained to strategy-coverable
+      side sets (`_COVERS_*` moved to `levelgraph.py`)
 - [ ] Detector sweep (`scratchpad/sweep_enemy_awards.py`): **0** violations
       including TOTAL across ≥ 120 levels
 - [ ] Generation time measured for levels 11–20; level 20 within budget
@@ -92,13 +95,45 @@ unchanged and listed for completeness:
 | 20 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
 
 Levels 11–12 keep only the two plain spines; level 13 introduces the
-first stem (`t`). Between them `horizontal` (left+right) and `vertical`
-(top+bottom) cover every entrance side, so the single-grid grid-zero
-pre-pick (spec 0055) always finds a covering strategy, and every
-multi-grid `required_sides` combination up to 2 opposite-side exits is
-coverable; `t` (left+right+one stem) widens that from level 13 on, and
-`full_border` remains the universal per-grid fallback (R-T5) for any
-side set the listed strategies cannot honour — as today.
+first stem (`t`).
+
+### Exit sides constrained by the strategy list (review, 2026-07-11)
+
+Today the pipeline runs topology-first: `_spanning_tree` fixes every
+BORDER `exit_side` (and grid zero's pseudo-exit fixes the entrance side)
+knowing nothing about layouts; each grid then picks a covering strategy,
+falling back to `full_border` when the level's list covers no superset
+of its required sides. With the trimmed lists above, that fallback would
+fire on every mixed-axis draw (e.g. entrance left + exit bottom on level
+12) and render frame grids. Daniel's review inverts the dependency:
+**the possible exit sides are dictated by the strategies the level may
+use.**
+
+- The per-strategy side-coverage table (today's `_COVERS_*` data in
+  `levellayout.py`) moves to `levelgraph.py` — pure data, and
+  `levellayout` already imports `levelgraph`, so no cycle;
+  `levellayout` re-imports it from there.
+- `generate()` derives from `layout_strategies` the family of
+  **coverable side sets** and threads a side filter into both draws:
+  - *grid zero's pseudo-exit* — the entrance side must leave the start
+    grid's (eventual) side set coverable;
+  - *spanning-tree growth* — an edge attaching a child on side X of
+    parent P is admissible only if P's side set ∪ {X} stays coverable
+    and the child's starting set {opposite(X)} is coverable.
+  Filtering iterates ordered side lists (process determinism, spec
+  0054). A straight chain is always admissible whenever any spine is
+  listed, so constrained growth cannot dead-end short of `grid_count`.
+- Geometric consequence, intended: levels 11–12 grids form a **straight
+  line** along the entrance axis; level 13's `t` allows one
+  perpendicular branch per grid; richer lists (14–20) are barely
+  constrained in practice.
+- `full_border` stays as the layout-time last resort (R-T5) for
+  anchor-honouring failures — but side-mismatch fallbacks become
+  structurally absent: a test asserts that on levels 11–13 every grid's
+  required side set is coverable by a listed strategy.
+- Single-grid level 11 is unaffected in distribution: its only required
+  side is the entrance, and the two spines together cover all four
+  sides, so the BL-41 uniform entrance draw is preserved.
 
 ### Performance
 
@@ -136,11 +171,17 @@ bounds of the table) happens inside this spec, not silently later.
    `['horizontal', 'vertical']`, level 13 is
    `['horizontal', 'vertical', 't']`, levels 14–20 unchanged from today.
    Red today.
-4. **Sweep**: `scratchpad/sweep_enemy_awards.py` over ≥ 120 levels —
+4. **Coverable side sets**: for generated graphs of every Act 2 level,
+   each grid's required side set (BORDER faces + entrance on the start
+   grid) is a subset of at least one listed strategy's coverage — i.e.
+   no grid is forced into `full_border` by side mismatch. Red today on
+   trimmed levels (mixed-axis draws exist). A companion assertion checks
+   levels 11–12 grids are collinear (the chain consequence).
+5. **Sweep**: `scratchpad/sweep_enemy_awards.py` over ≥ 120 levels —
    0 violations of any kind.
-5. **Timing**: scratchpad script generating levels 11–20, printing per-
+6. **Timing**: scratchpad script generating levels 11–20, printing per-
    level wall time; budget as above.
-6. Goldens re-recorded once; full `poe test` green.
+7. Goldens re-recorded once; full `poe test` green.
 
 ## Done when:
 
@@ -148,6 +189,8 @@ bounds of the table) happens inside this spec, not silently later.
       exactly 2 × G, every host a candidate room) — red before the
       table lands
 - [ ] Feature-set bounds and strategy contracts green
+- [ ] Coverable-side-set test green: no grid forced into full_border by
+      side mismatch on any level; levels 11–12 grids collinear
 - [ ] Sweep reports 0 violations (TOTAL included) across ≥ 120 levels
 - [ ] Level-20 generation ≤ 12 s, Act 2 total ≤ 45 s, measured
 - [ ] Goldens/hashes re-recorded once with reviewed diffs; `poe test`
