@@ -694,3 +694,22 @@ to decide in the spec: blocks resting on plates must not count as wedged
 materialise on top of the player/an enemy.
 
 ---
+
+## BL-38 · P2 (in progress) · Content registry — Stage 6 of the world model (consolidation only)
+
+Picked up 2026-07-12 (Daniel: "do stage 6, but without introducing new
+features yet"). Implements kb/world-model-review.md §7 minus the new-element
+validation: a parse/behaviour/sprite registry over the four cell layers;
+plates and flame nozzles become fixtures in the cell model; pushable blocks
+become occupant objects with identity (prerequisite for BL-37);
+build_room_cells iterates the registry so new kinds stop touching the parser.
+Explicitly deferred, because they are behaviour changes / features: ray-cast
+flame fields (beam occlusion by blocks), levers/buttons/machines (spec 0007),
+BL-12 edge-type rendering. Behaviour-preserving, gated by the spec-0044
+goldens as all prior stages.
+
+**Fix hint:** spec 0052 (in flight); follow-up items when features come: lever
+as first registry-validated element, ray-cast fields, BL-37 explosion using
+Block identity.
+
+---
