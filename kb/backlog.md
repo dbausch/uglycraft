@@ -579,11 +579,12 @@ review the diff.
 World-model refactor, staged (→ kb/world-model-review.md §3, §6.6): make
 gameplay logic testable and new elements cheap to add. Step 0 (spec 0044
 characterization harness) and Stage 1 (spec 0045 World extraction, commit
-abe3d16) are DONE; remaining: Stage 2 (Act 1 as one-room Act 2 level, delete
-the `_is_multiroom` fork), Stage 3 (layered cell model, walls→barriers,
-shadow-grid migration), Stage 4 (behaviour dispatch table + signal channels),
-Stage 5 (Room as live object, delete RoomState).
+abe3d16) are DONE; Stage 2 (spec 0046 Act 1 as one-room Act 2 level, commit
+aa9b050) DONE — pending user play-test acceptance; remaining: Stage 3 (layered
+cell model, walls→barriers, shadow-grid migration), Stage 4 (behaviour
+dispatch table + signal channels), Stage 5 (Room as live object, delete
+RoomState).
 
 **Fix hint:** one numbered spec per stage, each behaviour-preserving and gated
-by the spec-0044 goldens; next up is Stage 2; fine-grained World unit tests
+by the spec-0044 goldens; next up is Stage 3; fine-grained World unit tests
 accumulate from Stage 2 onward.
