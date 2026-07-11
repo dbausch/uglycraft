@@ -14,6 +14,7 @@ import pytest
 
 import world as world_mod
 from world import World
+from constants import WALL_STONE
 from tests import act2_fixtures as fx
 
 DIR_DOWN = (0, 1)
@@ -206,3 +207,106 @@ def test_bridge_makes_water_passable():
         assert w.cells.is_water(*water)                # water is still there
     finally:
         _restore(saved)
+
+
+# ── Regeneration net demotion (spec 0048 U5, BL-36) ───────────────────────────
+
+def _wedge_level():
+    """Two grids; g1 has a pocket at (2,2) the player can wedge the
+    (2,4) block into with two upward pushes from below."""
+    g1 = fx._room({(1, 2): WALL_STONE, (3, 2): WALL_STONE, (2, 1): WALL_STONE},
+                  pushable_blocks=[(2, 4)], exits={'right_8': 'g2'})
+    g2 = fx._room({}, exits={'left_8': 'g1'})
+    return fx._level({'g1': g1, 'g2': g2}, start='g1', player=(2, 7))
+
+
+def _stuck_fresh_level():
+    """g2's block is wedged from generation — the fresh-entry net must
+    still catch this (the generator-bug last resort)."""
+    g1 = fx._room({}, exits={'right_8': 'g2'})
+    g2 = fx._room({(19, 2): WALL_STONE, (21, 2): WALL_STONE, (20, 1): WALL_STONE},
+                  pushable_blocks=[(20, 2)], exits={'left_8': 'g1'})
+    return fx._level({'g1': g1, 'g2': g2}, start='g1', player=(25, 8))
+
+
+def _clean_level():
+    g1 = fx._room({}, exits={'right_8': 'g2'})
+    g2 = fx._room({}, exits={'left_8': 'g1'})
+    return fx._level({'g1': g1, 'g2': g2}, start='g1', player=(25, 8))
+
+
+def _cross(w, dcol, key):
+    """Step onto the border exit tile and press once more to transition."""
+    w.try_move(dcol, 0, key)
+    w.key_released(key)
+    w.try_move(dcol, 0, key)
+    w.key_released(key)
+
+
+def test_reentry_with_wedged_block_never_regenerates():
+    """Player-wedged block + leave + return must NOT regenerate the level
+    (BL-36 trigger (a)).  Red until _verify_blocks is fresh-entry-only."""
+    orig = world_mod.get_level, world_mod.regenerate_level
+    regen_calls = []
+    world_mod.get_level = lambda n, progress=None: _wedge_level()
+    world_mod.regenerate_level = lambda n: regen_calls.append(n) or _wedge_level()
+    try:
+        random.seed(1)
+        w = World('easy')
+        for _ in range(4):                       # walk up, push block twice
+            w.try_move(0, -1, 1)
+            w.key_released(1)
+        assert w._room_blocks['g1'] == [(2, 2)]  # wedged: zero push dirs
+        level_data = w._level_data
+
+        w.player.col, w.player.row = 28, 8
+        _cross(w, 1, 2)                          # g1 -> g2
+        assert w._current_room == 'g2'
+        w.drain_events()
+        w.player.col, w.player.row = 1, 8
+        _cross(w, -1, 3)                         # g2 -> back into g1
+        events = w.drain_events()
+
+        assert w._current_room == 'g1'
+        assert not regen_calls                   # net did not fire
+        assert w._level_data is level_data       # same level, same progress
+        assert all(e[0] != 'level_started' for e in events)
+        assert w._room_blocks['g1'] == [(2, 2)]  # block stays wedged
+    finally:
+        world_mod.get_level, world_mod.regenerate_level = orig
+
+
+def test_fresh_entry_stuck_block_regenerates_without_stale_teleport():
+    """A generator-stuck block on FIRST entry still regenerates, but the
+    player must end at the fresh level's start — not teleported to the
+    stale entry tile of a level that no longer exists (BL-36 compound).
+    Red until _try_room_transition detects the regeneration."""
+    orig = world_mod.get_level, world_mod.regenerate_level
+    state = {'regenerated': False}
+
+    def get_level(n, progress=None):
+        return _clean_level() if state['regenerated'] else _stuck_fresh_level()
+
+    def regenerate(n):
+        state['regenerated'] = True
+        return _clean_level()
+
+    world_mod.get_level = get_level
+    world_mod.regenerate_level = regenerate
+    try:
+        random.seed(1)
+        w = World('easy')
+        w.player.col, w.player.row = 28, 8
+        w.try_move(1, 0, 2)                      # step onto the exit tile
+        w.key_released(2)
+        w.drain_events()
+        w.try_move(1, 0, 2)                      # off-grid press: stuck -> regen
+        events = w.drain_events()
+
+        assert state['regenerated']              # the net fired (last resort)
+        assert ('level_started', 1) in events    # level restarted cleanly
+        assert (w.player.col, w.player.row) == (25, 8)   # fresh player_start
+        assert w._transition_timer == 0          # no flash into the new level
+        assert all(e[0] != 'moved' for e in events)      # no phantom step
+    finally:
+        world_mod.get_level, world_mod.regenerate_level = orig

@@ -87,6 +87,20 @@ def test_damage_lives_on_the_barrier(cells):
     assert cells.barrier(5, 5).hits == 1                # same object
 
 
+def test_blocked_query_folds_barrier_and_water(cells):
+    """RoomCells.blocked is THE passability semantics (spec 0048 U1):
+    blocking barrier (gates consult gate_open) or unbridged water."""
+    assert cells.blocked(5, 5)                             # stone wall
+    assert not cells.blocked(8, 8)                         # bare floor
+    assert cells.blocked(15, 8)                            # locked door
+    assert cells.blocked(10, 4)                            # gate, channel low
+    assert not cells.blocked(10, 4, frozenset({'gate_1'}))
+    assert cells.blocked(20, 7)                            # water
+    cells.add_bridge((20, 7))
+    assert not cells.blocked(20, 7)                        # bridged
+    assert cells.blocked(20, 8)                            # other water tile
+
+
 def test_barrier_iteration_in_insertion_order(cells):
     doors = [(pos, b.colour) for pos, b in cells.barriers('door')]
     assert doors == [((15, 8), 'red'), ((COLS - 1, 8), 'blue')]

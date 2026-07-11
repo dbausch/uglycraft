@@ -162,16 +162,11 @@ class World:
         the cached walls grid — nothing to rebuild, nothing to forget."""
         if not (0 <= c < COLS and 0 <= r < ROWS):
             return True
-        b = self.cells.barrier(c, r)
-        if b is not None and b.blocks(self._gate_open):
-            return True
-        if self.cells.is_water(c, r) and not self.cells.bridge(c, r):
+        if self.cells.blocked(c, r, self._gate_open):
             return True
         if (c, r) in self._room_blocks.get(self._current_room, []):
             return True
         return False
-
-
 
     def _register_bump(self, key, col, row):
         """Called when the player walks into wall (col, row) via direction key."""
@@ -292,7 +287,8 @@ class World:
         self._current_room = room_key
         self._current_room_data = room_data
 
-        if room_key in self._room_states:
+        fresh = room_key not in self._room_states
+        if not fresh:
             st = self._room_states[room_key]
             self.cells = st.cells
             self.enemies = st.enemies
@@ -336,7 +332,14 @@ class World:
         self._flame_timer = 0
         self._bump_consumed.clear()
         self._tag_enemies_with_rooms()
-        self._verify_blocks()
+        # The stuck-block net runs only on first entry of a freshly
+        # generated room (spec 0048 U5 / BL-36): restored rooms are the
+        # only place player-wedged blocks exist, and a wedged block is a
+        # solved-or-failed puzzle, not a broken level — death already
+        # resets blocks.  With the water-aware solver (0048 U2/U3) this
+        # is a should-never-fire last resort against generator bugs.
+        if fresh:
+            self._verify_blocks()
 
     def _verify_blocks(self):
         """Check blocks are pushable. Regenerate level if any are stuck."""
@@ -398,7 +401,14 @@ class World:
             return False
         target_room, entry_col, entry_row = result
         self._save_room_state()
+        level_data = self._level_data
         self._enter_room(target_room)
+        if self._level_data is not level_data:
+            # Entering triggered the stuck-block regeneration: the whole
+            # level was rebuilt and the player already stands at its
+            # start.  Do not teleport onto the stale entry tile of a
+            # level that no longer exists (spec 0048 U5 / BL-36).
+            return True
         self.player.col, self.player.row = entry_col, entry_row
         self._transition_timer = 300
         self._emit('moved')

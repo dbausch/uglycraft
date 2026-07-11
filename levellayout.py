@@ -11,6 +11,7 @@ import random
 from collections import deque
 from constants import (COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN)
 from levelgraph import LevelGraph, NodeSize, EdgeType, SIZE_RANGES
+from cells import build_room_cells
 
 # Interior bounds
 MIN_C, MAX_C = 1, COLS - 2   # 1-28
@@ -1547,7 +1548,7 @@ def validate_layout(graph, placed, walls):
 
 # ── Push puzzle solvability ────────────────────────────────────────────────────
 
-def validate_push_puzzles(room_data, tile_owner):
+def validate_push_puzzles(room_data, tile_owner, require_plates=True):
     """Check that every push puzzle (block → plate) is solvable.
 
     For each gate_id, finds the blocks and plate in the same room, then
@@ -1556,6 +1557,11 @@ def validate_push_puzzles(room_data, tile_owner):
     State: (player_pos, frozenset_of_block_positions)
     Transitions: player moves to adjacent tile; if it's a block and the
     tile behind the block is free, the block is pushed.
+
+    require_plates=False skips gates whose plate is not in this room
+    instead of flagging them: cross-grid BORDER gates (added at stitch
+    time) have their plate+block puzzle in another grid by design, so
+    the post-stitch re-validation (spec 0048 U4) must not error on them.
 
     Returns list of error strings (empty = all solvable).
     """
@@ -1568,26 +1574,18 @@ def validate_push_puzzles(room_data, tile_owner):
     if not gates_list or not plates or not blocks:
         return errors
 
-    locked_doors = room_data.get('locked_doors', [])
-
-    # Build set of passable tiles: exclude ALL walls (any type), locked
-    # doors, gates (closed), and other blocks — matching what the game does.
-    # Breakable walls (stone/wooden) ARE collision in the game until broken,
-    # and blocks can't be pushed through them.
-    all_obstacles = set()
-    for pos in walls:
-        all_obstacles.add(pos)
-    for dc, dr, _ in locked_doors:
-        all_obstacles.add((dc, dr))
-    for gc, gr, _ in gates_list:
-        all_obstacles.add((gc, gr))
-    for bpos in blocks:
-        all_obstacles.add(bpos)
-
+    # Passable tiles come from the same layered-cell model the runtime
+    # queries (spec 0048 / BL-14): walls of every type, locked doors,
+    # closed gates, and unbridged water via RoomCells.blocked — the
+    # solver has no bridge model, so water is solid, exactly as at
+    # runtime.  Other blocks are the occupant layer on top, matching
+    # World.blocked.
+    cells = build_room_cells(room_data)
+    block_set = {tuple(b) for b in blocks}
     passable = set()
     for c in range(MIN_C, MAX_C + 1):
         for r in range(MIN_R, MAX_R + 1):
-            if (c, r) not in all_obstacles:
+            if not cells.blocked(c, r) and (c, r) not in block_set:
                 passable.add((c, r))
 
     # Map gate_id → plate position
@@ -1604,7 +1602,8 @@ def validate_push_puzzles(room_data, tile_owner):
     for gc, gr, gate_id in gates_list:
         plate_pos = plate_map.get(gate_id)
         if plate_pos is None:
-            errors.append(f"Gate {gate_id} has no pressure plate")
+            if require_plates:
+                errors.append(f"Gate {gate_id} has no pressure plate")
             continue
 
         plate_room = gate_rooms.get(gate_id)
@@ -2301,11 +2300,15 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                 lock_tiles.add(_conn)
 
     # The only information needed to place a solvable push puzzle.
+    # Water is solid until bridged and the puzzle subsystem has no bridge
+    # model, so water tiles are excluded here too (spec 0048 U3 / BL-14) —
+    # solutions are never routed across water in the first place.
     puzzle_passable = ({(c, r) for c in range(MIN_C, MAX_C + 1)
                         for r in range(MIN_R, MAX_R + 1)}
                        - set(walls.keys())
                        - gate_tiles
-                       - lock_tiles)
+                       - lock_tiles
+                       - {tuple(t) for t in water_tiles})
 
     # Place push puzzles atomically: choose (plate, block) together so the
     # block is reachable from the plate via the reverse BFS and confirmed
@@ -2482,10 +2485,11 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     if errors:
         raise ValueError(f"Layout invariant violated: {errors}")
 
-    # Validate push puzzles are solvable
+    # Validate push puzzles are solvable.  LayoutError → fresh-seed retry
+    # in _generate_act2_level (a ValueError here would crash generation).
     push_errors = validate_push_puzzles(room, tile_owner)
     if push_errors:
-        raise ValueError(f"Unsolvable push puzzle: {push_errors}")
+        raise LayoutError(f"Unsolvable push puzzle: {push_errors}")
 
     # Store dead squares (already computed before block placement)
     if dead_squares:
@@ -2816,6 +2820,16 @@ def _build_super_grid(graph, rng, strategies, progress=None):
             gates.append((*barrier_tile, gate_id))
             room_a['gates'] = gates
         # else: barrier prerequisite absent — leave the border passage open
+
+    # Spec 0048 U4: re-validate every room of the stitched whole.
+    # Stitching only opens borders and adds border barriers, so this
+    # should never fire — it turns "should be impossible" into "checked".
+    for _gname, _room in all_rooms.items():
+        _errors = validate_push_puzzles(_room, _room.get('tile_owner', {}),
+                                        require_plates=False)
+        if _errors:
+            raise LayoutError(
+                f"post-stitch push puzzle unsolvable in {_gname}: {_errors}")
 
     start_grid = grid_name_map[corridor_order[0]]
     return {

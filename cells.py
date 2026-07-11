@@ -86,6 +86,17 @@ class RoomCells:
     def bridge(self, c, r):
         return (c, r) in self._bridges
 
+    def blocked(self, c, r, gate_open=frozenset()):
+        """THE barrier/terrain passability semantics (spec 0048 U1):
+        a blocking barrier (gates consult gate_open) or unbridged water.
+        Bounds and occupants (pushable blocks) are the caller's layers —
+        the runtime folds in live gate state and the block list, the
+        push-puzzle validator uses gate_open=∅ and its own block set."""
+        b = self._barriers.get((c, r))
+        if b is not None and b.blocks(gate_open):
+            return True
+        return (c, r) in self._water and (c, r) not in self._bridges
+
     # ── Mutators ──────────────────────────────────────────────────────────────
 
     def set_barrier(self, pos, barrier):

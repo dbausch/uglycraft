@@ -407,3 +407,56 @@ def test_multi_puzzle_solution_tiles_do_not_overlap(seed):
 
     assert plate_b_pos not in sol_a, "puzzle B plate overlaps puzzle A solution path"
     assert block_b not in sol_a, "puzzle B block overlaps puzzle A solution path"
+
+
+# ── Water-aware obstacle model (spec 0048 U2, BL-14) ──────────────────────────
+
+def _water_corridor_room(water):
+    """A dead-end corridor along row 8, capped left of the plate at
+    (4, 8): the block's only route to the plate is leftward along the
+    row, across the (optional) water tile at (7, 8) — it cannot be
+    routed around the outside and pushed in from the open left end."""
+    walls = {(4, 8): 'reinforced'}
+    for c in range(3, 13):
+        walls[(c, 7)] = 'reinforced'
+        walls[(c, 9)] = 'reinforced'
+    return {
+        'walls': walls,
+        'pushable_blocks': [(10, 8)],
+        'pressure_plates': [(5, 8, 'g1')],
+        'gates': [(20, 8, 'g1')],
+        'locked_doors': [],
+        'water_tiles': list(water),
+        'water_tile_room': {pos: 'w1' for pos in water},
+        'exits': {},
+    }
+
+
+_CORRIDOR_OWNER = {(c, 8): 'room_a' for c in range(4, 12)}
+
+
+def test_corridor_puzzle_solvable_without_water():
+    """Control: the fixture is solvable when no water interferes."""
+    room = _water_corridor_room(water=())
+    assert validate_push_puzzles(room, _CORRIDOR_OWNER) == []
+
+
+def test_water_on_only_push_axis_is_flagged():
+    """BL-14: the runtime makes unbridged water solid, so a puzzle whose
+    only push axis crosses water is unsolvable and must be rejected.
+    Red until the validator's obstacle model includes water (0048 U2)."""
+    room = _water_corridor_room(water=[(7, 8)])
+    errors = validate_push_puzzles(room, _CORRIDOR_OWNER)
+    assert errors, 'water on the only push axis must be flagged'
+
+
+def test_gate_without_local_plate_skipped_post_stitch():
+    """Cross-grid BORDER gates (stitch-time) carry no plate in their own
+    room; the post-stitch re-validation must skip them, the per-grid
+    validation must still flag them (spec 0048 U4)."""
+    room = _water_corridor_room(water=())
+    room['gates'].append((25, 8, 'border_gate_1'))    # plate in another grid
+    assert validate_push_puzzles(room, _CORRIDOR_OWNER,
+                                 require_plates=False) == []
+    errors = validate_push_puzzles(room, _CORRIDOR_OWNER)
+    assert any('border_gate_1' in e for e in errors)
