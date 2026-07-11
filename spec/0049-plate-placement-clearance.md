@@ -18,24 +18,24 @@ plate must never sit on the landing tile of any passage of its room,
 
 ## Status
 
-- [ ] P1 — `_place_puzzle` takes a `plate_excluded` set; plate candidates
+- [x] P1 — `_place_puzzle` takes a `plate_excluded` set; plate candidates
       (`P` loop) skip it — blocks and solution paths are NOT restricted
-- [ ] P2 — `build_level_dict` computes per-room exclusions: the **landing
+- [x] P2 — `build_level_dict` computes per-room exclusions: the **landing
       tile** of every doorway of the plate's room (entrance rule — a
       solved puzzle must never seal an exit)
-- [ ] P3 — the same set covers the landing tiles of *buildable* passages:
+- [x] P3 — the same set covers the landing tiles of *buildable* passages:
       every floor tile cardinally adjacent to a water tile
-- [ ] P4 — `World._try_auto_bridge` refuses to create a passage whose
+- [x] P4 — `World._try_auto_bridge` refuses to create a passage whose
       landing tile carries a plate (water tile cardinally adjacent to a
       plate of the current room; no sound, inventory untouched — like
       every other failed bridge condition)
-- [ ] P5 — Tests red→green: runtime refusal fixture; `plate_excluded`
+- [x] P5 — Tests red→green: runtime refusal fixture; `plate_excluded`
       unit test; multi-seed generation property (no plate adjacent to
       entrance-landing or water across the seed sweep)
-- [ ] P6 — Full suite green, goldens byte-identical unless a seeded
+- [x] P6 — Full suite green, goldens byte-identical unless a seeded
       generator trace legitimately changes (same policy as spec 0048 —
       re-record only with a reviewed diff)
-- [ ] P7 — Docs: `kb/requirements.md` new invariants, BL-19 closed,
+- [x] P7 — Docs: `kb/requirements.md` new invariants, BL-19 closed,
       backlog note
 
 ## Geometry (rule of this repo: confirm these diagrams before any code)
@@ -180,10 +180,24 @@ inventory use), like every other refused bridge.
 
 ## Done when:
 
-- [ ] P1 — `plate_excluded` parameter, plate-loop-only
-- [ ] P2 — entrance clearance computed per plate room
-- [ ] P3 — water clearance in the same set
-- [ ] P4 — runtime bridge refusal beside plates
-- [ ] P5 — tests red→green (runtime, unit, multi-seed property)
-- [ ] P6 — suite green; golden policy honoured
-- [ ] P7 — docs + backlog updated
+- [x] P1 — `plate_excluded` parameter, plate-loop-only (21cd542)
+- [x] P2 — entrance clearance computed per plate room (21cd542; corrected
+      by eff31c8 — the first version scanned orig_walls, a synthetic
+      all-reinforced map that hid every carved doorway, so the doorway
+      half never fired: 61/1400 plates violated pre-0049, 9/1400 with the
+      bug, 0/1400 after the correction)
+- [x] P3 — water clearance in the same set (21cd542)
+- [x] P4 — runtime bridge refusal beside plates (21cd542)
+- [x] P5 — tests red→green: runtime fixture, exclusion unit, _place_puzzle
+      unit, 50-seed water-flank property (21cd542); landing-tile property
+      added after it caught the orig_walls bug (eff31c8)
+- [x] P6 — 493 passed; goldens byte-identical — no re-record needed
+      (21cd542, eff31c8)
+- [x] P7 — docs: R-P7 in kb/requirements.md (0e250cb); sweep script
+      committed (752774e); BL-19 closed via backlog agent
+
+User acceptance 2026-07-12: statistical evidence accepted in lieu of a
+play-test (a rare generative property cannot be certified by playing a
+few levels — the user's own observation): detector validated against
+pre-0049 code (61/1400 violations), 0/1400 on the fixed code across
+50 seeds × 10 levels, plus the permanent hypothesis property.
