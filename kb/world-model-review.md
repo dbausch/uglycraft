@@ -246,8 +246,8 @@ commit 42b4e8f) — `Room.from_data` builds lazily on first entry (the
 spec-0048 fresh-entry gate falls out for free), rooms persist by
 identity, World's current-room views are properties, and `RoomState` +
 both persistence idioms are deleted.  All five stages of §3 are now
-implemented; §7 (content registry) is the candidate Stage 6.  Awaiting
-the user's play-test.
+implemented and user-accepted; §7 (content registry) is the candidate
+Stage 6.
 
 
 A `Room` dataclass owns its tiles/items/enemies. Rooms persist by identity

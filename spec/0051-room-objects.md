@@ -9,30 +9,30 @@ behaviour change, byte-identical spec-0044 goldens.
 
 ## Status
 
-- [ ] R1 — `Room` class (in `rooms.py`): `key`, `data`, `cells`,
+- [x] R1 — `Room` class (in `rooms.py`): `key`, `data`, `cells`,
       `enemies`, `blocks`, `blocks_initial`, `plates`, `tile_owner`,
       `dead_squares`, `flame_jets`; built once by `Room.from_data`
       (difficulty-dependent enemy selection moves in, RNG-free);
       `RoomState`, `_save_room_state`, and the fresh/restore double
       branch are deleted
-- [ ] R2 — Rooms are created **lazily on first entry** and kept in
+- [x] R2 — Rooms are created **lazily on first entry** and kept in
       `World._rooms`; `fresh = key not in self._rooms` — exactly the
       spec-0048 "first entry of a freshly generated room" semantics for
       `_verify_blocks`, for free
-- [ ] R3 — World's current-room views become read-only properties over
+- [x] R3 — World's current-room views become read-only properties over
       `self.room`: `cells`, `enemies`, `_current_room` (= `room.key`,
       still `None` on Act 1 — the golden traces record it),
       `_current_room_data` (= `room.data`); the last per-room dicts
       (`_room_blocks`, `_room_blocks_initial`, `_room_plates`) die —
       consumers read `self.room.blocks` / `self.room.plates`
-- [ ] R4 — `_reset_blocks` iterates the *visited* rooms
+- [x] R4 — `_reset_blocks` iterates the *visited* rooms
       (`self._rooms.values()`); unvisited rooms need no reset — their
       blocks still sit at the initial positions in the level dict
-- [ ] R5 — Facade/tests updated (reads of `_room_blocks[rk]` become
+- [x] R5 — Facade/tests updated (reads of `_room_blocks[rk]` become
       `world.room.blocks` / `world._rooms[rk].blocks`); goldens
       byte-identical; unit tests red-first for the Room API and the
       lazy/visited semantics
-- [ ] R6 — Docs: kb review Stage 5 done → **BL-35 completes**;
+- [x] R6 — Docs: kb review Stage 5 done → **BL-35 completes**;
       feature-inventory; backlog close via agent
 
 ## Motivation
@@ -143,9 +143,15 @@ channel clear stays as is.
 
 ## Done when:
 
-- [ ] R1 — `Room` + `from_data`; RoomState/save/restore deleted
-- [ ] R2 — lazy `_rooms` map; fresh = first entry
-- [ ] R3 — current-room properties; last per-room dicts deleted
-- [ ] R4 — death reset over visited rooms
-- [ ] R5 — tests red→green; goldens byte-identical
-- [ ] R6 — docs; BL-35 closed
+- [x] R1 — `Room` + `from_data`; RoomState/save/restore deleted (42b4e8f)
+- [x] R2 — lazy `_rooms` map; fresh = first entry (42b4e8f)
+- [x] R3 — current-room properties; last per-room dicts deleted (42b4e8f;
+      `parse_level_walls` moved rooms.py → cells.py to break the import
+      cycle Room's cells dependency would create)
+- [x] R4 — death reset over visited rooms (42b4e8f)
+- [x] R5 — tests red→green; goldens byte-identical (42b4e8f — 522 passed)
+- [x] R6 — docs (33be01c); BL-35 closed via backlog agent
+
+User acceptance 2026-07-12: played room transitions, cross-room
+persistence, and death with progress over several rooms — "all good".
+This completes all five stages of kb/world-model-review.md §3.

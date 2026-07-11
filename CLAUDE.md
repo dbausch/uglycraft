@@ -266,6 +266,6 @@ In debug mode (`--level`) the high-score entry screen is suppressed.
 | `game.py` | Presentation: menu state machine, input translation, rendering, inventory/crafting UI; maps world events → sounds/music/flash |
 | `main.py` | Window creation, integer scaling, top-level event loop |
 | `crafting.py` | Materials, tools, keys, recipes, `Inventory` class |
-| `rooms.py` | `RoomState` for multi-room persistence, exit detection |
+| `rooms.py` | Live `Room` objects (persist by identity, spec 0051), exit detection |
 | `levelgraph.py` | Graph model (`Node`, `Edge`, `LevelGraph`), generation, playability validation |
 | `levellayout.py` | Layout algorithm: graph → 30×16 grid, wall derivation, Sokoban solver |
