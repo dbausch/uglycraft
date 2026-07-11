@@ -345,3 +345,34 @@ def test_fresh_entry_stuck_block_regenerates_without_stale_teleport():
         assert all(e[0] != 'moved' for e in events)      # no phantom step
     finally:
         world_mod.get_level, world_mod.regenerate_level = orig
+
+
+def test_refused_bridge_never_consumes_the_item():
+    """BL-39 reproduction attempt (from kb/findings.md): with two crafted
+    bridges, the second placement attempt on an already-bridged water
+    room must be refused WITHOUT consuming the item.  Every refusal path
+    in _try_auto_bridge returns before inventory.use_item — this test is
+    the permanent guard for that ordering."""
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.inventory.crafted['bridge'] = 2
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                    # bump W(15,8) -> builds
+        w.key_released(KEY)
+        assert any(e[0] == 'bridge_built' for e in w.drain_events())
+        assert w.inventory.crafted['bridge'] == 1   # exactly one consumed
+
+        w.player.col, w.player.row = 14, 7
+        w.try_move(1, 0, KEY)                    # bump W(15,7): same water
+        w.key_released(KEY)                      #   room -> refused
+        assert all(e[0] != 'bridge_built' for e in w.drain_events())
+        assert w.inventory.crafted['bridge'] == 1   # NOT consumed
+        assert w.blocked(15, 7)                     # and nothing was built
+
+        w.player.col, w.player.row = 14, 9
+        w.try_move(1, 0, KEY)                    # third tile, same room
+        w.key_released(KEY)
+        assert w.inventory.crafted['bridge'] == 1   # still not consumed
+    finally:
+        _restore(saved)
