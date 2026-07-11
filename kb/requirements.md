@@ -62,6 +62,16 @@ puzzle*.  Enforced at placement (`_plate_exclusions` in `levellayout.py`) and
 mirrored at runtime (`World._try_auto_bridge` refuses to create a passage whose
 landing tile carries a plate).
 
+**R-P8** No treasure, material, key, plate, or block may occupy the start
+grid's `player_start` tile or the `entrance` tile (spec 0057 / BL-16).
+Enforced by seeding `global_used` with both tiles in `build_level_dict`
+when `is_start_grid` — every collectible path (room floor, corridor spill,
+flame far-tiles) consults that one set.  Plates/blocks additionally hold by
+construction (`_puzzle_candidates` excludes corridors + R-T6); the entrance
+tile is border ring (R-G2), excluded as a zero-cost guard for BL-43's
+future openable entrance.  Tests: `tests/test_entrance.py` (R-P8 section);
+sweep: `scratchpad/sweep_items_on_start.py`.
+
 ---
 
 ## W — Walls

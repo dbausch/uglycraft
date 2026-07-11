@@ -517,6 +517,9 @@ in `World.blocked` / `RoomCells.blocked`.
 planks → treasures (awards) → other materials**. When the node's own floor is
 exhausted, items **spill to the corridor** (`spill_floor`, the `CORRIDOR` node's
 free tiles, passed from `build_level_dict`) instead of being silently dropped;
+on the start grid `global_used` is pre-seeded with `player_start` and the
+entrance tile (spec 0057, R-P8), so neither the room pass, the spill, nor the
+flame far-tile pass can put an item under the spawning player;
 `LayoutError` is raised only if the corridor is also full (→ regenerate; should
 never happen). Enemies are exempt: they reserve no tile (may stand on an item)
 and never spill, so they always fit in-room. This replaced the old `if p:`
