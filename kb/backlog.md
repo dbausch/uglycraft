@@ -146,7 +146,13 @@ screen covers the (now per-level) generation. → see `kb/architecture.md`
 
 ---
 
-## BL-12 · P2 · Bug: Grid entry tiles always display stairs instead of the source exit type
+## BL-12 · FIXED · Grid entry tiles always display stairs instead of the source exit type
+
+Fixed in b62f370 (spec/0056-grid-entry-tile-type.md, supersedes spec 0039),
+confirmed by Daniel 2026-07-11. Stitching records `border_barriers` on both
+room dicts; the render loop mirrors the source barrier's live appearance and
+draws nothing for open borders — stairs are reserved for floor-to-floor
+travel and never appear on same-floor exits.
 
 Grid entry tiles unconditionally render as stairs regardless of what barrier
 type the player just passed through. If the source grid has an open doorway,

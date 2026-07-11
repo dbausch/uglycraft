@@ -10,20 +10,20 @@ layered-cell / Room-object / channel architecture.
 
 ## Status
 
-- [ ] B1 — Stitching records a `border_barriers` entry for every BORDER exit
+- [x] B1 — Stitching records a `border_barriers` entry for every BORDER exit
       on **both** the exit-side and entry-side room dicts, guarded by the
       same surviving-prerequisite check that decides whether the barrier
       entity exists at all (degraded borders record `open`)
-- [ ] B2 — The border-exit render loop selects the tile sprite from the
+- [x] B2 — The border-exit render loop selects the tile sprite from the
       recorded barrier type via a pure sprite-key helper — locked door
       (open or closed, tracking the source door's true state) / gate (open
       or closed, tracking its channel) — and draws **nothing** for a plain
       open border (the punched gap in the border wall is the marker); the
       staircase blit is removed from this loop entirely
-- [ ] B3 — Automated tests green: unit tests for the sprite-key mapping,
+- [x] B3 — Automated tests green: unit tests for the sprite-key mapping,
       a stitch test asserting matching records on both room dicts, and the
       full suite (`poe test`) passes with the spec-0044 goldens unchanged
-- [ ] B4 — Manual visual check: each destination entry tile matches the
+- [x] B4 — Manual visual check: each destination entry tile matches the
       source exit the player crossed — open, locked, and gated — confirmed
       by the user in play
 
@@ -249,20 +249,22 @@ manual user-acceptance check.
 
 ## Done when:
 
-- [ ] B1 — `_build_super_grid` records
+- [x] B1 — `_build_super_grid` records
       `border_barriers[exit_key] = (kind, param, home)` on **both** room
       dicts of every BORDER edge, guarded by the surviving-prerequisite
       checks; degraded borders record `('open', None, None)`; `exits` and
       `border_barriers` keys are 1:1. (stitch test of Verification 2 green)
-- [ ] B2 — The border-exit render loop draws the record-selected sprite via
+      — tests bc3e723, implementation b62f370
+- [x] B2 — The border-exit render loop draws the record-selected sprite via
       the pure sprite-key helper — nothing (plain floor gap) for open
       borders, the staircase sprite never appearing on any same-floor
       entry/exit; locked doors track the source door's opened state through
       `_opened_doors` via the record's `home`; gates track their channel.
       (helper unit tests of Verification 1 green)
-- [ ] B3 — Full `poe test` suite green, spec-0044 goldens unchanged (no
-      re-recording).
-- [ ] B4 — Manual check per Verification 4: the user has explicitly
+      — tests bc3e723, implementation b62f370
+- [x] B3 — Full `poe test` suite green, spec-0044 goldens unchanged (no
+      re-recording). — 542 passed at b62f370
+- [x] B4 — Manual check per Verification 4: the user has explicitly
       confirmed in play that entry tiles match the crossed exit for all
       three barrier kinds (open / locked / gated), including the
-      gate-closes-on-death mirror.
+      gate-closes-on-death mirror. — confirmed by Daniel 2026-07-11
