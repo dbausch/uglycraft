@@ -621,3 +621,30 @@ scratch repro_regen.py (job tmp, wedge block at (2,2) behind three walls in a
 two-grid fixture, exit right, return).
 
 ---
+
+## BL-37 · P3 · Wedged push-block explodes and respawns after an animated countdown
+
+Feature idea (Daniel, 2026-07-12): when a pushable block is pushed onto a tile
+from which its puzzle becomes unsolvable (zero remaining push directions, or
+provably unable to reach its plate), the block should visibly react — start a
+short animated countdown on the tile, then explode and respawn at its starting
+position — instead of silently staying wedged. This is the player-friendly
+in-game recovery for self-inflicted wedges; it complements spec 0048
+(BL-14/BL-36), under which wedged blocks simply stay wedged until death resets
+them, and the regeneration net no longer fires on re-entry. Detection can start
+simple (zero push directions, the old `_verify_blocks` condition, evaluated per
+push) and later use the Sokoban solvability check; "unsolvable" must respect
+bridged water and open gates at evaluation time (use `World.blocked` /
+`RoomCells.blocked` from spec 0047/0048, never a private obstacle model — that
+is the BL-13 bug class).
+
+**Fix hint:** needs its own spec. Runtime: hook detection into
+`_try_push_block` (world.py) after a successful push; add a per-block countdown
+timer ticked in `World.update`, an event kind for the explosion (Game maps it
+to a sound + flash/animation), and respawn from `_room_blocks_initial` for that
+block only. Rendering: countdown/explosion animation in game.py/sprites.py.
+Interactions to decide in the spec: blocks resting on plates must not count as
+wedged (holding a gate open is the goal state), and the respawned block must
+not materialise on top of the player/an enemy.
+
+---
