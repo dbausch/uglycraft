@@ -2758,7 +2758,12 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
 
     # Validate push puzzles are solvable.  LayoutError → fresh-seed retry
     # in _generate_act2_level (a ValueError here would crash generation).
-    push_errors = validate_push_puzzles(room, tile_owner)
+    # Roaming plates (spec 0061): in per-grid builds a gate's plate may
+    # legitimately live on another grid, so its absence here is not an
+    # error — the plate's own grid validates the puzzle, and the global
+    # elision pass removes gates whose plate did not survive anywhere.
+    push_errors = validate_push_puzzles(room, tile_owner,
+                                        require_plates=not defer_gate_elision)
     if push_errors:
         raise LayoutError(f"Unsolvable push puzzle: {push_errors}")
 
