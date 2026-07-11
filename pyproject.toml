@@ -16,7 +16,7 @@ help  = "Create venv and install all dependencies"
 shell = "virtualenv .venv && .venv/bin/pip install -r requirements.txt"
 
 [tool.poe.tasks.test]
-help = "Run the level generation test suite"
+help = "Run the full test suite (generator, goldens, world-model units)"
 cmd  = ".venv/bin/python -m pytest tests/ -v"
 
 [tool.poe.tasks.run]

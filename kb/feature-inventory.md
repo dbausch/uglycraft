@@ -210,13 +210,24 @@ re-record only with `UGLYCRAFT_REGOLD=1`):
 | `tests/test_golden_act1.py` | §2: walks L1–10, wall break/place, shield, death/penalty, shielded catch, game over, advance, pause |
 | `tests/test_golden_act2.py` | §3: door/key, plate/block/gate + reset, water/planks/craft/bridge, flames + shield, grid transition persistence, forge ogre, patrol; seeded L11/L13 walks |
 | `tests/test_render.py` | §1.3/1.4: render smoke (BL-33) + golden screenshots (fragile tier, on trial) |
-| `tests/test_perf.py` | throughput tripwire (2000 ticks < 5 s) |
+| `tests/test_perf.py` | throughput tripwires (Act 1: 2000 ticks; Act 2 hard/BFS: 1000 ticks; each < 5 s) |
+
+**World-model unit tests** (third tier, accumulated through the refactor,
+specs 0045–0052 — pygame-free, fine-grained failure localisation under
+the goldens):
+
+| Test file | Covers |
+|---|---|
+| `tests/test_world_isolation.py` | world (and imports) never import pygame (0045) |
+| `tests/test_world.py` | World API: rules/events, door/gate/bridge/push through `blocked()`, 0049 bridge refusal, 0048 regeneration-net semantics |
+| `tests/test_cells.py` | cell model: barriers, water/bridges, items, `blocked()` truth table |
+| `tests/test_dispatch.py` | broad behaviour locks: gate/plate timing, cross-grid channels, per-kind bump outcomes, collection semantics (0050) |
+| `tests/test_rooms.py` | Room.from_data, identity persistence, reset scope (0051) |
+| `tests/test_registry.py` | CONTENT_PARSERS completeness, fixture layer, Block identity (0052) |
 
 Still without automated coverage: `hiscore.py` (file I/O deliberately kept
 out of tests), sound *content* (`sounds.py` waveforms — only trigger keys
-are traced), and the menu flows outside the traced states. Root-level
-`test_levelgraph.py` remains an older unittest suite not collected by
-`poe test`.
+are traced), and the menu flows outside the traced states.
 
 Root-level `test_levelgraph.py` is an older unittest-style suite covering the
 graph/layout basics; it is **not** run by `poe test` (which only collects
