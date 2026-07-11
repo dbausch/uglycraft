@@ -59,7 +59,7 @@ def test_shield_buy_and_expiry():
     """Buy the shield (seeded score), let it run out: 10 s timer.
     Enemies removed — a chasing enemy would consume the shield first."""
     with Harness(level=1, seed=1234) as h:
-        h.game.score = 1000
+        h.game.world.score = 1000
         h.game.enemies.clear()
         trace = h.run(['key:return', 'wait:320'])   # 320*33 ms > 10 s
     keys = _sound_keys(trace)
@@ -72,7 +72,7 @@ def test_death_and_penalty():
     """Enemy placed on an adjacent tile, player steps into it: caught,
     -500 (clamped at 0), life lost, respawn far away."""
     with Harness(level=1, seed=1234) as h:
-        h.game.score = 700
+        h.game.world.score = 700
         e = h.game.enemies[0]
         e.col, e.row = h.game.player.col - 1, h.game.player.row
         trace = h.run(['key:left', 'wait:10'])
@@ -87,9 +87,9 @@ def test_death_and_penalty():
 def test_death_with_shield():
     """Shielded catch: no life lost, shield consumed."""
     with Harness(level=1, seed=1234) as h:
-        h.game.score = 700
-        h.game.shield = True
-        h.game._shield_timer = 10_000
+        h.game.world.score = 700
+        h.game.world.shield = True
+        h.game.world._shield_timer = 10_000
         e = h.game.enemies[0]
         e.col, e.row = h.game.player.col - 1, h.game.player.row
         trace = h.run(['key:left', 'wait:10'])
@@ -103,7 +103,7 @@ def test_death_with_shield():
 def test_game_over():
     """Last life lost -> GAME_OVER (debug mode never touches hiscore)."""
     with Harness(level=1, seed=1234) as h:
-        h.game.lives = 1
+        h.game.world.lives = 1
         e = h.game.enemies[0]
         e.col, e.row = h.game.player.col - 1, h.game.player.row
         trace = h.run(['key:left', 'wait:10'])

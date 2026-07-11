@@ -1,14 +1,14 @@
 """Hand-written Act 2 fixture levels (spec 0044 H6).
 
-Deterministic mini-levels, one per mechanic, served to Game by patching
-game.get_level (see harness.Harness(level_dict=...)).  Layout of the
+Deterministic mini-levels, one per mechanic, served to the game by patching
+world.get_level (see harness.Harness(level_dict=...)).  Layout of the
 two-room fixtures (30x16 grid, border implicit):
 
     cols 1-14 = 'left' room | col 15 = reinforced divider | cols 16-28 = 'right'
 
 with the passage cell(s) at column 15 carrying the mechanic under test
 (locked door, gate, water stream).  Player starts at (10, 8).
-Each function returns a FRESH dict — Game mutates room data in place.
+Each function returns a FRESH dict — the World mutates room data in place.
 """
 from constants import WALL_REINFORCED, WALL_WOODEN
 

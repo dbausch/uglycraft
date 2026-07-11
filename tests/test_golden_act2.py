@@ -68,8 +68,8 @@ def test_flame_jet():
         h.run(['hold:down:24', 'wait:5'])    # into the flames -> caught
         assert h.game.lives == 8
         h.game.player.col, h.game.player.row = 18, 4
-        h.game.shield = True
-        h.game._shield_timer = 30_000
+        h.game.world.shield = True
+        h.game.world._shield_timer = 30_000
         trace = h.run(['hold:down:24', 'wait:5'])    # shielded walk
     keys = _sound_keys(trace)
     assert keys.count('caught') == 1

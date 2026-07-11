@@ -17,8 +17,8 @@ import pygame
 if not pygame.get_init():
     pygame.init()
 
-import game as game_mod
 import levels
+import world as world_mod
 from constants import LOGICAL_W, LOGICAL_H
 from game import Game, PLAYING
 
@@ -78,8 +78,8 @@ class Harness:
         # normally initialises treasure_item_no on the way through Act 1;
         # _render_hud reads it unconditionally.  Production can't hit this
         # (level 1 is always single-room); give the fixture path a default.
-        if not hasattr(self.game, 'treasure_item_no'):
-            self.game.treasure_item_no = 0
+        if not hasattr(self.game.world, 'treasure_item_no'):
+            self.game.world.treasure_item_no = 0
         self.game.state = PLAYING
 
     # ── plumbing ──────────────────────────────────────────────────────────────
@@ -98,15 +98,15 @@ class Harness:
 
     def _patch_levels(self, level_dict):
         """Serve a hand-written fixture dict for every level number."""
-        self._orig_get_level = game_mod.get_level
-        self._orig_regenerate = game_mod.regenerate_level
-        game_mod.get_level = lambda n, progress=None: level_dict
-        game_mod.regenerate_level = lambda n: level_dict
+        self._orig_get_level = world_mod.get_level
+        self._orig_regenerate = world_mod.regenerate_level
+        world_mod.get_level = lambda n, progress=None: level_dict
+        world_mod.regenerate_level = lambda n: level_dict
 
     def close(self):
         if self._orig_get_level is not None:
-            game_mod.get_level = self._orig_get_level
-            game_mod.regenerate_level = self._orig_regenerate
+            world_mod.get_level = self._orig_get_level
+            world_mod.regenerate_level = self._orig_regenerate
             self._orig_get_level = None
 
     def __enter__(self):
