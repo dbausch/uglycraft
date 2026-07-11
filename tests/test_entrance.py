@@ -157,3 +157,44 @@ def test_pinned_fallback_case():
     finally:
         levels._game_seed = old_seed
         levels._act2_cache.clear()
+
+
+# ── R-P8 (spec 0057 / BL-16): no item on player_start or the entrance ────────
+
+ITEM_LISTS = ('treasures', 'materials', 'keys',
+              'pressure_plates', 'pushable_blocks')
+
+
+def _assert_start_tiles_item_free(lv):
+    room = lv['rooms'][lv['start_room']]
+    forbidden = {tuple(lv['player_start'])}
+    if 'entrance' in room:
+        forbidden.add(tuple(room['entrance']))
+    for lname in ITEM_LISTS:
+        hit = [e for e in room.get(lname, [])
+               if (e[0], e[1]) in forbidden]
+        assert not hit, (
+            f"{lname} on player_start/entrance {sorted(forbidden)}: {hit}")
+
+
+@given(st.integers(0, 2**32 - 1), st.integers(1, 6))
+@settings(max_examples=30, deadline=None)
+def test_no_item_on_player_start_or_entrance(seed, gc):
+    """No treasure, material, key, plate, or block may occupy the start
+    grid's player_start or entrance tile (R-P8)."""
+    _g, lv = _build(seed, gc)
+    _assert_start_tiles_item_free(lv)
+
+
+def test_pinned_item_on_player_start():
+    """Game seed 4 / level 13 placed a rocks material on player_start
+    (14, 14) pre-fix (sweep 2026-07-11, scratchpad/sweep_items_on_start.py).
+    Red before the spec-0057 seeding of global_used, green after."""
+    old_seed = levels._game_seed
+    try:
+        levels.set_game_seed(4)
+        levels._act2_cache.clear()
+        _assert_start_tiles_item_free(levels.get_level(13))
+    finally:
+        levels._game_seed = old_seed
+        levels._act2_cache.clear()
