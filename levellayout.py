@@ -2392,7 +2392,8 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                      required_exits=None, is_start_grid=True,
                      occupied_sides=frozenset(), progress=None,
                      corridor_anchor=None, entrance_side=None,
-                     place_enemies=True):
+                     place_enemies=True, global_key_colours=None,
+                     defer_gate_elision=False):
     """Generate the complete level dict that game.py expects.
 
     Auto-detects multi-grid from BORDER edges in the graph.
@@ -2676,11 +2677,25 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     all_gates = []
     all_water_tiles = []
 
-    # Gate/lock prerequisites that actually SURVIVED placement.  A locked door
-    # or gate is created only when its key / plate is on the floor — never a
-    # barrier with an absent prerequisite (which would soft-lock the level).
+    # Barrier ↔ prerequisite coupling (specs 0030/0061).
+    #
+    # Doors: keys are NEVER lost (spill guarantee, K1), and key placement
+    # is deliberately cross-grid (R-V3) — so the door is created
+    # unconditionally, and a colour with no key anywhere in the FULL
+    # graph is a loud LayoutError (should-be-impossible, checked), never
+    # a silently reshaped level.  The old per-grid check elided every
+    # door whose key sat on another grid (orphan keys, spec 0061).
+    #
+    # Gates: plates CAN be lost (a dropped puzzle room takes its plate;
+    # plates are not spilled), so gates keep degrade-to-open — but at
+    # global scope: per-grid builds (defer_gate_elision=True) create
+    # gates unconditionally and _build_super_grid elides against the
+    # surviving plates of ALL grids.  Single-grid builds elide locally,
+    # where local == global.
+    if global_key_colours is None:
+        global_key_colours = {k[0] for nd in graph.nodes.values()
+                              for k in nd.keys}
     placed_gate_ids = {gid for *_, gid in all_plates}
-    placed_key_colours = {colour for *_, colour in all_keys}
 
     for edge in graph.edges:
         if edge.node_a not in placed or edge.node_b not in placed:
@@ -2694,14 +2709,16 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
             continue
         if edge.edge_type == EdgeType.LOCKED:
             colour = edge.params['key_colour']
-            if colour in placed_key_colours:
-                all_locked_doors.append((*conn, colour))
-            # else: prerequisite room was dropped — make this an open passage
+            if colour not in global_key_colours:
+                raise LayoutError(
+                    f"locked door {colour!r} has no key anywhere in the "
+                    f"graph — K1 regression")
+            all_locked_doors.append((*conn, colour))
         elif edge.edge_type == EdgeType.GATED:
             gate_id = edge.params['gate_id']
-            if gate_id in placed_gate_ids:
+            if defer_gate_elision or gate_id in placed_gate_ids:
                 all_gates.append((*conn, gate_id))
-            # else: prerequisite room was dropped — make this an open passage
+            # else: plate room dropped — make this an open passage
         elif edge.edge_type == EdgeType.WATER:
             pass  # water tiles already collected by derive_walls
 
@@ -2900,6 +2917,11 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         rng.shuffle(avail)
         return avail
 
+    # Spec 0061: per-grid builds cannot see other grids' keys, so the
+    # door coupling check runs against the FULL graph's key colours.
+    all_key_colours = frozenset(k[0] for nd in graph.nodes.values()
+                                for k in nd.keys)
+
     def _build_grid(sub, corridor, i, anchor):
         """Build one grid, continuing the parent's corridor band when `anchor`
         is set.  Tries compatible strategies, then full_border (whose frame
@@ -2922,7 +2944,9 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                     required_exits=frozenset(exits), is_start_grid=(i == 0),
                     occupied_sides=exits, corridor_anchor=anchor,
                     entrance_side=(entrance_side if i == 0 else None),
-                    place_enemies=False)
+                    place_enemies=False,
+                    global_key_colours=all_key_colours,
+                    defer_gate_elision=True)
             except (LayoutError, ValueError):
                 continue
             if anchor is not None:
@@ -3000,6 +3024,16 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         k[2] for rd in all_rooms.values() for k in rd.get('keys', [])}
     surviving_gate_ids = {
         p[2] for rd in all_rooms.values() for p in rd.get('pressure_plates', [])}
+
+    # Spec 0061 D2: per-grid builds created interior gates unconditionally
+    # (defer_gate_elision); elide here, at global scope, exactly those
+    # whose plate did not survive on ANY grid — same semantics as the
+    # border gates below.  Plates can genuinely drop with their room, so
+    # this stays a silent degrade-to-open, unlike the loud door check.
+    for _rd in all_rooms.values():
+        if _rd.get('gates'):
+            _rd['gates'] = [g for g in _rd['gates']
+                            if g[2] in surviving_gate_ids]
 
     # Stitch grids along BORDER edges
     _INNER = {

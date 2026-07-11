@@ -604,11 +604,15 @@ class LevelGraphBuilder:
                 if edge.edge_type != EdgeType.BORDER]
 
     def _puzzle_candidates(self):
-        """Reachable rooms on the current grid suitable for a Sokoban puzzle.
+        """Reachable rooms suitable for a Sokoban puzzle — on ANY grid.
 
-        Only returns rooms directly attached to the current corridor so that
-        plates always land in the same subgraph as their gate.  Returning []
-        signals add_gated_room() to auto-add an open room first.
+        Spec 0061: plates roam like keys.  The plate signals its gate
+        through the global channel table (spec 0050), and the Sokoban
+        solver runs on the plate's own grid, so nothing ties the puzzle
+        room to the gate's grid (border gates always worked this way).
+        Returning [] signals add_gated_room() to auto-add an open room
+        first (start of generation, no eligible room anywhere yet).
+        Iterates _reachable (ordered dict) — process-deterministic.
         """
         def eligible(n):
             node = self._graph.nodes[n]
@@ -616,8 +620,7 @@ class LevelGraphBuilder:
                     and not node.blocks
                     and not node.plates)
 
-        return [n for n in self._current_grid_rooms()
-                if n in self._reachable and eligible(n)]
+        return [n for n in self._reachable if eligible(n)]
 
     def _pick(self, candidates, fallback=None):
         """Choose a random candidate, falling back to _reachable if empty."""

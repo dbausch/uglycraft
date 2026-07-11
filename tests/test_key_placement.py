@@ -159,7 +159,7 @@ def test_key_door_pairing(seed):
     """R-K1: for every colour, #keys == #locked doors (interior+border)."""
     import levels as _levels
     for fs in (*_FEATURE_SETS, _levels.ACT2_FEATURE_SETS[2]):
-        graph, kg, level = _build(fs, seed)
+        _graph, level = _build_retry(fs, seed)
         keys, doors = _colour_counts(level)
         assert keys == doors, (
             f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
@@ -229,7 +229,7 @@ def test_gate_elision_scope(seed):
     and every GATED edge between placed nodes whose plate survived has
     its gate entity — no over- or under-elision."""
     from tests.test_border_continuity import FS_CROWDED_GATED
-    graph, _kg, lv = _build(FS_CROWDED_GATED, seed)
+    graph, lv = _build_retry(FS_CROWDED_GATED, seed)
     gates, plates = _gate_plate_grids(lv)
     gate_ids = {gid for gid, _gn, _i in gates}
     for gid, gn, _interior in gates:
