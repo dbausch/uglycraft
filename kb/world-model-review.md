@@ -478,7 +478,7 @@ introducing new features yet") — CONTENT_PARSERS registry, plate/nozzle
 fixtures, Block occupants with identity, sprite table, system-order
 contract. Deferred to feature specs: ray-cast beams (§7.2 — a behaviour
 change), the lever/machines validation (§7.3), traced wiring nets.
-Awaiting the user's play-test.
+User-accepted 2026-07-12.
 
 ### 7.1 The gap
 

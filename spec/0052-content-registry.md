@@ -10,30 +10,30 @@ any §7 machine) cashes it in a later feature spec.
 
 ## Status
 
-- [ ] G1 — Parse registry: `build_room_cells` iterates `CONTENT_PARSERS`
+- [x] G1 — Parse registry: `build_room_cells` iterates `CONTENT_PARSERS`
       (one `(dict_key, parser)` entry per content kind — border, walls,
       doors, gates, water, items, plates, flame nozzles); adding a kind
       stops touching the parser body
-- [ ] G2 — Generic non-blocking `Fixture(kind, payload)` layer in
+- [x] G2 — Generic non-blocking `Fixture(kind, payload)` layer in
       `RoomCells`; **plates** (payload = channel) and **flame nozzles**
       (payload = the jet dict, tiles still precomputed) become fixtures;
       `Room.plates` / `Room.flame_jets` fields die (thin compat
       properties read the cells)
-- [ ] G3 — Pushable **blocks become occupants**: `Block(Entity)` in
+- [x] G3 — Pushable **blocks become occupants**: `Block(Entity)` in
       `entities.py`, `Room.blocks` holds objects with identity
       (`blocks_initial` stays positions); passability/push/latch/reset/
       render read `(b.col, b.row)` — the identity BL-37's countdown
       will need
-- [ ] G4 — Sprite dispatch consolidated: item/fixture kind → sprite-key
+- [x] G4 — Sprite dispatch consolidated: item/fixture kind → sprite-key
       table in `game.py` (strings only; category blit order pinned by
       the golden screenshots)
-- [ ] G5 — `World.update`'s pinned system order documented in its
+- [x] G5 — `World.update`'s pinned system order documented in its
       docstring (timers → input → enemies → collect → collision →
       flames → latch → pickups) — the determinism contract future
       registry entries must respect
-- [ ] G6 — Red-first tests (fixture layer API, plate/nozzle parity,
+- [x] G6 — Red-first tests (fixture layer API, plate/nozzle parity,
       Block identity, registry completeness); all goldens byte-identical
-- [ ] G7 — Docs: §7 status note, feature-inventory, BL-38
+- [x] G7 — Docs: §7 status note, feature-inventory, BL-38
 
 ## Design
 
@@ -122,10 +122,15 @@ scatter. Blit category order stays hardcoded (screenshots pin pixels).
 
 ## Done when:
 
-- [ ] G1 — parser loop over `CONTENT_PARSERS`
-- [ ] G2 — plate + nozzle fixtures; Room fields replaced
-- [ ] G3 — `Block` occupants with identity
-- [ ] G4 — sprite tables; blit order pinned
-- [ ] G5 — system-order contract documented
-- [ ] G6 — tests red→green; goldens byte-identical
-- [ ] G7 — docs + backlog updated
+- [x] G1 — parser loop over `CONTENT_PARSERS` (75a166a)
+- [x] G2 — plate + nozzle fixtures; Room fields replaced by views
+      (75a166a)
+- [x] G3 — `Block` occupants with identity (75a166a)
+- [x] G4 — sprite tables; blit order pinned (75a166a)
+- [x] G5 — system-order contract documented (75a166a)
+- [x] G6 — tests red→green; goldens byte-identical (75a166a —
+      528 passed, sixth consecutive stage with zero golden re-records)
+- [x] G7 — docs (34daca4) + BL-38 closed via backlog agent
+
+User acceptance 2026-07-12: played plates/flames/blocks — "it's all
+right" (the bar was: nothing feels different at all).
