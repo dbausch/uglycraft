@@ -457,3 +457,77 @@ Stage 3  layered cells, walls→barriers     — shadow grid until silent ✓ sp
 Stage 4  behaviour dispatch, channels      — harness + screenshots green ✓ spec 0050
 Stage 5  Room objects, delete RoomState    — harness green
 ```
+
+## 7. Beyond Stage 5: the content registry (design, 2026-07-12)
+
+Where the abstraction stops after Stage 4, and what "further" looks like
+(discussion with Daniel while approving Stage 5). Status: **design only**
+— candidate Stage 6, to be specced after Stage 5 lands.
+
+### 7.1 The gap
+
+Contents are *partially* unified: barriers, bridges, and items live in
+the cell model with dispatch tables (Stages 3–4), but plates, flame
+jets, blocks, and dead squares are still one category each — own
+storage, own update hook, own render loop, own generator parsing. A new
+element costs ~4–5 touch points, not the ~3 that P3 aimed for.
+
+### 7.2 The design: one registry over the four layers
+
+The §5 taxonomy (terrain / fixtures / items / occupants) is the right
+ontology; the missing move is that not everything lives in it, and that
+behaviour dispatches per *category* instead of per *declared
+capability*. Target:
+
+- **Every content kind is one registry entry** declaring its layer and
+  capabilities: `blocks` (constant / channel-dependent /
+  bridge-dependent), `on_bump` (break-after-N / key-open / toggle /
+  inert), `on_enter` (score / inventory), `emits` (a channel, from
+  pressed-ness or toggle state), `ticks` (flame sweep, countdown),
+  `attachment` (cell-filling / face-mounted / pass-through), `sprite`
+  (a key — pygame stays in game.py).
+- **Plates become fixtures** (walkable emitters; the channel latch
+  iterates "emitters of the room").
+- **Flame nozzles become face-mounted emitter fixtures** whose affected
+  tiles are *derived by ray-cast* against the opacity query (R3) — this
+  also yields "flames occluded by pushed blocks" (old spec-0009 wish)
+  for free, replacing the precomputed `jet['tiles']` lists.
+- **Blocks become occupants** — objects with identity. BL-37 (exploding
+  wedged blocks) outright needs per-block state (countdown); pushability
+  becomes a capability instead of a special case in `try_move`.
+- **World.update becomes fixed-order systems** iterating registries.
+  Order stays hardcoded — the goldens pin per-category tick order, so
+  "objects update themselves" is exactly the wrong design; "systems run
+  in a pinned sequence" is the right one.
+- **The generator boundary joins the registry**: each entry declares its
+  room-dict key and record shape; `build_room_cells` iterates the
+  registry, so a new kind stops touching the parser.
+
+### 7.3 Paper-test cases (must each be ~1 entry + sprite + placement)
+
+| Element | Registry reading |
+|---|---|
+| Lever (spec 0007) | fixture, bump=toggle, emits channel |
+| Button (spec 0007) | lever + channel timer (momentary) |
+| Piston (spec 0007) | fixture, receiver: pushes occupant on channel edge |
+| Laser | face-mounted emitter + ray-cast hazard + channel receiver — flame ∘ gate capabilities recombined |
+| Exploding block (BL-37) | occupant, ticks=countdown when wedged-group detected |
+| Stairs (BL-12) | no new mechanism — plumb the passage/edge type as data |
+
+### 7.4 Where to stop
+
+Short of a general ECS. Small Python game, golden-based discipline:
+free-form component composition fights determinism and buys nothing the
+four layers + a **closed set of capabilities** don't. When an element
+doesn't fit, add one capability — never a framework. The governing
+principle stays §5's: *store identity and structure, derive state by
+query*.
+
+### 7.5 Sequencing
+
+Stage 5 (Room objects, spec 0051) first — container before contents;
+the registry wants Room as the single home. Then a Stage 6 spec
+("content registry"): plates → fixtures, flames → ray-cast emitters,
+blocks → occupants, **validated by implementing one real new element
+end-to-end** (the lever is the natural pick) as proof the touch-point
+count actually dropped.
