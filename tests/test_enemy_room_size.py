@@ -308,9 +308,11 @@ def test_graph_awards_and_challenge_scaling(fs_idx):
         if fs.get('has_flames'):
             flame_rooms = sum(1 for nd in g.nodes.values() if nd.has_flames)
             want = max(1, G // 2)
+            # Closets are not flame candidates: an uncarvable closet would
+            # spill its award into the parent and break R-P10 accounting.
             eligible = sum(
                 1 for n, nd in g.nodes.items()
-                if nd.size != NodeSize.CORRIDOR
+                if nd.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET)
                 and not nd.blocks and not nd.plates
                 and not any(e.edge_type == EdgeType.WATER
                             for _, e in g.neighbors(n)))

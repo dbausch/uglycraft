@@ -52,7 +52,6 @@ class Node:
         self.keys = []            # [(key_colour,)]
         self.blocks = []          # pushable block count
         self.plates = []          # [(gate_id,)]
-        self.enemies = []         # [(enemy_type, ...)]
         self.has_flames = False   # room contains flame jets
         self.patrol_waypoints = None
 
@@ -342,15 +341,20 @@ class LevelGraph:
 
         feature_set keys:
             'room_count': (min, max)
-            'edge_types': [EdgeType, ...]  — allowed edge types
+            'edge_types': [EdgeType, ...]  — allowed edge types (never WATER;
+                water rooms come from 'has_water', spec 0058)
             'node_sizes': [NodeSize, ...]  — allowed node sizes
-            'treasure_count': (min, max)
             'material_types': [mat_type, ...]
             'material_count': (min, max)
-            'enemy_count': (min, max)
             'grid_count': N  — number of 30×16 grids (default 1)
-            'has_flames': bool
-            'has_forge_ogre': bool
+            'has_water': bool — max(1, G // 3) water rooms (spec 0058)
+            'has_flames': bool — max(1, G // 2) flame rooms (spec 0058)
+            'has_forge_ogre': bool — consumed by the layout enemy
+                distributor (spec 0058); recorded on the graph
+
+        Award items are challenge rewards only (spec 0058): each locked,
+        gated, water, or flame room carries exactly one; enemies (and
+        their guard awards) are placed at layout time, not here.
         """
         rng = rng or random.Random()
         b = LevelGraphBuilder(rng)
@@ -358,7 +362,12 @@ class LevelGraph:
         edge_types  = feature_set.get('edge_types',  [EdgeType.OPEN])
         node_sizes  = feature_set.get('node_sizes',  [NodeSize.ROOM, NodeSize.HALL])
         grid_count  = feature_set.get('grid_count',  1)
-        required    = list(dict.fromkeys(edge_types))  # ordered, deduplicated
+        # One room per distinct edge type is guaranteed via `required`;
+        # water rooms are deterministic-count (never drawn): max(1, G // 3)
+        # WATER entries are prepended (spec 0058 challenge scaling).
+        water_count = max(1, grid_count // 3) if feature_set.get('has_water') else 0
+        required    = ([EdgeType.WATER] * water_count
+                       + list(dict.fromkeys(edge_types)))
 
         room_min, room_max = feature_set.get('room_count', (4, 6))
         room_count  = max(rng.randint(room_min, room_max), len(required))
@@ -453,21 +462,21 @@ class LevelGraph:
                 b.add_closet_room(parent=rn)
 
         if feature_set.get('has_flames'):
-            b.add_flames()
-
-        t_min, t_max = feature_set.get('treasure_count', (6, 10))
-        b.add_treasures(rng.randint(t_min, t_max))
+            # One flame room per 2 grids (spec 0058 challenge scaling);
+            # each call marks one candidate or silently no-ops when none
+            # remains.
+            for _ in range(max(1, grid_count // 2)):
+                b.add_flames()
 
         mat_types = list(feature_set.get('material_types', []))
         m_min, m_max = feature_set.get('material_count', (4, 8))
         b.add_materials(mat_types, rng.randint(m_min, m_max))
 
-        e_min, e_max = feature_set.get('enemy_count', (1, 3))
-        b._has_forge = feature_set.get('has_forge_ogre', False)
-        b.add_enemies(max(1, rng.randint(e_min, e_max)))
-
         graph = b.build()
         graph.entrance_side = entrance_side
+        # Consumed by the layout enemy distributor (spec 0058) — the
+        # feature set is out of reach there.
+        graph.has_forge_ogre = feature_set.get('has_forge_ogre', False)
         return graph
 
 
@@ -490,7 +499,6 @@ class LevelGraphBuilder:
         self._idx   = 0
         self._current_corridor = 'corridor'
         self._has_water  = False
-        self._has_forge  = False
         self._graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
         # Ordered set (dict keys, insertion = reachability order).  Iteration
         # order feeds rng.choice pools, so it must be process-deterministic —
@@ -540,6 +548,12 @@ class LevelGraphBuilder:
         pool = candidates or fallback or list(self._reachable)
         return self._rng.choice(pool)
 
+    def _add_award(self, room):
+        """One challenge-reward award item in `room` (spec 0058): every
+        award in the graph is the reward of exactly one challenge."""
+        self._graph.nodes[room].treasures.append(
+            (self._rng.choice(list(range(1, 10))),))
+
     def _add_node_and_edge(self, size, et, parent, **params):
         name = self._new_name()
         self._graph.add_node(name, size)
@@ -575,6 +589,7 @@ class LevelGraphBuilder:
         key_room = self._pick(self._room_candidates())
         self._graph.nodes[key_room].keys.append((colour,))
         self._reachable[name] = None
+        self._add_award(name)
         return name
 
     def add_gated_room(self, gate_id, size=None, parent=None) -> str:
@@ -603,6 +618,7 @@ class LevelGraphBuilder:
         self._graph.nodes[puzzle_room].plates.append((gate_id,))
         self._graph.nodes[puzzle_room].blocks.append(1)
         self._reachable[name] = None
+        self._add_award(name)
         return name
 
     def add_water_room(self, size=None, parent=None) -> str:
@@ -618,6 +634,7 @@ class LevelGraphBuilder:
         self._has_water = True
         self._reachable[name] = None
         self._water_rooms.add(name)
+        self._add_award(name)
         return name
 
     # ── Multi-grid ────────────────────────────────────────────────────────
@@ -660,13 +677,6 @@ class LevelGraphBuilder:
 
     # ── Content distribution ──────────────────────────────────────────────
 
-    def add_treasures(self, count) -> None:
-        all_nodes = list(self._graph.nodes.keys())
-        item_nos  = list(range(1, 10))
-        for _ in range(count):
-            t = self._rng.choice(all_nodes)
-            self._graph.nodes[t].treasures.append((self._rng.choice(item_nos),))
-
     def add_materials(self, mat_types, count) -> None:
         if not mat_types:
             return
@@ -678,36 +688,20 @@ class LevelGraphBuilder:
             t = self._rng.choice(all_nodes)
             self._graph.nodes[t].materials.append((self._rng.choice(mats),))
 
-    def add_enemies(self, count) -> None:
-        item_nos   = list(range(1, 10))
+    def add_flames(self) -> None:
+        """Mark one candidate room as a flame room and attach its award;
+        silently a no-op when no candidate remains (spec 0058 calls this
+        max(1, G // 2) times)."""
+        # No closets: a closet is carved from its parent at layout time and
+        # may silently fail to carve — its award would spill into the
+        # parent and break the one-award-per-challenge-room accounting
+        # (R-P10); jets also need a wall-to-wall span a closet cannot give.
         candidates = [
             n for n, node in self._graph.nodes.items()
-            if node.size in (NodeSize.ROOM, NodeSize.HALL)
+            if node.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET)
             and not node.blocks
             and not node.plates
             and not node.has_flames
-        ]
-        if not candidates:
-            return
-        forge_placed = False
-        for _ in range(count):
-            t = self._rng.choice(candidates)
-            if self._has_forge and not forge_placed:
-                self._graph.nodes[t].enemies.append(('forge_ogre',))
-                forge_placed = True
-            else:
-                self._graph.nodes[t].enemies.append(('chaser',))
-            if not self._graph.nodes[t].treasures:
-                self._graph.nodes[t].treasures.append(
-                    (self._rng.choice(item_nos),))
-
-    def add_flames(self) -> None:
-        candidates = [
-            n for n, node in self._graph.nodes.items()
-            if n != 'corridor'
-            and not node.blocks
-            and not node.plates
-            and not node.enemies
             and not any(e.edge_type == EdgeType.WATER
                         for _, e in self._graph.neighbors(n))
         ]
@@ -715,6 +709,11 @@ class LevelGraphBuilder:
             return
         t = self._rng.choice(candidates)
         self._graph.nodes[t].has_flames = True
+        # A locked/gated room may become a flame room too; it keeps its
+        # single challenge award (one per room, not per protection —
+        # R-P10), which the far-tile pass then moves behind the flames.
+        if not self._graph.nodes[t].treasures:
+            self._add_award(t)
 
     # ── Finalise ──────────────────────────────────────────────────────────
 

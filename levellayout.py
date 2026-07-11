@@ -2085,17 +2085,23 @@ def _bfs_dist(start, passable):
     return dist
 
 
-def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
-                          global_used=None, spill_floor=None):
+def _place_items_in_room(node, placed_node, walls, rng,
+                          global_used=None, spill_floor=None,
+                          flame_treasures=False):
     """Pick floor positions for a node's items.
 
     global_used: shared set across all rooms — no two items on the same tile.
     spill_floor: corridor floor tiles used as overflow when this room runs out
         of space, so a collectible is never silently dropped.  Collectibles are
         placed in priority order: keys, planks, treasures (awards), then other
-        materials.  Enemies reserve no tile (they may stand on an item) and are
-        never spilled to the corridor.  Raises LayoutError only when both the
-        room and the corridor are full (should never happen).
+        materials.  Raises LayoutError only when both the room and the corridor
+        are full (should never happen).
+    flame_treasures: place a flame node's treasures here too — used by the
+        C7 unplaced-node spill, where no jets exist for the far-tile pass
+        (spec 0058 award conservation).
+
+    Enemies are not placed here: distribution is a level-wide layout pass
+    since spec 0058 (`_distribute_enemies`).
     """
     if global_used is None:
         global_used = set()
@@ -2103,12 +2109,6 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
     rng.shuffle(floor)
     used = global_used
     spill = spill_floor if spill_floor is not None else []
-
-    # Pre-compute distance from player if in this room
-    player_dist = None
-    if player_pos and player_pos in placed_node.floor_tiles:
-        passable = set(placed_node.floor_tiles) - set(walls.keys())
-        player_dist = _bfs_dist(player_pos, passable)
 
     def _next():
         """Next free tile: this room first, then the corridor (spill)."""
@@ -2147,7 +2147,7 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
     # Flame-room treasures are placed on far tiles only (see far-tiles pass
     # in build_level_dict); skip them here so nothing lands on the near side.
     treasures = []
-    if not node.has_flames:
+    if not node.has_flames or flame_treasures:
         for (item_no,) in node.treasures:
             c, r = _place_collectible()
             treasures.append((c, r, item_no))
@@ -2156,21 +2156,165 @@ def _place_items_in_room(node, placed_node, walls, rng, player_pos=None,
         c, r = _place_collectible()
         materials.append((c, r, mat_type))
 
-    # Enemies stand on any in-room floor tile (may overlap an item); they
-    # reserve no tile and are never spilled to the corridor.
-    enemy_starts = []
-    enemy_tiles: set = set()
-    for enemy_info in node.enemies:
-        far = [p for p in floor if p not in enemy_tiles
-               and (not player_dist
-                    or player_dist.get(p, 0) >= MIN_ENEMY_DIST)]
-        pool = far or [p for p in floor if p not in enemy_tiles]
-        if pool:
-            p = rng.choice(pool)
-            enemy_tiles.add(p)
-            enemy_starts.append((*p, enemy_info[0]))
+    return treasures, materials, keys
 
-    return treasures, materials, keys, enemy_starts
+
+# ── Enemy distribution (spec 0058 / BL-20+) ───────────────────────────────────
+
+def _largest_floor_square(tiles):
+    """Side of the largest all-floor square inside a tile set.
+
+    Judges rooms by actual shape: a closet-carved parent's roomy bounding
+    box may hide an L-shaped floor with much less dodge space.  Standard
+    dynamic programme over (col, row)-sorted tiles.
+    """
+    ts = set(tiles)
+    dp = {}
+    best = 0
+    for t in sorted(ts):
+        c, r = t
+        dp[t] = 1 + min(dp.get((c - 1, r), 0), dp.get((c, r - 1), 0),
+                        dp.get((c - 1, r - 1), 0))
+        if dp[t] > best:
+            best = dp[t]
+    return best
+
+
+def _enemy_distribution(sizes, count, rng, forge=False):
+    """Assign `count` enemies to candidate rooms by the size rule.
+
+    sizes: [(room_id, s)] or [(room_id, s, floor_area)] in deterministic
+    order; s = side of the room's largest all-floor square.  Each assigned
+    enemy virtually downsizes its room by one tile in both dimensions
+    (effective size e = s − k); a room stays a candidate while e ≥ 3, so
+    it never holds more than s − 2 enemies.  Selection per enemy: fewest
+    assigned enemies (round-robin), then largest e, then largest floor
+    area, then one rng.choice among exact ties.  Enemies past the level's
+    capacity are dropped.  Returns [(room_id, enemy_type)] in placement
+    order; with forge=True the first placed enemy is the forge ogre.
+    """
+    info = [(e[0], e[1], e[2] if len(e) > 2 else e[1] * e[1])
+            for e in sizes]
+    k = {rid: 0 for rid, _s, _a in info}
+    out = []
+    for i in range(count):
+        cands = [c for c in info if c[1] - k[c[0]] >= 3]
+        if not cands:
+            break
+        min_k = min(k[c[0]] for c in cands)
+        cands = [c for c in cands if k[c[0]] == min_k]
+        best_e = max(c[1] - k[c[0]] for c in cands)
+        cands = [c for c in cands if c[1] - k[c[0]] == best_e]
+        best_a = max(c[2] for c in cands)
+        cands = [c for c in cands if c[2] == best_a]
+        rid = cands[0][0] if len(cands) == 1 else \
+            rng.choice([c[0] for c in cands])
+        etype = 'forge_ogre' if forge and not out else 'chaser'
+        k[rid] += 1
+        out.append((rid, etype))
+    return out
+
+
+def _pick_enemy_tile(free_floor, taken, rng, player_dist=None):
+    """Enemy start tile: any free floor tile (enemies reserve no item tile
+    and may stand on an item), preferring tiles ≥ MIN_ENEMY_DIST from the
+    player when the player starts in this room — the old enemy-pass
+    semantics, kept verbatim (spec 0058)."""
+    far = [p for p in free_floor if p not in taken
+           and (not player_dist
+                or player_dist.get(p, 0) >= MIN_ENEMY_DIST)]
+    pool = far or [p for p in free_floor if p not in taken]
+    if not pool:
+        return None
+    return rng.choice(pool)
+
+
+def _distribute_enemies(level, graph, rng):
+    """Level-wide enemy & guard-award pass (spec 0058).
+
+    Places exactly 2 × G enemies for a G-grid level (forge ogre first on
+    has_forge_ogre levels) via `_enemy_distribution`; candidates are
+    non-corridor nodes without blocks, plates, or flames.  Every enemy
+    adds one guard award to its room (corridor spill only when the room's
+    floor is exhausted — the sole R-P10 exception).  Runs after all grids
+    are built (and, multi-grid, stitched): called by _build_super_grid
+    and by the single-grid tail of build_level_dict.
+    """
+    rooms = level['rooms']
+    G = len(rooms)
+
+    # node -> (grid, floor tiles); rooms in BFS build order, tiles in
+    # tile_owner insertion order — never a str-set (spec 0054).
+    floors = {}
+    for gname, rd in rooms.items():
+        walls = rd['walls']
+        for t, owner in rd['tile_owner'].items():
+            if t in walls:
+                continue
+            floors.setdefault(owner, (gname, set()))[1].add(t)
+
+    sizes = []
+    for name, node in graph.nodes.items():
+        if (node.size == NodeSize.CORRIDOR or node.blocks or node.plates
+                or node.has_flames or name not in floors):
+            continue
+        _gname, tiles = floors[name]
+        sizes.append((name, _largest_floor_square(tiles), len(tiles)))
+
+    assignments = _enemy_distribution(
+        sizes, 2 * G, rng, forge=getattr(graph, 'has_forge_ogre', False))
+
+    # Tiles item placement already used, per grid — plus the start tiles
+    # (R-P8: nothing may cover player_start or the entrance).
+    used = {}
+    for gname, rd in rooms.items():
+        u = set()
+        for lname in ('treasures', 'materials', 'keys', 'pressure_plates',
+                      'pushable_blocks'):
+            for entry in rd.get(lname, []):
+                u.add((entry[0], entry[1]))
+        if 'entrance' in rd:
+            u.add(tuple(rd['entrance']))
+            u.add(tuple(level['player_start']))
+        used[gname] = u
+
+    cor_floor = {}
+    for name, node in graph.nodes.items():
+        if node.size == NodeSize.CORRIDOR and name in floors:
+            gname, tiles = floors[name]
+            cor_floor[gname] = tiles
+
+    enemy_taken = {}
+    for name, etype in assignments:
+        gname, tiles = floors[name]
+        rd = rooms[gname]
+        free = sorted(tiles)
+
+        pdist = None
+        ps = tuple(level['player_start'])
+        if gname == level['start_room'] and ps in tiles:
+            pdist = _bfs_dist(ps, tiles)
+        taken = enemy_taken.setdefault((gname, name), set())
+        pos = _pick_enemy_tile(free, taken, rng, pdist)
+        if pos is None:
+            continue   # unreachable: candidates hold ≥ 3×3 floor
+        taken.add(pos)
+        starts = rd.get('enemy_starts', [])
+        starts.append((*pos, etype))
+        rd['enemy_starts'] = starts
+
+        award_pool = [t for t in free if t not in used[gname]]
+        if not award_pool:
+            award_pool = sorted(t for t in cor_floor.get(gname, ())
+                                if t not in used[gname])
+        if not award_pool:
+            raise LayoutError(
+                f"no free tile for the guard award of {name!r}")
+        apos = rng.choice(award_pool)
+        used[gname].add(apos)
+        trs = rd.get('treasures', [])
+        trs.append((*apos, rng.choice(list(range(1, 10)))))
+        rd['treasures'] = trs
 
 
 def _generate_flame_jets(placed_node, walls, rng, entry=None):
@@ -2248,7 +2392,8 @@ def _generate_flame_jets(placed_node, walls, rng, entry=None):
 def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                      required_exits=None, is_start_grid=True,
                      occupied_sides=frozenset(), progress=None,
-                     corridor_anchor=None, entrance_side=None):
+                     corridor_anchor=None, entrance_side=None,
+                     place_enemies=True):
     """Generate the complete level dict that game.py expects.
 
     Auto-detects multi-grid from BORDER edges in the graph.
@@ -2343,6 +2488,7 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                     frontier = next_f
                 jet['far_tiles'] = list(passable - near)
         for jet in jets:
+            jet['room'] = name   # award relocation targets this room's jets
             flame_tile_set.update(jet['tiles'])
             flame_tile_set.add(jet['source'])
         all_flame_jets.extend(jets)
@@ -2444,13 +2590,14 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         targets = [(pc, pr) for pc, pr, _ in all_plates]
         dead_squares = _compute_dead_squares(perm_passable, targets)
 
-    # Place other items (treasures, materials, keys, enemies).
+    # Place other items (treasures, materials, keys).  Enemies are no
+    # longer placed per room: they are distributed level-wide after all
+    # grids exist (spec 0058, _distribute_enemies).
     # Plates and blocks are already placed above; global_used carries their
     # positions so _place_items_in_room does not collide with them.
     all_treasures = []
     all_materials = []
     all_keys = []
-    all_enemy_starts = []
 
     item_walls = dict(walls)
     for ft in flame_tile_set:
@@ -2470,14 +2617,12 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     for name, node in graph.nodes.items():
         if name not in placed:
             continue
-        t, m, k, es = _place_items_in_room(
+        t, m, k = _place_items_in_room(
             node, placed[name], item_walls, rng,
-            player_pos=player_start, global_used=global_used,
-            spill_floor=spill_floor)
+            global_used=global_used, spill_floor=spill_floor)
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
-        all_enemy_starts.extend(es)
 
     # Spill the content of any UNPLACED node (a closet that could not be carved,
     # or a room dropped by the packer) into a placed neighbour — the closet's
@@ -2493,24 +2638,38 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                       corridor_name)
         if target is None or target not in placed:
             raise LayoutError(f"no placed room to spill content of {name!r}")
-        t, m, k, _es = _place_items_in_room(
+        t, m, k = _place_items_in_room(
             node, placed[target], item_walls, rng,
-            player_pos=player_start, global_used=global_used,
-            spill_floor=spill_floor)
+            global_used=global_used, spill_floor=spill_floor,
+            flame_treasures=True)
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
 
-    # Place a treasure on the far side of each flame jet
-    item_nos = list(range(1, 10))
-    for jet in all_flame_jets:
-        far = jet.get('far_tiles', [])
-        far_free = [t for t in far if t not in flame_tile_set
-                    and t not in walls and t not in global_used]
-        if far_free:
-            pos = rng.choice(far_free)
+    # Relocate each placed flame room's challenge award to its jets' far
+    # side (spec 0058): the reward is collectable only after crossing the
+    # flames.  Falls back to any free room tile, then corridor spill, so
+    # the award is never lost (C7 conservation).
+    for name, node in graph.nodes.items():
+        if name not in placed or not node.has_flames or not node.treasures:
+            continue
+        far_free = [t for jet in all_flame_jets if jet.get('room') == name
+                    for t in jet.get('far_tiles', [])
+                    if t not in flame_tile_set and t not in walls
+                    and t not in global_used]
+        room_free = [t for t in sorted(placed[name].floor_tiles)
+                     if t not in item_walls and t not in global_used]
+        for (item_no,) in node.treasures:
+            pool = (far_free or room_free
+                    or [t for t in spill_floor if t not in global_used])
+            if not pool:
+                raise LayoutError(
+                    f"no free tile for the flame award of {name!r}")
+            pos = rng.choice(pool)
+            far_free = [t for t in far_free if t != pos]
+            room_free = [t for t in room_free if t != pos]
             global_used.add(pos)
-            all_treasures.append((*pos, rng.choice(item_nos)))
+            all_treasures.append((*pos, item_no))
 
     # Locked doors, gates, and water tiles from edges
     # (orig_walls already computed above for puzzle_passable)
@@ -2553,8 +2712,6 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         'walls': walls,
         'tile_owner': tile_owner,
     }
-    if all_enemy_starts:
-        room['enemy_starts'] = all_enemy_starts
     if all_treasures:
         room['treasures'] = all_treasures
     if all_materials:
@@ -2596,11 +2753,17 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     if progress:
         progress(1, 1)
 
-    return {
+    level = {
         'start_room': grid_name,
         'player_start': player_start,
         'rooms': {grid_name: room},
     }
+    # Level-wide enemy & guard-award pass (spec 0058).  Per-grid builds
+    # from _build_super_grid skip this: the super-grid distributes once
+    # over all grids after stitching.
+    if place_enemies:
+        _distribute_enemies(level, graph, rng)
+    return level
 
 
 def _build_super_grid(graph, rng, strategies, progress=None):
@@ -2644,7 +2807,6 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         cnode.keys = list(src.keys)
         cnode.blocks = list(src.blocks)
         cnode.plates = list(src.plates)
-        cnode.enemies = list(src.enemies)
         cnode.has_flames = src.has_flames
 
         def _copy(dst, s):
@@ -2653,7 +2815,6 @@ def _build_super_grid(graph, rng, strategies, progress=None):
             dst.keys = list(s.keys)
             dst.blocks = list(s.blocks)
             dst.plates = list(s.plates)
-            dst.enemies = list(s.enemies)
             dst.has_flames = s.has_flames
 
         # Corridor's room neighbours, then nodes hanging off those rooms (nested
@@ -2761,7 +2922,8 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                     sub, rng=rng, strategies=[strat], grid_count=1,
                     required_exits=frozenset(exits), is_start_grid=(i == 0),
                     occupied_sides=exits, corridor_anchor=anchor,
-                    entrance_side=(entrance_side if i == 0 else None))
+                    entrance_side=(entrance_side if i == 0 else None),
+                    place_enemies=False)
             except (LayoutError, ValueError):
                 continue
             if anchor is not None:
@@ -2952,8 +3114,13 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                 f"post-stitch push puzzle unsolvable in {_gname}: {_errors}")
 
     start_grid = grid_name_map[corridor_order[0]]
-    return {
+    level = {
         'start_room': start_grid,
         'player_start': player_start,
         'rooms': all_rooms,
     }
+    # Level-wide enemy & guard-award pass (spec 0058): needs every grid's
+    # room sizes, so it runs once here, after all grids are built and
+    # stitched (grids in BFS build order).
+    _distribute_enemies(level, graph, rng)
+    return level
