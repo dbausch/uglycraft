@@ -142,6 +142,38 @@ def test_gate_state_not_visible_before_plate_pass():
         _restore(orig)
 
 
+def test_foreign_channels_survive_local_latch():
+    """Cross-grid gates: a channel held high by a block parked in grid g1
+    must stay high while the player is in g2 — both when g2 has no plates
+    at all and when g2's own (unpressed) plates are latched.  The old
+    _gate_open code only ever touched the current room's gate-ids."""
+    def make():
+        g1 = fx._room({}, pressure_plates=[(4, 8, 'x1')],
+                      pushable_blocks=[(6, 8)],
+                      exits={'right_8': 'g2'})
+        g2 = fx._room({}, tile_owner={},
+                      pressure_plates=[(20, 3, 'x2')],   # never pressed
+                      gates=[(15, 8, 'x1')],
+                      exits={'left_8': 'g1'})
+        return fx._level({'g1': g1, 'g2': g2}, start='g1', player=(10, 8))
+
+    w, orig = _world(make)
+    try:
+        w._room_blocks['g1'] = [(4, 8)]       # block parked on the plate
+        w.update(DT)
+        assert w.channel('x1')
+        w.player.col, w.player.row = 28, 8
+        _step(w, 1, 0); _step(w, 1, 0)        # -> g2
+        assert w._current_room == 'g2'
+        for _ in range(12):                    # past the 300 ms transition
+            w.update(DT)                       #   freeze; g2's latch runs
+        assert w.channel('x1'), 'foreign channel wiped by local latch'
+        assert not w.blocked(15, 8)            # the x1 gate stands open
+        assert not w.channel('x2')
+    finally:
+        _restore(orig)
+
+
 # ── Q1: channel API pins (red until spec 0050) ────────────────────────────────
 
 def test_channel_query_api():

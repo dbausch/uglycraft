@@ -455,16 +455,22 @@ class World:
         buttons) fold into this same latch."""
         room_key = self._current_room
         plates = self._room_plates.get(room_key, [])
-        if not plates and not self._channels:
+        if not plates:
             return
 
         occupied = {(self.player.col, self.player.row)}
         occupied.update((e.col, e.row) for e in self.enemies)
         block_set = set(self._room_blocks.get(room_key, []))
 
-        self._channels = {
+        # Relatch ONLY the channels emitted by this room's plates: a
+        # channel held high by a block parked in another grid must
+        # survive (cross-grid gates) — the old _gate_open code only ever
+        # add/discarded the current room's gate-ids.
+        local = {gate_id for _pc, _pr, gate_id in plates}
+        pressed = {
             gate_id for pc, pr, gate_id in plates
             if (pc, pr) in occupied or (pc, pr) in block_set}
+        self._channels = (self._channels - local) | pressed
 
     def _try_push_block(self, bc, br, dcol, drow):
         """Try to push a block at (bc, br) in direction (dcol, drow)."""
