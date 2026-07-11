@@ -221,6 +221,16 @@ the BL-13 model-mismatch class structurally instead of patching water in.
 
 ### Stage 4 — Behaviour dispatch table
 
+**Status: implemented 2026-07-12** (spec
+`spec/0050-behaviour-dispatch-channels.md`, commit 401ac18) — BARRIER_BUMP
+table drives bumping, items are a cell layer with kind dispatch at the two
+existing collection points, gate state is a channel table (`world.channel`)
+**latched at the old plate-pass position** (the timing-preserving
+resolution of the R1/R2 derivation this stage was deferred for), and the
+renderer reads kind/payload tables.  BL-12/edge-type plumbing deliberately
+excluded (visual change → own spec).  Awaiting the user's play-test.
+
+
 Register tile kinds in a table:
 `TILE_KINDS[kind] = TileSpec(blocks, on_bump, on_enter, pushable, sprite)`.
 `_register_bump`'s if-chain, the `_collect_*` sequence, the push special
@@ -444,6 +454,6 @@ Step 0b  characterization harness + goldens (traces + screenshots) ✓ spec 0044
 Stage 1  extract World (events)            — harness green         ✓ spec 0045
 Stage 2  Act 1 as one-room Act 2           — harness green         ✓ spec 0046
 Stage 3  layered cells, walls→barriers     — shadow grid until silent ✓ spec 0047
-Stage 4  behaviour dispatch, channels      — harness + screenshots green
+Stage 4  behaviour dispatch, channels      — harness + screenshots green ✓ spec 0050
 Stage 5  Room objects, delete RoomState    — harness green
 ```
