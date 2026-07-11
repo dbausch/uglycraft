@@ -527,19 +527,24 @@ and `kb/requirements.md` R-T5.
 
 ---
 
-## BL-31 · P2 · Ensure the level entrance is created next to a corridor tile, which becomes the player start position
+## BL-31 · FIXED · Ensure the level entrance is created next to a corridor tile, which becomes the player start position
 
-The level entrance should be guaranteed to be placed adjacent to a corridor
-floor tile, and that adjacent corridor tile should be the player's start
-position. This ensures the player always begins on the corridor spine with
-proper connectivity, rather than potentially being placed in a room interior or
-somewhere disconnected.
+Fixed in a8e5997 (spec/0053-entrance-player-start-anchoring.md), confirmed by
+Daniel 2026-07-12. The player start was always corridor-owned; the actual
+defect was the `_pick_entrance` col-0 fallback (all corridor-reached sides
+BORDER-occupied, 6/150 Act 2 levels) placing the entrance up to 14 tiles from
+the start. Fix: **grid zero** — the outside of the dungeon occupies super-grid
+origin (0,0), blocked for the spanning tree on every Prim step; the start grid
+sits at delta(S) of grid zero's random pseudo-exit side and its face back
+toward the origin (`graph.entrance_side`) never carries a BORDER edge and
+holds the entrance, with player_start on the corridor tile inside. Fallback
+deleted (LayoutError guard). Detector sweep post-fix: 0/150 violations.
+Invariant R-T6; tests/test_entrance.py; golden act2_L13_walk re-recorded (and
+flaky per process until BL-40). Grid zero is kept upgradeable (future: door
+opens on full loot into a grid-zero boss arena — see spec 0053).
 
-**Fix hint:** when placing the level entrance / player_start in the layout,
-anchor it to a corridor tile (the shared spine) and validate the chosen player
-start is corridor-owned and adjacent to the entrance. Relates to BL-16 (don't
-place items on the player start tile) and the border-corridor stitch work in
-spec 0042.
+The original fix hint related this to BL-16 (don't place items on the player
+start tile), which remains open and independent.
 
 ---
 

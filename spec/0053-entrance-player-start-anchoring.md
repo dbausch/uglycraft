@@ -2,18 +2,18 @@
 
 ## Status
 
-- [ ] Multi-grid graphs place grid zero at the super-grid origin `(0,0)`;
+- [x] Multi-grid graphs place grid zero at the super-grid origin `(0,0)`;
       the spanning tree never occupies it
-- [ ] Start grid sits at `delta(S)` with entrance side `opposite(S)`; its
+- [x] Start grid sits at `delta(S)` with entrance side `opposite(S)`; its
       entrance side never carries a BORDER edge
-- [ ] Start-grid layout covers the entrance side; entrance placed there,
+- [x] Start-grid layout covers the entrance side; entrance placed there,
       player start on the corridor tile inside
-- [ ] `_pick_entrance` col-0 fallback deleted (replaced by a LayoutError guard)
-- [ ] Property tests: entrance side free of BORDER exits; entrance
+- [x] `_pick_entrance` col-0 fallback deleted (replaced by a LayoutError guard)
+- [x] Property tests: entrance side free of BORDER exits; entrance
       border-placed and adjacent to `player_start`; `player_start`
       corridor-owned
-- [ ] Golden trace `act2_L13_walk` re-baselined (multi-grid rng stream shifts)
-- [ ] Sweep re-run shows 0 adjacency violations (was 6/150)
+- [x] Golden trace `act2_L13_walk` re-baselined (multi-grid rng stream shifts)
+- [x] Sweep re-run shows 0 adjacency violations (was 6/150)
 
 ## Problem
 
@@ -161,13 +161,20 @@ New `tests/test_entrance.py`:
 
 ## Done when:
 
-- [ ] Multi-grid graphs reserve grid zero at `(0,0)`; the start grid sits at
+- [x] Multi-grid graphs reserve grid zero at `(0,0)`; the start grid sits at
       `delta(S)` and never has a BORDER edge on `graph.entrance_side`
-- [ ] Start-grid entrance placed on the entrance side, player start on the
+      (a8e5997; confirmed by Daniel 2026-07-12)
+- [x] Start-grid entrance placed on the entrance side, player start on the
       adjacent corridor tile (both properties hold across the test sweep)
-- [ ] `_pick_entrance` col-0 fallback removed; LayoutError guard in place
-- [ ] New tests red before the fix, green after; `poe test` exits 0
-- [ ] `act2_L13_walk` golden re-baselined; `act2_L11_walk` byte-identical
-- [ ] Detector sweep shows 0/150 violations
-- [ ] BL-31 closed in `kb/backlog.md`; kb updated (`kb/architecture.md`
-      entrance selection + grid zero; new invariant in `kb/requirements.md`)
+      (a8e5997)
+- [x] `_pick_entrance` col-0 fallback removed; LayoutError guard in place
+      (a8e5997)
+- [x] New tests red before the fix, green after; `poe test` exits 0
+      (ffdbf12 red, a8e5997 green; suite 531 passed — `act2_L13_walk`
+      per-process flake is pre-existing BL-40, not introduced here)
+- [x] `act2_L13_walk` golden re-baselined; `act2_L11_walk` byte-identical
+      (a8e5997)
+- [x] Detector sweep shows 0/150 violations (was 6/150)
+- [x] BL-31 closed in `kb/backlog.md`; kb updated (`kb/architecture.md`
+      entrance selection + grid zero; R-T6 in `kb/requirements.md`)
+      (9c3c185 + closure commit)
