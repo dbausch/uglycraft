@@ -591,7 +591,7 @@ review the diff.
 
 ---
 
-## BL-35 · P2 (in progress) · World-model refactor, staged
+## BL-35 · DONE · World-model refactor, staged
 
 World-model refactor, staged (→ kb/world-model-review.md §3, §6.6): make
 gameplay logic testable and new elements cheap to add. Step 0 (spec 0044
@@ -600,14 +600,16 @@ abe3d16) are DONE; Stage 2 (spec 0046 Act 1 as one-room Act 2 level, commit
 aa9b050) DONE — pending user play-test acceptance; Stage 3 (spec 0047 layered
 cell model, commits 182367a..32361be) DONE — user-accepted after shadow play +
 post-deletion check; Stage 4 (spec 0050 behaviour dispatch + signal channels,
-commit 401ac18) DONE — pending user play-test; remaining: Stage 5 (Room as
-live object, delete RoomState).
+commit 401ac18) DONE — pending user play-test; Stage 5 (spec 0051 Room
+objects, commit 42b4e8f) DONE — user-accepted 2026-07-12. ALL FIVE STAGES
+COMPLETE; the candidate Stage 6 (content registry) is designed in
+kb/world-model-review.md §7 and would be a new backlog item when picked up.
 
-**Fix hint:** one numbered spec per stage, each behaviour-preserving and gated
-by the spec-0044 goldens; next up is Stage 5 (Room objects, delete RoomState);
-the solver-side reuse of
-World.blocked landed as spec 0048; fine-grained World unit tests accumulate
-from Stage 2 onward.
+**Fix hint:** complete — one numbered spec per stage, each
+behaviour-preserving and gated by the spec-0044 goldens; the solver-side reuse
+of World.blocked landed as spec 0048; fine-grained World unit tests accumulate
+from Stage 2 onward. Possible continuation: content registry (Stage 6), see
+kb/world-model-review.md §7 — file as a new backlog item when picked up.
 
 ---
 
