@@ -192,3 +192,12 @@ failure raises `LayoutError` (fresh-seed retry) instead of `ValueError`.
 
 **R-V3** `graph.validate_playability()` must return `[]` before `build_level_dict` is called.
 Unplayable graphs must never reach the layout stage.
+
+*Design note (Daniel, 2026-07-12, closing BL-03):* border-barrier
+prerequisites (keys, plate+block) may legitimately be placed in **any**
+earlier-reachable grid, not the barrier's source grid — hunting for them
+is an intentional part of the challenge. The only requirement is
+solvability, which is guaranteed three-fold: R-V3 at graph level; layout
+drops of a prerequisite room degrade the border to an open passage; and
+cross-grid channels persist at runtime (spec 0050 errata). Do not
+"re-fix" prerequisite locality.
