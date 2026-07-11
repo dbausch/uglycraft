@@ -97,6 +97,24 @@ and break the accounting).  → `spec/0058-enemy-award-placement.md`.
 
 ---
 
+## K — Keys & barrier prerequisites
+
+**R-K1** Barrier↔prerequisite pairing (spec 0061): on every generated
+level, for every colour, `#keys == #locked doors` (interior + border) —
+orphan keys exist only transiently in play.  Interior doors are created
+unconditionally (keys are never lost, K1); a colour with no key anywhere
+in the full graph is a **loud** `LayoutError`, never a silently opened
+passage.  Gates: every gate (interior + border) has a surviving plate of
+its `gate_id` somewhere in the level; a gate whose plate did not survive
+(dropped puzzle room — plates, unlike keys, are not spilled) degrades to
+an open passage, decided at **global** scope in `_build_super_grid`.
+Prerequisites roam: keys and interior-gate plates may sit on any
+earlier-reachable grid (R-V3 philosophy; `_puzzle_candidates` spans all
+grids since spec 0061).  Tests: `tests/test_key_placement.py` R-K1
+section; sweep: `scratchpad/sweep_orphan_keys.py`.
+
+---
+
 ## W — Walls
 
 **R-W1** Every interior tile that is not a floor tile is a wall (`WALL_REINFORCED` by default).

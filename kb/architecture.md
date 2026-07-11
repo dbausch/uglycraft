@@ -569,15 +569,26 @@ never happen). Enemies are exempt: they reserve no tile (may stand on an item)
 and never spill, so they always fit in-room. This replaced the old `if p:`
 silent-drop, which lost ~85% of planks and dropped keys in ~43% of key levels.
 
-**Barrier ↔ prerequisite coupling.** A locked door / gate is created **only when
-its key / plate actually survived placement**, never from the graph's
-`node.keys`/`node.plates`. `build_level_dict` derives `placed_key_colours` /
-`placed_gate_ids` from the surviving `all_keys` / `all_plates`; `_build_super_grid`
-guards **border** barriers the same way, keyed on surviving keys/plates across all
-grids. If a prerequisite is missing the passage is left **open** rather than a
-soft-locked door. (With spill, a placed node's keys never drop, so this is mostly
-a safety net — but it is the correct invariant and removes the BL-13-style
-"mutate after validation" smell from stitching.)
+**Barrier ↔ prerequisite coupling (reworked in spec 0061).** The original
+spec-0030 rule — barrier created only if its prerequisite survived — was
+evaluated per grid, which silently elided every interior door whose key sat
+on another grid (cross-grid keys are intended, R-V3): orphan keys — found
+in play 2026-07-11 (5 keys, 3 doors on level 13).  Now:
+
+- **Doors**: created unconditionally for every LOCKED edge between placed
+  nodes.  Keys never drop (spill, K1), so a colour with no key anywhere in
+  the **full graph** raises `LayoutError` (loud safety net) — the full
+  graph's key colours are threaded into per-grid builds
+  (`global_key_colours`).
+- **Gates**: plates CAN drop with their puzzle room (not spilled), so
+  gates keep degrade-to-open — at **global** scope: per-grid builds create
+  interior gates unconditionally (`defer_gate_elision`) and
+  `_build_super_grid` elides against surviving plates across all grids,
+  exactly like border gates.  Interior-gate plates roam like keys since
+  spec 0061 (`_puzzle_candidates` spans every reachable room; the Sokoban
+  solver runs on the plate's grid; channels are global, spec 0050).
+
+→ R-K1 in `kb/requirements.md`.
 
 **`_build_subgraph` copies the corridor's own items.** Multi-grid subgraph
 construction previously copied items only for the corridor's *neighbour* rooms,
