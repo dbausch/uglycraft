@@ -2402,7 +2402,12 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     # excluded when placing later puzzles.
     all_plates = []
     all_blocks = []
-    global_used = set()
+    # Spec 0057 (R-P8): the start grid's player_start and entrance tile are
+    # off-limits to every item-placement path (room floor, corridor spill,
+    # flame far-tiles) — all of them consult this one set.  Non-start grids
+    # keep an empty seed: their _pick_entrance result is only the
+    # enemy-distance reference tile, never a real entrance (spec 0053).
+    global_used = {player_start, entrance_tile} if is_start_grid else set()
     excluded = set()
     prior_puzzles = []   # (plate, block) for all already-placed puzzles
 
