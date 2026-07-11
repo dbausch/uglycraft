@@ -75,18 +75,30 @@ level 20 (BL-25's ~40–60 total). `generate()` splits
 
 ### Strategy trim, levels 11–13 (BL-22)
 
+Full `layout_strategies` table for all Act 2 levels — levels 14–20 are
+unchanged and listed for completeness:
+
 | Level | today | **new** |
 |---|---|---|
-| 11 | horizontal, vertical, double_t, t, z, l | **horizontal, vertical, t** |
-| 12 | horizontal, vertical, double_t, t, z | **horizontal, vertical, t** |
-| 13 | horizontal, vertical, off_centre, double_t, t, z | **horizontal, vertical, off_centre, t** |
+| 11 | horizontal, vertical, double_t, t, z, l | **horizontal, vertical** |
+| 12 | horizontal, vertical, double_t, t, z | **horizontal, vertical** |
+| 13 | horizontal, vertical, off_centre, double_t, t, z | **horizontal, vertical, t** |
+| 14 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
+| 15 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
+| 16 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
+| 17 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
+| 18 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
+| 19 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
+| 20 | horizontal, vertical, off_centre, double_t, t, z | horizontal, vertical, off_centre, double_t, t, z (unchanged) |
 
-Levels 14–20 keep their current lists. Room-count filtering
-(`n_rooms ≥ _STRATEGY_MAX_ZONES`) already drops `t` (3 zones) on a
-2-room level 11 draw, leaving the 2-zone spines — no new mechanism.
-Between them `horizontal` (left+right) and `vertical` (top+bottom)
-cover every entrance side, so the single-grid grid-zero pre-pick
-(spec 0055) always finds a covering strategy.
+Levels 11–12 keep only the two plain spines; level 13 introduces the
+first stem (`t`). Between them `horizontal` (left+right) and `vertical`
+(top+bottom) cover every entrance side, so the single-grid grid-zero
+pre-pick (spec 0055) always finds a covering strategy, and every
+multi-grid `required_sides` combination up to 2 opposite-side exits is
+coverable; `t` (left+right+one stem) widens that from level 13 on, and
+`full_border` remains the universal per-grid fallback (R-T5) for any
+side set the listed strategies cannot honour — as today.
 
 ### Performance
 
@@ -120,8 +132,10 @@ bounds of the table) happens inside this spec, not silently later.
    `2 ≤ room_min / G` and `room_max / G ≤ 6`, `room_min ≥` the number of
    required rooms (distinct edge types + water count). Red today
    (levels 14–20 sit near 1 room per grid).
-3. **Strategy contract**: levels 11–13 contain none of `z`, `s`, `l`,
-   `double_t`. Red today.
+3. **Strategy contract**: exact lists — levels 11 and 12 are
+   `['horizontal', 'vertical']`, level 13 is
+   `['horizontal', 'vertical', 't']`, levels 14–20 unchanged from today.
+   Red today.
 4. **Sweep**: `scratchpad/sweep_enemy_awards.py` over ≥ 120 levels —
    0 violations of any kind.
 5. **Timing**: scratchpad script generating levels 11–20, printing per-
