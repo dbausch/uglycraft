@@ -196,50 +196,50 @@ def _act2_feature_sets():
     return [
         # Level 11: 1 grid — open + breakable only
         {
-            'room_count': (6, 8),
+            'room_count': (2, 4),
             'edge_types': [EdgeType.OPEN, EdgeType.OPEN, EdgeType.BREAKABLE],
             'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
             'material_types': [MAT_ROCKS, MAT_PLANKS],
             'material_count': (4, 6),
-            'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z', 'l'],
+            'layout_strategies': ['horizontal', 'vertical'],
             'grid_count': 1,
         },
         # Level 12: 2 grids — + locked doors
         {
-            'room_count': (6, 8),
+            'room_count': (5, 8),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE, EdgeType.LOCKED],
             'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (4, 8),
-            'layout_strategies': ['horizontal', 'vertical', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical'],
             'grid_count': 2,
         },
         # Level 13: 3 grids — + gates
         {
-            'room_count': (8, 10),
+            'room_count': (8, 12),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED, EdgeType.GATED],
             'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (5, 8),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'l'],
             'grid_count': 3,
         },
         # Level 14: 4 grids — + water streams
         {
-            'room_count': (8, 10),
+            'room_count': (11, 17),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED],
             'has_water': True,
             'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
             'material_types': [MAT_ROCKS, MAT_PLANKS, MAT_METAL],
             'material_count': (5, 8),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z', 'l'],
             'grid_count': 4,
         },
         # Level 15: 5 grids — + flame jets
         {
-            'room_count': (8, 10),
+            'room_count': (15, 22),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED, EdgeType.GATED],
             'has_water': True,
@@ -248,12 +248,12 @@ def _act2_feature_sets():
             'material_count': (6, 10),
             'has_flames': True,
             'closet_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z', 'l'],
             'grid_count': 5,
         },
         # Level 16: 6 grids — + forge ogre
         {
-            'room_count': (8, 10),
+            'room_count': (19, 28),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED, EdgeType.GATED],
             'has_water': True,
@@ -263,12 +263,12 @@ def _act2_feature_sets():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z', 'l'],
             'grid_count': 6,
         },
         # Level 17: 7 grids
         {
-            'room_count': (9, 12),
+            'room_count': (24, 34),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED, EdgeType.GATED],
             'has_water': True,
@@ -278,12 +278,12 @@ def _act2_feature_sets():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z', 'l'],
             'grid_count': 7,
         },
         # Level 18: 8 grids
         {
-            'room_count': (9, 12),
+            'room_count': (29, 41),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED, EdgeType.GATED],
             'has_water': True,
@@ -293,12 +293,12 @@ def _act2_feature_sets():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z', 'l'],
             'grid_count': 8,
         },
         # Level 19: 9 grids
         {
-            'room_count': (9, 12),
+            'room_count': (34, 50),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED, EdgeType.GATED],
             'has_water': True,
@@ -308,12 +308,12 @@ def _act2_feature_sets():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 3),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z', 'l'],
             'grid_count': 9,
         },
         # Level 20: 10 grids
         {
-            'room_count': (9, 12),
+            'room_count': (40, 60),
             'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE,
                            EdgeType.LOCKED, EdgeType.GATED],
             'has_water': True,
@@ -323,7 +323,7 @@ def _act2_feature_sets():
             'has_flames': True,
             'has_forge_ogre': True,
             'closet_count': (1, 2),
-            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z'],
+            'layout_strategies': ['horizontal', 'vertical', 'off_centre', 'double_t', 't', 'z', 'l'],
             'grid_count': 10,
         },
     ]

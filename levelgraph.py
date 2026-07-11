@@ -76,8 +76,54 @@ class Edge:
 
 _OPPOSITE = {'right': 'left', 'left': 'right', 'top': 'bottom', 'bottom': 'top'}
 
+# ── Strategy side coverage (spec 0060; moved here from levellayout) ───────────
+# Strategies guaranteed to provide corridor floor tiles at each border
+# group.  levellayout imports these for _pick_strategy; generate() uses
+# them to constrain the spanning tree so exit sides are dictated by the
+# level's strategy list.
+COVERS_LR  = frozenset({'horizontal', 'off_centre', 't', 'double_t', 'z'})
+COVERS_TB  = frozenset({'vertical', 'double_t', 'z'})
+COVERS_ALL = frozenset({'double_t'})
+COVERS_L   = frozenset({'l', 'double_t'})   # l only for 2-exit perpendicular
 
-def _spanning_tree(n, rng, root=(0, 0), blocked=frozenset()):
+# Arm strategies cannot reproduce an arbitrary corridor band and are
+# filtered out when a corridor anchor is active (R-T5) — i.e. on every
+# non-start grid.
+ARM_STRATEGIES = frozenset({'z', 's', 'l'})
+
+
+def coverable_sides(sides, strategies, anchored=False):
+    """True iff some strategy in `strategies` covers every side in `sides`
+    (the `_pick_strategy` classification, spec 0060).
+
+    anchored: the grid continues its parent's corridor band (every
+    non-start grid), so arm strategies (z/s/l) leave the pool — only the
+    unanchored start grid can lay out a corner.  strategies=None means
+    unconstrained (manually built graphs, fixtures without a list).
+    """
+    if strategies is None:
+        return True
+    pool = set(strategies)
+    if anchored:
+        pool -= ARM_STRATEGIES
+    if 'full_border' in pool:
+        return True
+    sides = frozenset(sides)
+    has_lr = bool(sides & {'left', 'right'})
+    has_tb = bool(sides & {'top', 'bottom'})
+    if has_lr and has_tb:
+        table = COVERS_L if len(sides) == 2 else COVERS_ALL
+    elif has_lr:
+        table = COVERS_LR
+    elif has_tb:
+        table = COVERS_TB
+    else:
+        return True
+    return bool(table & pool)
+
+
+def _spanning_tree(n, rng, root=(0, 0), blocked=frozenset(),
+                   root_sides=frozenset(), strategies=None):
     """Return a spanning-tree description for n grids on the super-grid.
 
     Uses randomized Prim's algorithm: at each step pick a random edge from the
@@ -88,6 +134,14 @@ def _spanning_tree(n, rng, root=(0, 0), blocked=frozenset()):
     blocked: cells no grid may ever occupy, checked on every Prim step (the
              frontier can approach them from any direction) — reserves grid
              zero, the outside of the dungeon (spec 0053).
+    root_sides: sides the root grid must already cover (the entrance side,
+             spec 0060).
+    strategies: the level's layout_strategies; when given, a growth step is
+             admissible only if the parent's accumulated side set plus the
+             new exit side stays coverable (anchor-aware: the root counts
+             as unanchored) and the child's entry side is coverable on an
+             anchored grid — exit sides are dictated by the strategy list
+             (spec 0060).  None = unconstrained.
 
     Returns a list of length exactly n where entry i is
         (parent_idx, exit_side, (super_col, super_row))
@@ -104,11 +158,15 @@ def _spanning_tree(n, rng, root=(0, 0), blocked=frozenset()):
 
     result  = [(None, None, root)]
     in_tree = {root: 0}
+    sides   = {0: set(root_sides)}   # accumulated required sides per node
 
     # frontier: list of (parent_idx, child_pos) — edges from tree to unvisited
     frontier = [(0, (root[0] + dx, root[1] + dy)) for _, dx, dy in _DIRS]
 
     while len(in_tree) < n:
+        if not frontier:
+            raise ValueError(
+                "spanning tree cannot grow: no strategy-coverable side left")
         i = rng.randrange(len(frontier))
         parent_idx, child_pos = frontier[i]
         frontier[i] = frontier[-1]
@@ -120,9 +178,18 @@ def _spanning_tree(n, rng, root=(0, 0), blocked=frozenset()):
         parent_pos = result[parent_idx][2]
         exit_side  = _DELTA_TO_SIDE[(child_pos[0] - parent_pos[0],
                                      child_pos[1] - parent_pos[1])]
+        if strategies is not None:
+            entry_side = _OPPOSITE[exit_side]
+            if not coverable_sides(sides[parent_idx] | {exit_side},
+                                   strategies, anchored=(parent_idx != 0)):
+                continue
+            if not coverable_sides({entry_side}, strategies, anchored=True):
+                continue
         new_idx = len(result)
         result.append((parent_idx, exit_side, child_pos))
         in_tree[child_pos] = new_idx
+        sides[parent_idx].add(exit_side)
+        sides[new_idx] = {_OPPOSITE[exit_side]}
 
         cx, cy = child_pos
         for _, dx, dy in _DIRS:
@@ -425,11 +492,20 @@ class LevelGraph:
         # uniform instead of scan-order biased (BL-41).
         _DELTA = {'right': (1, 0), 'left': (-1, 0),
                   'bottom': (0, 1), 'top': (0, -1)}
-        pseudo_exit = rng.choice(['right', 'left', 'bottom', 'top'])
+        # Spec 0060: exit sides are dictated by the strategy list.  The
+        # entrance side (start grid, unanchored) and every spanning-tree
+        # growth step must stay coverable by a listed strategy.
+        strategies = feature_set.get('layout_strategies')
+        exit_pool = [s for s in ('right', 'left', 'bottom', 'top')
+                     if coverable_sides({_OPPOSITE[s]}, strategies,
+                                        anchored=False)]
+        pseudo_exit = rng.choice(exit_pool)
         root = _DELTA[pseudo_exit]
         entrance_side = _OPPOSITE[pseudo_exit]
 
-        tree = _spanning_tree(grid_count, rng, root=root, blocked={(0, 0)})
+        tree = _spanning_tree(grid_count, rng, root=root, blocked={(0, 0)},
+                              root_sides={entrance_side},
+                              strategies=strategies)
         # tree[i] = (parent_idx, exit_side, (sc, sr)); root has parent_idx=None
 
         def _idx_to_name(i):

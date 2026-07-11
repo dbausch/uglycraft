@@ -10,7 +10,9 @@ represents the graph topology.
 import random
 from collections import deque
 from constants import (COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN)
-from levelgraph import LevelGraph, NodeSize, EdgeType, SIZE_RANGES
+from levelgraph import (LevelGraph, NodeSize, EdgeType, SIZE_RANGES,
+                        COVERS_LR as _COVERS_LR, COVERS_TB as _COVERS_TB,
+                        COVERS_ALL as _COVERS_ALL, COVERS_L as _COVERS_L)
 from cells import build_room_cells
 
 # Interior bounds
@@ -182,11 +184,8 @@ def _try_l_pair_vertical(placed, name_i, name_j, row, band_col, band_w, h_i, h_j
 
 STRATEGIES = ['horizontal', 'vertical', 'off_centre', 't', 'double_t', 'z', 'l']
 
-# Strategies guaranteed to provide floor tiles at each border group.
-_COVERS_LR  = frozenset({'horizontal', 'off_centre', 't', 'double_t', 'z'})
-_COVERS_TB  = frozenset({'vertical', 'double_t', 'z'})
-_COVERS_ALL = frozenset({'double_t'})
-_COVERS_L   = frozenset({'l', 'double_t'})   # l only for 2-exit perpendicular
+# Strategy side-coverage tables live in levelgraph since spec 0060 (the
+# spanning tree consults them too); imported above under their old names.
 
 _STRATEGY_MAX_ZONES = {
     'horizontal':  2,
