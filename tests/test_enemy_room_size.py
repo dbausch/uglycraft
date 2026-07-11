@@ -49,9 +49,13 @@ def _build(fs_idx, seed):
     return _BUILDS[key]
 
 
-# Sweep scope: grid counts 1–6 (levels 11–16); the scratchpad detector
-# covers the full range.
-_SWEEP = [(i, s) for i in range(6) for s in range(2)]
+# Sweep scope: grid counts 1–6 (levels 11–16) with two seeds; the
+# expensive late levels (7–10 grids) with one pinned seed each — chosen
+# because they violated the 2 × G total before the spec-0060 room
+# rescale (red then, capacity gate since).  The scratchpad detector
+# covers more seeds.
+_SWEEP = ([(i, s) for i in range(6) for s in range(2)]
+          + [(6, 4), (7, 4), (8, 1), (9, 2)])
 
 
 # ── Helpers (independent re-implementations, not the layout's own code) ──────
