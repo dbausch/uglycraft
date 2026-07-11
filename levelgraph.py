@@ -495,8 +495,11 @@ class LevelGraphBuilder:
         self._has_water  = False
         self._has_forge  = False
         self._graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
-        self._reachable  = {'corridor'}
-        self._water_rooms: set = set()
+        # Ordered set (dict keys, insertion = reachability order).  Iteration
+        # order feeds rng.choice pools, so it must be process-deterministic —
+        # a plain set of str names varies with PYTHONHASHSEED (spec 0054).
+        self._reachable  = {'corridor': None}
+        self._water_rooms: set = set()   # membership tests only
 
     # ── Internal helpers ──────────────────────────────────────────────────
 
@@ -511,9 +514,13 @@ class LevelGraphBuilder:
                 if self._graph.nodes[n].size != NodeSize.CORRIDOR]
 
     def _current_grid_rooms(self):
-        """Rooms directly attached to the current corridor (same subgraph)."""
-        return {name for name, edge in self._graph.neighbors(self._current_corridor)
-                if edge.edge_type != EdgeType.BORDER}
+        """Rooms directly attached to the current corridor (same subgraph).
+
+        Returns a list in edge-insertion order: the result feeds rng.choice
+        pools, so its order must not depend on str hashing (spec 0054).
+        """
+        return [name for name, edge in self._graph.neighbors(self._current_corridor)
+                if edge.edge_type != EdgeType.BORDER]
 
     def _puzzle_candidates(self):
         """Reachable rooms on the current grid suitable for a Sokoban puzzle.
@@ -540,7 +547,7 @@ class LevelGraphBuilder:
         name = self._new_name()
         self._graph.add_node(name, size)
         self._graph.add_edge(parent or self._current_corridor, name, et, **params)
-        self._reachable.add(name)
+        self._reachable[name] = None
         return name
 
     # ── Challenge additions ───────────────────────────────────────────────
@@ -570,7 +577,7 @@ class LevelGraphBuilder:
         # Key goes in a non-corridor reachable room, or corridor as last resort
         key_room = self._pick(self._room_candidates())
         self._graph.nodes[key_room].keys.append((colour,))
-        self._reachable.add(name)
+        self._reachable[name] = None
         return name
 
     def add_gated_room(self, gate_id, size=None, parent=None) -> str:
@@ -598,7 +605,7 @@ class LevelGraphBuilder:
         puzzle_room = self._pick(candidates, fallback=self._room_candidates())
         self._graph.nodes[puzzle_room].plates.append((gate_id,))
         self._graph.nodes[puzzle_room].blocks.append(1)
-        self._reachable.add(name)
+        self._reachable[name] = None
         return name
 
     def add_water_room(self, size=None, parent=None) -> str:
@@ -612,7 +619,7 @@ class LevelGraphBuilder:
             planks_room = self._pick(dry)
             self._graph.nodes[planks_room].materials.append(('planks',))
         self._has_water = True
-        self._reachable.add(name)
+        self._reachable[name] = None
         self._water_rooms.add(name)
         return name
 
@@ -651,7 +658,7 @@ class LevelGraphBuilder:
             self._graph.nodes[puzzle_room].blocks.append(1)
 
         self._graph.add_edge(prev_corridor, new_name, EdgeType.BORDER, **params)
-        self._reachable.add(new_name)
+        self._reachable[new_name] = None
         self._current_corridor = new_name
 
     # ── Content distribution ──────────────────────────────────────────────
@@ -717,163 +724,3 @@ class LevelGraphBuilder:
     def build(self) -> 'LevelGraph':
         return self._graph
 
-
-# (formerly _assign_items — replaced by LevelGraphBuilder)
-def _assign_items(graph, feature_set, rng):
-    """Distribute treasures, materials, keys, blocks, plates across nodes."""
-
-    all_nodes = list(graph.nodes.keys())
-    corridor_name = 'corridor'
-
-    # Find all freely reachable rooms (via OPEN, BREAKABLE, BORDER edges)
-    # from the start corridor — these are valid for placing keys/plates
-    _free_types = (EdgeType.OPEN, EdgeType.BREAKABLE)
-    def _is_free_edge(edge):
-        if edge.edge_type in _free_types:
-            return True
-        if (edge.edge_type == EdgeType.BORDER
-                and edge.params.get('barrier', 'open') == 'open'):
-            return True
-        return False
-
-    def _freely_reachable(exclude_edge=None):
-        """Rooms reachable without crossing locked/gated/water edges."""
-        reached = {corridor_name}
-        frontier = [corridor_name]
-        while frontier:
-            current = frontier.pop()
-            for name, edge in graph.neighbors(current):
-                if name in reached:
-                    continue
-                if exclude_edge is not None and id(edge) == id(exclude_edge):
-                    continue
-                if _is_free_edge(edge):
-                    reached.add(name)
-                    frontier.append(name)
-        return list(reached)
-
-    # Collect which keys, gates, and water crossings are needed
-    needed_keys = []     # [(colour, edge), ...]  one per locked edge
-    needed_gates = {}    # {gate_id: edge}
-    needed_water = {}    # {water_id: edge}
-    for edge in graph.edges:
-        if edge.edge_type == EdgeType.LOCKED:
-            colour = edge.params['key_colour']
-            needed_keys.append((colour, edge))
-        elif edge.edge_type == EdgeType.GATED:
-            gate_id = edge.params['gate_id']
-            needed_gates[gate_id] = edge
-        elif edge.edge_type == EdgeType.WATER:
-            water_id = edge.params.get('water_id', f'water_{id(edge)}')
-            needed_water[water_id] = edge
-        elif edge.edge_type == EdgeType.BORDER:
-            barrier = edge.params.get('barrier', 'open')
-            if barrier == 'locked':
-                colour = edge.params['key_colour']
-                needed_keys.append((colour, edge))
-            elif barrier == 'gated':
-                gate_id = edge.params['gate_id']
-                needed_gates[gate_id] = edge
-
-    # For each locked edge, place a key on the reachable side
-    for colour, edge in needed_keys:
-        candidates = _freely_reachable(exclude_edge=edge)
-        if edge.node_b in candidates:
-            candidates.remove(edge.node_b)
-        if not candidates:
-            candidates = [corridor_name]
-        target = rng.choice(candidates)
-        graph.nodes[target].keys.append((colour,))
-
-    # For each gated edge, place plate AND block in the SAME room.
-    # Never in a corridor — too narrow for pushing.
-    for gate_id, edge in needed_gates.items():
-        candidates = [n for n in _freely_reachable(exclude_edge=edge)
-                      if n != edge.node_b
-                      and graph.nodes[n].size != NodeSize.CORRIDOR]
-        if not candidates:
-            candidates = _freely_reachable(exclude_edge=edge)
-            if edge.node_b in candidates:
-                candidates.remove(edge.node_b)
-        if not candidates:
-            candidates = [corridor_name]
-        target = rng.choice(candidates)
-        graph.nodes[target].plates.append((gate_id,))
-        graph.nodes[target].blocks.append(1)
-
-    # For each water edge, ensure planks are reachable on the start side
-    for water_id, edge in needed_water.items():
-        candidates = _freely_reachable(exclude_edge=edge)
-        if edge.node_b in candidates:
-            candidates.remove(edge.node_b)
-        if not candidates:
-            candidates = [corridor_name]
-        target = rng.choice(candidates)
-        graph.nodes[target].materials.append(('planks',))
-        graph.nodes[target].materials.append(('planks',))
-
-    # Distribute treasures
-    t_min, t_max = feature_set.get('treasure_count', (6, 10))
-    t_count = rng.randint(t_min, t_max)
-    item_nos = list(range(1, 10))
-    for _ in range(t_count):
-        target = rng.choice(all_nodes)
-        item_no = rng.choice(item_nos)
-        graph.nodes[target].treasures.append((item_no,))
-
-    # Distribute materials (exclude planks if water edges exist — planks
-    # are placed precisely for bridge crafting)
-    mat_types = list(feature_set.get('material_types', []))
-    if needed_water and 'planks' in mat_types:
-        mat_types = [m for m in mat_types if m != 'planks']
-    m_min, m_max = feature_set.get('material_count', (4, 8))
-    m_count = rng.randint(m_min, m_max)
-    for _ in range(m_count):
-        if mat_types:
-            target = rng.choice(all_nodes)
-            mat = rng.choice(mat_types)
-            graph.nodes[target].materials.append((mat,))
-
-    # Distribute enemies. Excluded from:
-    # - corridors (grid-connecting rooms)
-    # - nodes connected by a BORDER edge (transition zones)
-    # - puzzle rooms (blocks/plates)
-    # - flame rooms
-    e_min, e_max = feature_set.get('enemy_count', (1, 3))
-    e_count = max(1, rng.randint(e_min, e_max))
-    hazard_rooms = {n for n, node in graph.nodes.items()
-                    if node.blocks or node.plates or node.has_flames}
-    corridors = {n for n, node in graph.nodes.items()
-                 if node.size == NodeSize.CORRIDOR}
-    excluded = corridors | hazard_rooms
-    enemy_candidates = [n for n in all_nodes if n not in excluded]
-    if not enemy_candidates:
-        enemy_candidates = [n for n in all_nodes
-                            if n not in corridors]
-    has_forge = feature_set.get('has_forge_ogre', False)
-    forge_placed = False
-    for _ in range(e_count):
-        target = rng.choice(enemy_candidates)
-        if has_forge and not forge_placed:
-            graph.nodes[target].enemies.append(('forge_ogre',))
-            forge_placed = True
-        else:
-            graph.nodes[target].enemies.append(('chaser',))
-
-    # Ensure every room with enemies has at least one treasure (reward for risk)
-    item_nos = list(range(1, 10))
-    for name, node in graph.nodes.items():
-        if node.enemies and not node.treasures:
-            node.treasures.append((rng.choice(item_nos),))
-
-    # Add flame jets to some rooms (if feature set allows)
-    if feature_set.get('has_flames'):
-        flame_candidates = [n for n in all_nodes
-                            if n != corridor_name
-                            and not graph.nodes[n].blocks
-                            and not graph.nodes[n].plates]
-        if flame_candidates:
-            target = rng.choice(flame_candidates)
-            graph.nodes[target].has_flames = True
-            if not graph.nodes[target].treasures:
-                graph.nodes[target].treasures.append((rng.choice(item_nos),))
