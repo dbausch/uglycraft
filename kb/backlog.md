@@ -789,27 +789,21 @@ Rule for future generator code in `kb/architecture.md` "Process determinism".
 
 ---
 
-## BL-41 · P2 · Single-grid entrance side biased by fixed scan order (level 11: never right/bottom-rare)
+## BL-41 · FIXED · Single-grid entrance side biased by fixed scan order (level 11: never right/bottom-rare)
 
-Observed by Daniel while play-testing level 11 (2026-07-12): the player start
-is never at the right border, very rarely at the bottom, usually left.
-Measured over 200 seeds: left 64%, top 30%, bottom 6%, right 0%. Cause:
-single-grid levels still use `_pick_entrance`'s scanning mode, which takes the
-FIRST side the corridor reaches in the fixed order (left, top, bottom, right);
-any corridor touching the left border short-circuits to left, and right is
-scanned last so it can never win. Multi-grid levels are unaffected (uniform
-entrance side via grid zero, spec 0053). Fix direction chosen by Daniel:
-extend grid zero to single-grid levels — spec/0055-single-grid-grid-zero.md
-(committed, awaiting confirmation).
-
-**Fix hint:** make the grid-zero pseudo-exit draw in `LevelGraph.generate`
-unconditional (grid zero at (0,0), root at delta(S), entrance_side =
-opposite(S) for grid_count 1 too); in the single-grid path of
-`build_level_dict`, pre-pick the strategy with
-`_pick_strategy(frozenset({entrance_side}), ...)` and pass
-`required_exits={entrance_side}` so R-S1 makes the corridor reach the side;
-`_pick_entrance` then uses its deterministic entrance-side mode. Re-record
-golden act2_L11_walk once; act2_L13_walk must stay byte-identical.
+Fixed in f30f8eb (spec/0055-single-grid-grid-zero.md), confirmed by Daniel
+2026-07-12. Observed while play-testing level 11: the entrance was never
+right, rarely bottom (200-seed measurement: left 64%, top 30%, bottom 6%,
+right 0%) — `_pick_entrance`'s scanning mode took the first side the
+corridor reached in fixed left/top/bottom/right order. Fix: grid zero
+extended to single-grid levels — the pseudo-exit draw in
+`LevelGraph.generate` is unconditional, and `build_level_dict`'s single-grid
+path pre-picks a covering strategy and passes
+`required_exits={entrance_side}` so the entrance lands deterministically on
+the uniformly drawn side. Post-fix distribution: 53/52/50/45 over 200 seeds.
+Multi-grid streams byte-identical (level 13 hash unchanged);
+act2_L11_walk re-recorded once. R-T6 updated; tests in
+tests/test_entrance.py (uniformity + anchoring down to grid_count 1).
 
 ---
 

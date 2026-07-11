@@ -2,15 +2,15 @@
 
 ## Status
 
-- [ ] `LevelGraph.generate` draws grid zero's pseudo-exit side for **every**
+- [x] `LevelGraph.generate` draws grid zero's pseudo-exit side for **every**
       generated graph (single-grid included); `entrance_side` is never None
       on generated graphs
-- [ ] Single-grid `build_level_dict` honours `graph.entrance_side`:
+- [x] Single-grid `build_level_dict` honours `graph.entrance_side`:
       strategy coverage filter + deterministic entrance placement
-- [ ] Entrance side uniformly distributed on level 11 (was 64 % left /
+- [x] Entrance side uniformly distributed on level 11 (was 64 % left /
       30 % top / 6 % bottom / 0 % right over 200 seeds)
-- [ ] Golden `act2_L11_walk` re-recorded once; `act2_L13_walk` byte-identical
-- [ ] Full suite green
+- [x] Golden `act2_L11_walk` re-recorded once; `act2_L13_walk` byte-identical
+- [x] Full suite green
 
 ## Problem
 
@@ -105,14 +105,17 @@ Extend `tests/test_entrance.py`:
 
 ## Done when:
 
-- [ ] Generated single-grid graphs always carry `entrance_side`; draw
+- [x] Generated single-grid graphs always carry `entrance_side`; draw
       uniform over 400 seeds (≥ 15 % per side)
-- [ ] Single-grid levels place the entrance on `graph.entrance_side`,
+      (f30f8eb; confirmed by Daniel 2026-07-12)
+- [x] Single-grid levels place the entrance on `graph.entrance_side`,
       adjacent to the corridor-owned player start (property test, gc 1–6)
-- [ ] Level 11 entrance-side sweep ≈ uniform (each side ≥ 15 % / 200 seeds)
-- [ ] Level 13 canonical hash byte-identical pre/post; determinism tests
-      green
-- [ ] `act2_L11_walk` re-recorded; `act2_L13_walk` byte-identical;
-      `poe test` exits 0
-- [ ] kb updated (R-T6 covers single-grid; architecture entrance section);
-      BL-41 closed in `kb/backlog.md`
+      (7df2e83 red, f30f8eb green)
+- [x] Level 11 entrance-side sweep ≈ uniform (each side ≥ 15 % / 200 seeds)
+      (53/52/50/45 measured)
+- [x] Level 13 canonical hash byte-identical pre/post; determinism tests
+      green (verified via tests/_gen_hash.py probe)
+- [x] `act2_L11_walk` re-recorded; `act2_L13_walk` byte-identical;
+      `poe test` exits 0 (535 passed) (f30f8eb)
+- [x] kb updated (R-T6 covers single-grid; architecture entrance section);
+      BL-41 closed in `kb/backlog.md` (1d297ff + closure commit)
