@@ -241,6 +241,15 @@ room data (fixes the stairs-sprite fallthrough as a side effect, P5).
 
 ### Stage 5 — `Room` as a live object
 
+**Status: implemented 2026-07-12** (spec `spec/0051-room-objects.md`,
+commit 42b4e8f) — `Room.from_data` builds lazily on first entry (the
+spec-0048 fresh-entry gate falls out for free), rooms persist by
+identity, World's current-room views are properties, and `RoomState` +
+both persistence idioms are deleted.  All five stages of §3 are now
+implemented; §7 (content registry) is the candidate Stage 6.  Awaiting
+the user's play-test.
+
+
 A `Room` dataclass owns its tiles/items/enemies. Rooms persist by identity
 — `_enter_room` swaps the active room pointer; `RoomState`,
 `_save_room_state`, and the fresh/restore double branch are deleted. The
@@ -455,7 +464,7 @@ Stage 1  extract World (events)            — harness green         ✓ spec 00
 Stage 2  Act 1 as one-room Act 2           — harness green         ✓ spec 0046
 Stage 3  layered cells, walls→barriers     — shadow grid until silent ✓ spec 0047
 Stage 4  behaviour dispatch, channels      — harness + screenshots green ✓ spec 0050
-Stage 5  Room objects, delete RoomState    — harness green
+Stage 5  Room objects, delete RoomState    — harness green ✓ spec 0051
 ```
 
 ## 7. Beyond Stage 5: the content registry (design, 2026-07-12)
