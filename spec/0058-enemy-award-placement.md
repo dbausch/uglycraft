@@ -27,6 +27,16 @@
 
 ## Revision history
 
+- **Implementation notes (2026-07-11).** Two clarifications surfaced by
+  the red tests: (1) **closets are excluded from flame candidacy** — an
+  uncarvable closet's award would C7-spill into its parent room and break
+  the one-award-per-challenge-room accounting, and a closet cannot host a
+  wall-to-wall jet; (2) a room protected twice (e.g. locked room later
+  marked flames) keeps a **single** award — one per challenge room, not
+  per protection, matching the R-P10 total. Flame-award relocation to jet
+  far-tiles now falls back to room floor, then corridor spill, so flame
+  awards are never lost (the old fresh-treasure-per-jet pass silently
+  dropped the flame room's own treasures).
 - **Confirmed (2026-07-11).** Daniel confirmed the v4.1 spec (spec only —
   tests and implementation not yet started).
 - **v4.1 (2026-07-11).** Enemy count fixed at exactly `2 × G` (no random

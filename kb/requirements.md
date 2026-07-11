@@ -72,6 +72,29 @@ tile is border ring (R-G2), excluded as a zero-cost guard for BL-43's
 future openable entrance.  Tests: `tests/test_entrance.py` (R-P8 section);
 sweep: `scratchpad/sweep_items_on_start.py`.
 
+**R-P9** No enemy start tile ever belongs to the corridor (spec 0058 /
+BL-20). For every room, the number of enemy starts it holds is at most
+`s − 2`, where `s` is the side of the room's largest all-floor square
+(equivalently: a 3×3 free square remains after virtually downsizing the
+room by one tile per enemy in both dimensions).  Enemy hosts are candidate
+rooms only — never a flame, plate, or block room; closets qualify by
+actual floor shape.  A level holds exactly `2 × G` enemies (`G` grids;
+forge ogre first on `has_forge_ogre` levels); enemies are dropped only
+when no candidate room remains in the entire level.  Enforced by
+`_distribute_enemies` in `levellayout.py`; locked by
+`tests/test_enemy_room_size.py`.
+
+**R-P10** Award items exist only as challenge rewards (spec 0058): each
+locked, gated, flame, or water room carries one graph-placed award (one
+per **room**, not per protection — a locked room that also gains flames
+keeps a single award); each enemy adds one layout-placed guard award to
+its room.  Total awards per level = `#challenge rooms + #enemies placed`
+(modulo full-room spill to the corridor, the only exception).  Challenge
+counts scale with the grid count: `max(1, G // 2)` flame rooms and
+`max(1, G // 3)` water rooms per enabled level; closets are never flame
+candidates (an uncarvable closet would spill its award into its parent
+and break the accounting).  → `spec/0058-enemy-award-placement.md`.
+
 ---
 
 ## W — Walls

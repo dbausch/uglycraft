@@ -49,14 +49,15 @@ name            str
 size            NodeSize  (CLOSET | ROOM | HALL | CORRIDOR)
 is_start        bool
 super_pos       (col, row)  — super-grid position (corridor nodes only)
-treasures       [(item_no,)]
+treasures       [(item_no,)]  — challenge awards only (spec 0058)
 materials       [(mat_type,)]
 keys            [(key_colour,)]
 blocks          [count]
 plates          [(gate_id,)]
-enemies         [(enemy_type, ...)]
 has_flames      bool
 ```
+
+(No enemy data: enemies are distributed at layout time — spec 0058.)
 
 ### `PlacedNode` (in `levellayout`)
 ```
@@ -510,6 +511,34 @@ in `World.blocked` / `RoomCells.blocked`.
 
 ---
 
+## Enemy & award economy (spec 0058)
+
+**Enemies are a layout concern.** The graph carries no enemy data (the
+old `add_enemies` / `Node.enemies` are gone — enemies never affected
+solvability). `_distribute_enemies` (`levellayout.py`) runs once per
+level — called by `_build_super_grid` after stitching, and by the
+single-grid tail of `build_level_dict` (per-grid builds pass
+`place_enemies=False`) — and places exactly `2 × G` enemies by the size
+rule: candidates are non-corridor nodes without blocks/plates/flames
+whose effective size `e = s − k ≥ 3` (`s` = largest all-floor square,
+`k` = enemies assigned; capacity per room `s − 2`); selection is fewest
+enemies → largest `e` → largest floor area → one rng tie-break; the
+forge ogre (flagged via `graph.has_forge_ogre`) is placed first, hence
+into the level's biggest room. Enemy tile choice keeps the old
+enemy-pass semantics (`_pick_enemy_tile`).
+
+**Every award is a challenge reward.** Graph phase: each locked, gated,
+water, or flame room gets exactly one award at creation (one per room,
+not per protection); no unconditional sprinkles (`add_treasures` is
+gone, `treasure_count`/`enemy_count` retired). Layout phase: each enemy
+adds one guard award to its room. Flame rooms' awards are relocated to
+jet far-tiles (fallback: room floor, then corridor spill — never lost).
+Challenge scaling: `max(1, G // 2)` flame rooms, `max(1, G // 3)` water
+rooms via WATER entries prepended to `required` (`has_water` flag;
+WATER left the stochastic edge draw). Closets are never flame
+candidates. → R-P9/R-P10 in `kb/requirements.md`;
+tests: `tests/test_enemy_room_size.py`.
+
 ## Item placement, spill, and barrier prerequisites (spec 0030)
 
 **Placement order & spill (shared infra, also spec 0029 W1).**
@@ -556,8 +585,10 @@ if a carve shrinks a room below its push-puzzle needs.
 content of any **unplaced** node — a closet that could not be carved, or a room
 dropped by the packer (R-P4) — into a placed neighbour (the closet's room if
 placed, else the corridor), via `_place_items_in_room`'s room→corridor spill.
-So **keys, treasures, and materials are never lost** (treasures excepted in flame
-rooms, which relocate them to jet far-tiles by design). Push-puzzle plates are
+So **keys, treasures, and materials are never lost** (flame rooms relocate
+their treasures to jet far-tiles; since spec 0058 that relocation falls back
+to room floor / corridor spill, so even those are never dropped, and the C7
+spill places an unplaced flame room's treasures too). Push-puzzle plates are
 **not** spilled: a dropped puzzle room's gate is elided by the surviving-
 prerequisite coupling (gate created only if its plate is in `all_plates`). This
 also closes the W1 node-drop residual (dropped plank rooms spill their planks).
