@@ -62,9 +62,11 @@ BL-04 for the related water-crossing looseness.
 
 **`item_no` NOT reset on death:** Unlike the Pascal version, UGLYCRAFT continues the item sequence after a death. The player resumes collecting from whatever `item_no` they were on. The penalty is purely score-based (−500 pts).
 
-**Bridge placement silently consumes extras:** When the player has crafted multiple bridges and tries to place them, only the first placement succeeds. Subsequent attempts consume the bridge item from inventory without placing anything in the world. Root cause unknown — likely in the bridge placement / water-tile check logic (`_try_auto_bridge`
-in `world.py` since spec 0045). Backlog: BL-39 (filed 2026-07-12 — this note
-had said "Backlog." since long before, but no item existed).
+**Bridge placement silently consumes extras:** When the player has crafted multiple bridges and tries to place them, only the first placement succeeds. Subsequent attempts consume the bridge item from inventory without placing anything in the world. Root cause unknown — likely in the bridge placement / water-tile check logic. **RESOLVED as
+unreproducible (BL-39, 2026-07-12):** on current code every refusal path in
+`_try_auto_bridge` returns before `inventory.use_item`; a permanent guard
+test (`test_refused_bridge_never_consumes_the_item`) pins the ordering.
+Probably died with spec 0029's replacement of the old per-grid bridge cap.
 
 **Stairs sprite drawn at ordinary passages (bug, unimplemented feature):** The staircase sprite is rendered at some non-stair passages even though `EdgeType.STAIRS` has never been implemented. The rendering code appears to fall through to the stairs visual for an unrecognised edge type. Backlog — fix the fallthrough when implementing stairs properly.
 
