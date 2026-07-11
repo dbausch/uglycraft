@@ -3,15 +3,20 @@ from constants import COLS, ROWS, WALL_STONE
 
 
 class RoomState:
-    """Snapshot of a single room's mutable state."""
+    """Snapshot of a single room's mutable state.
 
-    __slots__ = ('level_walls', 'placed_walls', 'wall_hits',
+    cells (the spec-0047 layered model) carries walls/doors/damage state;
+    the level_walls/placed_walls/wall_hits/doors fields are the shadow-grid
+    duplicates and are deleted with the grid (0047 T8)."""
+
+    __slots__ = ('cells', 'level_walls', 'placed_walls', 'wall_hits',
                  'enemies', 'treasures', 'materials', 'keys', 'doors',
                  'blocks')
 
-    def __init__(self, level_walls, placed_walls, wall_hits, enemies,
+    def __init__(self, cells, level_walls, placed_walls, wall_hits, enemies,
                  treasures=None, materials=None, keys=None, doors=None,
                  blocks=None):
+        self.cells = cells
         self.level_walls = level_walls
         self.placed_walls = placed_walls
         self.wall_hits = wall_hits

@@ -21,6 +21,7 @@ Event kinds (args in parentheses):
 This module (and everything it imports) must never import pygame — the
 key ids passed to try_move()/key_released() are opaque ints.
 """
+import os
 import random
 from collections import deque
 from constants import *
@@ -29,6 +30,7 @@ from levels import (TOTAL_LEVELS, get_level, new_game_levels,
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import RoomState, parse_level_walls, find_exit
 from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
+from cells import Barrier, Terrain, build_room_cells
 
 NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10
@@ -154,6 +156,39 @@ class World:
                     q.append((nc, nr))
         return dist
 
+    # ── Passability (spec 0047) ───────────────────────────────────────────────
+
+    def blocked(self, c, r):
+        """True iff (c, r) cannot be walked on: out of bounds, a blocking
+        barrier, unbridged water, or a pushable block.  The query replaces
+        the cached walls grid — nothing to rebuild, nothing to forget."""
+        if not (0 <= c < COLS and 0 <= r < ROWS):
+            return True
+        b = self.cells.barrier(c, r)
+        if b is not None and b.blocks(self._gate_open):
+            return True
+        if self.cells.is_water(c, r) and not self.cells.bridge(c, r):
+            return True
+        if (c, r) in self._room_blocks.get(self._current_room, []):
+            return True
+        return False
+
+    def _shadow_check(self):
+        """Spec 0047 §6.4 migration guard: while the old walls grid is
+        still maintained, every rebuilt grid must equal the query on all
+        cells.  Active when UGLYCRAFT_SHADOW is set (the test suite sets
+        it unconditionally); deleted together with the grid in T8."""
+        if not os.environ.get('UGLYCRAFT_SHADOW'):
+            return
+        for c in range(COLS):
+            for r in range(ROWS):
+                grid, query = self.walls[c][r], self.blocked(c, r)
+                if grid != query:
+                    raise AssertionError(
+                        f'shadow divergence at {(c, r)} in room '
+                        f'{self._current_room!r}: grid={grid} query={query} '
+                        f'barrier={self.cells.barrier(c, r)}')
+
     # ── Wall helpers ──────────────────────────────────────────────────────────
 
     def _build_walls(self):
@@ -209,10 +244,12 @@ class World:
         if hits >= hits_needed:
             self._break_wall(col, row)
         else:
+            self.cells.barrier(col, row).hits = hits
             self._wall_hits[(col, row)] = hits
             self._emit('bumped')
 
     def _break_wall(self, col, row):
+        self.cells.remove_barrier((col, row))
         self._wall_hits.pop((col, row), None)
         self._level_walls.pop((col, row), None)
         self._placed_walls.discard((col, row))
@@ -317,6 +354,7 @@ class World:
 
         if room_key in self._room_states:
             st = self._room_states[room_key]
+            self.cells = st.cells
             self._level_walls = st.level_walls
             self._placed_walls = st.placed_walls
             self._wall_hits = st.wall_hits
@@ -327,6 +365,7 @@ class World:
             self._room_doors[room_key] = st.doors
             self._room_blocks[room_key] = st.blocks
         else:
+            self.cells = build_room_cells(room_data)
             self._level_walls = parse_level_walls(room_data['walls'])
             self._placed_walls = set()
             self._wall_hits = {}
@@ -413,6 +452,7 @@ class World:
         """Snapshot the current room's mutable state before leaving."""
         rk = self._current_room
         self._room_states[rk] = RoomState(
+            cells=self.cells,
             level_walls=dict(self._level_walls),
             placed_walls=set(self._placed_walls),
             wall_hits=dict(self._wall_hits),
@@ -452,6 +492,7 @@ class World:
         for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
             if gate_id not in self._gate_open:
                 self.walls[gc][gr] = True
+        self._shadow_check()
 
     def _try_room_transition(self):
         """Check if the player is on an exit tile and transition if so."""
@@ -559,6 +600,7 @@ class World:
             if door_c == col and door_r == row:
                 if self.inventory.has_key(door_color):
                     self.inventory.use_key(door_color)
+                    self.cells.remove_barrier((col, row))
                     doors.pop(i)
                     self._opened_doors.add((room_key, col, row, door_color))
                     self._build_walls_multiroom()
@@ -594,6 +636,7 @@ class World:
         if (0 < far_c < COLS - 1 and 0 < far_r < ROWS - 1
                 and not self.walls[far_c][far_r]):
             self.inventory.use_item(CRAFT_BRIDGE)
+            self.cells.add_bridge((col, row))
             self._bridged_tiles.setdefault(self._current_room, set()).add((col, row))
             self._bridged_water_rooms.add(water_room)
             self._build_walls_multiroom()
@@ -681,6 +724,7 @@ class World:
         c, r = self.player.col, self.player.row
         if self._place_credits > 0 and not self.walls[c][r]:
             self._place_credits -= 1
+            self.cells.set_barrier((c, r), Barrier('placed'))
             self._placed_walls.add((c, r))
             self._build_walls_multiroom()
             self._emit('wall_placed')
@@ -697,6 +741,7 @@ class World:
                     self.inventory.quick_place_wall()
                 else:
                     return
+                self.cells.set_barrier((c, r), Barrier('placed'))
                 self._placed_walls.add((c, r))
                 self._build_walls_multiroom()
                 self._emit('wall_placed')
@@ -758,6 +803,7 @@ class World:
                 if hits >= enemy.wall_bump_power:
                     self._break_wall(tc, tr)
                 else:
+                    self.cells.barrier(tc, tr).hits = hits
                     self._wall_hits[(tc, tr)] = hits
                     self._emit('bumped')
                 return
