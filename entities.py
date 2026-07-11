@@ -1,6 +1,5 @@
 """Player and Enemy entities (tile-grid based)."""
 import random
-import pygame
 from constants import TILE, ROWS, COLS
 
 
@@ -16,9 +15,6 @@ class Entity:
     @property
     def py(self):
         return self.row * TILE
-
-    def rect(self):
-        return pygame.Rect(self.col * TILE, self.row * TILE, TILE, TILE)
 
 
 class Player(Entity):
