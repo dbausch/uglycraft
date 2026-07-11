@@ -460,3 +460,43 @@ def test_gate_without_local_plate_skipped_post_stitch():
                                  require_plates=False) == []
     errors = validate_push_puzzles(room, _CORRIDOR_OWNER)
     assert any('border_gate_1' in e for e in errors)
+
+
+# ── Plates never on landing tiles (spec 0049 P1/P2/P3) ────────────────────────
+
+def test_plate_exclusions_landing_tiles_and_water_flanks():
+    """_plate_exclusions returns the landing tile of each doorway and the
+    cardinal flanks of each water tile — and nothing wider (only the
+    landing tile is forbidden; its neighbours stay valid plate spots)."""
+    from levellayout import _plate_exclusions, PlacedNode
+    # Reinforced wall line row 5 (cols 10..16, as real Act 2 room
+    # boundaries are) with the doorway hole at (13,5); corridor above
+    # (rows 2..4), room below (rows 6..8) — the spec's P2 diagram.
+    walls = {(c, 5): 'reinforced' for c in range(10, 17) if c != 13}
+    placed = {'room': PlacedNode('room', 10, 6, 7, 3),
+              'cor':  PlacedNode('cor', 10, 2, 7, 3)}
+    excl = _plate_exclusions('room', ['cor'], placed, walls,
+                             water_tiles=[(20, 7)])
+    assert (13, 6) in excl                      # the landing tile
+    assert (12, 6) not in excl                  # beside it: allowed
+    assert (14, 6) not in excl
+    assert (13, 7) not in excl
+    for flank in ((19, 7), (21, 7), (20, 6), (20, 8)):
+        assert flank in excl                    # buildable-passage landings
+
+
+def test_place_puzzle_honours_plate_exclusions():
+    """plate_excluded removes tiles from the PLATE candidate set only."""
+    from levellayout import _place_puzzle, PlacedNode, LayoutError
+    room = PlacedNode('room', 10, 5, 5, 4)
+    placed = {'room': room}
+    floor = set(room.floor_tiles)
+    target = (12, 7)
+    rng = random.Random(0)
+    plate, block, sol = _place_puzzle(
+        'room', 'g1', placed, set(floor), set(), rng,
+        plate_excluded=frozenset(floor - {target}))
+    assert plate == target
+    with pytest.raises(LayoutError):
+        _place_puzzle('room', 'g1', placed, set(floor), set(),
+                      random.Random(0), plate_excluded=frozenset(floor))

@@ -521,6 +521,13 @@ class World:
         water_room = self.cells.water_room(col, row) or (col, row)
         if water_room in self._bridged_water_rooms:
             return False
+        # A bridged water tile is a doorway; its flanking floor tiles are
+        # landing tiles.  Never create a passage whose landing tile carries
+        # a plate — the solved puzzle (block parked on it) would seal the
+        # passage (spec 0049).
+        for pc, pr, _gid in self._room_plates.get(self._current_room, []):
+            if abs(pc - col) + abs(pr - row) == 1:
+                return False
         if not self.inventory.has_item(CRAFT_BRIDGE):
             return False
         # Check that the opposite side has open floor (not wall/water)

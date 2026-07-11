@@ -1856,8 +1856,46 @@ def _puzzle_solution_tiles(block, plate, candidates):
     return tiles
 
 
+def _plate_exclusions(room_name, neighbours, placed, walls, water_tiles):
+    """Tiles where a pressure plate must never sit (spec 0049): the
+    solved state of a push puzzle is a block parked on the plate, and a
+    block on a passage's landing tile seals that passage.
+
+    A passage tile is any tile on the shared boundary with a neighbour
+    (cardinally adjacent to floor of both rooms) that is not a reinforced
+    wall: an open doorway hole, a door, a gate, or a breakable wall the
+    player can mine through.  (_find_connection_tile is NOT reusable
+    here: it returns the centre-most WALL tile of the boundary, which for
+    open doorways is beside the actual hole.)  The landing tiles of those
+    passages, plus every cardinal flank of a water tile (the landing
+    tiles of buildable bridge passages), are excluded."""
+    excluded = set()
+    room = placed[room_name]
+    room_edge = {(t[0] + dc, t[1] + dr)
+                 for t in room.floor_tiles for dc, dr in _CARDINAL
+                 if (t[0] + dc, t[1] + dr) not in room.floor_tiles}
+    for nb in neighbours:
+        if nb not in placed:
+            continue
+        nb_floor = placed[nb].floor_tiles
+        for pos in room_edge:
+            if walls.get(pos) == WALL_REINFORCED:
+                continue                      # never opens: not a passage
+            if not any((pos[0] + dc, pos[1] + dr) in nb_floor
+                       for dc, dr in _CARDINAL):
+                continue
+            for dc, dr in _CARDINAL:
+                adj = (pos[0] + dc, pos[1] + dr)
+                if adj in room.floor_tiles:
+                    excluded.add(adj)         # the landing tile
+    for wc, wr in water_tiles:
+        for dc, dr in _CARDINAL:
+            excluded.add((wc + dc, wr + dr))
+    return excluded
+
+
 def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
-                  prior_puzzles=()):
+                  prior_puzzles=(), plate_excluded=frozenset()):
     """Atomically select a (plate, block) pair for gate_id in room_name.
 
     plate and block are chosen via a backward Sokoban BFS from the plate.
@@ -1873,6 +1911,10 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
     Cross-puzzle non-interference is enforced structurally: the new block and
     plate must not land on any tile in `excluded` (the solution tiles of every
     prior puzzle), so prior solutions remain executable.
+
+    plate_excluded (spec 0049) constrains ONLY the plate position — blocks
+    and solution paths may still use those tiles (landing tiles of the
+    room's doorways and of buildable bridge passages).
 
     Returns (plate_pos, block_pos, solution_tiles).
     Raises ValueError if no valid pair exists in the room.
@@ -1922,7 +1964,7 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
     pairs = []   # (P, B, sol_tiles)
 
     for P in sorted(room_floor):
-        if P not in effective_pass or P in excluded:
+        if P not in effective_pass or P in excluded or P in plate_excluded:
             continue
 
         # --- Backward Sokoban BFS from P, block confined to room_floor ---
@@ -2323,10 +2365,13 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     for name, node in graph.nodes.items():
         if name not in placed or not node.plates:
             continue
+        plate_excluded = _plate_exclusions(
+            name, [nb for nb, _ in graph.neighbors(name)], placed,
+            orig_walls, water_tiles)
         for (gate_id,) in node.plates:
             plate, block, sol = _place_puzzle(
                 name, gate_id, placed, puzzle_passable, excluded, rng,
-                prior_puzzles=prior_puzzles)
+                prior_puzzles=prior_puzzles, plate_excluded=plate_excluded)
             all_plates.append((*plate, gate_id))
             all_blocks.append(block)
             global_used.update({plate, block})

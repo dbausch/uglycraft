@@ -209,6 +209,41 @@ def test_bridge_makes_water_passable():
         _restore(saved)
 
 
+# ── No bridge onto a plate's landing tile (spec 0049 P4) ──────────────────────
+
+def _water_plate_level():
+    """water_level plus a plate at (14,8) — the room-side landing tile of
+    the bridge buildable at stream tile (15,8)."""
+    level = fx.water_level()
+    level['rooms']['main']['pressure_plates'] = [(14, 8, 'g1')]
+    return level
+
+
+def test_no_bridge_created_beside_a_plate():
+    """Bumping a water tile whose landing tile carries a plate must not
+    build a bridge (a solved puzzle must never seal a passage); a
+    neighbouring stream tile with plate-free landings still works."""
+    w, saved = _fixture(_water_plate_level)
+    try:
+        w.inventory.crafted['bridge'] = 1
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8       # standing on the plate
+        w.try_move(1, 0, KEY)                    # bump W(15,8) -> refused
+        w.key_released(KEY)
+        assert all(e[0] != 'bridge_built' for e in w.drain_events())
+        assert w.blocked(15, 8)
+        assert w.inventory.has_item('bridge')    # nothing consumed
+
+        # Control: W(15,7) one tile up the same stream is not
+        # plate-adjacent — the water room stays reachable.
+        w.player.col, w.player.row = 14, 7
+        w.try_move(1, 0, KEY)
+        assert any(e[0] == 'bridge_built' for e in w.drain_events())
+        assert not w.blocked(15, 7)
+    finally:
+        _restore(saved)
+
+
 # ── Regeneration net demotion (spec 0048 U5, BL-36) ───────────────────────────
 
 def _wedge_level():

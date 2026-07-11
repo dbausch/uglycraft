@@ -119,3 +119,40 @@ def test_water_planks_not_in_water_rooms(seed):
         assert not any(m == ('planks',) for m in node.materials), (
             f"Water room {name!r} contains planks — must be on player's side"
         )
+
+
+# ── Spec 0049: plates never flank water (buildable-passage landings) ──────────
+
+from levelgraph import NodeSize
+from levellayout import LayoutError
+
+FS_GATED_WATER = {
+    'room_count':     (4, 6),
+    'edge_types':     [EdgeType.OPEN, EdgeType.GATED, EdgeType.WATER],
+    'node_sizes':     [NodeSize.ROOM, NodeSize.HALL],
+    'treasure_count': (3, 5),
+    'material_types': ['planks'],
+    'material_count': (0, 0),
+    'enemy_count':    (0, 0),
+}
+
+
+@given(st.integers(min_value=0, max_value=2**32 - 1))
+@settings(max_examples=50, deadline=None)
+def test_plates_never_flank_water(seed):
+    """A plate cardinally adjacent to water would sit on the landing tile
+    of a buildable bridge passage (spec 0049 P3)."""
+    graph = LevelGraph.generate(FS_GATED_WATER, random.Random(seed))
+    try:
+        level = build_level_dict(graph, rng=random.Random(seed))
+    except LayoutError:
+        return                       # retryable seed; nothing to assert
+    for room in level['rooms'].values():
+        water = {tuple(t) for t in room.get('water_tiles', [])}
+        if not water:
+            continue
+        for pc, pr, _gid in room.get('pressure_plates', []):
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                assert (pc + dc, pr + dr) not in water, (
+                    f'seed {seed}: plate ({pc},{pr}) flanks water '
+                    f'{(pc + dc, pr + dr)}')
