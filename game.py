@@ -515,13 +515,13 @@ class Game:
         # Act 2 overlays: plates, gates, blocks, doors, keys, materials
         _MAT_SPRITE = {'rocks': 'mat_rocks', 'planks': 'mat_planks',
                        'metal': 'mat_metal', 'crystal': 'mat_crystal'}
-        for pc, pr, _gid in self._room_plates.get(rk, []):
+        for pc, pr, _gid in self.room.plates:
             self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
         for (gc, gr), gate in self.cells.barriers('gate'):
             o = self._door_orient(gc, gr)
             base = 'gate_open' if self.channel(gate.channel) else 'gate_closed'
             self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
-        for bc, br in self._room_blocks.get(rk, []):
+        for bc, br in self.room.blocks:
             self.surf.blit(sp['pushable_block'], (bc * TILE, br * TILE))
         # Detect water orientation: if any neighbor up/down is also
         # water, the stream is vertical; otherwise horizontal.
@@ -1099,10 +1099,9 @@ _WORLD_ATTRS = (
     'player', 'enemies', 'inventory',
     'treasure_pos', 'treasure_item_no', 'item_no',
     'move_ms', 'enemy_ms',
-    'cells', 'blocked', 'channel',
+    'cells', 'blocked', 'channel', 'room',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_place_credits', '_breaks_toward_credit',
-    '_room_blocks', '_room_plates',
     '_opened_doors', '_dead_squares',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',

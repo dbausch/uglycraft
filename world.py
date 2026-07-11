@@ -27,9 +27,9 @@ from constants import *
 from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
-from rooms import RoomState, find_exit
+from rooms import Room, find_exit
 from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
-from cells import BARRIER_BUMP, Barrier, RoomCells, build_room_cells
+from cells import BARRIER_BUMP, Barrier
 
 NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10
@@ -119,7 +119,7 @@ class World:
         self._shield_timer = 0
         self.move_ms      = BASE_MOVE_MS
         self.enemy_ms     = BASE_ENEMY_MS  # overridden to BOSS_MOVE_MS on level 10
-        self.cells = RoomCells()   # empty until the first room is entered
+        self.room = Room.placeholder()   # until the first room is entered
         self._breaks_toward_credit    = 0    # leftover breaks toward next credit
         self._place_credits = 0   # available wall placements
         self._bump_consumed = set()  # direction keys that must be released before next bump
@@ -164,7 +164,7 @@ class World:
             return True
         if self.cells.blocked(c, r, self._channels):
             return True
-        if (c, r) in self._room_blocks.get(self._current_room, []):
+        if (c, r) in self.room.blocks:
             return True
         return False
 
@@ -174,6 +174,36 @@ class World:
         The table is latched once per tick at the plate pass, so state
         changes become visible exactly when the old _gate_open did."""
         return name in self._channels
+
+    # ── Current-room views (spec 0051): read-only over self.room ────────────
+
+    @property
+    def cells(self):
+        return self.room.cells
+
+    @property
+    def enemies(self):
+        return self.room.enemies
+
+    @property
+    def _current_room(self):
+        return self.room.key
+
+    @property
+    def _current_room_data(self):
+        return self.room.data
+
+    @property
+    def _tile_owner(self):
+        return self.room.tile_owner
+
+    @property
+    def _dead_squares(self):
+        return self.room.dead_squares
+
+    @property
+    def _flame_jets(self):
+        return self.room.flame_jets
 
     def _register_bump(self, key, col, row):
         """Called when the player walks into wall (col, row) via direction key."""
@@ -226,34 +256,23 @@ class World:
         self._place_credits += sum(1 for _ in self.cells.barriers('placed'))
         self._bump_consumed.clear()
 
-        self._room_states = {}
+        self._rooms = {}         # visited rooms, by key (spec 0051)
         self._level_data = data
         self._transition_timer = 0
 
-        self._current_room = data['start_room']
         pc, pr = data['player_start']
         self.player = Player(pc, pr)
-        # Pre-placed treasures and materials: gather from all rooms
-        self._loot_total = 0
+        self._loot_total = sum(len(rdata.get('treasures', []))
+                               for rdata in data['rooms'].values())
         self._loot_collected = 0
-        self._room_blocks = {}
-        self._room_plates = {}
         self._channels = set()   # latched high channel names (spec 0050)
-        for rkey, rdata in data['rooms'].items():
-            self._loot_total += len(rdata.get('treasures', []))
-            self._room_blocks[rkey] = list(rdata.get('pushable_blocks', []))
-            self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
         self.treasure_pos = None
         self._opened_doors = set()
         # Water rooms already made accessible by a bridge.  One bridge per
         # water room (spec 0029 W2): once a room is reachable, no further
         # bridge to it can be built.  Replaces the old per-grid bridge cap.
         self._bridged_water_rooms = set()
-        self._tile_owner = {}
-        self._room_blocks_initial = {
-            rk: list(self._room_blocks[rk])
-            for rk in self._room_blocks}
-        self._enter_room(self._current_room)
+        self._enter_room(data['start_room'])
 
         # Speed scaling
         if level_num >= ACT2_START_LEVEL:
@@ -282,50 +301,16 @@ class World:
     # ── Multi-room support ────────────────────────────────────────────────────
 
     def _enter_room(self, room_key):
-        """Load a room, restoring saved state if the player has visited before."""
-        room_data = self._level_data['rooms'][room_key]
-        self._current_room = room_key
-        self._current_room_data = room_data
-
-        fresh = room_key not in self._room_states
-        if not fresh:
-            st = self._room_states[room_key]
-            self.cells = st.cells
-            self.enemies = st.enemies
-            self._room_blocks[room_key] = st.blocks
-        else:
-            self.cells = build_room_cells(room_data)
-            starts = room_data.get('enemy_starts', [])
-            patrols = room_data.get('patrol_enemies', [])
-            if self.difficulty == HARD:
-                active = starts
-                active_patrols = patrols
-            else:
-                # EASY: keep all special enemies + up to 1 regular chaser
-                special = [s for s in starts if len(s) >= 3 and s[2] != 'chaser']
-                regular = [s for s in starts if len(s) < 3 or s[2] == 'chaser']
-                active = special + regular[:1]
-                active_patrols = patrols[:1] if patrols else []
-            self.enemies = []
-            for edata in active:
-                if len(edata) >= 3:
-                    ec, er, etype = edata[0], edata[1], edata[2]
-                else:
-                    ec, er, etype = edata[0], edata[1], 'chaser'
-                if etype == 'forge_ogre':
-                    self.enemies.append(ForgeOgre(ec, er))
-                else:
-                    self.enemies.append(Enemy(ec, er))
-            for pdata in active_patrols:
-                pe = PatrolEnemy(pdata['start'][0], pdata['start'][1],
-                                 pdata['waypoints'])
-                self.enemies.append(pe)
-
-        self._tile_owner = room_data.get('tile_owner', {})
-        self._dead_squares = set(tuple(t) for t in room_data.get('dead_squares', []))
-        self._flame_jets = room_data.get('flame_jets', [])
-        for jet in self._flame_jets:
-            jet['_tile_set'] = frozenset(tuple(t) for t in jet['tiles'])
+        """Swap to a room, creating it on first entry (spec 0051):
+        rooms persist by identity, nothing is copied in or out."""
+        room = self._rooms.get(room_key)
+        fresh = room is None
+        if fresh:
+            room = Room.from_data(room_key,
+                                  self._level_data['rooms'][room_key],
+                                  self.difficulty)
+            self._rooms[room_key] = room
+        self.room = room
         self._flame_timer = 0
         self._bump_consumed.clear()
         self._tag_enemies_with_rooms()
@@ -340,8 +325,7 @@ class World:
 
     def _verify_blocks(self):
         """Check blocks are pushable. Regenerate level if any are stuck."""
-        rk = self._current_room
-        for bc, br in self._room_blocks.get(rk, []):
+        for bc, br in self.room.blocks:
             push_dirs = 0
             for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 pf_c, pf_r = bc - dc, br - dr
@@ -377,16 +361,6 @@ class World:
         return self._tile_owner.get(
             (self.player.col, self.player.row))
 
-    def _save_room_state(self):
-        """Snapshot the current room's mutable state before leaving."""
-        rk = self._current_room
-        self._room_states[rk] = RoomState(
-            cells=self.cells,
-            enemies=list(self.enemies),
-            blocks=list(self._room_blocks.get(rk, [])),
-        )
-
-
     def _try_room_transition(self):
         """Check if the player is on an exit tile and transition if so."""
         result = find_exit(self.player.col, self.player.row,
@@ -394,7 +368,6 @@ class World:
         if result is None:
             return False
         target_room, entry_col, entry_row = result
-        self._save_room_state()
         level_data = self._level_data
         self._enter_room(target_room)
         if self._level_data is not level_data:
@@ -453,14 +426,13 @@ class World:
         position the old _update_pressure_plates mutated _gate_open, so
         gate-opening timing is unchanged.  Future emitters (levers,
         buttons) fold into this same latch."""
-        room_key = self._current_room
-        plates = self._room_plates.get(room_key, [])
+        plates = self.room.plates
         if not plates:
             return
 
         occupied = {(self.player.col, self.player.row)}
         occupied.update((e.col, e.row) for e in self.enemies)
-        block_set = set(self._room_blocks.get(room_key, []))
+        block_set = set(self.room.blocks)
 
         # Relatch ONLY the channels emitted by this room's plates: a
         # channel held high by a block parked in another grid must
@@ -474,8 +446,7 @@ class World:
 
     def _try_push_block(self, bc, br, dcol, drow):
         """Try to push a block at (bc, br) in direction (dcol, drow)."""
-        room_key = self._current_room
-        blocks = self._room_blocks.get(room_key, [])
+        blocks = self.room.blocks
         for i, (bx, by) in enumerate(blocks):
             if bx == bc and by == br:
                 nc, nr = bc + dcol, br + drow
@@ -522,7 +493,7 @@ class World:
         # landing tiles.  Never create a passage whose landing tile carries
         # a plate — the solved puzzle (block parked on it) would seal the
         # passage (spec 0049).
-        for pc, pr, _gid in self._room_plates.get(self._current_room, []):
+        for pc, pr, _gid in self.room.plates:
             if abs(pc - col) + abs(pr - row) == 1:
                 return False
         if not self.inventory.has_item(CRAFT_BRIDGE):
@@ -681,8 +652,10 @@ class World:
     def _reset_blocks(self):
         """Reset all pushable blocks to their starting positions and close
         any gates that were held open by blocks on plates."""
-        for rk, initial in self._room_blocks_initial.items():
-            self._room_blocks[rk] = list(initial)
+        # Visited rooms only (spec 0051): an unvisited room's blocks were
+        # never moved — its eventual first entry builds from pristine data.
+        for room in self._rooms.values():
+            room.blocks = list(room.blocks_initial)
         # Close everything synchronously (the old _gate_open.clear()):
         # the next plate pass re-latches from the reset occupancy.
         self._channels = set()

@@ -37,8 +37,7 @@ def test_gate_plate_block():
     keys = _sound_keys(trace)
     assert 'caught' in keys
     # after death the block is back at (6,8): gate closed again
-    rk = h.game._current_room
-    assert h.game._room_blocks[rk] == [(6, 8)]
+    assert h.game.room.blocks == [(6, 8)]
     assert not h.game.world._channels
     assert_golden('act2_gate', trace)
 
@@ -79,7 +78,7 @@ def test_flame_jet():
 
 def test_room_transition_persistence():
     """Cross the border exit, break a wooden wall in g2, leave, return:
-    the wall stays broken (RoomState restore)."""
+    the wall stays broken (room persists by identity)."""
     def steps(direction, n):
         return [f'key:{direction}', 'wait:2'] * n
 

@@ -25,7 +25,17 @@ from enum import Enum, auto
 
 from constants import (COLS, ROWS, WALL_BUMPS, WALL_HITS_TO_BREAK,
                        WALL_STONE, WALL_WOODEN)
-from rooms import parse_level_walls
+
+
+def parse_level_walls(raw):
+    """Normalize level wall data to a dict {(col, row): wall_type}.
+
+    Accepts either a set (Act 1: all stone) or a dict (Act 2: typed
+    walls).  Moved here from rooms.py (spec 0051) so rooms.Room can
+    import cells without a cycle."""
+    if isinstance(raw, dict):
+        return dict(raw)
+    return {pos: WALL_STONE for pos in raw}
 
 
 class Terrain(Enum):
