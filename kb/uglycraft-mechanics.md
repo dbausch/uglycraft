@@ -1,5 +1,11 @@
 # UGLYCRAFT — Game Mechanics Reference
 
+*(Updated 2026-07-12 after the world-model refactor, specs 0045–0052:
+rules live in `world.py` over the `cells.py` layered model; `game.py` is
+presentation only.  The mechanics below are unchanged — the refactor was
+behaviour-preserving — but state now lives on model objects, not on
+scattered `Game` attributes.)*
+
 ## Speed Scaling Formula
 
 `factor = 1.07 ** (10 - level)`. Applied at level start.
@@ -47,17 +53,17 @@ On `KEYDOWN`: registers `(now, now)` per key. Each update tick: movement fires i
 
 - `WALL_HITS_TO_BREAK = 3` bumps (by any direction key) destroys one inner wall
 - `BREAKS_PER_CREDIT = 2` walls destroyed earns 1 placement credit; counter (`_breaks_toward_credit`) carries over between levels
-- Wall state: `_wall_hits: dict[(col,row) → count]`, cleared each level start
+- Wall state: bump damage lives on the wall's `Barrier.hits` (cells.py); a new level builds fresh barriers, so damage never carries over
 - Bump consumed: once a key bumps a wall, that key must be released before registering another bump. A successful move clears the consumed flag. Border cells can never be bumped.
 - Crack sprites: `crack1` at hit 1, `crack2` at hit 2, wall disappears at hit 3
-- On level advance: one credit refunded per placed wall still standing (`_place_credits += len(_placed_walls)`), then `_placed_walls` cleared
+- On level advance: one credit refunded per player-placed wall still standing in the current room (counted from the `placed` barriers in cells)
 - Placed walls are visually distinct from level walls: blue fill `(30, 30, 80)` vs dark-red `(90, 22, 22)`
 
 ## Treasure / Item System
 
-**`item_no` lifecycle:** reset to 0 at `_start_level`; `_spawn_treasure` increments before spawning. Item sequence never resets on death, only on level advance.
+**`item_no` lifecycle:** reset to 0 at `World.start_level`; `_spawn_treasure` increments before spawning. Item sequence never resets on death, only on level advance.
 
-**Crown:** `treasure_item_no = 10 if (item_no == 9 and level == NUM_LEVELS) else item_no`. On level 10, item 9 becomes the Crown at fixed position `(14, 8)` (inside the innermost vault ring). Crown is never relocated when boss walks over it.
+**Crown:** `treasure_item_no = 10 if (item_no == 9 and level == ACT1_BOSS_LEVEL) else item_no` (the doc previously said `NUM_LEVELS`, which has been 20 since Act 2 — the code always meant level 10). On level 10, item 9 becomes the Crown at fixed position `(14, 8)` (inside the innermost vault ring). Crown is never relocated when boss walks over it.
 
 **Spawn:** picks randomly from all open tiles excluding player and enemy positions. Fallback if no open tiles: `(1, 1)` (border — inaccessible in practice).
 
@@ -80,17 +86,17 @@ The `occupied` set prevents two enemies landing on the same tile. Enemies proces
 
 ## Level Progression
 
-**On level advance (`_advance_level`):**
+**On level advance (`World.advance_level`):**
 - `lives += 1`
-- `_place_credits += len(_placed_walls)` — refund credits for remaining placed walls
-- `_placed_walls.clear()`, `_wall_hits.clear()`, `_bump_consumed.clear()`
+- `_place_credits += <count of 'placed' barriers in the current room>` — refund credits for remaining placed walls
+- `_bump_consumed.clear()`; barriers (and their damage) are rebuilt fresh for the new level
 - `_breaks_toward_credit` NOT reset (partial progress carries over)
 - Score carried over
 
 **On death (not game over):**
 - `score -= 500 (min 0)`, `lives -= 1`
 - Player repositioned to `player_start`; enemy BFS-respawned ≥ 8 tiles away
-- Level continues; walls, `_wall_hits`, `_place_credits`, and `item_no` all intact
+- Level continues; walls (with their bump damage), `_place_credits`, and `item_no` all intact
 
 ## Game State Machine
 

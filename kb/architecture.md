@@ -524,9 +524,10 @@ BORDER), so each grid's room dict carries its own map.
 
 **One bridge per water room (W2/W3).** Runtime `_try_auto_bridge` (`world.py`)
 looks up the bumped tile's water room and refuses if it is already in
-`self._bridged_water_rooms`; otherwise it builds the one bridge, records the tile
-in `_bridged_tiles[room_key]` (per-grid, spec 0027/BL-10) and the room in
-`_bridged_water_rooms`. The lock is keyed on the **room**, not the tile or edge,
+`self._bridged_water_rooms`; otherwise it builds the one bridge — a `Bridge`
+fixture in the room's cells since spec 0047 (per-grid persistence now rides on
+the Room object; the old `_bridged_tiles` dict is gone) — and records the room
+in `_bridged_water_rooms`. The lock is keyed on the **room**, not the tile or edge,
 so bridges cannot be wasted. The old per-grid `_bridges_remaining` cap (counted
 grids-with-water, not water rooms → under-budget in ~19% of multi-water-room
 grids) is **removed**; the per-room lock + crafted-bridge inventory are the only

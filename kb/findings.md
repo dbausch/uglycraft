@@ -42,10 +42,11 @@
 
 **`_full_reset` and `_start_level` both set `item_no = 0`:** `_full_reset` calls `_start_level(1)`, so the second assignment is redundant. No functional impact.
 
-**Water is invisible to the push-puzzle solver but solid at runtime (BL-13):**
+**FIXED (spec 0048) — Water is invisible to the push-puzzle solver but solid at runtime (BL-13/BL-14):**
 `puzzle_passable` (block placement) and `validate_push_puzzles` both omit
-`water_tiles`, treating water as walkable floor, while `_build_walls_multiroom`
-makes unbridged water solid (`self.walls[wc][wr] = True`). A block placed beside
+`water_tiles`, treating water as walkable floor, while the runtime
+made unbridged water solid (pre-0047 `_build_walls_multiroom`; today
+`World.blocked` over the cell model — same semantics). A block placed beside
 an inter-room water stream can therefore be "solvable" on paper yet wall-flanked
 in play. This — not any lossy graph transform — is why the runtime
 `_verify_blocks` net still catches unplayable levels. Empirically every stuck
@@ -61,7 +62,8 @@ BL-04 for the related water-crossing looseness.
 
 **`item_no` NOT reset on death:** Unlike the Pascal version, UGLYCRAFT continues the item sequence after a death. The player resumes collecting from whatever `item_no` they were on. The penalty is purely score-based (−500 pts).
 
-**Bridge placement silently consumes extras:** When the player has crafted multiple bridges and tries to place them, only the first placement succeeds. Subsequent attempts consume the bridge item from inventory without placing anything in the world. Root cause unknown — likely in the bridge placement / water-tile check logic in `game.py`. Backlog.
+**Bridge placement silently consumes extras:** When the player has crafted multiple bridges and tries to place them, only the first placement succeeds. Subsequent attempts consume the bridge item from inventory without placing anything in the world. Root cause unknown — likely in the bridge placement / water-tile check logic (`_try_auto_bridge`
+in `world.py` since spec 0045). Backlog.
 
 **Stairs sprite drawn at ordinary passages (bug, unimplemented feature):** The staircase sprite is rendered at some non-stair passages even though `EdgeType.STAIRS` has never been implemented. The rendering code appears to fall through to the stairs visual for an unrecognised edge type. Backlog — fix the fallthrough when implementing stairs properly.
 

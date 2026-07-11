@@ -10,7 +10,13 @@ items in `kb/feature-inventory.md`).
 
 ---
 
-## 1. What the world model is today
+## 1. What the world model is today — **HISTORICAL (pre-refactor baseline)**
+
+*(§1–2 record the state as of 2026-07-10, kept as the motivating record.
+Every structure and pain point described here has since been removed or
+resolved by specs 0045–0052 — see the per-stage status notes in §3 and
+the §7 status.  Do not cite §1–2 as current architecture; the current
+map is `CLAUDE.md`'s architecture table.)*
 
 The "world" at runtime is spread across four representations:
 

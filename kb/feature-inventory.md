@@ -71,8 +71,10 @@ predate the spec-first workflow; their reference documentation is the linked
 
 ## 3. Act 2 gameplay (runtime side; umbrella spec [0007](../spec/0007-act2-beyond-the-vault.md))
 
-- **3.1 Multi-room / multi-grid runtime** — `rooms.py` `RoomState`
-  persistence, `_enter_room`, exit detection.
+- **3.1 Multi-room / multi-grid runtime** — live `Room` objects
+  (`rooms.py`, persist by identity since spec
+  [0051](../spec/0051-room-objects.md); `RoomState` is gone),
+  `_enter_room` pointer swap, exit detection.
   Since spec [0046](../spec/0046-act1-as-one-room-act2.md) *every* level is
   a multiroom level (Act 1 is wrapped as one room keyed `None`), and since
   spec [0047](../spec/0047-layered-cell-model.md) collision is a **query**
@@ -93,9 +95,13 @@ predate the spec-first workflow; their reference documentation is the linked
   display: [0007](../spec/0007-act2-beyond-the-vault.md),
   [0038](../spec/0038-key-inventory-display.md); placement side
   [0030](../spec/0030-key-placement-fixes.md).
-- **3.5 Pushable blocks, pressure plates, gates** — `_try_push_block`,
-  `_update_pressure_plates`, `_verify_blocks` runtime safety net (BL-13 —
-  fires on water-caused stuck blocks): [0007](../spec/0007-act2-beyond-the-vault.md),
+- **3.5 Pushable blocks, pressure plates, gates** — `Block` occupants +
+  plate fixtures + channel latch (`_try_push_block`, `_latch_channels`,
+  specs [0050](../spec/0050-behaviour-dispatch-channels.md)/
+  [0052](../spec/0052-content-registry.md)); the `_verify_blocks` net is a
+  fresh-entry-only last resort since [0048](../spec/0048-solver-passability-unification.md)
+  (BL-14 fixed — water-caused stuck blocks no longer generate):
+  [0007](../spec/0007-act2-beyond-the-vault.md),
   [0011](../spec/0011-push-puzzle-placement.md),
   [0035](../spec/0035-plate-not-at-entrance.md).
 - **3.6 Water & bridges** — water solid until bridged, auto-craft bridge on
