@@ -153,6 +153,18 @@ code fork. Kills P4 (and the class of bugs behind the Act 1 render crash).
 
 ### Stage 3 — Authoritative layered cell model
 
+**Status: in shadow phase 2026-07-11** (spec
+`spec/0047-layered-cell-model.md`, commits 182367a…a62b77d) — `cells.py`
+exists, every passability consumer (entities, BFS, push/place/bridge/
+bump, renderer) reads the model via `World.blocked()`, and the old
+`walls` grid survives only as the §6.4 shadow assertion
+(`UGLYCRAFT_SHADOW=1`, active across the whole suite: 482 green, goldens
+byte-identical).  Waiting on the user's shadow play session; then T8
+deletes the grid, both builders, the shadow duplicates
+(`_level_walls`, `_placed_walls`, `_wall_hits`, `_room_doors`,
+`_room_gates`, `_water_tiles`, `_bridged_tiles`) and this note flips to
+done.
+
 *(Refined by the §5 stress test — a single `Tile` per cell is not enough.)*
 
 A cell is a **stack of layers**, not one object:
