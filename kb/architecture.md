@@ -326,7 +326,15 @@ structure.
    non-empty; opening on a room is impossible.
 5. Punches the border wall at that position and records the `exits` dict entry
    pointing from each grid to the other.
-6. Places locked-door or gate entities at the border tile if the edge has a barrier.
+6. Places locked-door or gate entities at the border tile if the edge has a barrier
+   (surviving-prerequisite guarded), and records
+   `border_barriers[exit_key] = (kind, param, home)` on **both** room dicts
+   (spec 0056 / BL-12) — render metadata, never a cells entry, so the entry
+   side can mirror the source barrier's appearance and live state
+   (`border_exit_sprite` in game.py). Kinds: `('locked', colour,
+   (home_room_key, border_tile))` / `('gated', gate_id, None)` /
+   `('open', None, None)` for open and degraded borders. Open borders draw
+   nothing — stairs are reserved for floor-to-floor travel.
 
 The old all-or-nothing fallback (any unstitchable edge → rebuild *every* grid as
 `full_border`) is gone — it would have collapsed ~33–54 % of multi-grid levels to

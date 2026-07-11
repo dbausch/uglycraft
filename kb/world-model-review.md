@@ -101,6 +101,12 @@ passage anything is — which is why the staircase sprite is drawn at
 exit" because "is a staircase" no longer exists at runtime. Implementing
 real STAIRS, or any new edge type, will fight this erasure again.
 
+*Partially resolved (spec 0056 / BL-12):* BORDER passage types now survive
+as room metadata — stitching writes `border_barriers[exit_key] =
+(kind, param, home)` on both room dicts, exactly the "plumb the edge type
+as data" fix the registry paper-test predicted. The erasure remains for
+interior (non-BORDER) edge types.
+
 ### P6 — Stringly-typed seams, parsed repeatedly
 
 Exit keys `'left_7'` are built and `rsplit('_', 1)`-parsed in three places

@@ -84,7 +84,7 @@ unreproducible (BL-39, 2026-07-12):** on current code every refusal path in
 test (`test_refused_bridge_never_consumes_the_item`) pins the ordering.
 Probably died with spec 0029's replacement of the old per-grid bridge cap.
 
-**Stairs sprite drawn at ordinary passages (bug, unimplemented feature):** The staircase sprite is rendered at some non-stair passages even though `EdgeType.STAIRS` has never been implemented. The rendering code appears to fall through to the stairs visual for an unrecognised edge type. Backlog — fix the fallthrough when implementing stairs properly.
+**Stairs sprite drawn at ordinary passages (FIXED, spec 0056 / BL-12):** The staircase sprite used to be blitted unconditionally at every grid-border exit. Since spec 0056 the border-exit loop draws the sprite selected by `border_exit_sprite` (game.py) from the room's `border_barriers` record — locked door / gate mirroring the source barrier's live state, **nothing** for an open border (the gap in the border wall is the marker). Design rule from that review: **stairs are reserved for floor-to-floor travel; no same-floor entry/exit may ever show the staircase sprite.** → see `spec/0056-grid-entry-tile-type.md`.
 
 **Stairs design notes (for future implementation):**
 - A staircase tile is a normal interior floor tile; it is NOT restricted to the 30×16 grid border. It can appear anywhere inside a room or corridor.
