@@ -9,22 +9,22 @@ the spec-0044 goldens staying byte-identical.
 
 ## Status
 
-- [ ] S1 — `_as_multiroom()` wrapper in `world.py`: Act 1 dicts are wrapped
+- [x] S1 — `_as_multiroom()` wrapper in `world.py`: Act 1 dicts are wrapped
       as `{'rooms': {None: …}, 'start_room': None, …}` on entry to
       `start_level`; the Act 1 setup branch in `start_level` is deleted
-- [ ] S2 — Per-level rules `spawn_mode` (`'sequential' | 'preplaced'`) and
+- [x] S2 — Per-level rules `spawn_mode` (`'sequential' | 'preplaced'`) and
       `crafting` (bool) replace the act fork for treasure logic and SPACE/TAB
-- [ ] S3 — All 22 `_is_multiroom` sites in `world.py` deleted; no call site
+- [x] S3 — All 22 `_is_multiroom` sites in `world.py` deleted; no call site
       chooses between `_build_walls` and `_build_walls_multiroom` any more
       (the `_build_walls` trap is structurally gone)
-- [ ] S4 — `game.py` re-keyed: TAB gate, HUD SEEK/LOOT, field-render
+- [x] S4 — `game.py` re-keyed: TAB gate, HUD SEEK/LOOT, field-render
       branches, facade attribute list (`_is_multiroom` removed;
       `spawn_mode`, `crafting` added)
-- [ ] S5 — First fine-grained `World` unit tests (`tests/test_world.py`,
+- [x] S5 — First fine-grained `World` unit tests (`tests/test_world.py`,
       pygame-free, red-first for the new rule attributes)
-- [ ] S6 — All spec-0044 goldens **byte-identical** (no re-record), full
+- [x] S6 — All spec-0044 goldens **byte-identical** (no re-record), full
       suite green
-- [ ] S7 — Docs: `kb/world-model-review.md` Stage 2 done,
+- [x] S7 — Docs: `kb/world-model-review.md` Stage 2 done,
       `kb/feature-inventory.md` §3.1 wall-builder note, backlog BL-35
       progress note
 
@@ -168,10 +168,21 @@ Red-first where the API is new:
 
 ## Done when:
 
-- [ ] S1 — wrapper in place, Act 1 setup branch deleted from `start_level`
-- [ ] S2 — `spawn_mode` / `crafting` rules drive treasure and SPACE/TAB logic
-- [ ] S3 — `grep -c _is_multiroom world.py` is 0; single wall-builder call site
-- [ ] S4 — `game.py` re-keyed; facade updated
-- [ ] S5 — `tests/test_world.py` in place (red-first attrs, then green)
-- [ ] S6 — full suite green, goldens byte-identical
-- [ ] S7 — docs + BL-35 note updated
+- [x] S1 — wrapper in place, Act 1 setup branch deleted from `start_level`
+      (aa9b050)
+- [x] S2 — `spawn_mode` / `crafting` rules drive treasure and SPACE/TAB logic
+      (aa9b050)
+- [x] S3 — `grep -c _is_multiroom world.py` is 0; single wall-builder call site
+      (aa9b050)
+- [x] S4 — `game.py` re-keyed; facade updated (aa9b050)
+- [x] S5 — `tests/test_world.py` in place (red-first attrs, then green)
+      (aa9b050)
+- [x] S6 — full suite green, goldens byte-identical (aa9b050 — 468 passed,
+      `tests/golden/` untouched)
+- [x] S7 — docs + BL-35 note updated (986d0f8, 492f35d)
+
+User acceptance 2026-07-11: played the build — playable; the one glitch
+found (grid exit landing in a "different level") was reproduced headlessly,
+confirmed identical on pre-refactor commit 6fc59a7 (the `_verify_blocks`
+regeneration net + stale-entry-teleport, NOT a 0045/0046 regression), and
+filed as BL-36 (P1). Acceptance confirmed with that finding on record.
