@@ -2911,17 +2911,30 @@ def _build_super_grid(graph, rng, strategies, progress=None):
 
         barrier_tile = _BORDER_TILE[exit_side](pos)
         barrier = edge.params.get('barrier', 'open')
+        record = ('open', None, None)
         if barrier == 'locked' and edge.params['key_colour'] in surviving_key_colours:
             colour = edge.params['key_colour']
             doors = room_a.get('locked_doors', [])
             doors.append((*barrier_tile, colour))
             room_a['locked_doors'] = doors
+            record = ('locked', colour, (gname_a, barrier_tile))
         elif barrier == 'gated' and edge.params['gate_id'] in surviving_gate_ids:
             gate_id = edge.params['gate_id']
             gates = room_a.get('gates', [])
             gates.append((*barrier_tile, gate_id))
             room_a['gates'] = gates
+            record = ('gated', gate_id, None)
         # else: barrier prerequisite absent — leave the border passage open
+
+        # Spec 0056 (BL-12): mirror the barrier type onto BOTH room dicts as
+        # render metadata (like exits — never a cells entry: a real mirror
+        # Barrier on the entry tile would block the return transition).
+        # The locked record's home names the room and tile of the one real
+        # door entity, so the renderer can match _opened_doors entries.
+        for room, ek in ((room_a, exit_key_a), (room_b, exit_key_b)):
+            bb = room.get('border_barriers', {})
+            bb[ek] = record
+            room['border_barriers'] = bb
 
     # Spec 0048 U4: re-validate every room of the stitched whole.
     # Stitching only opens borders and adds border barriers, so this

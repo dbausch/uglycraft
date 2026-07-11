@@ -46,6 +46,29 @@ _ITEM_SPRITE = {
 }
 
 
+def border_exit_sprite(record, orient, open_channels, opened_doors):
+    """Sprite key for a grid-border exit tile, or None to draw nothing.
+
+    record is the room's border_barriers entry (kind, param, home) written
+    at stitch time (spec 0056), mirroring the source barrier's appearance —
+    including live state — onto both sides of the border.  Open borders get
+    no sprite: the gap in the border wall is the marker, and the staircase
+    sprite is reserved for floor-to-floor travel.
+    """
+    if record is None:
+        return None
+    kind, param, home = record
+    if kind == 'locked':
+        home_room, (hc, hr) = home
+        if (home_room, hc, hr, param) in opened_doors:
+            return f'door_open_{orient}'
+        return f'door_{param}_{orient}'
+    if kind == 'gated':
+        state = 'open' if param in open_channels else 'closed'
+        return f'gate_{state}_{orient}'
+    return None
+
+
 class Game:
     def __init__(self, surface: pygame.Surface):
         self.surf = surface
@@ -501,7 +524,9 @@ class Game:
             ec, er = self._current_room_data['entrance']
             self.surf.blit(sp['level_entrance'], (ec * TILE, er * TILE))
 
-        # Staircase sprite at grid border exits
+        # Grid border exits mirror the source barrier's appearance (spec
+        # 0056); an open border is just the gap in the border wall.
+        border_recs = self._current_room_data.get('border_barriers', {})
         for exit_key in self._current_room_data.get('exits', {}):
             side, pos_str = exit_key.rsplit('_', 1)
             pos = int(pos_str)
@@ -509,7 +534,12 @@ class Game:
             elif side == 'left':   sc, sr = 0,        pos
             elif side == 'bottom': sc, sr = pos, ROWS - 1
             else:                  sc, sr = pos, 0
-            self.surf.blit(sp['staircase'], (sc * TILE, sr * TILE))
+            skey = border_exit_sprite(border_recs.get(exit_key),
+                                      self._door_orient(sc, sr),
+                                      self.world._channels,
+                                      self._opened_doors)
+            if skey is not None:
+                self.surf.blit(sp[skey], (sc * TILE, sr * TILE))
 
         # Treasure: pre-placed loot (Act 2) and the sequential item (Act 1)
         # are mutually exclusive by data — the item layer is empty on Act 1,
