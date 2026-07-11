@@ -765,3 +765,28 @@ spec 0029, whose per-water-room lock replaced the old per-grid
 `_bridges_remaining` cap. kb/findings.md entry updated accordingly (97d41bc).
 
 ---
+
+## BL-40 · P2 · Level generation output depends on PYTHONHASHSEED (cross-process nondeterminism; flaky golden act2_L13_walk)
+
+Generating the same Act 2 level with the same game seed yields different
+content in different Python processes: a canonical-content sha256 of
+`levels.get_level(13)` under `set_game_seed(777)` differs across
+PYTHONHASHSEED=0/1/2/3 (4 distinct hashes). Verified pre-existing: reproduces
+identically on the pre-spec-0053 tree (commit ffdbf12 with spec-0053 changes
+stashed), so it is NOT caused by the grid-zero change — but spec 0053's new
+level-13 layout made the variance visible in the golden trace, so tests/golden
+test `test_generated_level_13` (act2_L13_walk) now passes/fails depending on
+the process hash seed. Consequences: same seed gives different levels across
+processes/machines (breaks `--level N` debugging reproducibility and
+cross-machine hiscore fairness), and golden traces of generated levels are
+unreliable.
+
+**Fix hint:** audit `levelgraph.py` and `levellayout.py` for iteration order
+over sets/dicts keyed by strings that feeds `rng.choice` or placement, e.g.
+`_pick(list(self._reachable))` in `levelgraph.py` — any `list(<set of node
+names>)` passed to rng is hash-seed dependent; use `sorted()` at those sites.
+Detector: canonical-json sha256 of `get_level(13)` must be identical across
+PYTHONHASHSEED=0..3 (script pattern in Claude session 2026-07-12). After the
+fix, re-record act2_L13_walk once; it then stays stable.
+
+---
