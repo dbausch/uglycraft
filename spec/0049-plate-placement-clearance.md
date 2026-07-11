@@ -1,19 +1,20 @@
-# Spec 0049 — Pressure-plate clearance: entrances and water (BL-19 + bridge rule)
+# Spec 0049 — Pressure plates never sit on landing tiles (BL-19 + bridge rule)
 
-Two placement rules for pressure plates, plus one runtime rule:
+**One rule** (motivating idea, Daniel, 2026-07-12): the solved state of a
+push puzzle is a block parked on the plate — and a block on a passage's
+**landing tile** (the floor tile just inside it) seals that passage. So a
+plate must never sit on the landing tile of any passage of its room,
+**existing or buildable**:
 
-1. **BL-19 (P1):** a plate must never be placed on a doorway's **landing
-   tile** (the floor tile just inside a room's entrance). Motivating idea
-   (Daniel, 2026-07-12): the solved state of the puzzle is a block parked
-   on the plate — a plate on the landing tile would let the solved puzzle
-   seal the doorway, trapping the player after they succeed. The player
-   must always be able to leave the room after solving.
-2. **New rule (Daniel, 2026-07-12):** no bridge can be built next to a
-   pressure plate. Generator side: a plate is never placed cardinally
-   adjacent to a water tile (so the situation cannot be generated).
-   Runtime side: `_try_auto_bridge` refuses a water tile cardinally
-   adjacent to a plate (so the rule holds even for hand-authored or
-   legacy levels).
+1. **Doorways (BL-19, P1):** the landing tile of every connection to a
+   neighbouring room is excluded from plate placement — the player can
+   always leave the room after solving.
+2. **Bridgeable water:** a bridged water tile *is* a doorway, and its
+   flanking floor tiles are its landing tiles. Generator side: those
+   tiles are excluded exactly like doorway landing tiles. Runtime side:
+   `_try_auto_bridge` refuses to create a passage whose landing tile
+   already carries a plate ("no bridge next to a plate") — so the
+   invariant holds even for hand-authored or legacy levels.
 
 ## Status
 
@@ -22,12 +23,12 @@ Two placement rules for pressure plates, plus one runtime rule:
 - [ ] P2 — `build_level_dict` computes per-room exclusions: the **landing
       tile** of every doorway of the plate's room (entrance rule — a
       solved puzzle must never seal an exit)
-- [ ] P3 — exclusions also cover every tile cardinally adjacent to a
-      water tile (bridge rule, generator side)
-- [ ] P4 — `World._try_auto_bridge` refuses water tiles cardinally
-      adjacent to a plate of the current room (bridge rule, runtime side;
-      no sound, inventory untouched — like every other failed bridge
-      condition)
+- [ ] P3 — the same set covers the landing tiles of *buildable* passages:
+      every floor tile cardinally adjacent to a water tile
+- [ ] P4 — `World._try_auto_bridge` refuses to create a passage whose
+      landing tile carries a plate (water tile cardinally adjacent to a
+      plate of the current room; no sound, inventory untouched — like
+      every other failed bridge condition)
 - [ ] P5 — Tests red→green: runtime refusal fixture; `plate_excluded`
       unit test; multi-seed generation property (no plate adjacent to
       entrance-landing or water across the seed sweep)
@@ -63,14 +64,15 @@ through any of their doorways, not just the corridor one), so no exit
 can be sealed by a solved puzzle. (`E` itself is in the wall line, never
 in `floor_tiles`, so it was never a candidate.)
 
-### Water clearance (P3, generator) — and the runtime mirror (P4)
+### Water = buildable doorways (P3, generator) — and the runtime mirror (P4)
 
 Water is not free-standing floor decoration: a WATER edge converts the
-shared **partition wall** between two rooms into the stream. Here the
-partition is column **20**, separating room A (cols ≤ 19) from room B
-(cols ≥ 21); rows 6–7 of it are the stream, the rest stays wall. Each
-water tile's along-axis neighbours are wall or more water — the only
-floor neighbours are the two flanking tiles, one per room:
+shared **partition wall** between two rooms into the stream. A bridge
+turns one stream tile into a doorway — so each water tile's flanking
+floor tiles (one per room; the along-axis neighbours are wall or more
+water) are **landing tiles of a buildable passage**, and the P2 rule
+applies to them unchanged. Partition at column **20**, stream at rows
+6–7:
 
 ```
       col:  17  18  19  20  21  22  23
@@ -82,19 +84,19 @@ row 8        .   .   .   #   .   .   .
                      partition col 20
 ```
 
-`P` at **(19,6)** is the hypothesised plate this rule forbids: it is
-cardinally adjacent to `W`(20,6) — the player bumping that water tile to
-build the bridge into room B would be standing **on the plate** while
-doing it. Excluded plate tiles: **(19,6), (19,7)** in room A and
-**(21,6), (21,7)** in room B (marked `P`/`x`; the along-axis neighbours
-(20,5)/(20,8) are partition wall and were never candidates). The rule is
-stated as "all cardinal neighbours of every water tile" so it holds
-unchanged for horizontal streams, where the flanking floor is above and
-below.
+`P` at **(19,6)** is the hypothesised plate this forbids: it is the
+room-A landing tile of the bridge buildable at `W`(20,6) — a block
+parked on it would seal that passage (and the player building the
+bridge would be standing on the plate). Excluded: **(19,6), (19,7),
+(21,6), (21,7)** (marked `P`/`x`; the along-axis neighbours (20,5)/(20,8)
+are partition wall and were never candidates). Implemented as "all
+cardinal neighbours of every water tile", which holds unchanged for
+horizontal streams, where the flanking floor is above and below.
 
 Runtime mirror (P4): if a level nevertheless contains the `P`(19,6)
-plate, bumping `W`(20,6) refuses to build the bridge; `W`(20,7) — not
-plate-adjacent — still works, so the water room stays reachable.
+plate, bumping `W`(20,6) refuses to build the bridge — the passage whose
+landing tile is occupied by a plate is simply not offered; `W`(20,7) —
+plate-free landings — still works, so the water room stays reachable.
 
 ## Design
 
@@ -130,7 +132,8 @@ before the inventory check:
 ```python
 for pc, pr, _gid in self._room_plates.get(self._current_room, []):
     if abs(pc - col) + abs(pr - row) == 1:
-        return False    # design rule: no bridge next to a plate
+        return False    # landing tile carries a plate — a solved
+                        # puzzle must never seal a passage (spec 0049)
 ```
 
 Ordering keeps all failure paths side-effect-free (no sound, no
