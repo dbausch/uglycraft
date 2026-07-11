@@ -27,6 +27,8 @@
 
 ## Revision history
 
+- **Confirmed (2026-07-11).** Daniel confirmed the v4.1 spec (spec only —
+  tests and implementation not yet started).
 - **v4.1 (2026-07-11).** Enemy count fixed at exactly `2 × G` (no random
   draw, no per-grid counter). Challenge counts become deterministic
   rules, compensating the removed award sprinkle: **one fire room per 2
