@@ -72,9 +72,13 @@ predate the spec-first workflow; their reference documentation is the linked
 ## 3. Act 2 gameplay (runtime side; umbrella spec [0007](../spec/0007-act2-beyond-the-vault.md))
 
 - **3.1 Multi-room / multi-grid runtime** — `rooms.py` `RoomState`
-  persistence, `_enter_room`, exit detection, `_build_walls_multiroom` (the
-  only correct wall builder for Act 2 — the base `_build_walls` drops
-  doors/gates/blocks). Specs: [0007](../spec/0007-act2-beyond-the-vault.md),
+  persistence, `_enter_room`, exit detection, `_build_walls_multiroom`.
+  Since spec [0046](../spec/0046-act1-as-one-room-act2.md) *every* level is
+  a multiroom level (Act 1 is wrapped as one room keyed `None`), so
+  `_build_walls_multiroom` is the only builder ever called — the old trap
+  of calling the base `_build_walls` from Act 2 (dropping doors/gates/
+  blocks) can no longer occur. Specs:
+  [0007](../spec/0007-act2-beyond-the-vault.md),
   [0027](../spec/0027-bridge-state-per-grid.md) (per-grid bridge state).
 - **3.2 Wall types** — reinforced (indestructible), stone, wooden:
   [0007](../spec/0007-act2-beyond-the-vault.md),

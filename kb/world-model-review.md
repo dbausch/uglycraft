@@ -135,7 +135,17 @@ stages then happen under test coverage.**
 
 ### Stage 2 — Act 1 becomes a one-room Act 2 level
 
-Wrap Act 1 dicts as `{'rooms': {'main': …}, 'start_room': 'main'}` and
+**Status: implemented 2026-07-11** (spec `spec/0046-act1-as-one-room-act2.md`)
+— `_as_multiroom()` wraps Act 1 dicts at the `World.start_level` boundary;
+all 27 `_is_multiroom` sites are gone; two per-level rules (`spawn_mode`,
+`crafting`) carry the real mechanical differences. The single room is keyed
+`None` (not `'main'`) so golden traces recording `_current_room` stayed
+byte-identical. P4 resolved; the `_build_walls` trap is structurally gone
+(one builder call site). First pygame-free `World` unit tests landed in
+`tests/test_world.py`. Awaiting the user's play-test before the spec
+checklist is ticked.
+
+Wrap Act 1 dicts as `{'rooms': {None: …}, 'start_room': None}` and
 delete the `_is_multiroom` fork wholesale. The only genuinely different
 mechanic — sequential random treasure spawning vs pre-placed loot — becomes
 a per-level rule (`spawn_mode: 'sequential' | 'preplaced'`), not a global
@@ -420,7 +430,7 @@ the suite as a coarse performance tripwire.
 Step 0a  clock seam + RNG pinning          (tiny, mechanical)      ✓ spec 0044
 Step 0b  characterization harness + goldens (traces + screenshots) ✓ spec 0044
 Stage 1  extract World (events)            — harness green         ✓ spec 0045
-Stage 2  Act 1 as one-room Act 2           — harness green
+Stage 2  Act 1 as one-room Act 2           — harness green         ✓ spec 0046
 Stage 3  layered cells, walls→barriers     — shadow grid until silent
 Stage 4  behaviour dispatch, channels      — harness + screenshots green
 Stage 5  Room objects, delete RoomState    — harness green
