@@ -812,3 +812,20 @@ opposite(S) for grid_count 1 too); in the single-grid path of
 golden act2_L11_walk once; act2_L13_walk must stay byte-identical.
 
 ---
+
+## BL-42 · P2 · Act 1 levels (1–10) shall have an entrance door at a fixed per-level position
+
+Generated Act 2 levels (11–20) display a level entrance (stairs sprite on a
+border tile next to the player start — spec 0053/0055 grid zero). The
+hand-authored Act 1 levels (1–10) have no entrance at all. They shall get one
+too, at a FIXED position defined per level (hand-authored, like their wall
+layouts) — requested by Daniel 2026-07-12. Related: BL-43 (entrance door as
+level exit) builds on this.
+
+**Fix hint:** add an `entrance` key to each Act 1 level dict in levels.py (a
+border tile per level, sensibly adjacent to the level's `player_start`);
+`game.py` already renders `room['entrance']` when present (level-entrance
+sprite blit, around game.py:499). Choose the 10 positions in a spec first
+since they are per-level design decisions.
+
+---
