@@ -246,7 +246,7 @@ lands on the player's starting position.
 
 ---
 
-## BL-17 · P2 · Completely empty rooms are still generated
+## BL-17 · P3 · Completely empty rooms are still generated
 
 Some generated Act 2 rooms contain no items or enemies at all (dead space) —
 observed during testing. Treasure/material/enemy distribution in
@@ -455,7 +455,7 @@ in the inventory view.
 
 ---
 
-## BL-28 · P3 · Auto-craft a bridge when bumping water (no crafting-menu step)
+## BL-28 · P2 · Auto-craft a bridge when bumping water (no crafting-menu step)
 
 Bridges are already auto-PLACED by bumping into a water tile if the player holds a
 bridge item (`game.py` `_try_auto_bridge`). Extend this so bumping water also
@@ -505,7 +505,7 @@ that room's grid without the gate, else relocate the connection.
 
 ---
 
-## BL-30 · P2 · Widen corridor spine width to 2-5 (match unified stem range) after closet redesign
+## BL-30 · P3 · Widen corridor spine width to 2-5 (match unified stem range) after closet redesign
 
 Spec 0042 (BL-29) unified stem widths to 2-5 but deferred spines: widening spine
 width regresses corner-closet nesting (a wider corridor starves the parent room
@@ -664,7 +664,7 @@ two-grid fixture, exit right, return).
 
 ---
 
-## BL-37 · P3 · Wedged push-block explodes and respawns after an animated countdown
+## BL-37 · P2 · Wedged push-block explodes and respawns after an animated countdown
 
 Feature idea (Daniel, 2026-07-12): when a pushable block is pushed onto a tile
 from which its puzzle becomes unsolvable (zero remaining push directions, or
