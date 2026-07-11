@@ -21,16 +21,15 @@ Event kinds (args in parentheses):
 This module (and everything it imports) must never import pygame — the
 key ids passed to try_move()/key_released() are opaque ints.
 """
-import os
 import random
 from collections import deque
 from constants import *
 from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
-from rooms import RoomState, parse_level_walls, find_exit
+from rooms import RoomState, find_exit
 from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
-from cells import Barrier, Terrain, build_room_cells
+from cells import Barrier, RoomCells, build_room_cells
 
 NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10
@@ -120,8 +119,7 @@ class World:
         self._shield_timer = 0
         self.move_ms      = BASE_MOVE_MS
         self.enemy_ms     = BASE_ENEMY_MS  # overridden to BOSS_MOVE_MS on level 10
-        self._placed_walls  = set()
-        self._wall_hits     = {}   # (col, row) → hit count (inner walls only)
+        self.cells = RoomCells()   # empty until the first room is entered
         self._breaks_toward_credit    = 0    # leftover breaks toward next credit
         self._place_credits = 0   # available wall placements
         self._bump_consumed = set()  # direction keys that must be released before next bump
@@ -173,39 +171,7 @@ class World:
             return True
         return False
 
-    def _shadow_check(self):
-        """Spec 0047 §6.4 migration guard: while the old walls grid is
-        still maintained, every rebuilt grid must equal the query on all
-        cells.  Active when UGLYCRAFT_SHADOW is set (the test suite sets
-        it unconditionally); deleted together with the grid in T8."""
-        if not os.environ.get('UGLYCRAFT_SHADOW'):
-            return
-        for c in range(COLS):
-            for r in range(ROWS):
-                grid, query = self.walls[c][r], self.blocked(c, r)
-                if grid != query:
-                    raise AssertionError(
-                        f'shadow divergence at {(c, r)} in room '
-                        f'{self._current_room!r}: grid={grid} query={query} '
-                        f'barrier={self.cells.barrier(c, r)}')
 
-    # ── Wall helpers ──────────────────────────────────────────────────────────
-
-    def _build_walls(self):
-        """Rebuild the full collision map from border + level + placed walls."""
-        w = [[False] * ROWS for _ in range(COLS)]
-        # Border
-        for c in range(COLS):
-            w[c][0] = w[c][ROWS - 1] = True
-        for r in range(ROWS):
-            w[0][r] = w[COLS - 1][r] = True
-        # Level walls (dict: (col, row) → wall_type)
-        for (c, r) in self._level_walls:
-            w[c][r] = True
-        # Placed walls
-        for (c, r) in self._placed_walls:
-            w[c][r] = True
-        self.walls = w
 
     def _register_bump(self, key, col, row):
         """Called when the player walks into wall (col, row) via direction key."""
@@ -230,15 +196,10 @@ class World:
             self._break_wall(col, row)
         else:
             barrier.hits = hits
-            self._wall_hits[(col, row)] = hits
             self._emit('bumped')
 
     def _break_wall(self, col, row):
         self.cells.remove_barrier((col, row))
-        self._wall_hits.pop((col, row), None)
-        self._level_walls.pop((col, row), None)
-        self._placed_walls.discard((col, row))
-        self._build_walls_multiroom()
         self._emit('wall_broken')
         self._breaks_toward_credit += 1
         if self._breaks_toward_credit >= BREAKS_PER_CREDIT:
@@ -257,10 +218,10 @@ class World:
         self.spawn_mode = data.get('spawn_mode', 'preplaced')
         self.crafting   = data.get('crafting', True)
 
-        # Refund one credit per placed wall being cleared
-        self._place_credits += len(self._placed_walls)
-        self._placed_walls.clear()
-        self._wall_hits.clear()
+        # Refund one credit per placed wall being cleared (placed walls in
+        # rooms other than the current one are not refunded — unchanged
+        # since the pre-0047 per-room _placed_walls had the same scope)
+        self._place_credits += sum(1 for _ in self.cells.barriers('placed'))
         self._bump_consumed.clear()
 
         self._room_states = {}
@@ -276,11 +237,8 @@ class World:
         self._room_treasures = {}
         self._room_materials = {}
         self._room_keys = {}
-        self._room_doors = {}
         self._room_blocks = {}
         self._room_plates = {}
-        self._room_gates = {}
-        self._bridged_tiles = {}
         self._gate_open = set()  # set of currently open gate_ids
         for rkey, rdata in data['rooms'].items():
             treasures = list(rdata.get('treasures', []))
@@ -288,11 +246,8 @@ class World:
             self._loot_total += len(treasures)
             self._room_materials[rkey] = list(rdata.get('materials', []))
             self._room_keys[rkey] = list(rdata.get('keys', []))
-            self._room_doors[rkey] = list(rdata.get('locked_doors', []))
             self._room_blocks[rkey] = list(rdata.get('pushable_blocks', []))
             self._room_plates[rkey] = list(rdata.get('pressure_plates', []))
-            self._room_gates[rkey] = {gid: (gc, gr)
-                                       for gc, gr, gid in rdata.get('gates', [])}
         self.treasure_pos = None
         self._opened_doors = set()
         # Water rooms already made accessible by a bridge.  One bridge per
@@ -340,20 +295,13 @@ class World:
         if room_key in self._room_states:
             st = self._room_states[room_key]
             self.cells = st.cells
-            self._level_walls = st.level_walls
-            self._placed_walls = st.placed_walls
-            self._wall_hits = st.wall_hits
             self.enemies = st.enemies
             self._room_treasures[room_key] = st.treasures
             self._room_materials[room_key] = st.materials
             self._room_keys[room_key] = st.keys
-            self._room_doors[room_key] = st.doors
             self._room_blocks[room_key] = st.blocks
         else:
             self.cells = build_room_cells(room_data)
-            self._level_walls = parse_level_walls(room_data['walls'])
-            self._placed_walls = set()
-            self._wall_hits = {}
             starts = room_data.get('enemy_starts', [])
             patrols = room_data.get('patrol_enemies', [])
             if self.difficulty == HARD:
@@ -381,15 +329,11 @@ class World:
                 self.enemies.append(pe)
 
         self._tile_owner = room_data.get('tile_owner', {})
-        self._water_tiles = set(tuple(t) for t in room_data.get('water_tiles', []))
-        self._water_tile_room = {tuple(k): v
-                                 for k, v in room_data.get('water_tile_room', {}).items()}
         self._dead_squares = set(tuple(t) for t in room_data.get('dead_squares', []))
         self._flame_jets = room_data.get('flame_jets', [])
         for jet in self._flame_jets:
             jet['_tile_set'] = frozenset(tuple(t) for t in jet['tiles'])
         self._flame_timer = 0
-        self._build_walls_multiroom()
         self._bump_consumed.clear()
         self._tag_enemies_with_rooms()
         self._verify_blocks()
@@ -438,46 +382,13 @@ class World:
         rk = self._current_room
         self._room_states[rk] = RoomState(
             cells=self.cells,
-            level_walls=dict(self._level_walls),
-            placed_walls=set(self._placed_walls),
-            wall_hits=dict(self._wall_hits),
             enemies=list(self.enemies),
             treasures=list(self._room_treasures.get(rk, [])),
             materials=list(self._room_materials.get(rk, [])),
             keys=list(self._room_keys.get(rk, [])),
-            doors=list(self._room_doors.get(rk, [])),
             blocks=list(self._room_blocks.get(rk, [])),
         )
 
-    def _build_walls_multiroom(self):
-        """Build collision map for a multi-room level."""
-        self._build_walls()
-        room_key = self._current_room
-        # Open exit tiles in the border FIRST
-        room_data = self._current_room_data
-        for exit_key in room_data.get('exits', {}):
-            side, pos_str = exit_key.rsplit('_', 1)
-            pos = int(pos_str)
-            if side == 'left':
-                self.walls[0][pos] = False
-            elif side == 'right':
-                self.walls[COLS - 1][pos] = False
-            elif side == 'top':
-                self.walls[pos][0] = False
-            elif side == 'bottom':
-                self.walls[pos][ROWS - 1] = False
-        # Then apply obstacles on top (doors/gates can block exits)
-        for dc, dr, _color in self._room_doors.get(room_key, []):
-            self.walls[dc][dr] = True
-        for bc, br in self._room_blocks.get(room_key, []):
-            self.walls[bc][br] = True
-        for wc, wr in getattr(self, '_water_tiles', set()):
-            if (wc, wr) not in self._bridged_tiles.get(room_key, set()):
-                self.walls[wc][wr] = True
-        for gate_id, (gc, gr) in self._room_gates.get(room_key, {}).items():
-            if gate_id not in self._gate_open:
-                self.walls[gc][gr] = True
-        self._shadow_check()
 
     def _try_room_transition(self):
         """Check if the player is on an exit tile and transition if so."""
@@ -547,18 +458,12 @@ class World:
         occupied.update((e.col, e.row) for e in self.enemies)
         block_set = set(self._room_blocks.get(room_key, []))
 
-        changed = False
         for pc, pr, gate_id in plates:
             pressed = (pc, pr) in occupied or (pc, pr) in block_set
-            was_open = gate_id in self._gate_open
-            if pressed and not was_open:
+            if pressed:
                 self._gate_open.add(gate_id)
-                changed = True
-            elif not pressed and was_open:
+            else:
                 self._gate_open.discard(gate_id)
-                changed = True
-        if changed:
-            self._build_walls_multiroom()
 
     def _try_push_block(self, bc, br, dcol, drow):
         """Try to push a block at (bc, br) in direction (dcol, drow)."""
@@ -571,7 +476,6 @@ class World:
                         and not self.blocked(nc, nr)
                         and (nc, nr) not in self._dead_squares):
                     blocks[i] = (nc, nr)
-                    self._build_walls_multiroom()
                     self._emit('bumped')
                     return True
                 return False
@@ -586,14 +490,8 @@ class World:
             return False
         self.inventory.use_key(barrier.colour)
         self.cells.remove_barrier((col, row))
-        room_key = self._current_room
-        doors = self._room_doors.get(room_key, [])   # shadow duplicate (T8)
-        for i, (door_c, door_r, _color) in enumerate(doors):
-            if door_c == col and door_r == row:
-                doors.pop(i)
-                break
-        self._opened_doors.add((room_key, col, row, barrier.colour))
-        self._build_walls_multiroom()
+        self._opened_doors.add(
+            (self._current_room, col, row, barrier.colour))
         self._emit('door_opened')
         return True
 
@@ -623,9 +521,7 @@ class World:
                 and not self.blocked(far_c, far_r)):
             self.inventory.use_item(CRAFT_BRIDGE)
             self.cells.add_bridge((col, row))
-            self._bridged_tiles.setdefault(self._current_room, set()).add((col, row))
             self._bridged_water_rooms.add(water_room)
-            self._build_walls_multiroom()
             self._emit('bridge_built')
             return True
         return False
@@ -711,8 +607,6 @@ class World:
         if self._place_credits > 0 and not self.blocked(c, r):
             self._place_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
-            self._placed_walls.add((c, r))
-            self._build_walls_multiroom()
             self._emit('wall_placed')
 
     def _act2_place(self):
@@ -728,8 +622,6 @@ class World:
                 else:
                     return
                 self.cells.set_barrier((c, r), Barrier('placed'))
-                self._placed_walls.add((c, r))
-                self._build_walls_multiroom()
                 self._emit('wall_placed')
 
     def buy_shield(self):
@@ -778,19 +670,18 @@ class World:
         for rk, initial in self._room_blocks_initial.items():
             self._room_blocks[rk] = list(initial)
         self._gate_open.clear()
-        self._build_walls_multiroom()
 
     def _forge_ogre_attack(self, enemy):
         """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             tc, tr = enemy.col + dc, enemy.row + dr
-            if (tc, tr) in self._placed_walls:
-                hits = self._wall_hits.get((tc, tr), 0) + 1
+            b = self.cells.barrier(tc, tr)
+            if b is not None and b.kind == 'placed':
+                hits = b.hits + 1
                 if hits >= enemy.wall_bump_power:
                     self._break_wall(tc, tr)
                 else:
-                    self.cells.barrier(tc, tr).hits = hits
-                    self._wall_hits[(tc, tr)] = hits
+                    b.hits = hits
                     self._emit('bumped')
                 return
 

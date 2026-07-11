@@ -116,7 +116,7 @@ def test_forge_ogre_breaks_placed_wall():
     keys = _sound_keys(trace)
     assert 'place_wall' in keys
     assert 'break' in keys                   # ogre destroyed the wall
-    assert not h.game._placed_walls
+    assert not list(h.game.cells.barriers('placed'))
     assert_golden('act2_forge', trace)
 
 

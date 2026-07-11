@@ -84,7 +84,7 @@ def test_bump_three_times_breaks_wall(act1):
         assert act1.try_move(*DIR_DOWN, KEY)
     act1.drain_events()
     assert (act1.player.col, act1.player.row) == (15, 6)
-    assert act1.walls[15][7]
+    assert act1.blocked(15, 7)
 
     events = []
     for _ in range(3):
@@ -92,7 +92,7 @@ def test_bump_three_times_breaks_wall(act1):
         act1.key_released(KEY)
         events += act1.drain_events()
     assert _kinds(events) == ['bumped', 'bumped', 'wall_broken']
-    assert not act1.walls[15][7]
+    assert not act1.blocked(15, 7)
     assert act1._breaks_toward_credit == 1
 
     assert act1.try_move(*DIR_DOWN, KEY)     # walk through the gap
@@ -107,7 +107,7 @@ def test_bump_consumed_until_key_release(act1):
     assert _kinds(act1.drain_events()) == ['bumped']
     act1.try_move(*DIR_DOWN, KEY)            # key never released
     assert act1.drain_events() == []
-    assert act1._wall_hits[(15, 7)] == 1
+    assert act1.cells.barrier(15, 7).hits == 1
 
 
 def test_place_wall_costs_credit(act1):
@@ -116,7 +116,7 @@ def test_place_wall_costs_credit(act1):
     act1.place()
     assert _kinds(act1.drain_events()) == ['wall_placed']
     assert act1._place_credits == 0
-    assert act1.walls[c][r] and (c, r) in act1._placed_walls
+    assert act1.blocked(c, r) and act1.cells.barrier(c, r).kind == 'placed'
 
     act1.place()                              # no credit left, on a wall
     assert act1.drain_events() == []

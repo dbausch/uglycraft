@@ -1,13 +1,7 @@
 """Shared fixtures and feature-set constants for the level-gen test suite."""
-import os
 import random
 import pytest
 from levelgraph import LevelGraph, EdgeType, NodeSize
-
-# Spec 0047 shadow-grid migration: the whole suite runs with the
-# grid-vs-query assertion active (world._shadow_check).  Removed in T8
-# together with the grid itself.
-os.environ['UGLYCRAFT_SHADOW'] = '1'
 
 
 # ── Canonical feature sets used across test files ─────────────────────────────
