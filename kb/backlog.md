@@ -284,7 +284,17 @@ Dependencies / interactions:
 
 ---
 
-## BL-19 · P1 · Push plates must not be placed next to a room's entrance tile
+## BL-19 · FIXED · Push plates must not be placed next to a room's entrance tile
+
+Fixed by spec 0049 (commits 21cd542 + eff31c8, 2026-07-12), generalised to
+invariant R-P7: a plate never sits on the landing tile of any passage of its
+room, existing or buildable — the solved puzzle (block parked on the plate)
+must never seal a passage. Covers doorway landing tiles AND water flanks
+(bridge landings); World._try_auto_bridge mirrors it at runtime. Note: the
+first implementation scanned orig_walls (synthetic all-reinforced map) and
+missed every doorway — caught by the statistical sweep
+(scratchpad/sweep_plate_clearance.py): 61/1400 plates violated pre-fix,
+0/1400 after; a 50-seed hypothesis property now guards it permanently.
 
 Pressure plates for push puzzles can currently land on a tile cardinally
 adjacent to the room's entrance/connection tile. That is awkward (the player
