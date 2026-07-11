@@ -2365,9 +2365,13 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     for name, node in graph.nodes.items():
         if name not in placed or not node.plates:
             continue
+        # NOTE: pass the post-carve `walls`, not orig_walls — orig_walls
+        # marks every non-floor tile reinforced (a synthetic map for
+        # door/gate placement), which hides every carved doorway hole
+        # from the passage scan.
         plate_excluded = _plate_exclusions(
             name, [nb for nb, _ in graph.neighbors(name)], placed,
-            orig_walls, water_tiles)
+            walls, water_tiles)
         for (gate_id,) in node.plates:
             plate, block, sol = _place_puzzle(
                 name, gate_id, placed, puzzle_passable, excluded, rng,

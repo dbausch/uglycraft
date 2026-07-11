@@ -16,7 +16,7 @@ from hypothesis import given, settings, strategies as st
 
 from levelgraph import LevelGraph, EdgeType
 from levellayout import build_level_dict
-from tests.conftest import FS_FLAMES, FS_WATER, FS_WATER_FLAMES
+from tests.conftest import FS_FLAMES, FS_GATED, FS_WATER, FS_WATER_FLAMES
 
 
 # ── R-F1: flames and enemies never share a room ───────────────────────────────
@@ -156,3 +156,43 @@ def test_plates_never_flank_water(seed):
                 assert (pc + dc, pr + dr) not in water, (
                     f'seed {seed}: plate ({pc},{pr}) flanks water '
                     f'{(pc + dc, pr + dr)}')
+
+
+@given(st.integers(min_value=0, max_value=2**32 - 1))
+@settings(max_examples=50, deadline=None)
+def test_plates_never_on_landing_tiles(seed):
+    """R-P7 doorway half, reconstructed from the level dict: no plate is
+    cardinally adjacent to a passage tile — an unowned tile that is an
+    open hole / non-reinforced wall / door / gate touching floor of a
+    second room.  (Caught the orig_walls bug: 61/1400 plates violated
+    pre-0049, 9/1400 after the first fix attempt.)"""
+    graph = LevelGraph.generate(FS_GATED, random.Random(seed))
+    try:
+        level = build_level_dict(graph, rng=random.Random(seed))
+    except LayoutError:
+        return
+    for room in level['rooms'].values():
+        owners = room.get('tile_owner', {})
+        walls = room['walls']
+        openable = {(c, r) for c, r, _ in room.get('locked_doors', [])}
+        openable |= {(c, r) for c, r, _ in room.get('gates', [])}
+        water = {tuple(t) for t in room.get('water_tiles', [])}
+
+        def is_passage(pos, owner):
+            if pos in owners or pos in water:
+                return False
+            if (walls.get(pos) == 'reinforced' and pos not in openable):
+                return False
+            others = {owners.get((pos[0] + dc, pos[1] + dr))
+                      for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))}
+            others.discard(None)
+            others.discard(owner)
+            return bool(others)
+
+        for pc, pr, gid in room.get('pressure_plates', []):
+            owner = owners.get((pc, pr))
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                npos = (pc + dc, pr + dr)
+                assert not is_passage(npos, owner), (
+                    f'seed {seed}: plate ({pc},{pr}) on landing tile of '
+                    f'passage {npos}')
