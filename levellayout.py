@@ -2272,6 +2272,20 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     if progress:
         progress(0, 1)
 
+    # Grid zero for single-grid levels (spec 0055): honour the graph's
+    # reserved entrance side — pre-pick a strategy that covers it (R-S1 then
+    # makes the corridor reach it), mirroring the multi-grid _build_grid
+    # flow.  Per-grid builds from _build_super_grid arrive with
+    # required_exits already set and their strategy pre-picked; manually
+    # built graphs carry no entrance_side and keep the scanning behaviour.
+    entrance_side = entrance_side or getattr(graph, 'entrance_side', None)
+    if entrance_side is not None and required_exits is None:
+        required_exits = frozenset({entrance_side})
+        n_rooms = sum(1 for nd in graph.nodes.values()
+                      if nd.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET))
+        strategies = [_pick_strategy(required_exits, strategies or STRATEGIES,
+                                     rng, n_rooms=n_rooms)]
+
     placed = layout_graph(graph, rng=rng, strategies=strategies,
                           required_exits=required_exits,
                           corridor_anchor=corridor_anchor)

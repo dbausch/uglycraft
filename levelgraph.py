@@ -407,21 +407,18 @@ class LevelGraph:
                 return {'barrier': 'gated', 'gate_id': gid}
             return {}
 
-        # Grid zero (spec 0053): the outside of the dungeon occupies the
-        # super-grid origin (0,0).  Its pseudo exit points at the start grid,
-        # which therefore sits in the adjacent cell; the start grid's face
-        # back toward the origin is reserved for the level entrance — no
-        # BORDER edge can ever use it because no grid may occupy (0,0).
-        entrance_side = None
-        root = (0, 0)
-        if grid_count >= 2:
-            _DELTA = {'right': (1, 0), 'left': (-1, 0),
-                      'bottom': (0, 1), 'top': (0, -1)}
-            _OPPOSITE = {'right': 'left', 'left': 'right',
-                         'bottom': 'top', 'top': 'bottom'}
-            pseudo_exit = rng.choice(['right', 'left', 'bottom', 'top'])
-            root = _DELTA[pseudo_exit]
-            entrance_side = _OPPOSITE[pseudo_exit]
+        # Grid zero (specs 0053/0055): the outside of the dungeon occupies
+        # the super-grid origin (0,0).  Its pseudo exit points at the start
+        # grid, which therefore sits in the adjacent cell; the start grid's
+        # face back toward the origin is reserved for the level entrance —
+        # no BORDER edge can ever use it because no grid may occupy (0,0).
+        # Drawn for single-grid levels too, so their entrance side is
+        # uniform instead of scan-order biased (BL-41).
+        _DELTA = {'right': (1, 0), 'left': (-1, 0),
+                  'bottom': (0, 1), 'top': (0, -1)}
+        pseudo_exit = rng.choice(['right', 'left', 'bottom', 'top'])
+        root = _DELTA[pseudo_exit]
+        entrance_side = _OPPOSITE[pseudo_exit]
 
         tree = _spanning_tree(grid_count, rng, root=root, blocked={(0, 0)})
         # tree[i] = (parent_idx, exit_side, (sc, sr)); root has parent_idx=None
