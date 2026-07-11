@@ -85,21 +85,34 @@ def _corridor_names(graph):
             if nd.size == NodeSize.CORRIDOR}
 
 
-def _challenge_rooms(graph):
-    """Nodes protected by a challenge: behind a LOCKED/GATED/WATER edge,
-    or flame rooms."""
-    prot = {n for n, nd in graph.nodes.items() if nd.has_flames}
+def _flame_owners(lv):
+    """Rooms owning flame-jet tiles — the dict-level truth (spec 0062:
+    flames are layout-placed; the graph carries no flame data)."""
+    owners = set()
+    for rd in lv['rooms'].values():
+        to = rd['tile_owner']
+        for jet in rd.get('flame_jets', []):
+            owners.add(to.get(tuple(jet['tiles'][0])))
+    return owners
+
+
+def _challenge_rooms(graph, lv):
+    """Rooms protected by a challenge: behind a LOCKED/GATED/WATER edge
+    (graph), or owning real flame jets (dict, spec 0062)."""
+    prot = _flame_owners(lv)
     for e in graph.edges:
         if e.edge_type in (EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER):
             prot.add(e.node_b)
     return prot
 
 
-def _candidate_rooms(graph):
-    """Enemy-host candidates: non-corridor, no blocks/plates/flames."""
+def _candidate_rooms(graph, lv):
+    """Enemy-host candidates: non-corridor, no blocks/plates, not a
+    flame room (dict-level, spec 0062)."""
+    flames = _flame_owners(lv)
     return [n for n, nd in graph.nodes.items()
             if nd.size != NodeSize.CORRIDOR
-            and not nd.blocks and not nd.plates and not nd.has_flames]
+            and not nd.blocks and not nd.plates and n not in flames]
 
 
 def _enemy_starts(lv):
@@ -130,7 +143,7 @@ def test_enemy_size_rule_and_total(fs_idx, seed):
     G = FS[fs_idx].get('grid_count', 1)
     cor = _corridor_names(graph)
 
-    candidates = set(_candidate_rooms(graph))
+    candidates = set(_candidate_rooms(graph, lv))
     per_room = {}
     for gname, rd in lv['rooms'].items():
         owners = _floors_by_owner(rd)
@@ -163,7 +176,7 @@ def test_enemy_size_rule_and_total(fs_idx, seed):
     cap = 0
     for gname, rd in lv['rooms'].items():
         owners = _floors_by_owner(rd)
-        for name in _candidate_rooms(graph):
+        for name in _candidate_rooms(graph, lv):
             if name in owners:
                 cap += max(0, _largest_square(owners[name]) - 2)
     assert cap >= 2 * G, (
@@ -176,7 +189,7 @@ def test_enemy_size_rule_and_total(fs_idx, seed):
 def test_award_economy(fs_idx, seed):
     graph, lv = _build(fs_idx, seed)
     cor = _corridor_names(graph)
-    protected = _challenge_rooms(graph)
+    protected = _challenge_rooms(graph, lv)
 
     awards = _award_owners(lv)
     enemies = {}
@@ -291,7 +304,7 @@ def test_forge_ogre_unique_and_in_biggest_room():
     s_max = 0
     for gn, rd in lv['rooms'].items():
         owners = _floors_by_owner(rd)
-        for name in _candidate_rooms(graph):
+        for name in _candidate_rooms(graph, lv):
             if name in owners:
                 s_max = max(s_max, _largest_square(owners[name]))
     assert s_forge == s_max, (
@@ -306,7 +319,12 @@ def test_graph_awards_and_challenge_scaling(fs_idx):
     G = fs.get('grid_count', 1)
     for seed in range(3):
         g = LevelGraph.generate(fs, random.Random(seed))
-        protected = _challenge_rooms(g)
+        # Graph awards belong to graph challenges only: locked/gated/water.
+        # Flames are layout-placed since spec 0062 (their award too) —
+        # scaling and integrity are locked in tests/test_flames.py.
+        protected = {e.node_b for e in g.edges
+                     if e.edge_type in (EdgeType.LOCKED, EdgeType.GATED,
+                                        EdgeType.WATER)}
         for name, node in g.nodes.items():
             assert not getattr(node, 'enemies', []), (
                 f"fs={fs_idx} seed={seed}: graph node {name!r} carries "
@@ -316,20 +334,6 @@ def test_graph_awards_and_challenge_scaling(fs_idx):
                 f"fs={fs_idx} seed={seed}: node {name!r} has "
                 f"{len(node.treasures)} awards, expected {expected}")
 
-        if fs.get('has_flames'):
-            flame_rooms = sum(1 for nd in g.nodes.values() if nd.has_flames)
-            want = max(1, G // 2)
-            # Closets are not flame candidates: an uncarvable closet would
-            # spill its award into the parent and break R-P10 accounting.
-            eligible = sum(
-                1 for n, nd in g.nodes.items()
-                if nd.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET)
-                and not nd.blocks and not nd.plates
-                and not any(e.edge_type == EdgeType.WATER
-                            for _, e in g.neighbors(n)))
-            assert flame_rooms == want or flame_rooms == eligible, (
-                f"fs={fs_idx} seed={seed}: {flame_rooms} flame rooms, "
-                f"expected {want} (eligible {eligible})")
         if fs.get('has_water'):
             water_rooms = sum(1 for e in g.edges
                               if e.edge_type == EdgeType.WATER)

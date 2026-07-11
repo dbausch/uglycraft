@@ -124,14 +124,12 @@ def main(n_seeds=12):
         for idx, fs in enumerate(levels.ACT2_FEATURE_SETS):
             level_no = 11 + idx
             graph, lv = _build(fs, seed)
-            protected = {n for n, nd in graph.nodes.items() if nd.has_flames}
-            for e in graph.edges:
-                if e.edge_type in (EdgeType.LOCKED, EdgeType.GATED,
-                                   EdgeType.WATER):
-                    protected.add(e.node_b)
+            from tests.test_enemy_room_size import _challenge_rooms, \
+                _flame_owners
+            protected = _challenge_rooms(graph, lv)
             cor = {n for n, nd in graph.nodes.items()
                    if nd.size == NodeSize.CORRIDOR}
-            flame_rooms = {n for n, nd in graph.nodes.items() if nd.has_flames}
+            flame_rooms = _flame_owners(lv)
 
             for gname, rd in lv['rooms'].items():
                 to = rd['tile_owner']

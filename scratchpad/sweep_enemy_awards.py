@@ -53,7 +53,7 @@ def main(n_seeds=12):
             built += 1
             G = fs.get('grid_count', 1)
             cor = _corridor_names(graph)
-            protected = _challenge_rooms(graph)
+            protected = _challenge_rooms(graph, lv)
 
             starts = _enemy_starts(lv)
             per_room = {}
