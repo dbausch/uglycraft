@@ -223,8 +223,11 @@ filter for the super-grid path (lines 268–271, 277–280). Zone counts are in
 
 Act 2 levels (11–20) are **not** generated at import. `levels.get_level(n)`
 builds a single level on first access and caches it in `_act2_cache` (keyed by
-level number). Generation is expensive — measured ~20 ms for a 1-grid level
-(11) up to ~3.6 s for a 10-grid level (20); all ten together ≈ 10.6 s.
+level number). Generation cost (re-measured after the spec-0060 room rescale,
+40–60 rooms at level 20): worst ~1.5 s for level 20, all ten together ≈ 5–6.5 s
+— **faster** than the pre-rescale ~3.8 s / ~10.6 s despite 4–5× the rooms,
+because fuller grids retry less and the coverable-sides constraint removes
+doomed layout attempts. Script: `scratchpad/time_generation.py`.
 
 - Per-level seed is `_rnd.Random(_game_seed + index)`, so a given game produces
   the same level whether reached by play or by `--level N`.
@@ -285,9 +288,21 @@ super-grid cells (Manhattan distance 1).
 
 Everything about the inter-grid topology is decided in `LevelGraph.generate()`:
 
-1. **Spanning tree** — `_spanning_tree(grid_count, branch_prob, rng)` returns a list
-   of `(parent_idx, exit_side, (super_col, super_row))` entries. This fixes which
-   corridors connect to which and from which side.
+1. **Spanning tree** — `_spanning_tree(grid_count, rng, root, blocked,
+   root_sides, strategies)` returns a list of
+   `(parent_idx, exit_side, (super_col, super_row))` entries. This fixes which
+   corridors connect to which and from which side. Since spec 0060 **exit
+   sides are dictated by the strategy list**: a growth step is admissible
+   only if the parent's accumulated side set (entrance included, for the
+   start grid) stays coverable by a listed strategy — anchor-aware via
+   `coverable_sides` (non-start grids lose the arm strategies `z`/`s`/`l`,
+   R-T5), with the coverage tables now living in `levelgraph.py`. Grid
+   zero's pseudo-exit draw is filtered the same way. Consequence: levels
+   11–12 (spines only) are straight grid chains; level 13
+   (`horizontal, vertical, l`) may turn once, at the start grid.
+   `full_border` remains only for anchor-honouring failures — never for
+   side mismatch. Room counts scale per grid since spec 0060: (2, 4) at
+   level 11 rising to (40, 60) at level 20 (BL-21/BL-25).
 
 2. **Exit/entry sides** — stored in each BORDER edge's `params` as `exit_side` and
    `entry_side` (always the opposite face). Example: `exit_side='right'` on grid A

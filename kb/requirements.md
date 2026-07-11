@@ -174,6 +174,12 @@ across the border (BL-29 / spec 0042). Two parts:
   them regresses closet nesting, under redesign — see spec 0042 "Spine widening
   deferred"). Band coverage is still complete: left/right bands come from spines
   (≤ 3) and wide top/bottom bands from stems.
+- *Coverable exit sides (spec 0060):* the spanning tree and grid zero's
+  pseudo-exit draw only use sides the level's `layout_strategies` can
+  cover (`coverable_sides` in `levelgraph.py`, anchor-aware: non-start
+  grids drop `z`/`s`/`l`), so the `full_border` fallback is reserved for
+  anchor-honouring failures — side-mismatch fallbacks are structurally
+  absent. Locked by `tests/test_room_scaling.py`.
 
 **R-T6** Grid zero (specs 0053/0055): **every generated graph** reserves the
 super-grid origin `(0,0)` as the outside of the dungeon. The spanning tree
