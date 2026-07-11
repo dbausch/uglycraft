@@ -36,17 +36,21 @@
 
 ### Python
 
-**Level generation depends on PYTHONHASHSEED (BL-40):** the same game seed
-produces different Act 2 level content in different Python processes —
-`get_level(13)` under `set_game_seed(777)` yields 4 distinct canonical
-hashes for `PYTHONHASHSEED=0..3`. Cause: iteration order over str-keyed
-sets/dicts feeding `rng.choice` or placement (e.g.
-`_pick(list(self._reachable))` in `levelgraph.py`). Pre-dates spec 0053
-(verified by stash-diff on ffdbf12) but was exposed by it: the new level-13
-layout makes the variance trace-visible, so the golden
-`act2_L13_walk` passes/fails per process until BL-40 is fixed.
-Entrance/player-start positions were hash-stable in all observed variants;
-the varying part is other content. → `kb/backlog.md` BL-40.
+**FIXED (spec 0054) — Level generation depended on PYTHONHASHSEED (BL-40):**
+the same game seed produced different Act 2 level content in different
+Python processes — `get_level(13)` under `set_game_seed(777)` yielded 4
+distinct canonical hashes for `PYTHONHASHSEED=0..3`, making the golden
+`act2_L13_walk` flip per process. Cause: `PYTHONHASHSEED` salts **str**
+hashing only (int/tuple hashes are process-stable), so iteration over
+str-sets of node names fed `rng.choice` pools in per-process order — five
+sites in `LevelGraphBuilder` (`_reachable`, `_current_grid_rooms`). Fixed by
+making `_reachable` a dict-as-ordered-set and `_current_grid_rooms` a list;
+dead `_assign_items` (same pattern, no callers) deleted. Draw sequence
+unchanged, only pool ordering. Guard: `tests/test_generation_determinism.py`
+runs the canonical-hash probe `tests/_gen_hash.py` in subprocesses under
+different hash seeds. Rule of thumb for future generator code: **never let a
+set of strings reach an rng pool or placement order — use dict-as-ordered-set
+or a list; sets of int tuples are safe.**
 
 **`_respawn_enemy` may leave enemy on player tile:** If BFS finds no tile ≥ 8 tiles away AND no tile ≥ 4 tiles away, the enemy is not moved. On the next update tick, the player-on-enemy check will immediately trigger another catch (instant repeated death).
 

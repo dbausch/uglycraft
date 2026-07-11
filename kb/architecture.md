@@ -359,9 +359,9 @@ border tile stays solid wall and the entrance is a sprite, `game.py`).
   the old col-0 fallback survives only as the never-surfaced reference-tile
   case for non-start grids whose reached sides are all BORDER-occupied.
 - Golden note: the multi-grid rng stream shifted (one extra draw + blocked
-  origin); `act2_L13_walk` was re-recorded. It remains flaky per process due
-  to PYTHONHASHSEED-dependent generation (pre-existing, exposed by the new
-  L13 layout) — see BL-40.
+  origin); `act2_L13_walk` was re-recorded. (Its subsequent per-process
+  flake was PYTHONHASHSEED-dependent generation — fixed, see "Process
+  determinism" below.)
 - Grid zero must stay upgradeable to a real grid: a future spec may open the
   entrance on a condition (e.g. all loot collected) into a generated
   grid-zero area (per-level boss arena). The entrance sits at a stitch-
@@ -369,6 +369,21 @@ border tile stays solid wall and the entrance is a sprite, `game.py`).
   condition-gated barrier.
 
 → Invariant: R-T6 in `kb/requirements.md`. Tests: `tests/test_entrance.py`.
+
+### Process determinism (spec 0054, BL-40)
+
+Generation must be a pure function of the seed — identical output in every
+Python process. `PYTHONHASHSEED` salts **str** hashing only, so iteration
+over a set of *strings* (node names, side names) varies per process while
+sets of int tuples (tiles) are stable. The rule for all generator code:
+**never let a str-set's iteration order reach an rng pool or placement
+order.** `LevelGraphBuilder._reachable` is therefore a dict-as-ordered-set
+(insertion = reachability order) and `_current_grid_rooms` returns a list in
+edge order; membership-only str-sets (`_water_rooms`, `required_exits`,
+strategy `_COVERS_*`) are fine. Guard test:
+`tests/test_generation_determinism.py` compares canonical level hashes
+(probe `tests/_gen_hash.py`) across subprocesses with different
+`PYTHONHASHSEED` values. → `kb/findings.md` BL-40 entry.
 
 ### Data flow summary
 
