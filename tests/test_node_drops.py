@@ -21,10 +21,8 @@ FS_CLOSETS = {
     'room_count':       (4, 6),
     'edge_types':       [EdgeType.OPEN, EdgeType.LOCKED],
     'node_sizes':       [NodeSize.ROOM, NodeSize.HALL],
-    'treasure_count':   (6, 10),
     'material_types':   [],
     'material_count':   (0, 0),
-    'enemy_count':      (0, 0),
     'closet_prob':      0.7,
     'grid_count':       3,
     'layout_strategies': ['horizontal', 'vertical', 'off_centre', 't',
@@ -111,10 +109,8 @@ FS_CLOSETS_TIGHT = {
     'room_count':       (8, 12),
     'edge_types':       [EdgeType.OPEN, EdgeType.LOCKED],
     'node_sizes':       [NodeSize.ROOM, NodeSize.HALL],
-    'treasure_count':   (10, 14),
     'material_types':   ['rocks', 'metal'],
     'material_count':   (6, 10),
-    'enemy_count':      (0, 0),
     'closet_prob':      0.8,
     'grid_count':       3,
     'layout_strategies': ['horizontal', 'vertical', 'off_centre', 't',
@@ -134,18 +130,22 @@ def _content_dict(level):
             sum(len(rd.get('materials', [])) for rd in level['rooms'].values()))
 
 
-def _assert_content_preserved(g, level, ctx, has_flames=False):
+def _assert_content_preserved(g, level, ctx):
     """Keys and materials are never lost (spilled when a node is unplaced).
-    Treasures are also preserved EXCEPT in flame levels, where flame rooms
-    intentionally relocate their treasures to jet far-tiles (R-F4), so the count
-    can legitimately fall.  (Push-puzzle plates are excluded: a dropped puzzle
-    room's gate is elided.)"""
+    Treasures: the dict carries the graph's challenge awards plus one guard
+    award per placed enemy (spec 0058).  Since spec 0058 flame awards are
+    relocated to jet far-tiles but never dropped, so the count is exact —
+    the old flame exemption is gone.  (Push-puzzle plates are excluded: a
+    dropped puzzle room's gate is elided.)"""
     gk, gt, gm = _content_graph(g)
     dk, dt, dm = _content_dict(level)
+    n_enemies = sum(len(rd.get('enemy_starts', []))
+                    for rd in level['rooms'].values())
     assert dk == gk, f"{ctx}: keys graph={gk} dict={dk}"
     assert dm == gm, f"{ctx}: materials graph={gm} dict={dm}"
-    if not has_flames:
-        assert dt == gt, f"{ctx}: treasures graph={gt} dict={dt}"
+    assert dt == gt + n_enemies, (
+        f"{ctx}: treasures graph={gt} + {n_enemies} guard awards "
+        f"!= dict={dt}")
 
 
 @given(st.integers(min_value=0, max_value=2**32 - 1))
@@ -160,8 +160,7 @@ def test_closet_content_never_lost(seed):
 def test_content_never_lost_real_act2(idx, seed):
     fs = ACT2_FEATURE_SETS[idx]
     g, level = _build(fs, seed * 100 + idx)
-    _assert_content_preserved(g, level, f"idx={idx} seed={seed}",
-                              has_flames=fs.get('has_flames', False))
+    _assert_content_preserved(g, level, f"idx={idx} seed={seed}")
 
 
 # ── Corner-toilet sizing: must leave >= 1 room tile behind each new wall ──────

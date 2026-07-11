@@ -126,6 +126,7 @@ def test_enemy_size_rule_and_total(fs_idx, seed):
     G = FS[fs_idx].get('grid_count', 1)
     cor = _corridor_names(graph)
 
+    candidates = set(_candidate_rooms(graph))
     per_room = {}
     for gname, rd in lv['rooms'].items():
         owners = _floors_by_owner(rd)
@@ -135,6 +136,12 @@ def test_enemy_size_rule_and_total(fs_idx, seed):
             assert owner not in cor, (
                 f"fs={fs_idx} seed={seed}: enemy start {(c, r)} in "
                 f"corridor {owner!r} on {gname}")
+            # R-F1 successor: hosts are candidate rooms only — never a
+            # flame, plate, or block room (was a graph-level lock in
+            # test_placement_rules before spec 0058).
+            assert owner in candidates, (
+                f"fs={fs_idx} seed={seed}: enemy in non-candidate room "
+                f"{owner!r} (flames/plates/blocks) on {gname}")
             per_room[(gname, owner)] = per_room.get((gname, owner), 0) + 1
 
     for (gname, owner), k in per_room.items():

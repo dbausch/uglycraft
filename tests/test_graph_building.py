@@ -125,21 +125,9 @@ class TestBuilderOperations:
         b.add_open_room()
         assert b.build().validate_playability() == []
 
-    def test_enemy_placement_uses_eligible_rooms_only(self):
-        """Enemies must be placed in ROOM/HALL nodes with no puzzle and no flames."""
-        b = LevelGraphBuilder(random.Random(10))
-        b.add_open_room(size=NodeSize.ROOM)
-        b.add_gated_room('gate_1', size=NodeSize.ROOM)
-        b.add_enemies(2)
-        graph = b.build()
-        for name, node in graph.nodes.items():
-            if node.enemies:
-                assert node.size in (NodeSize.ROOM, NodeSize.HALL), (
-                    f"Enemy in non-ROOM/HALL node {name!r} (size={node.size})")
-                assert not node.blocks and not node.plates, (
-                    f"Enemy in puzzle room {name!r}")
-                assert not node.has_flames, (
-                    f"Enemy in flame room {name!r}")
+    # add_enemies was deleted with spec 0058 (enemies are distributed at
+    # layout time); its eligibility invariant lives on in
+    # tests/test_enemy_room_size.py::test_enemy_size_rule_and_total.
 
 
 # ── Property-based tests: Invariant G holds for all sequences ─────────────────

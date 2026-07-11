@@ -20,16 +20,9 @@ from tests.conftest import FS_FLAMES, FS_GATED, FS_WATER, FS_WATER_FLAMES
 
 
 # ── R-F1: flames and enemies never share a room ───────────────────────────────
-
-@given(st.integers(min_value=0, max_value=2**32 - 1))
-@settings(max_examples=200)
-def test_flame_room_never_has_enemies(seed):
-    graph = LevelGraph.generate(FS_FLAMES, random.Random(seed))
-    for name, node in graph.nodes.items():
-        if node.has_flames:
-            assert not node.enemies, (
-                f"Node {name!r} has both has_flames and enemies"
-            )
+# Enemies left the graph phase with spec 0058; the invariant is now enforced
+# at layout (enemy hosts are candidate rooms only) and locked by
+# tests/test_enemy_room_size.py::test_enemy_size_rule_and_total.
 
 
 # ── R-F2: flame rooms never behind a WATER edge ───────────────────────────────
