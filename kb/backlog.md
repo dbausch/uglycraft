@@ -599,11 +599,13 @@ characterization harness) and Stage 1 (spec 0045 World extraction, commit
 abe3d16) are DONE; Stage 2 (spec 0046 Act 1 as one-room Act 2 level, commit
 aa9b050) DONE — pending user play-test acceptance; Stage 3 (spec 0047 layered
 cell model, commits 182367a..32361be) DONE — user-accepted after shadow play +
-post-deletion check; remaining: Stage 4 (behaviour dispatch table + signal
-channels), Stage 5 (Room as live object, delete RoomState).
+post-deletion check; Stage 4 (spec 0050 behaviour dispatch + signal channels,
+commit 401ac18) DONE — pending user play-test; remaining: Stage 5 (Room as
+live object, delete RoomState).
 
 **Fix hint:** one numbered spec per stage, each behaviour-preserving and gated
-by the spec-0044 goldens; next up is Stage 4; the solver-side reuse of
+by the spec-0044 goldens; next up is Stage 5 (Room objects, delete RoomState);
+the solver-side reuse of
 World.blocked landed as spec 0048; fine-grained World unit tests accumulate
 from Stage 2 onward.
 
