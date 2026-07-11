@@ -339,9 +339,11 @@ The outside of the dungeon is **grid zero** at super-grid origin `(0,0)` —
 reserved, empty, invisible, non-reachable (no `Node`, no `Edge`; the entrance
 border tile stays solid wall and the entrance is a sprite, `game.py`).
 
-- `LevelGraph.generate` (multi-grid only) draws grid zero's pseudo-exit side
-  `S`, puts the spanning-tree root at `delta(S)`, sets the root corridor's
-  `super_pos` explicitly, and records `graph.entrance_side = opposite(S)`.
+- `LevelGraph.generate` draws grid zero's pseudo-exit side `S` for **every**
+  generated graph (single-grid included since spec 0055 / BL-41 — the old
+  scanning path gave level 11 a 64 %-left / 0 %-right entrance bias), puts
+  the spanning-tree root at `delta(S)`, sets the root corridor's `super_pos`
+  explicitly, and records `graph.entrance_side = opposite(S)`.
   `_spanning_tree(n, rng, root, blocked)` skips blocked cells (`{(0,0)}`) on
   every Prim step, so no grid — root child or later frontier growth — can
   occupy the origin, and no BORDER edge can ever use the entrance face.
@@ -350,14 +352,18 @@ border tile stays solid wall and the entrance is a sprite, `game.py`).
   `required_sides` (strategy must cover it; R-S1 makes the corridor reach it;
   3 BORDER exits + entrance ⇒ `full_border`) and threads it into
   `build_level_dict` → `_pick_entrance`.
-- `_pick_entrance` has two modes: with `entrance_side` (start grid) it places
-  the entrance deterministically — centre-most on-side corridor tile =
-  `player_start`, border tile outside = `entrance` — and raises `LayoutError`
-  if the corridor misses the side (unreachable per R-S1). Without it
-  (single-grid levels, and non-start grids' enemy-distance reference tile) it
-  scans sides in (left, top, bottom, right) order skipping `occupied_sides`;
-  the old col-0 fallback survives only as the never-surfaced reference-tile
-  case for non-start grids whose reached sides are all BORDER-occupied.
+- `_pick_entrance` has two modes: with `entrance_side` (any generated start
+  grid) it places the entrance deterministically — centre-most on-side
+  corridor tile = `player_start`, border tile outside = `entrance` — and
+  raises `LayoutError` if the corridor misses the side (unreachable per
+  R-S1). Single-grid levels reach this mode via `build_level_dict`, which
+  resolves `graph.entrance_side`, pre-picks a covering strategy with
+  `_pick_strategy`, and passes `required_exits={entrance_side}` (spec 0055).
+  The scanning mode (sides in left/top/bottom/right order, skipping
+  `occupied_sides`) remains only for manually built graphs and the non-start
+  grids' enemy-distance reference tile; the old col-0 fallback survives only
+  as the never-surfaced reference-tile case for non-start grids whose
+  reached sides are all BORDER-occupied.
 - Golden note: the multi-grid rng stream shifted (one extra draw + blocked
   origin); `act2_L13_walk` was re-recorded. (Its subsequent per-process
   flake was PYTHONHASHSEED-dependent generation — fixed, see "Process
