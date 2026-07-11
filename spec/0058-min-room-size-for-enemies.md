@@ -7,10 +7,11 @@
       (many seeds × feature sets)
 - [ ] Guard tests: enemy count conserved graph → level dict whenever the level
       has ≥ 1 eligible room; the forge ogre always survives on `has_forge_ogre`
-      levels; cross-grid spill and last-resort drop each covered by a directed
-      test
-- [ ] Implementation: relocation cascade — eligible room in the same grid →
-      eligible room in another grid → drop; the corridor is never a host
+      levels; cross-grid spill, spread preference, and last-resort drop each
+      covered by a directed test
+- [ ] Implementation: relocation cascade — enemy-free eligible rooms first
+      (same grid, then other grids), then occupied eligible rooms (same
+      order), then drop; the corridor is never a host
 - [ ] Goldens checked; any shifted Act 2 golden re-recorded once and reviewed
 - [ ] KB updated: new invariant R-P9 in `kb/requirements.md`, item-placement
       section in `kb/architecture.md`, BL-20 closed in `kb/backlog.md`
@@ -29,6 +30,10 @@
      contains a **3×3 free square***, so closet-carved (non-rectangular)
      parents and closets are judged by their actual floor shape. Closets and
      carved parents **remain eligible hosts** when they pass the test.
+  4. **Spread preference:** a relocated enemy goes to an eligible room that
+     has no enemy yet — anywhere in the level — before any eligible room
+     receives a second one. Occupancy is the primary selection criterion,
+     grid locality the secondary.
 
 ## Problem
 
@@ -71,12 +76,14 @@ dimensions exist (`PlacedNode.w/h/floor_tiles`). Two hook points:
 - **`build_level_dict`** (item-placement loop ~line 2465, which calls
   `_place_items_in_room(node, placed[name], …)` for every placed node):
   classifies each enemy-bearing placed node. Eligible → enemies placed as
-  today. Ineligible → relocate to an eligible host **of the same grid**; if
-  the grid has none, the enemies are **deferred** (multi-grid) or **dropped**
-  (single-grid — no other grid exists).
+  today. Ineligible → relocate to an **enemy-free** eligible host of the same
+  grid; if the grid has none, the enemies are **deferred** (multi-grid) or
+  handled by the collapsed tier order (single-grid — no other grid exists;
+  see the cascade below).
 - **`_build_super_grid`**: after all grids are built, a resolution pass places
-  every deferred enemy into an eligible host of **any** grid; enemies with no
-  eligible host anywhere in the level are dropped.
+  every deferred enemy into an eligible host of **any** grid (enemy-free
+  rooms first); enemies with no eligible host anywhere in the level are
+  dropped.
 
 Deferred enemies travel from `build_level_dict` to `_build_super_grid` via an
 extra return value or a transient room-dict key — implementer's choice, but a
@@ -120,17 +127,37 @@ corridor, the ban binds only the relocation path. (Item spill to the corridor
 
 ### What happens to enemies of an ineligible room: cascade, drop last
 
-For each placed node that has `node.enemies` but is not an eligible host:
+Each enemy of a placed node that is not an eligible host is relocated to the
+first non-empty tier below, drawing one host uniformly from that tier
+(`rng.choice` per enemy, mirroring `add_enemies`' per-enemy distribution).
+**Occupancy is the primary criterion, grid locality the secondary** (Daniel,
+2026-07-11): an **enemy-free** eligible room anywhere in the level is used
+before any eligible room receives a second enemy.
 
-1. **Same grid.** Build the host pool: eligible hosts among the grid's placed
-   nodes. For each enemy, draw one host uniformly (`rng.choice` per enemy,
-   mirroring `add_enemies`' per-enemy distribution).
-2. **Other grids.** If the same-grid pool is empty and the level is
-   multi-grid, defer; the `_build_super_grid` resolution pass builds the
-   level-wide pool (grids in BFS build order, eligible hosts per grid) and
-   draws one host per enemy the same way.
-3. **Drop.** If no eligible host exists in the entire level, the enemy is
-   dropped. It is never placed in the corridor.
+1. Enemy-free eligible hosts of the **same grid**.
+2. Enemy-free eligible hosts of **any other grid**.
+3. Occupied eligible hosts of the **same grid**.
+4. Occupied eligible hosts of **any other grid**.
+5. **Drop.** No eligible host exists in the entire level. The enemy is never
+   placed in the corridor.
+
+*Enemy-free* means the room has no enemy start **so far**: neither a
+graph-assigned enemy placed in its own (eligible) room nor an earlier
+relocated one. Occupancy updates as each relocated enemy is placed, so a
+batch of homeless enemies spreads across free rooms before any doubling
+occurs. (Graph-assigned enemies in eligible rooms are unaffected —
+`add_enemies` draws with replacement and may legitimately double up; the
+spread preference governs relocation only.)
+
+Tier structure and the two hook points: tier 1 resolves inline in
+`build_level_dict` (the grid's own placed dict suffices). Tiers 2–4 need the
+whole level, so a grid **defers** its homeless enemies whenever it has no
+enemy-free eligible host — even if it has occupied ones — and the
+`_build_super_grid` resolution pass walks tiers 2→4 per deferred enemy
+(pools built grids-in-BFS-build-order, nodes in placed-dict insertion
+order). Deferral never loses tier 3: occupancy only grows, so a grid with no
+free host at defer time still has none at resolution time. On a single-grid
+level the tiers collapse to 1 → 3 → 5 inside `build_level_dict`.
 
 Placement inside the host uses the existing enemy pass of
 `_place_items_in_room` semantics unchanged: random floor tile (not
@@ -139,11 +166,12 @@ player if the player starts in that room, no tile reservation (enemies may
 stand on items), no spill. Extract that enemy pass into a helper so the
 super-grid resolution pass can apply it to already-built room dicts.
 
-**No capacity notion** (interpretation to confirm): hosts are drawn with
-replacement, as `add_enemies` already does, so there is no per-room enemy cap
-and "no adequately sized room left" is read as "none *exists*", not "all are
-full". Drops therefore occur only when a level has **zero** eligible rooms —
-a degenerate outcome essentially unseen on real feature sets.
+**No hard capacity** (interpretation to confirm): the spread preference is a
+soft ordering, not a cap — once every eligible room in the level has an
+enemy, further relocated enemies double up (tiers 3–4) rather than drop.
+"No adequately sized room left" as a *drop* condition is read as "none
+*exists*", so drops occur only when a level has **zero** eligible rooms — a
+degenerate outcome essentially unseen on real feature sets.
 
 Why cascade rather than v1's corridor fallback, or dropping immediately:
 
@@ -199,8 +227,9 @@ must stay byte-identical.
 
 **R-P9** No enemy start tile ever belongs to the corridor. Every enemy start
 tile belongs to a node whose floor tiles contain a full 3×3 free square.
-Enemies of an ineligible placed node are relocated to an eligible room of the
-same grid, else of another grid; they are dropped only when the level has no
+Enemies of an ineligible placed node are relocated — preferring enemy-free
+eligible rooms over occupied ones level-wide, and the same grid over other
+grids within each occupancy tier; they are dropped only when the level has no
 eligible room at all — then, and only then, may the enemy count shrink from
 graph to level dict.
 
@@ -226,12 +255,17 @@ New `tests/test_enemy_room_size.py` (or extension of
    enemy appears in the other grid's `enemy_starts`, total count conserved.
    If steering the packers into that shape is impractical, exercise the
    relocation resolver directly with synthetic placed dicts.
-4. **Last-resort drop (directed):** resolver-level case with only ineligible
+4. **Spread preference (directed):** resolver-level cases —
+   (a) two homeless enemies, two enemy-free eligible rooms (plus one occupied
+   eligible room): each free room receives exactly one enemy, no doubling;
+   (b) tier order: an enemy-free eligible room in *another* grid is chosen
+   over an occupied eligible room in the enemy's own grid.
+5. **Last-resort drop (directed):** resolver-level case with only ineligible
    rooms in the whole (single-grid) level → the enemies are dropped, the
    corridor's tiles carry no enemy start, and no exception is raised.
-5. **Forge guard:** for a `has_forge_ogre` feature set over several seeds,
+6. **Forge guard:** for a `has_forge_ogre` feature set over several seeds,
    exactly one `forge_ogre` appears among the enemy starts.
-6. **Manual detector sweep** (not in suite, per the statistical-sweep
+7. **Manual detector sweep** (not in suite, per the statistical-sweep
    discipline): a scratchpad script counting violations (ineligible-room
    starts *and* corridor starts), validated against the pre-fix commit (must
    find violations there), then 0 violations post-fix across ≥ 100 generated
@@ -245,8 +279,9 @@ New `tests/test_enemy_room_size.py` (or extension of
       with ≥ 1 eligible room; forge ogre present on every `has_forge_ogre`
       level tested
 - [ ] Directed tests: cross-grid spill places the enemy in another grid;
-      zero-eligible-room level drops enemies without error and without
-      touching the corridor
+      relocated enemies fill enemy-free eligible rooms (level-wide) before
+      any room gets a second one; zero-eligible-room level drops enemies
+      without error and without touching the corridor
 - [ ] Manual detector sweep: violations found on the pre-fix commit,
       0 violations post-fix across ≥ 100 generated levels
 - [ ] Unaffected levels generate byte-identically (spec-0054 probe); shifted
