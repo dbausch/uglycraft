@@ -168,7 +168,14 @@ BL-04.
 
 ---
 
-## BL-14 · P1 · Make the push-puzzle subsystem water-aware (remove the _verify_blocks safety net)
+## BL-14 · FIXED · Make the push-puzzle subsystem water-aware (remove the _verify_blocks safety net)
+
+Fixed by spec 0048 (commit bcfd1b7, 2026-07-12): validate_push_puzzles builds
+its obstacle model from build_room_cells via the shared RoomCells.blocked
+(water solid, matching the runtime exactly); puzzle_passable subtracts water at
+placement; _build_super_grid re-validates every stitched room (LayoutError ->
+fresh-seed retry). Sweep (scratchpad/sweep_stuck_blocks.py): 0 stuck blocks
+across 250 levels / 175 block-bearing (baseline 2/175).
 
 The level generator can place a pushable block beside an inter-room water stream
 so that the block's only clear push axis runs along/onto a water tile.
@@ -587,12 +594,19 @@ channels), Stage 5 (Room as live object, delete RoomState).
 
 **Fix hint:** one numbered spec per stage, each behaviour-preserving and gated
 by the spec-0044 goldens; next up is Stage 4; the solver-side reuse of
-World.blocked (structural BL-14 fix) is also unblocked as its own spec;
-fine-grained World unit tests accumulate from Stage 2 onward.
+World.blocked landed as spec 0048; fine-grained World unit tests accumulate
+from Stage 2 onward.
 
 ---
 
-## BL-36 · P1 · Room re-entry with a stuck block silently regenerates the whole level
+## BL-36 · FIXED · Room re-entry with a stuck block silently regenerates the whole level
+
+Fixed by spec 0048 (commit bcfd1b7, 2026-07-12): _verify_blocks runs only on
+first entry of a freshly generated room — player-wedged blocks on revisited
+rooms never regenerate the level (user-confirmed in play with two mutually
+wedged blocks); a mid-transition regeneration no longer teleports the player to
+the stale entry tile. See BL-37 for the planned friendlier recovery (explode +
+respawn), which will also supersede the on-death block reset.
 
 Reported during spec-0046 acceptance play (2026-07-11): "sometimes a grid exit
 leads you to a completely different level (you can't go back)". Root mechanism,
