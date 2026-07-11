@@ -4,14 +4,14 @@
 
 - [ ] Red sweep tests: no enemy start in the corridor; per room, enemy count
       `n ≤ s − 2` (`s` = side of the room's largest all-floor square); total
-      enemies within `[G, 3G]` for `G` grids; every award item lies in a
+      enemies exactly `2 × G` for `G` grids; every award item lies in a
       challenge-protected room or an enemy room; award conservation
       `#awards = #challenge rooms + #enemies`
 - [ ] Graph phase: `add_enemies` removed (`Node.enemies` gone, subgraph
       copies dropped); `add_treasures` replaced by challenge rewards — one
       award per locked / gated / flame / water room; feature-set
       `treasure_count` / `enemy_count` keys retired
-- [ ] Layout phase: enemy total drawn at mean 2 per grid; distribution by
+- [ ] Layout phase: enemy total fixed at `2 × G`; distribution by
       the size rule (fewest-enemies candidate, largest effective size
       `e = s − k`, forge ogre first); one award item placed alongside each
       enemy in its room
@@ -26,8 +26,8 @@
 
 - **v4 (2026-07-11).** Objective widened (Daniel): enemies and award items
   become one economy. Enemies leave the graph phase entirely (they never
-  affected solvability); the layout distributor draws their count (mean 2
-  per grid) and places them by the v3 size rule, adding **one award item
+  affected solvability); the layout distributor places exactly 2 per grid
+  (`2 × G` total, level-wide) by the v3 size rule, adding **one award item
   per enemy** into the enemy's room. Graph-phase treasures are no longer
   random: **every award item is the reward of a challenge** — a locked,
   gated, flame, or water room (graph phase) or an enemy guard (layout
@@ -112,13 +112,12 @@ room's award to jet far-tiles, so the reward stays collectable.
 
 ### Layout phase: enemy count, distribution, guard awards
 
-**Count.** The distributor draws `rng.randint(1, 3)` per grid and sums —
-mean 2 enemies per grid, bounds `[G, 3G]` for `G` grids (single-grid: 1–3).
-The draw happens once, at the start of the distribution pass, from the
-layout rng. Types: all `chaser`, except that on `has_forge_ogre` feature
-sets the first enemy is the (unique) `forge_ogre`. (Interpretation to
-confirm: per-grid `randint(1, 3)` is my concretization of "2 per grid on
-average"; any other mean-2G draw works the same way.)
+**Count.** Exactly `2 × G` enemies for a `G`-grid level: 2 on a single
+grid, 4 on two grids, and so forth. No random draw and no per-grid
+counter — enemies are distributed level-wide by the rule below, so which
+grid an enemy lands on follows from room sizes alone. Types: all
+`chaser`, except that on `has_forge_ogre` feature sets the first enemy is
+the (unique) `forge_ogre`.
 
 **Distribution rule (v3, kept).** For each placed node `R`: `s(R)` = side
 of the largest all-floor square in `R.floor_tiles` (for rectangles
@@ -173,8 +172,9 @@ its runtime behaviour; only where it stands changes).
   dicts (insertion order) and grids in BFS build order — never a str-set.
 - The **graph stream changes for every level** (`add_treasures` /
   `add_enemies` draws disappear; challenge methods gain one item draw
-  each), and the layout stream gains the count draw + distribution pass.
-  This is inherent to the redesign — see golden impact.
+  each), and the layout stream gains the distribution pass (the enemy
+  count itself is deterministic — no draw). This is inherent to the
+  redesign — see golden impact.
 
 ### Golden-trace impact
 
@@ -209,8 +209,9 @@ New `tests/test_enemy_room_size.py` (or extension of
    `enemy_starts` tile's owner via `tile_owner`, recover the owner's floor
    tiles, assert the owner is not the corridor and holds at most `s − 2`
    enemy starts.
-2. **Enemy count:** per level, total enemy starts within `[G, 3G]`
-   (statistical mean ≈ 2G checked in the manual sweep, not the suite).
+2. **Enemy count:** per level, total enemy starts exactly `2 × G`
+   (fewer only if capacity `Σ max(0, s − 2)` < `2G`, which the test
+   checks never happens on real feature sets).
 3. **Award economy sweep (red today):** every award item's room is
    challenge-protected (reached through a locked/gated passage, has flame
    jets, or lies behind water) or contains ≥ 1 enemy start; total awards
@@ -233,13 +234,12 @@ New `tests/test_enemy_room_size.py` (or extension of
    discipline): scratchpad script counting violations (over-capacity
    rooms, corridor starts, unmotivated awards), validated against the
    pre-fix commit (must find violations there), then 0 violations across
-   ≥ 100 generated levels; also reports the empirical enemies-per-grid
-   mean.
+   ≥ 100 generated levels.
 
 ## Done when:
 
 - [ ] Sweep tests green: corridor ban + per-room `n ≤ s − 2`; enemy total
-      in `[G, 3G]`; every award challenge- or enemy-motivated; award
+      exactly `2 × G`; every award challenge- or enemy-motivated; award
       conservation — all red before the change
 - [ ] Directed distributor tests green: biggest-empty-first, round-robin,
       largest-effective within round, capacity stop, drop past capacity,
@@ -247,7 +247,7 @@ New `tests/test_enemy_room_size.py` (or extension of
 - [ ] Graph tests green: no enemy data on generated graphs; exactly one
       award per challenge room and none elsewhere
 - [ ] Manual detector sweep: violations found pre-fix, 0 post-fix across
-      ≥ 100 levels; enemies-per-grid mean ≈ 2
+      ≥ 100 levels
 - [ ] All shifted goldens and canonical hashes re-recorded once and
       reviewed; `poe test` exits 0
 - [ ] R-P9 + R-P10 in `kb/requirements.md`; `kb/architecture.md` graph and
