@@ -638,13 +638,31 @@ bridged water and open gates at evaluation time (use `World.blocked` /
 `RoomCells.blocked` from spec 0047/0048, never a private obstacle model — that
 is the BL-13 bug class).
 
+Mutually-wedged blocks ignite together (Daniel, 2026-07-12): when blocks wedge
+each other — e.g. two blocks pushed adjacent so neither has a push direction,
+confirmed reproducible in play during spec-0048 acceptance — the unsolvability
+detection must treat the group as one: ALL blocks that are part of the wedged
+configuration start their countdown and explode together, not just the
+last-pushed one.
+
+Supersedes the on-death reset of push puzzles (Daniel, 2026-07-12): once wedged
+blocks self-recover by exploding and respawning, the `_reset_blocks`-on-death
+mechanism (world.py: blocks reset to `_room_blocks_initial` and gates closed
+when a life is lost) becomes redundant and should be removed in the same spec.
+The game is then fully self-healing with respect to push puzzles, and dying no
+longer wipes legitimately-solved puzzle progress.
+
 **Fix hint:** needs its own spec. Runtime: hook detection into
-`_try_push_block` (world.py) after a successful push; add a per-block countdown
+`_try_push_block` (world.py) after a successful push; the detection must
+identify the whole wedged group (not just the pushed block) so that all blocks
+in a mutually-wedged configuration ignite together; add a per-block countdown
 timer ticked in `World.update`, an event kind for the explosion (Game maps it
-to a sound + flash/animation), and respawn from `_room_blocks_initial` for that
-block only. Rendering: countdown/explosion animation in game.py/sprites.py.
-Interactions to decide in the spec: blocks resting on plates must not count as
-wedged (holding a gate open is the goal state), and the respawned block must
-not materialise on top of the player/an enemy.
+to a sound + flash/animation), and respawn from `_room_blocks_initial` for
+every block in the wedged group. In the same spec, remove the now-redundant
+`_reset_blocks`-on-death path in world.py (and its gate-closing on life loss).
+Rendering: countdown/explosion animation in game.py/sprites.py. Interactions
+to decide in the spec: blocks resting on plates must not count as wedged
+(holding a gate open is the goal state), and the respawned block must not
+materialise on top of the player/an enemy.
 
 ---
