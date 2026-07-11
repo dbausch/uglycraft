@@ -470,8 +470,15 @@ Stage 5  Room objects, delete RoomState    — harness green ✓ spec 0051
 ## 7. Beyond Stage 5: the content registry (design, 2026-07-12)
 
 Where the abstraction stops after Stage 4, and what "further" looks like
-(discussion with Daniel while approving Stage 5). Status: **design only**
-— candidate Stage 6, to be specced after Stage 5 lands.
+(discussion with Daniel while approving Stage 5).
+
+**Status: consolidation half implemented 2026-07-12** (spec
+`spec/0052-content-registry.md`, commit 75a166a, per Daniel: "without
+introducing new features yet") — CONTENT_PARSERS registry, plate/nozzle
+fixtures, Block occupants with identity, sprite table, system-order
+contract. Deferred to feature specs: ray-cast beams (§7.2 — a behaviour
+change), the lever/machines validation (§7.3), traced wiring nets.
+Awaiting the user's play-test.
 
 ### 7.1 The gap
 
