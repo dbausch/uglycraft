@@ -829,3 +829,26 @@ sprite blit, around game.py:499). Choose the 10 positions in a spec first
 since they are per-level design decisions.
 
 ---
+
+## BL-43 · P2 · Entrance door opens after all awards are collected; level ends by leaving through it
+
+For ALL levels (1–20): today a level ends the instant the last award item is
+collected. Instead, collecting all awards shall OPEN the entrance door, and
+the level shall end only when the player leaves the grid through that door —
+requested by Daniel 2026-07-12. This realises the spec 0053 "Future
+extension": the opened entrance gives way to grid zero (the outside). Depends
+on BL-42 (Act 1 levels need an entrance first). Needs its own spec: touches
+the world.py completion rules/event stream (replace instant level-up with a
+door-open event + a transition trigger on the entrance tile), game.py
+rendering (open vs closed entrance sprite) and sounds, and possibly
+enemy/hazard behaviour while walking back to the entrance.
+
+**Fix hint:** world.py holds the award-completion check (the 'level_up'
+path); split it into award-completion → entrance-open state (new event for
+game.py to switch sprite + play a sound) and a separate level-complete
+trigger when the player steps onto the entrance border tile while it is open.
+The entrance tile position is in room['entrance'] (Act 2; Act 1 after BL-42).
+Mind death/reset semantics (does the door stay open after death?) — decide in
+the spec.
+
+---
