@@ -60,21 +60,36 @@ corridor one).
 
 ### Water clearance (P3, generator) — and the runtime mirror (P4)
 
-Vertical water stream `W` at **(20,7)** and **(20,8)**. No plate on any
-cardinal neighbour of any water tile:
+Water is not free-standing floor decoration: a WATER edge converts the
+shared **partition wall** between two rooms into the stream. Here the
+partition is column **20**, separating room A (cols ≤ 19) from room B
+(cols ≥ 21); rows 6–7 of it are the stream, the rest stays wall. Each
+water tile's along-axis neighbours are wall or more water — the only
+floor neighbours are the two flanking tiles, one per room:
 
 ```
-      col:  18  19  20  21  22
-row 6        .   .   x   .   .
-row 7        .   x   W   x   .    W = (20,7)
-row 8        .   x   W   x   .    W = (20,8)
-row 9        .   .   x   .   .
+      col:  17  18  19  20  21  22  23
+row 5        .   .   .   #   .   .   .     # = partition wall (col 20)
+row 6        .   .   P   W   x   .   .     W = water (20,6);  P = (19,6)
+row 7        .   .   x   W   x   .   .     W = water (20,7)
+row 8        .   .   .   #   .   .   .
+            ── room A ──  │  ── room B ──
+                     partition col 20
 ```
 
-Excluded: **(20,6), (19,7), (21,7), (19,8), (21,8), (20,9)** (water
-tiles themselves are already impassable). Runtime mirror (P4): had a
-plate somehow been placed at (19,7), bumping `W`(20,7) would refuse to
-build the bridge.
+`P` at **(19,6)** is the hypothesised plate this rule forbids: it is
+cardinally adjacent to `W`(20,6) — the player bumping that water tile to
+build the bridge into room B would be standing **on the plate** while
+doing it. Excluded plate tiles: **(19,6), (19,7)** in room A and
+**(21,6), (21,7)** in room B (marked `P`/`x`; the along-axis neighbours
+(20,5)/(20,8) are partition wall and were never candidates). The rule is
+stated as "all cardinal neighbours of every water tile" so it holds
+unchanged for horizontal streams, where the flanking floor is above and
+below.
+
+Runtime mirror (P4): if a level nevertheless contains the `P`(19,6)
+plate, bumping `W`(20,6) refuses to build the bridge; `W`(20,7) — not
+plate-adjacent — still works, so the water room stays reachable.
 
 ## Design
 
