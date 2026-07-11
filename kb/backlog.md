@@ -695,7 +695,7 @@ materialise on top of the player/an enemy.
 
 ---
 
-## BL-38 · P2 (in progress) · Content registry — Stage 6 of the world model (consolidation only)
+## BL-38 · DONE · Content registry — Stage 6 of the world model (consolidation only)
 
 Picked up 2026-07-12 (Daniel: "do stage 6, but without introducing new
 features yet"). Implements kb/world-model-review.md §7 minus the new-element
@@ -711,5 +711,13 @@ goldens as all prior stages.
 **Fix hint:** spec 0052 (in flight); follow-up items when features come: lever
 as first registry-validated element, ray-cast fields, BL-37 explosion using
 Block identity.
+
+**Resolution:** Done by spec 0052 (commit 75a166a, user-accepted 2026-07-12):
+CONTENT_PARSERS registry drives build_room_cells; plates and flame nozzles are
+generic fixtures; pushable blocks are Block occupants with identity (BL-37's
+hook); sprite table + pinned system-order contract. 528 tests, goldens
+byte-identical. The deferred feature halves (ray-cast beams, lever/machines
+validation, wiring nets) remain listed in kb/world-model-review.md §7 for
+their future feature specs.
 
 ---
