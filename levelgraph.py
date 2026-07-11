@@ -52,7 +52,6 @@ class Node:
         self.keys = []            # [(key_colour,)]
         self.blocks = []          # pushable block count
         self.plates = []          # [(gate_id,)]
-        self.has_flames = False   # room contains flame jets
         self.patrol_waypoints = None
 
     def __repr__(self):
@@ -537,22 +536,18 @@ class LevelGraph:
             if rng.random() < closet_prob:
                 b.add_closet_room(parent=rn)
 
-        if feature_set.get('has_flames'):
-            # One flame room per 2 grids (spec 0058 challenge scaling);
-            # each call marks one candidate or silently no-ops when none
-            # remains.
-            for _ in range(max(1, grid_count // 2)):
-                b.add_flames()
-
         mat_types = list(feature_set.get('material_types', []))
         m_min, m_max = feature_set.get('material_count', (4, 8))
         b.add_materials(mat_types, rng.randint(m_min, m_max))
 
         graph = b.build()
         graph.entrance_side = entrance_side
-        # Consumed by the layout enemy distributor (spec 0058) — the
-        # feature set is out of reach there.
+        # Consumed by the layout passes (specs 0058/0062) — the feature
+        # set is out of reach there.  Flames are layout-placed entirely:
+        # the graph carries only the target count (spec 0062).
         graph.has_forge_ogre = feature_set.get('has_forge_ogre', False)
+        graph.flame_count = (max(1, grid_count // 2)
+                             if feature_set.get('has_flames') else 0)
         return graph
 
 
@@ -767,32 +762,9 @@ class LevelGraphBuilder:
             t = self._rng.choice(all_nodes)
             self._graph.nodes[t].materials.append((self._rng.choice(mats),))
 
-    def add_flames(self) -> None:
-        """Mark one candidate room as a flame room and attach its award;
-        silently a no-op when no candidate remains (spec 0058 calls this
-        max(1, G // 2) times)."""
-        # No closets: a closet is carved from its parent at layout time and
-        # may silently fail to carve — its award would spill into the
-        # parent and break the one-award-per-challenge-room accounting
-        # (R-P10); jets also need a wall-to-wall span a closet cannot give.
-        candidates = [
-            n for n, node in self._graph.nodes.items()
-            if node.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET)
-            and not node.blocks
-            and not node.plates
-            and not node.has_flames
-            and not any(e.edge_type == EdgeType.WATER
-                        for _, e in self._graph.neighbors(n))
-        ]
-        if not candidates:
-            return
-        t = self._rng.choice(candidates)
-        self._graph.nodes[t].has_flames = True
-        # A locked/gated room may become a flame room too; it keeps its
-        # single challenge award (one per room, not per protection —
-        # R-P10), which the far-tile pass then moves behind the flames.
-        if not self._graph.nodes[t].treasures:
-            self._add_award(t)
+    # add_flames was deleted with spec 0062: flames are placed entirely at
+    # layout time (_place_flames in levellayout), where room geometry is
+    # known — the graph carries only graph.flame_count.
 
     # ── Finalise ──────────────────────────────────────────────────────────
 

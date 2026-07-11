@@ -15,7 +15,7 @@ import random
 from hypothesis import given, settings, strategies as st
 
 from levelgraph import LevelGraph, EdgeType
-from levellayout import build_level_dict
+from levellayout import build_level_dict, LayoutError
 from tests.conftest import FS_FLAMES, FS_GATED, FS_WATER, FS_WATER_FLAMES
 
 
@@ -30,13 +30,21 @@ from tests.conftest import FS_FLAMES, FS_GATED, FS_WATER, FS_WATER_FLAMES
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=200)
 def test_flame_room_never_has_water_edge(seed):
-    graph = LevelGraph.generate(FS_WATER_FLAMES, random.Random(seed))
-    for name, node in graph.nodes.items():
-        if node.has_flames:
-            for _, edge in graph.neighbors(name):
-                assert edge.edge_type != EdgeType.WATER, (
-                    f"Node {name!r} has flames but also a WATER edge"
-                )
+    """R-F2 successor: flames are layout-placed since spec 0062; the
+    _place_flames candidate pool excludes rooms behind a WATER edge.
+    Checked on the built dict."""
+    from tests.test_flames import _flame_rooms
+    rng = random.Random(seed)
+    graph = LevelGraph.generate(FS_WATER_FLAMES, rng)
+    try:
+        level = build_level_dict(graph, rng=rng)
+    except LayoutError:
+        return
+    water_rooms = {e.node_b for e in graph.edges
+                   if e.edge_type == EdgeType.WATER}
+    flame_owners = {owner for (_gn, owner) in _flame_rooms(level)}
+    assert not (flame_owners & water_rooms), (
+        f"flame rooms behind a WATER edge: {flame_owners & water_rooms}")
 
 
 # ── R-F3a: jet far_tiles non-empty (proves entry tile is never inside a jet) ──
@@ -92,10 +100,19 @@ def test_flame_room_awards_on_far_side(seed):
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=200)
 def test_flames_always_placed_when_requested(seed):
-    graph = LevelGraph.generate(FS_FLAMES, random.Random(seed))
-    assert any(n.has_flames for n in graph.nodes.values()), (
-        "Graph generated with has_flames=True has no node with has_flames set"
-    )
+    """R-F5 successor: flames are layout-placed since spec 0062 — a
+    has_flames level either carries real jets in the dict or the build
+    raises LayoutError (fresh-seed retry); it is never silently
+    flameless."""
+    from tests.test_flames import _flame_rooms
+    rng = random.Random(seed)
+    graph = LevelGraph.generate(FS_FLAMES, rng)
+    try:
+        level = build_level_dict(graph, rng=rng)
+    except LayoutError:
+        return
+    assert _flame_rooms(level), (
+        "has_flames level built without a single flame room")
 
 
 # ── R-W1: water edge planks only in non-water rooms ──────────────────────────

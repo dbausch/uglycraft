@@ -2085,8 +2085,7 @@ def _bfs_dist(start, passable):
 
 
 def _place_items_in_room(node, placed_node, walls, rng,
-                          global_used=None, spill_floor=None,
-                          flame_treasures=False):
+                          global_used=None, spill_floor=None):
     """Pick floor positions for a node's items.
 
     global_used: shared set across all rooms — no two items on the same tile.
@@ -2095,12 +2094,9 @@ def _place_items_in_room(node, placed_node, walls, rng,
         placed in priority order: keys, planks, treasures (awards), then other
         materials.  Raises LayoutError only when both the room and the corridor
         are full (should never happen).
-    flame_treasures: place a flame node's treasures here too — used by the
-        C7 unplaced-node spill, where no jets exist for the far-tile pass
-        (spec 0058 award conservation).
 
-    Enemies are not placed here: distribution is a level-wide layout pass
-    since spec 0058 (`_distribute_enemies`).
+    Enemies and flames are not placed here: both are level-wide layout
+    passes (`_distribute_enemies`, spec 0058; `_place_flames`, spec 0062).
     """
     if global_used is None:
         global_used = set()
@@ -2143,13 +2139,10 @@ def _place_items_in_room(node, placed_node, walls, rng,
         c, r = _place_collectible()
         materials.append((c, r, mat_type))
 
-    # Flame-room treasures are placed on far tiles only (see far-tiles pass
-    # in build_level_dict); skip them here so nothing lands on the near side.
     treasures = []
-    if not node.has_flames or flame_treasures:
-        for (item_no,) in node.treasures:
-            c, r = _place_collectible()
-            treasures.append((c, r, item_no))
+    for (item_no,) in node.treasures:
+        c, r = _place_collectible()
+        treasures.append((c, r, item_no))
 
     for (mat_type,) in other_mats:
         c, r = _place_collectible()
@@ -2228,6 +2221,197 @@ def _pick_enemy_tile(free_floor, taken, rng, player_dist=None):
     return rng.choice(pool)
 
 
+def _room_entry_tile(rd, tiles):
+    """First floor tile of `tiles` adjacent to a passage into the room,
+    from the dict view: a doorway hole, door, gate, water stream, or
+    breakable wall that touches another owner's floor beyond.  Scans in
+    sorted tile order — deterministic (spec 0054)."""
+    to = rd['tile_owner']
+    walls = rd['walls']
+    doors = {(c, r) for c, r, _x in rd.get('locked_doors', [])}
+    gates = {(c, r) for c, r, _x in rd.get('gates', [])}
+    water = {tuple(t) for t in rd.get('water_tiles', [])}
+    for t in sorted(tiles):
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = (t[0] + dc, t[1] + dr)
+            if nb in to:
+                continue
+            if not (MIN_C <= nb[0] <= MAX_C and MIN_R <= nb[1] <= MAX_R):
+                continue
+            if nb in walls and walls[nb] == WALL_REINFORCED \
+                    and nb not in doors and nb not in gates \
+                    and nb not in water:
+                continue
+            others = {to.get((nb[0] + a, nb[1] + b))
+                      for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))}
+            others.discard(None)
+            if others - {to.get(t)}:
+                return t
+    return None
+
+
+def _place_flames(level, graph, rng):
+    """Level-wide flame pass (spec 0062).
+
+    Chooses up to graph.flame_count (= max(1, G // 2)) jet-capable rooms
+    by geometry alone — non-corridor, non-closet, no plates/blocks, no
+    WATER passage — carves the jet, relocates items off the jet line
+    (near-side tiles first, corridor spill as fallback; never onto far
+    tiles, so nothing gets accidentally flame-gated), and places the
+    flame challenge award on a far tile.  Runs after all grids are built
+    and stitched, BEFORE enemy distribution (which excludes the chosen
+    rooms).  Fewer rooms than the count is accepted when candidates run
+    out; ZERO jet-capable rooms on a has_flames level is a LayoutError
+    (fresh-seed retry) — a flame level without flames is never generated
+    silently.
+    """
+    count = getattr(graph, 'flame_count', 0)
+    if not count:
+        return
+    rooms = level['rooms']
+    water_rooms = {e.node_b for e in graph.edges
+                   if e.edge_type == EdgeType.WATER}
+
+    floors = {}
+    room_grid = {}
+    for gname, rd in rooms.items():
+        walls = rd['walls']
+        for t, owner in rd['tile_owner'].items():
+            if t in walls:
+                continue
+            floors.setdefault(owner, set()).add(t)
+            room_grid[owner] = gname
+
+    cor_free = {}   # grid -> sorted corridor floor (spill target)
+    for name, nd in graph.nodes.items():
+        if nd.size == NodeSize.CORRIDOR and name in floors:
+            cor_free[room_grid[name]] = sorted(floors[name])
+
+    pool = [n for n, nd in graph.nodes.items()
+            if nd.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET)
+            and not nd.blocks and not nd.plates
+            and n not in water_rooms and n in floors]
+
+    placed_ct = 0
+    while pool and placed_ct < count:
+        name = rng.choice(pool)
+        pool.remove(name)
+        gname = room_grid[name]
+        rd = rooms[gname]
+        tiles = floors[name]
+
+        entry = _room_entry_tile(rd, tiles)
+        if entry is None:
+            continue
+        cols = [c for c, _r in tiles]
+        rows_ = [r for _c, r in tiles]
+        pn = PlacedNode(name, min(cols), min(rows_),
+                        max(cols) - min(cols) + 1,
+                        max(rows_) - min(rows_) + 1,
+                        frozenset(tiles))
+        jets = _generate_flame_jets(pn, rd['walls'], rng, entry=entry)
+        if not jets:
+            continue
+
+        jet_set = set()
+        for jet in jets:
+            jet['room'] = name
+            jet_set |= {tuple(t) for t in jet['tiles']}
+            jet_set.add(tuple(jet['source']))
+
+        # Far side: floor beyond the jet, seen from the entry.
+        passable = tiles - jet_set
+        near = {entry}
+        frontier = [entry]
+        while frontier:
+            nxt = []
+            for t in frontier:
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nb = (t[0] + dc, t[1] + dr)
+                    if nb in passable and nb not in near:
+                        near.add(nb)
+                        nxt.append(nb)
+            frontier = nxt
+        far = passable - near
+        if not far:
+            continue
+        for jet in jets:
+            jet['far_tiles'] = list(far)
+
+        used = set()
+        for lname in ('treasures', 'materials', 'keys',
+                      'pressure_plates', 'pushable_blocks'):
+            used |= {(e[0], e[1]) for e in rd.get(lname, [])}
+        if 'entrance' in rd:
+            used.add(tuple(rd['entrance']))
+            used.add(tuple(level['player_start']))
+
+        def _free_near():
+            pool2 = [t for t in sorted(near) if t not in used and t != entry]
+            return pool2 or [t for t in cor_free.get(gname, ())
+                             if t not in used]
+
+        def _relocate(pos_filter):
+            """Move one item matching pos_filter off its tile; True if
+            an item was moved (or none matched)."""
+            for lname in ('keys', 'materials', 'treasures'):
+                entries = rd.get(lname, [])
+                for i, e in enumerate(entries):
+                    pos = (e[0], e[1])
+                    if not pos_filter(pos):
+                        continue
+                    dest_pool = _free_near()
+                    if not dest_pool:
+                        return False
+                    np = rng.choice(dest_pool)
+                    used.add(np)
+                    used.discard(pos)
+                    entries[i] = (np[0], np[1], *e[2:])
+                    return True
+            return None   # nothing matched
+
+        # The jet claims its line: relocate every item on it (C7
+        # philosophy — content relocated, never dropped).
+        ok = True
+        while True:
+            moved = _relocate(lambda p: p in jet_set)
+            if moved is None:
+                break
+            if moved is False:
+                ok = False
+                break
+        if not ok:
+            continue
+
+        far_free = [t for t in sorted(far) if t not in used]
+        if not far_free:
+            # make room for the award by moving one far-side item near
+            moved = _relocate(lambda p: p in far)
+            if not moved:
+                continue
+            far_free = [t for t in sorted(far) if t not in used]
+        apos = rng.choice(far_free)
+        used.add(apos)
+        trs = rd.get('treasures', [])
+        existing = [i for i, e in enumerate(trs)
+                    if rd['tile_owner'].get((e[0], e[1])) == name]
+        if existing:
+            # Doubly-protected room (e.g. locked + flames): its single
+            # graph challenge award moves behind the jet — one award per
+            # room, not per protection (R-P10).
+            i = existing[0]
+            trs[i] = (apos[0], apos[1], trs[i][2])
+        else:
+            trs.append((*apos, rng.choice(list(range(1, 10)))))
+        rd['treasures'] = trs
+        rd['flame_jets'] = rd.get('flame_jets', []) + jets
+        placed_ct += 1
+
+    if placed_ct == 0:
+        raise LayoutError(
+            "has_flames level: no room in the level can host a flame jet")
+
+
 def _distribute_enemies(level, graph, rng):
     """Level-wide enemy & guard-award pass (spec 0058).
 
@@ -2252,10 +2436,18 @@ def _distribute_enemies(level, graph, rng):
                 continue
             floors.setdefault(owner, (gname, set()))[1].add(t)
 
+    # Flame rooms are layout-chosen (spec 0062): read them from the
+    # room dicts, not the graph.
+    flame_rooms = set()
+    for gname, rd in rooms.items():
+        to = rd['tile_owner']
+        for jet in rd.get('flame_jets', []):
+            flame_rooms.add(to.get(tuple(jet['tiles'][0])))
+
     sizes = []
     for name, node in graph.nodes.items():
         if (node.size == NodeSize.CORRIDOR or node.blocks or node.plates
-                or node.has_flames or name not in floors):
+                or name in flame_rooms or name not in floors):
             continue
         _gname, tiles = floors[name]
         sizes.append((name, _largest_floor_square(tiles), len(tiles)))
@@ -2447,51 +2639,8 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     entrance_tile, player_start = _pick_entrance(pn.floor_tiles, occupied_sides,
                                                  entrance_side=entrance_side)
 
-    # Generate flame jets first so we can exclude their tiles from items
-    all_flame_jets = []
-    flame_tile_set = set()
-    for name, node in graph.nodes.items():
-        if name not in placed or not node.has_flames:
-            continue
-        # Find the room's entry tile before generating jets so the jet
-        # generator can exclude the conflicting row/column.
-        entry_tile = None
-        for nb_name, _ in graph.neighbors(name):
-            if nb_name not in placed:
-                continue
-            conn = _find_connection_tile(placed[name], placed[nb_name], walls)
-            if conn:
-                for dc2, dr2 in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    adj = (conn[0] + dc2, conn[1] + dr2)
-                    if adj in placed[name].floor_tiles:
-                        entry_tile = adj
-                        break
-            if entry_tile:
-                break
-
-        jets = _generate_flame_jets(placed[name], walls, rng, entry=entry_tile)
-
-        if jets and entry_tile:
-            for jet in jets:
-                jet_set = set(jet['tiles']) | {jet['source']}
-                passable = placed[name].floor_tiles - set(walls.keys()) - jet_set
-                near: set = {entry_tile}
-                frontier = [entry_tile]
-                while frontier:
-                    next_f = []
-                    for t in frontier:
-                        for dc2, dr2 in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                            nb = (t[0] + dc2, t[1] + dr2)
-                            if nb in passable and nb not in near:
-                                near.add(nb)
-                                next_f.append(nb)
-                    frontier = next_f
-                jet['far_tiles'] = list(passable - near)
-        for jet in jets:
-            jet['room'] = name   # award relocation targets this room's jets
-            flame_tile_set.update(jet['tiles'])
-            flame_tile_set.add(jet['source'])
-        all_flame_jets.extend(jets)
+    # Flames are placed by the level-wide _place_flames pass after all
+    # grids exist (spec 0062) — no per-grid flame machinery remains.
 
     # Compute gate and lock tile positions.  These tiles were removed from
     # walls by derive_walls but are still obstacles until opened.  They are
@@ -2600,8 +2749,6 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     all_keys = []
 
     item_walls = dict(walls)
-    for ft in flame_tile_set:
-        item_walls[ft] = WALL_REINFORCED
 
     # Corridor floor tiles serve as the overflow ("spill") target so a
     # collectible is never dropped when its own room is full.
@@ -2640,36 +2787,10 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
             raise LayoutError(f"no placed room to spill content of {name!r}")
         t, m, k = _place_items_in_room(
             node, placed[target], item_walls, rng,
-            global_used=global_used, spill_floor=spill_floor,
-            flame_treasures=True)
+            global_used=global_used, spill_floor=spill_floor)
         all_treasures.extend(t)
         all_materials.extend(m)
         all_keys.extend(k)
-
-    # Relocate each placed flame room's challenge award to its jets' far
-    # side (spec 0058): the reward is collectable only after crossing the
-    # flames.  Falls back to any free room tile, then corridor spill, so
-    # the award is never lost (C7 conservation).
-    for name, node in graph.nodes.items():
-        if name not in placed or not node.has_flames or not node.treasures:
-            continue
-        far_free = [t for jet in all_flame_jets if jet.get('room') == name
-                    for t in jet.get('far_tiles', [])
-                    if t not in flame_tile_set and t not in walls
-                    and t not in global_used]
-        room_free = [t for t in sorted(placed[name].floor_tiles)
-                     if t not in item_walls and t not in global_used]
-        for (item_no,) in node.treasures:
-            pool = (far_free or room_free
-                    or [t for t in spill_floor if t not in global_used])
-            if not pool:
-                raise LayoutError(
-                    f"no free tile for the flame award of {name!r}")
-            pos = rng.choice(pool)
-            far_free = [t for t in far_free if t != pos]
-            room_free = [t for t in room_free if t != pos]
-            global_used.add(pos)
-            all_treasures.append((*pos, item_no))
 
     # Locked doors, gates, and water tiles from edges
     # (orig_walls already computed above for puzzle_passable)
@@ -2746,8 +2867,6 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         room['water_tiles'] = water_tiles
     if water_tile_room:
         room['water_tile_room'] = water_tile_room
-    if all_flame_jets:
-        room['flame_jets'] = all_flame_jets
     if is_start_grid:
         room['entrance'] = entrance_tile
 
@@ -2779,10 +2898,11 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         'player_start': player_start,
         'rooms': {grid_name: room},
     }
-    # Level-wide enemy & guard-award pass (spec 0058).  Per-grid builds
-    # from _build_super_grid skip this: the super-grid distributes once
-    # over all grids after stitching.
+    # Level-wide passes: flames (spec 0062) then enemies & guard awards
+    # (spec 0058).  Per-grid builds from _build_super_grid skip both:
+    # the super-grid runs them once over all grids after stitching.
     if place_enemies:
+        _place_flames(level, graph, rng)
         _distribute_enemies(level, graph, rng)
     return level
 
@@ -2828,7 +2948,6 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         cnode.keys = list(src.keys)
         cnode.blocks = list(src.blocks)
         cnode.plates = list(src.plates)
-        cnode.has_flames = src.has_flames
 
         def _copy(dst, s):
             dst.treasures = list(s.treasures)
@@ -2836,7 +2955,6 @@ def _build_super_grid(graph, rng, strategies, progress=None):
             dst.keys = list(s.keys)
             dst.blocks = list(s.blocks)
             dst.plates = list(s.plates)
-            dst.has_flames = s.has_flames
 
         # Corridor's room neighbours, then nodes hanging off those rooms (nested
         # closets — they attach to a room, not the corridor, so without this BFS
@@ -3157,8 +3275,10 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         'player_start': player_start,
         'rooms': all_rooms,
     }
-    # Level-wide enemy & guard-award pass (spec 0058): needs every grid's
-    # room sizes, so it runs once here, after all grids are built and
-    # stitched (grids in BFS build order).
+    # Level-wide passes: flames first (spec 0062 — they claim rooms and
+    # tiles), then enemies & guard awards (spec 0058, excluding flame
+    # rooms).  Both need every grid's geometry, so they run once here,
+    # after all grids are built and stitched (grids in BFS build order).
+    _place_flames(level, graph, rng)
     _distribute_enemies(level, graph, rng)
     return level
