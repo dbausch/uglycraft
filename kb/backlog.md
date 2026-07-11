@@ -771,27 +771,20 @@ spec 0029, whose per-water-room lock replaced the old per-grid
 
 ---
 
-## BL-40 · P2 · Level generation output depends on PYTHONHASHSEED (cross-process nondeterminism; flaky golden act2_L13_walk)
+## BL-40 · FIXED · Level generation output depends on PYTHONHASHSEED (cross-process nondeterminism; flaky golden act2_L13_walk)
 
-Generating the same Act 2 level with the same game seed yields different
-content in different Python processes: a canonical-content sha256 of
-`levels.get_level(13)` under `set_game_seed(777)` differs across
-PYTHONHASHSEED=0/1/2/3 (4 distinct hashes). Verified pre-existing: reproduces
-identically on the pre-spec-0053 tree (commit ffdbf12 with spec-0053 changes
-stashed), so it is NOT caused by the grid-zero change — but spec 0053's new
-level-13 layout made the variance visible in the golden trace, so tests/golden
-test `test_generated_level_13` (act2_L13_walk) now passes/fails depending on
-the process hash seed. Consequences: same seed gives different levels across
-processes/machines (breaks `--level N` debugging reproducibility and
-cross-machine hiscore fairness), and golden traces of generated levels are
-unreliable.
-
-**Fix hint:** audit `levelgraph.py` and `levellayout.py` for iteration order
-over sets/dicts keyed by strings that feeds `rng.choice` or placement, e.g.
-`_pick(list(self._reachable))` in `levelgraph.py` — any `list(<set of node
-names>)` passed to rng is hash-seed dependent; use `sorted()` at those sites.
-Detector: canonical-json sha256 of `get_level(13)` must be identical across
-PYTHONHASHSEED=0..3 (script pattern in Claude session 2026-07-12). After the
-fix, re-record act2_L13_walk once; it then stays stable.
+Fixed in b7ffefb (spec/0054-deterministic-generation.md), confirmed by Daniel
+2026-07-12. PYTHONHASHSEED salts **str** hashing only, so iteration over
+str-sets of node names fed `rng.choice` pools in per-process order — five
+sites in `LevelGraphBuilder` (`_reachable` and `_current_grid_rooms`).
+`_reachable` is now a dict-as-ordered-set (insertion = reachability order),
+`_current_grid_rooms` returns a list in edge order, and the dead
+`_assign_items` (same pattern, no callers) was deleted. Draw sequence
+unchanged, only pool ordering. Probe hashes identical across
+PYTHONHASHSEED=0..3 for levels 11 and 13 (level 11 byte-identical to
+pre-fix); act2_L13_walk re-recorded once and the golden suite passes 3× in
+fresh processes; full suite 534 green. Guard:
+`tests/test_generation_determinism.py` + probe `tests/_gen_hash.py`.
+Rule for future generator code in `kb/architecture.md` "Process determinism".
 
 ---

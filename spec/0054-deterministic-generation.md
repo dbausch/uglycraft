@@ -2,13 +2,13 @@
 
 ## Status
 
-- [ ] `LevelGraphBuilder._reachable` iterates in insertion (reachability)
+- [x] `LevelGraphBuilder._reachable` iterates in insertion (reachability)
       order — no str-set iteration feeds an rng pool anywhere in generation
-- [ ] Dead `_assign_items` (same buggy pattern, no callers) deleted
-- [ ] Subprocess determinism test: level hashes identical across
+- [x] Dead `_assign_items` (same buggy pattern, no callers) deleted
+- [x] Subprocess determinism test: level hashes identical across
       `PYTHONHASHSEED` values (red today for level 13)
-- [ ] Golden `act2_L13_walk` re-recorded once; stable across processes after
-- [ ] Full suite green
+- [x] Golden `act2_L13_walk` re-recorded once; stable across processes after
+- [x] Full suite green
 
 ## Problem
 
@@ -103,12 +103,15 @@ collections recursively sorted so only real content differences count):
 
 ## Done when:
 
-- [ ] Subprocess determinism test red before the fix (level 13), green after
-- [ ] Probe hashes identical across `PYTHONHASHSEED=0..3` for levels 11 & 13
-- [ ] `_assign_items` deleted; no `list(<str-set>)` feeds an rng pool in
-      levelgraph.py / levellayout.py
-- [ ] `act2_L13_walk` re-recorded; `test_generated_level_13` passes 3×
-      in fresh processes
-- [ ] `poe test` exits 0
-- [ ] BL-40 closed in `kb/backlog.md`; kb updated (`kb/findings.md` BL-40
+- [x] Subprocess determinism test red before the fix (level 13), green after
+      (410c656 red, b7ffefb green; confirmed by Daniel 2026-07-12)
+- [x] Probe hashes identical across `PYTHONHASHSEED=0..3` for levels 11 & 13
+      (b7ffefb; level 11 hash byte-identical to pre-fix — content untouched)
+- [x] `_assign_items` deleted; no `list(<str-set>)` feeds an rng pool in
+      levelgraph.py / levellayout.py (b7ffefb)
+- [x] `act2_L13_walk` re-recorded; `test_generated_level_13` passes 3×
+      in fresh processes (b7ffefb)
+- [x] `poe test` exits 0 (534 passed)
+- [x] BL-40 closed in `kb/backlog.md`; kb updated (`kb/findings.md` BL-40
       entry marked fixed; `kb/architecture.md` determinism note)
+      (1e3d4b9 + closure commit)
