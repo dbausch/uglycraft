@@ -18,8 +18,10 @@
 - [ ] `poe test` exits 0
 - [ ] KB updated (R-P11 in `kb/requirements.md`; solver section in
       `kb/architecture.md`); BL-45 closed
-- [ ] User play-test confirmation: no more unsolvable push puzzles; no
-      block gets shoved by merely entering a room
+- [ ] Acceptance by validated sweep (statistical-sweep practice, Daniel
+      2026-07-12): the defect is too rare (~19 hits / 120 levels
+      pre-fix) for a play-test to verify its absence — the detector,
+      validated against the pre-fix commit, stands in for it
 
 ## Problem
 
@@ -151,5 +153,6 @@ block starts on a landing tile (R-P7's set). Enforced at placement
 - [ ] `poe test` exits 0
 - [ ] R-P11 in `kb/requirements.md`; `kb/architecture.md` solver notes
       updated; BL-45 closed in `kb/backlog.md`
-- [ ] Daniel confirms in play: push puzzles solvable, and entering a
-      room never shoves a block
+- [ ] Accepted via the validated detector sweep (in lieu of a play-test
+      — rare generative property, statistical-sweep practice): pre-fix
+      14 landing + 5 entry-unsolvable in 120 levels, post-fix 0
