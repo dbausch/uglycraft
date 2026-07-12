@@ -961,6 +961,45 @@ cosmetic. Suspect key/door elision paths in `levellayout.py` (gate/door
 elision around line 794 was exercised only by failing examples per the
 hypothesis coverage note). Related: BL-44 (R-K1, spec 0061).
 
+**Investigated (2026-07-12), root cause found.** Deterministic repro:
+`_build_retry(FS_ALL, 584)` (tests/test_key_placement.py helpers) succeeds on
+attempt 0 and yields keys {blue, orange, cyan} but doors {blue, orange}. The
+cyan LOCKED edge is corridor–room_5; **room_5 was dropped by the zone packer**
+(absent from tile_owner), its spec-0032-C7 spill kept the level building, and
+the cyan key — placed cross-room in room_3 by add_locked_room — survived per
+K1. The edge loop in build_level_dict (levellayout.py ~2925, `if edge.node_a
+not in placed or edge.node_b not in placed: continue`) silently skips the
+door. Direction confirmed benign: orphan KEY, not a key-less door — no
+soft-lock, P2 stands (the earlier levellayout.py:794 suspicion was a red
+herring — that's z-layout geometry).
+
+**Why spec 0061 missed it:** D1 explicitly preserved this path ("unplaced
+endpoints keep today's behaviour") and its 8-seed diagnosis contained no
+dropped locked rooms ("with no locked room ever dropped by the packer"), so
+R-K1 was recorded stronger than the implementation guarantees. There is a real
+invariant tension: K1 (keys are never lost) and R-K1 (per-colour #keys ==
+#doors) cannot both hold when a locked room is dropped — one must yield.
+
+**Incidence:** detector sweep 2026-07-12: 0/720 levels (300 FS_LOCKED + 300
+FS_ALL + 60 FS_CROWDED_LOCKED + 60 real level-13 sets, seeds 0..N) — well
+under 0.2% per build; hypothesis found the one needle at seed 584, now
+persisted in `.hypothesis/` so the suite re-fails until fixed.
+
+**Recommended fix (needs its own spec):** make the residual case loud,
+matching the 0061/0048 philosophy — in the build_level_dict edge loop, a
+LOCKED edge with an unplaced endpoint raises LayoutError (standard fresh-seed
+retry; sweep says the retry cost is ~zero) instead of silently continuing.
+This also covers an uncarvable closet on a LOCKED edge. Alternatives
+considered and rejected: dropping the orphan key too (violates K1 and its
+tests; hides the spilled-award-without-challenge side effect), weakening the
+R-K1 test (hides the same). The sibling silent path in the same loop
+(`conn is None` for a LOCKED edge between placed nodes) should get the same
+loud treatment — R-E4 makes it should-be-unreachable, so a raise costs
+nothing. Cross-ref: spec/0061-no-silent-door-elision.md D1,
+kb/requirements.md R-K1 + R-P3 (whose "unplaced nodes are a bug" note is
+contradicted by legitimate packer drops + C7 spill — reconcile wording when
+fixing).
+
 ---
 
 ## BL-47 · P2 · Speed up the test suite (10:30 wall clock)
