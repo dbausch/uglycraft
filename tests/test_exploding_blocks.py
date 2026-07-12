@@ -107,17 +107,17 @@ def _two_owner_level():
             'player_start': (8, 4)}
 
 
-def _entrance_puzzle_level():
-    """Room (cols 2-7, rows 2-4), plate at the top row, an entrance gap in the
-    bottom wall.  A block on the bottom floor row (adjacent to that wall) can
-    never be pushed up — the player can't stand on the entrance to push it —
-    so the whole bottom row must be UNSAFE (spec 0068 entrance-pocket fix)."""
+def _deadend_pocket_level():
+    """Room (cols 2-7, rows 2-4), plate at the top row, and a one-tile
+    dead-end pocket poking out of the bottom wall at (4,5) — walled one tile
+    below, so the player can never stand there.  A block on the bottom floor
+    row can't be pushed up (no valid stand tile below it), so the whole bottom
+    row must be UNSAFE (spec 0068 dead-end-stand rule)."""
     walls = _ring(2, 7, 2, 4)
-    del walls[(4, 5)]                      # entrance gap in the bottom wall
+    del walls[(4, 5)]                      # a gap in the bottom wall...
+    walls[(4, 6)] = WALL_REINFORCED        # ...that dead-ends one tile below
     owner = {(c, r): 'puzzle' for c in range(2, 8) for r in range(2, 5)}
-    main = _room(walls, tile_owner=owner,
-                 pressure_plates=[(4, 2, 'g1')],
-                 entrance=(4, 5))
+    main = _room(walls, tile_owner=owner, pressure_plates=[(4, 2, 'g1')])
     return {'rooms': {'main': main}, 'start_room': 'main',
             'player_start': (5, 3)}
 
@@ -142,11 +142,11 @@ def test_plate_owns_safe_tiles():
         _restore(orig)
 
 
-def test_entrance_pocket_row_is_unsafe():
-    """The floor row adjacent to the entrance wall is unsafe: a block there
-    can't be pushed up because the player can't stand on the entrance pocket
-    to push it (spec 0068)."""
-    w, orig = _world(_entrance_puzzle_level)
+def test_deadend_pocket_row_is_unsafe():
+    """The floor row adjacent to a dead-end wall gap is unsafe: a block there
+    can't be pushed up because the player can't stand in the dead-end pocket
+    to push it (spec 0068 dead-end-stand rule)."""
+    w, orig = _world(_deadend_pocket_level)
     try:
         safe = w._safe_tiles
         assert (4, 2) in safe                  # plate row (top) — safe

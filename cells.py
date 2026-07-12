@@ -30,13 +30,18 @@ from constants import (COLS, ROWS, ENTRANCE_CHANNEL, WALL_BUMPS,
                        WALL_REINFORCED)
 
 
-def reverse_reachable(passable, target):
+def reverse_reachable(passable, target, stand=None):
     """Tiles from which a block can be pushed to `target` (spec 0068).
 
     Reverse-BFS: a block that ended at Q could have been pushed there from
-    Q−d with the player standing at Q−2d, so both Q−d and Q−2d must be
-    passable.  `passable` is the tiles a block/player may occupy (permanent
-    walls excluded); the returned set always contains `target` itself."""
+    Q−d with the player standing at Q−2d, so Q−d must be passable and Q−2d a
+    valid stand tile.  `passable` is the tiles a block/player may occupy
+    (permanent walls excluded).  `stand` (default: `passable`) is where the
+    player may stand to push — a **dead-end** tile (≤1 passable neighbour) is
+    excluded, because the player cannot reach it around the block it would
+    push.  The returned set always contains `target` itself."""
+    if stand is None:
+        stand = passable
     reach = {target}
     q = deque([target])
     while q:
@@ -44,7 +49,7 @@ def reverse_reachable(passable, target):
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             origin = (bx - dc, by - dr)          # block came from here
             stood = (bx - 2 * dc, by - 2 * dr)   # player stood here
-            if origin in passable and stood in passable and origin not in reach:
+            if origin in passable and stood in stand and origin not in reach:
                 reach.add(origin)
                 q.append(origin)
     return reach
@@ -282,14 +287,15 @@ def _parse_plates(cells, room_data):
     owner = room_data.get('tile_owner', {})
     perm_passable = {(c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
                      if walls.get((c, r)) != WALL_REINFORCED}
-    # The entrance is a one-way exit / dead-end pocket: the player cannot stand
-    # on it to push a block off the adjacent wall (reaching it means passing
-    # through the block), so it is not a valid push-stand tile (spec 0068).
-    ent = room_data.get('entrance')
-    if ent is not None:
-        perm_passable.discard(tuple(ent))
+    # Valid push-stand tiles exclude dead-ends (≤1 passable neighbour): the
+    # player cannot reach such a tile to push a block off the adjacent wall,
+    # since getting there means passing through the block (spec 0068).  This
+    # covers the entrance pocket and any wall-gap stub.
+    stand = {t for t in perm_passable
+             if sum((t[0] + dc, t[1] + dr) in perm_passable
+                    for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))) >= 2}
     for pc, pr, channel in plates:
-        reach = reverse_reachable(perm_passable, (pc, pr))
+        reach = reverse_reachable(perm_passable, (pc, pr), stand=stand)
         if owner:
             room_floor = {t for t, o in owner.items() if o == owner.get((pc, pr))}
             reach &= room_floor
