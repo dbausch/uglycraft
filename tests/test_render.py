@@ -109,3 +109,40 @@ def test_border_sprite_gated_tracks_channel():
     assert border_exit_sprite(rec, 'h', set(), set()) == 'gate_closed_h'
     assert border_exit_sprite(rec, 'v', {'border_gate_0'}, set()) == 'gate_open_v'
     assert border_exit_sprite(rec, 'h', {'some_other_gate'}, set()) == 'gate_closed_h'
+
+
+# ── Spec 0059: overlay screenshot goldens ─────────────────────────────────────
+# The four unchanged overlays were recorded BEFORE the box-fit
+# implementation: their passing afterwards machine-proves the 420 px
+# minimum keeps them pixel-identical (replaces manual acceptance).
+# shot_overlay_win is recorded after — the message changes by design.
+
+def _overlay_shot(name, state, final_score=None):
+    with Harness(level=3, seed=1234) as h:
+        h.run(['wait:3'])
+        if final_score is not None:
+            h.game.world._final_score = final_score
+            h.game.world._final_level = 20
+        h.game.state = state
+        _shot(name, h)
+
+
+def test_shot_overlay_intro():
+    _overlay_shot('overlay_intro', 'level_intro')
+
+
+def test_shot_overlay_pause():
+    _overlay_shot('overlay_pause', 'paused')
+
+
+def test_shot_overlay_game_over():
+    _overlay_shot('overlay_game_over', 'game_over')
+
+
+def test_shot_overlay_play_again():
+    _overlay_shot('overlay_play_again', 'play_again')
+
+
+def test_shot_overlay_win():
+    """YOU  WON! centred in its box with the score sub-line (spec 0059)."""
+    _overlay_shot('overlay_win', 'win', final_score=12345)
