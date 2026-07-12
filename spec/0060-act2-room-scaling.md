@@ -2,23 +2,25 @@
 
 ## Status
 
-- [ ] Red tests: enemy capacity/total (2 × G) extended to **all** ten
+> **Confirmed working (Daniel, 2026-07-12).** Red tests ae50de5, implementation 7d4cfd5, goldens/kb 1451300. Sweep 0 violations / 120 levels; level-20 generation worst 1.50 s (budget 12 s), Act 2 total ~5-6.5 s; suite 615 passed at the gate.
+
+- [x] Red tests: enemy capacity/total (2 × G) extended to **all** ten
       feature sets; per-grid room-count bounds contract; strategy-trim
       contract for levels 11–13; coverable-side-set test (no structural
       full_border fallback on trimmed levels)
-- [ ] `room_count` rescaled per the table below (levels 11–20)
-- [ ] Strategy lists trimmed for levels 11–13 (BL-22)
-- [ ] Spanning tree + entrance draw constrained to strategy-coverable
+- [x] `room_count` rescaled per the table below (levels 11–20)
+- [x] Strategy lists trimmed for levels 11–13 (BL-22)
+- [x] Spanning tree + entrance draw constrained to strategy-coverable
       side sets (`_COVERS_*` moved to `levelgraph.py`)
-- [ ] Detector sweep (`scratchpad/sweep_enemy_awards.py`): **0** violations
+- [x] Detector sweep (`scratchpad/sweep_enemy_awards.py`): **0** violations
       including TOTAL across ≥ 120 levels
-- [ ] Generation time measured for levels 11–20; level 20 within budget
+- [x] Generation time measured for levels 11–20; level 20 within budget
       (see "Performance"), loading screen still acceptable
-- [ ] Act 2 goldens + canonical hashes re-recorded once, diffs reviewed;
+- [x] Act 2 goldens + canonical hashes re-recorded once, diffs reviewed;
       `poe test` exits 0
-- [ ] KB updated (`kb/architecture.md` lazy-generation timings, room-count
+- [x] KB updated (`kb/architecture.md` lazy-generation timings, room-count
       note); BL-21, BL-22, BL-25 closed in `kb/backlog.md`
-- [ ] User play-test confirmation: early levels feel simpler, late levels
+- [x] User play-test confirmation: early levels feel simpler, late levels
       feel populated, level-load wait acceptable
 
 ## Problem
@@ -196,18 +198,18 @@ bounds of the table) happens inside this spec, not silently later.
 
 ## Done when:
 
-- [ ] All ten feature sets pass the capacity/total tests (enemy total
+- [x] All ten feature sets pass the capacity/total tests (enemy total
       exactly 2 × G, every host a candidate room) — red before the
       table lands
-- [ ] Feature-set bounds and strategy contracts green
-- [ ] Coverable-side-set test green: no grid forced into full_border by
+- [x] Feature-set bounds and strategy contracts green
+- [x] Coverable-side-set test green: no grid forced into full_border by
       side mismatch on any level; levels 11–12 grids collinear
-- [ ] Sweep reports 0 violations (TOTAL included) across ≥ 120 levels
-- [ ] Level-20 generation ≤ 12 s, Act 2 total ≤ 45 s, measured
-- [ ] Goldens/hashes re-recorded once with reviewed diffs; `poe test`
+- [x] Sweep reports 0 violations (TOTAL included) across ≥ 120 levels
+- [x] Level-20 generation ≤ 12 s, Act 2 total ≤ 45 s, measured
+- [x] Goldens/hashes re-recorded once with reviewed diffs; `poe test`
       exits 0
-- [ ] `kb/architecture.md` timings/room notes updated; BL-21, BL-22,
+- [x] `kb/architecture.md` timings/room notes updated; BL-21, BL-22,
       BL-25 closed
-- [ ] Daniel confirms in play: level 11 reads as an introduction, late
+- [x] Daniel confirms in play: level 11 reads as an introduction, late
       levels are populated (not full-border wastelands), loading wait
       acceptable
