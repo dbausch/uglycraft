@@ -26,33 +26,85 @@ from enum import Enum, auto
 from collections import deque
 
 from constants import (COLS, ROWS, ENTRANCE_CHANNEL, WALL_BUMPS,
-                       WALL_HITS_TO_BREAK, WALL_STONE, WALL_WOODEN,
-                       WALL_REINFORCED)
+                       WALL_HITS_TO_BREAK, WALL_STONE, WALL_WOODEN)
 
 
-def reverse_reachable(passable, target, stand=None):
-    """Tiles from which a block can be pushed to `target` (spec 0068).
+_DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
-    Reverse-BFS: a block that ended at Q could have been pushed there from
-    Q−d with the player standing at Q−2d, so Q−d must be passable and Q−2d a
-    valid stand tile.  `passable` is the tiles a block/player may occupy
-    (permanent walls excluded).  `stand` (default: `passable`) is where the
-    player may stand to push — a **dead-end** tile (≤1 passable neighbour) is
-    excluded, because the player cannot reach it around the block it would
-    push.  The returned set always contains `target` itself."""
-    if stand is None:
-        stand = passable
-    reach = {target}
-    q = deque([target])
+
+def safe_block_positions(floor, plate):
+    """Block positions in `floor` from which the block can be pushed to `plate`
+    by a player *also confined to `floor`* (spec 0068).
+
+    This is a reverse Sokoban with full player-zone tracking: a pull is legal
+    only when the player can actually WALK — around the block, within `floor` —
+    to the tile it must push from.  `floor` is the room's own walkable tiles;
+    wall openings, gates and doors are NOT part of it, so the player can never
+    stand "in the doorway" to push a block off the adjacent wall.  Because the
+    block is confined and the walls are static, the result is a fixed set.
+
+    State = (block position, the player's connected component of `floor − block`).
+    Reverse step from (X, C): a forward push ended at X from X−d with the player
+    standing at X−2d; it is legal only if X−d and X−2d are floor tiles and the
+    player ended at X−d inside the current component C.  Predecessor state is
+    (X−d, component of `floor − {X−d}` containing X−2d)."""
+    if plate not in floor:
+        return frozenset()
+
+    comp_cache = {}
+
+    def zones(block):
+        """Map every tile of `floor − {block}` to its connected component."""
+        parts = comp_cache.get(block)
+        if parts is None:
+            parts = {}
+            remaining = floor - {block}
+            seen = set()
+            for t in remaining:
+                if t in seen:
+                    continue
+                comp = []
+                dq = deque([t])
+                seen.add(t)
+                while dq:
+                    c, r = dq.popleft()
+                    comp.append((c, r))
+                    for dc, dr in _DIRS:
+                        n = (c + dc, r + dr)
+                        if n in remaining and n not in seen:
+                            seen.add(n)
+                            dq.append(n)
+                fc = frozenset(comp)
+                for m in comp:
+                    parts[m] = fc
+            comp_cache[block] = parts
+        return parts
+
+    safe = {plate}
+    visited = set()
+    q = deque()
+    for comp in set(zones(plate).values()):
+        state = (plate, comp)
+        visited.add(state)
+        q.append(state)
     while q:
-        bx, by = q.popleft()
-        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            origin = (bx - dc, by - dr)          # block came from here
-            stood = (bx - 2 * dc, by - 2 * dr)   # player stood here
-            if origin in passable and stood in stand and origin not in reach:
-                reach.add(origin)
-                q.append(origin)
-    return reach
+        (bx, by), comp = q.popleft()
+        for dc, dr in _DIRS:
+            b = (bx - dc, by - dr)          # predecessor block position
+            stood = (bx - 2 * dc, by - 2 * dr)  # player stood to push it
+            if b not in floor or stood not in floor:
+                continue
+            if b not in comp:               # player ends on b — must be reachable now
+                continue
+            comp_pred = zones(b).get(stood)
+            if comp_pred is None:
+                continue
+            state = (b, comp_pred)
+            if state not in visited:
+                visited.add(state)
+                q.append(state)
+                safe.add(b)
+    return frozenset(safe)
 
 
 def parse_level_walls(raw):
@@ -278,28 +330,35 @@ def _parse_items(kind, dict_key):
 
 def _parse_plates(cells, room_data):
     """Add each plate fixture and compute its `safe_tiles` (spec 0068): the
-    tiles of the plate's own room from which a block can still be pushed to
-    it (reverse-reachability over permanent walls)."""
+    tiles of the plate's OWN room floor from which a block can still be pushed
+    to it by a player confined to that same room floor.
+
+    The room floor is the plate's `tile_owner` tiles minus every opening the
+    player must not stand in to push (walls, gates, doors, the entrance) — a
+    doorway is a way out, not a push-stand tile."""
     plates = room_data.get('pressure_plates', [])
     if not plates:
         return
     walls = room_data.get('walls', {})
     owner = room_data.get('tile_owner', {})
-    perm_passable = {(c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
-                     if walls.get((c, r)) != WALL_REINFORCED}
-    # Valid push-stand tiles exclude dead-ends (≤1 passable neighbour): the
-    # player cannot reach such a tile to push a block off the adjacent wall,
-    # since getting there means passing through the block (spec 0068).  This
-    # covers the entrance pocket and any wall-gap stub.
-    stand = {t for t in perm_passable
-             if sum((t[0] + dc, t[1] + dr) in perm_passable
-                    for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))) >= 2}
+    openings = set(walls)
+    for c, r, *_ in room_data.get('gates', []):
+        openings.add((c, r))
+    for c, r, *_ in room_data.get('locked_doors', []):
+        openings.add((c, r))
+    ent = room_data.get('entrance')
+    if ent is not None:
+        openings.add(tuple(ent))
+    interior = {(c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)}
     for pc, pr, channel in plates:
-        reach = reverse_reachable(perm_passable, (pc, pr), stand=stand)
         if owner:
-            room_floor = {t for t, o in owner.items() if o == owner.get((pc, pr))}
-            reach &= room_floor
-        cells.add_fixture((pc, pr), Fixture('plate', channel, frozenset(reach)))
+            o = owner.get((pc, pr))
+            floor = frozenset(t for t, oo in owner.items()
+                              if oo == o and t not in openings)
+        else:
+            floor = frozenset(interior - openings)
+        safe = safe_block_positions(floor, (pc, pr))
+        cells.add_fixture((pc, pr), Fixture('plate', channel, safe))
 
 
 def _parse_nozzles(cells, room_data):
