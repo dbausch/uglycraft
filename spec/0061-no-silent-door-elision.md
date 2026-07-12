@@ -2,23 +2,25 @@
 
 ## Status
 
-- [ ] Red tests: per-colour `#keys == #doors` on generated Act 2 levels;
+> **Confirmed working (Daniel, 2026-07-12).** Red tests 01f59cd, implementation c941f9c, require_plates scope fix 9060129, goldens 989c175, kb 653b4bd. Sweep: 421 orphan-key violations pre-fix, 0 / 120 levels post-fix; suite 620 passed at the gate.
+
+- [x] Red tests: per-colour `#keys == #doors` on generated Act 2 levels;
       pinned level-13 case (6 keys, 2 doors pre-fix); cross-grid
       interior-gate plates occur (distribution test)
-- [ ] Interior locked doors created unconditionally for every LOCKED edge
+- [x] Interior locked doors created unconditionally for every LOCKED edge
       between placed nodes; missing-key condition raises `LayoutError`
       (loud safety net) instead of degrading the door
-- [ ] `add_gated_room` places its plate in any reachable eligible room
+- [x] `add_gated_room` places its plate in any reachable eligible room
       (any grid), like keys; interior-gate elision moves to global scope
       (post-stitch, surviving plates across all grids)
-- [ ] Detector sweep validated pre-fix (orphan keys found), 0 violations
+- [x] Detector sweep validated pre-fix (orphan keys found), 0 violations
       post-fix
-- [ ] Goldens re-recorded once with reviewed diffs (the gated-plate pool
+- [x] Goldens re-recorded once with reviewed diffs (the gated-plate pool
       change shifts graph streams; restored doors shift walks)
-- [ ] `poe test` exits 0
-- [ ] KB updated (R-K1 in `kb/requirements.md`; spec-0030 coupling and
+- [x] `poe test` exits 0
+- [x] KB updated (R-K1 in `kb/requirements.md`; spec-0030 coupling and
       builder sections in `kb/architecture.md`); backlog entry closed
-- [ ] User play-test confirmation: every key found has a door to open;
+- [x] User play-test confirmation: every key found has a door to open;
       locked rooms read as challenges again; remote plates for interior
       gates appear and work across grid transitions
 
@@ -163,18 +165,18 @@ passage is open). Orphan keys exist only transiently in play.
 
 ## Done when:
 
-- [ ] Pairing property and pinned case green (red before the fix)
-- [ ] Loud-net test green: missing key ⇒ `LayoutError`, never a silent
+- [x] Pairing property and pinned case green (red before the fix)
+- [x] Loud-net test green: missing key ⇒ `LayoutError`, never a silent
       open passage
-- [ ] Plates-roam distribution test green (cross-grid interior-gate
+- [x] Plates-roam distribution test green (cross-grid interior-gate
       plates exist); no over- or under-elision of gates
-- [ ] Sweep: 0 violations across ≥ 100 generated levels (orphan keys
+- [x] Sweep: 0 violations across ≥ 100 generated levels (orphan keys
       confirmed pre-fix)
-- [ ] Goldens re-recorded once with reviewed diffs
-- [ ] `poe test` exits 0
-- [ ] R-K1 in `kb/requirements.md`; `kb/architecture.md` spec-0030
+- [x] Goldens re-recorded once with reviewed diffs
+- [x] `poe test` exits 0
+- [x] R-K1 in `kb/requirements.md`; `kb/architecture.md` spec-0030
       coupling + builder sections updated; backlog entry closed
-- [ ] Daniel confirms in play (level 13+): key and door counts match,
+- [x] Daniel confirms in play (level 13+): key and door counts match,
       locked rooms read as challenges with their award behind the
       door, and a remote plate opens its interior gate across a grid
       transition
