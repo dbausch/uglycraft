@@ -2,10 +2,11 @@
 
 ## Status
 
-- [ ] Every Act 1 level dict (1–10) carries an `entrance` key — the border
-      tile nearest the level's previous `player_start` (table below)
-- [ ] `player_start` moved to the interior floor tile adjacent to the
-      entrance (levels 6 and 7 keep their start; it is already adjacent)
+- [ ] Every Act 1 level dict (1–10) carries an `entrance` key at the
+      explicitly assigned border position (table below), with
+      `player_start` on the interior floor tile directly inside it
+- [ ] `enemy_starts` adjusted per level to the assigned positions
+      (levels 1, 3, 7, 10 keep their current enemies)
 - [ ] `_as_multiroom` forwards `entrance` into the single-room dict so the
       existing sprite render path (game.py:538) draws it in Act 1
 - [ ] `--dump-level N [--seed S]` CLI option: headless ASCII export of any
@@ -15,8 +16,8 @@
       `main.py`)
 - [ ] New tests red before the change, green after; `poe test` exits 0
       with all affected goldens deliberately re-recorded
-- [ ] Manual check: entrance sprite visible and player start correct on
-      levels 1–10 (user acceptance)
+- [ ] Manual check: entrance sprite, player start, and enemy starts
+      correct on levels 1–10 (user acceptance)
 
 ## Problem
 
@@ -26,75 +27,80 @@ anchored by construction since spec 0053). Act 1 should match the same
 visual convention, as groundwork for BL-43 (entrance opens after all awards
 are collected; the level ends by leaving through it).
 
-Refinement from Daniel: the entrance is **not** free-standing — it is placed
-on the border tile *nearest to the current player start*, and the player
-start then *moves along* to sit directly inside the entrance, exactly like
-Act 2's entrance/start adjacency.
-
-## Placement rule
-
-For each level, with old start `(c, r)` on the 30×16 grid (border ring:
-col 0, col 29, row 0, row 15):
-
-1. Candidate entrance tiles are all border-ring tiles whose single interior
-   neighbour is a **floor tile** (not in `walls`).
-2. The entrance is the candidate with minimum **Manhattan distance** to the
-   old `player_start`. (No ties occur in the ten levels; a tie-break rule is
-   therefore not specified.)
-3. The new `player_start` is the entrance's interior neighbour.
+An earlier revision of this spec derived the entrance mechanically (border
+tile nearest the old player start). Reviewing the full-grid diagrams,
+Daniel replaced that with an **explicit per-level assignment** — entrance
+side plus repositioned enemies, so each level's enemies oppose the entrance
+rather than accidentally sitting next to it.
 
 The entrance tile remains a solid border wall; the door is a sprite, and it
-never opens in this spec. Opening + level-exit semantics are BL-43.
+never opens in this spec. Opening + level-exit semantics are BL-43. The
+player start is always the interior floor tile directly inside the
+entrance, matching Act 2's entrance/start adjacency.
 
-## Per-level positions
+## Assigned positions
 
-Applying the rule to the ten levels of `levels.py`:
+Daniel's assignment (entrance position, then enemies):
 
-| Level | old `player_start` | `entrance` | new `player_start` | side | dist |
-|---|---|---|---|---|---|
-| 1  | (15, 8) | (15, 15) | (15, 14) | bottom | 7 |
-| 2  | (15, 3) | (15, 0)  | (15, 1)  | top    | 3 |
-| 3  | (15, 4) | (15, 0)  | (15, 1)  | top    | 4 |
-| 4  | (15, 4) | (15, 0)  | (15, 1)  | top    | 4 |
-| 5  | (15, 8) | (15, 15) | (15, 14) | bottom | 7 |
-| 6  | (28, 3) | (29, 3)  | (28, 3) — unchanged | right | 1 |
-| 7  | (14, 1) | (14, 0)  | (14, 1) — unchanged | top   | 1 |
-| 8  | (27, 3) | (29, 3)  | (28, 3)  | right  | 2 |
-| 9  | (15, 8) | (16, 15) | (16, 14) | bottom | 8 |
-| 10 | (2, 7)  | (0, 7)   | (1, 7)   | left   | 2 |
+> L1: center right (enemy center left)
+> L2: center top (enemy center bottom)
+> L3: center right (enemy center left)
+> L4: center top (enemies bottom left and right corners)
+> L5: center bottom (enemies top left and right corners)
+> L6: center right (enemies left top and bottom corners)
+> L7: center top (enemies center left, right, and bottom)
+> L8: center right (enemies center left, top, and bottom)
+> L9: center right (enemies left top corner, center, and bottom corner)
+> L10: center left (boss enemy center right)
+
+Translated to coordinates using the codebase's established conventions:
+
+- **Centre row = 8** (matches the existing centre-left/right enemy
+  convention (2, 8) / (27, 8)) — except level 10, whose symmetry axis
+  (rings, crown, boss) is row 7.
+- **Centre column = 15** for entrance/player on top/bottom sides (the
+  existing player column), **14** for centre-top/bottom *enemies*
+  (established by level 7's (14, 14)).
+- **Corner enemies** sit one tile off the grid corner in the established
+  (2, 13) style: (2, 2) / (27, 2) / (2, 13) / (27, 13) — except level 6,
+  whose col-2 pillars occupy those tiles; its left-corner enemies sit on
+  the border-adjacent column at (1, 1) / (1, 14).
+- `enemy_starts` keeps the parenthetical order above — EASY difficulty
+  always takes the **first** entry.
+
+| Level | `entrance` | `player_start` (was) | `enemy_starts` (was) |
+|---|---|---|---|
+| 1  | (29, 8)  | (28, 8) — was (15, 8) | (2, 8) — unchanged |
+| 2  | (15, 0)  | (15, 1) — was (15, 3) | (14, 14) — was (2, 8) |
+| 3  | (29, 8)  | (28, 8) — was (15, 4) | (2, 8) — unchanged |
+| 4  | (15, 0)  | (15, 1) — was (15, 4) | (2, 13), (27, 13) — was (2, 4), (27, 11) |
+| 5  | (15, 15) | (15, 14) — was (15, 8) | (2, 2), (27, 2) — was (27, 8), (2, 12) |
+| 6  | (29, 8)  | (28, 8) — was (28, 3) | (1, 1), (1, 14) — was (2, 8), (3, 13) |
+| 7  | (14, 0)  | (14, 1) — unchanged | (2, 8), (27, 8), (14, 14) — unchanged |
+| 8  | (29, 8)  | (28, 8) — was (27, 3) | (2, 8), (14, 1), (14, 14) — was (2, 12), (13, 2), (23, 12) |
+| 9  | (29, 8)  | (28, 8) — was (15, 8) | (2, 2), (2, 8), (2, 13) — was (2, 8), (27, 8), (2, 13) |
+| 10 | (0, 7)   | (1, 7) — was (2, 7) | (27, 7) — unchanged (boss) |
 
 All positions below were machine-validated against each level's wall set:
-every new start is an interior floor tile Manhattan-adjacent to its
-entrance, and no enemy start coincides with a new player start.
+every player start and enemy start is an interior floor tile, entrance and
+player start are Manhattan-adjacent, and no enemy start coincides with a
+player start.
 
 ### Level 5 — gameplay note (cage)
 
-The old start (15, 8) was **inside** the cage; the nearest border tile is
-below the cage's bottom-centre gap (cols 13–16, row 12), so the new start is
-**outside** it, directly under the opening. This flips the level's
-character: the player now starts on the same side as the enemies at (27, 8)
-and (2, 12) and enters the cage through the gap, instead of starting
-protected inside. Accepted as a consequence of the nearest-border rule;
-flag at spec review if the top side (entrance (15, 0), dist 8) is preferred.
-
-### Level 9 — nearest valid tile is off-axis
-
-The centre divider (cols 14–15 walled at rows 1–5 and 10–14) blocks the
-straight projections from the old start (15, 8): bottom (15, 15) and top
-(15, 0) both have wall as their interior neighbour. The nearest *valid*
-border tile is (16, 15) at Manhattan distance 8 — unique, since (14, 15)
-and (15, 0) at distance 8 are blocked and everything else is ≥ 9. The start
-lands in the lower-right chamber, which is open at col 16 row 10 (gap
-between the divider and the row-10 wall) and at col 28 — not a trap.
+The old start (15, 8) was **inside** the cage. With the centre-bottom
+entrance the player now starts outside it, directly under the bottom-centre
+opening (cols 13–16, row 12), and the enemies start far away at the top
+corners — also outside the cage, approaching around it.
 
 ## Full-grid diagrams
 
-All ten levels at full 30×16, with the new entrance and start applied.
-Generated from `levels.py` data (and machine-validated). These are the
-levels' *geometry*; `--dump-level N --hard` (see below) reproduces each
-diagram exactly, except that it additionally shows the one runtime-spawned
-treasure `*` — and on level 10 no `C`, since the crown only spawns as the
-tenth item, well after handover.
+All ten levels at full 30×16, with the assigned entrance, start, and
+enemies applied. Generated from `levels.py` data (and machine-validated).
+These are the levels' *geometry*; `--dump-level N --hard` (see below)
+reproduces each diagram exactly, except that it additionally shows the one
+runtime-spawned treasure `*` — and on level 10 no `C`, since the crown only
+spawns as the tenth item, well after handover.
 
 Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
 `P` player start · `e` enemy start · `C` crown.
@@ -112,14 +118,14 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    5 #............................#
    6 #............................#
    7 #............................#
-   8 #.e..........................#
+   8 #.e.........................PE
    9 #............................#
   10 #............................#
   11 #............................#
   12 #............................#
   13 #............................#
-  14 #..............P.............#
-  15 ###############E##############
+  14 #............................#
+  15 ##############################
 ```
 
 ### Level 2 — Single horizontal wall
@@ -135,13 +141,13 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    5 #............................#
    6 #............................#
    7 #.....##################.....#
-   8 #.e..........................#
+   8 #............................#
    9 #............................#
   10 #............................#
   11 #............................#
   12 #............................#
   13 #............................#
-  14 #............................#
+  14 #.............e..............#
   15 ##############################
 ```
 
@@ -150,15 +156,15 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
 ```
      000000000011111111112222222222
      012345678901234567890123456789
-   0 ###############E##############
-   1 #..............P.............#
+   0 ##############################
+   1 #............................#
    2 #............................#
    3 #......#..............#......#
    4 #......#..............#......#
    5 #......#..............#......#
    6 #......#..............#......#
    7 #......#######..#######......#
-   8 #.e....#..............#......#
+   8 #.e....#..............#.....PE
    9 #......#..............#......#
   10 #......#..............#......#
   11 #......#..............#......#
@@ -177,16 +183,16 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    1 #..............P.............#
    2 #....#..................#....#
    3 #....#..................#....#
-   4 #.e..#..................#....#
+   4 #....#..................#....#
    5 #....#..................#....#
    6 #....#..................#....#
    7 #............................#
    8 #.############..############.#
    9 #....#..................#....#
   10 #....#..................#....#
-  11 #....#..................#..e.#
+  11 #....#..................#....#
   12 #....#..................#....#
-  13 #....#..................#....#
+  13 #.e..#..................#..e.#
   14 #............................#
   15 ##############################
 ```
@@ -198,17 +204,17 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
      012345678901234567890123456789
    0 ##############################
    1 #............................#
-   2 #............................#
+   2 #.e........................e.#
    3 #......################......#
    4 #......#..............#......#
    5 #......#..............#......#
    6 #......#..............#......#
    7 #......#..............#......#
-   8 #......#..............#....e.#
+   8 #......#..............#......#
    9 #......#..............#......#
   10 #......#..............#......#
   11 #......#..............#......#
-  12 #.e....######....######......#
+  12 #......######....######......#
   13 #............................#
   14 #..............P.............#
   15 ###############E##############
@@ -220,20 +226,20 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
      000000000011111111112222222222
      012345678901234567890123456789
    0 ##############################
-   1 #............................#
+   1 #e...........................#
    2 #.#.#..#.#..######..#.#..#.#.#
-   3 #.#.#..#.#..........#.#..#.#PE
+   3 #.#.#..#.#..........#.#..#.#.#
    4 #.#.#..#.#..######..#.#..#.#.#
    5 #.#.#..#.#..........#.#..#.#.#
    6 #.#.#..#.#..######..#.#..#.#.#
    7 #............................#
-   8 #.e..........................#
+   8 #...........................PE
    9 #.#.#..#.#..######..#.#..#.#.#
   10 #.#.#..#.#..........#.#..#.#.#
   11 #.#.#..#.#..######..#.#..#.#.#
   12 #.#.#..#.#..........#.#..#.#.#
-  13 #.#e#..#.#..######..#.#..#.#.#
-  14 #............................#
+  13 #.#.#..#.#..######..#.#..#.#.#
+  14 #e...........................#
   15 ##############################
 ```
 
@@ -266,20 +272,20 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
      000000000011111111112222222222
      012345678901234567890123456789
    0 ##############################
-   1 #.....#...........#..........#
-   2 #.....#......e....#..........#
-   3 #.....#...........#.........PE
+   1 #.....#.......e...#..........#
+   2 #.....#...........#..........#
+   3 #.....#...........#..........#
    4 #.....#.....#.....#.....#....#
    5 #.....#.....#.....#.....#....#
    6 #.....#.....#.....#.....#....#
    7 #.....#.....#.....#.....#....#
-   8 #.....#.....#.....#.....#....#
+   8 #.e...#.....#.....#.....#...PE
    9 #.....#.....#.....#.....#....#
   10 #.....#.....#.....#.....#....#
   11 #.....#.....#.....#.....#....#
-  12 #.e.........#..........e#....#
+  12 #...........#...........#....#
   13 #...........#...........#....#
-  14 #...........#...........#....#
+  14 #...........#.e.........#....#
   15 ##############################
 ```
 
@@ -290,20 +296,20 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
      012345678901234567890123456789
    0 ##############################
    1 #.............##.............#
-   2 #.............##.............#
+   2 #.e...........##.............#
    3 #.............##.............#
    4 #.............##.............#
    5 #.###########.##.###########.#
    6 #............................#
    7 #............................#
-   8 #.e........................e.#
+   8 #.e.........................PE
    9 #............................#
   10 #.###########.##.###########.#
   11 #.............##.............#
   12 #.............##.............#
   13 #.e...........##.............#
-  14 #.............##P............#
-  15 ################E#############
+  14 #.............##.............#
+  15 ##############################
 ```
 
 ### Level 10 — Boss: concentric rings
@@ -453,8 +459,9 @@ the dump is a geometry tool, not a full state dump.
 ## Implementation
 
 1. **`levels.py`** — each of the ten Act 1 dicts gains
-   `'entrance': (col, row)` and its `player_start` updated per the table
-   (levels 6 and 7 keep their start value).
+   `'entrance': (col, row)` and gets `player_start` and `enemy_starts`
+   updated per the table (levels 1, 3, 7, 10 keep their enemies; 7 keeps
+   its start).
 2. **`world.py` `_as_multiroom`** — forward the key into the single room
    dict: `'entrance': data['entrance']` (all Act 1 dicts will have it).
    Without this the renderer never sees it — the wrapper currently copies
@@ -475,11 +482,13 @@ reading the effective value, so the moved starts need no further handling.
 
 New `tests/test_act1_entrance.py`, over `levels.LEVELS`:
 
-1. **Presence + pin**: every Act 1 dict has `entrance` equal to the exact
-   tuple in the table above (data pin — red today, key absent).
+1. **Presence + pin**: every Act 1 dict has `entrance`, `player_start`,
+   and `enemy_starts` equal to the exact tuples in the table above, in
+   the table's order (data pin — red today).
 2. **Invariants**: `entrance` lies on the border ring; Manhattan distance
-   to `player_start` is exactly 1; `player_start` is interior (cols 1–28,
-   rows 1–14) and not in `walls`; no enemy start equals `player_start`.
+   to `player_start` is exactly 1; `player_start` and every enemy start
+   are interior (cols 1–28, rows 1–14) and not in `walls`; no enemy start
+   equals `player_start`.
 3. **Forwarding**: `_as_multiroom(LEVELS[i])['rooms'][None]['entrance']`
    equals the level's entrance (red today — key not forwarded).
 
@@ -505,8 +514,9 @@ New `tests/test_leveldump.py`:
 
 ### Golden-trace impact
 
-Moving `player_start` shifts every Act 1 characterization trace, and the
-entrance sprite + moved player change Act 1 screenshot goldens:
+Moving `player_start` and `enemy_starts` shifts every Act 1
+characterization trace, and the entrance sprite + moved player/enemies
+change Act 1 screenshot goldens:
 
 - All `tests/golden/act1_*.json` traces re-recorded with
   `UGLYCRAFT_REGOLD=1`. Scripted walks that navigate relative to the old
@@ -515,7 +525,7 @@ entrance sprite + moved player change Act 1 screenshot goldens:
   still exercise the same mechanics (same bump/break/credit assertions).
 - Screenshot goldens `shot_act1_field`, `shot_boss_field`, and any
   `shot_overlay_*` that render an Act 1 field behind the overlay are
-  re-recorded (entrance sprite now visible, player elsewhere).
+  re-recorded (entrance sprite now visible, player/enemies elsewhere).
 - `act2_*` traces and goldens must stay **byte-identical** — nothing in the
   Act 2 generation or runtime path changes (`--dump-level` drives the
   existing load path in its own process and adds no key, no rng draw, and
@@ -524,7 +534,8 @@ entrance sprite + moved player change Act 1 screenshot goldens:
 ## Manual verification
 
 - `poe run --level N` for N = 1..10: entrance sprite on the border at the
-  table position, player spawning directly inside it.
+  table position, player spawning directly inside it, enemies at the
+  assigned positions (HARD shows all of them).
 - Level 5: confirm the outside-the-cage start plays acceptably.
 - Level 10 (boss): entrance at (0, 7) visible, start (1, 7), boss behaviour
   unchanged.
@@ -535,11 +546,12 @@ entrance sprite + moved player change Act 1 screenshot goldens:
 ## Done when:
 
 - [ ] All ten Act 1 dicts carry the table's `entrance` + `player_start`
+      + `enemy_starts`
 - [ ] `_as_multiroom` forwards `entrance`; sprite renders in Act 1
 - [ ] `--dump-level N [--seed S]` prints the handover-state ASCII export
       for any level 1–20 — multi-grid levels as a 2D super-grid canvas —
       and exits without opening a window
 - [ ] New tests red first, then green; `poe test` exits 0 with Act 1
       goldens deliberately re-recorded and Act 2 goldens byte-identical
-- [ ] User confirms entrance sprites + moved starts on levels 1–10
-      (explicit message; manual acceptance)
+- [ ] User confirms entrance sprites, moved starts, and moved enemies on
+      levels 1–10 (explicit message; manual acceptance)
