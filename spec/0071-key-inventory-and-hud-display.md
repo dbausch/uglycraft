@@ -10,11 +10,12 @@ looked wrong").
 
 - [ ] **D1** — Inventory Keys section drops the `×N` counter; each held key is
   shown as `[icon] Name` only (no count column, no leftover gap).
-- [ ] **D2** — Display-bug investigation: reproduce headlessly, characterise the
-  root cause, and either fix it or record why there is nothing to fix. Findings
-  written to `kb/findings.md`.
+- [ ] **D2** — Display-bug follow-up: confirm the key inventory now renders
+  correctly (Daniel: the earlier "looked wrong" was most likely an artifact of a
+  separate, already-resolved defect); record the resolution in `kb/findings.md`.
 - [ ] **D3** — HUD status line shows the coloured icon of every key the player is
-  currently holding, in a dedicated key strip.
+  currently holding, in a **fixed-width** key strip (no reflow of the rest of the
+  HUD).
 - [ ] **D4** — Verification: screenshot golden(s) for the inventory Keys section
   and the HUD key strip; a headless assertion that a held key renders without a
   count; user confirmation in-game.
@@ -71,69 +72,73 @@ key as `[icon] Name`, aligned so there is no empty gap where the count column wa
 
 Materials keep their `×N` counter — this change is keys-only.
 
-## D2 — Investigate the display bug
+## D2 — Display-bug follow-up (believed already resolved)
 
-BL-27: "During play the key inventory sometimes looked wrong." Reproduce headlessly
-(via `tests/harness.py`, seeding `inventory.add_key(...)` and, where relevant,
-opening a door so `use_key` fires) and pin down what "wrong" was. Candidate
-hypotheses to confirm or rule out, in order of likelihood:
+BL-27 noted "during play the key inventory sometimes looked wrong." Daniel's
+assessment (2026-07-12): the key inventory has looked correct in recent play, and
+the earlier symptom was most likely an **artifact of a separate defect that has
+since been fixed** — not a standalone bug in the key-rendering code.
 
-1. **The redundant `×1` itself** is the wrong look — resolved by D1.
-2. **Column gap** — with the count removed, the old `name_x` column would leave a
-   visible gap between icon and name; D1's re-spacing must close it.
-3. **Key consumed on door-open** (`world.py:518`) — a carried key disappears the
-   instant its door is opened. If Daniel expected keys to persist as trophies, the
-   vanishing is the "wrong" behaviour. **Do not change consume-on-use semantics in
-   this spec**; if this turns out to be the complaint, record it and file a
-   separate backlog item for the mechanics change.
-4. **Stale / miscoloured entry** — verify a used key (count 0) is correctly
-   filtered out and never lingers, and that `icon_key_{colour}` matches the label
-   colour for all seven colours.
+This deliverable is therefore a light confirmation, not a bug hunt:
 
-Deliverable: a short root-cause note in `kb/findings.md`. If the only defect is
-(1)/(2), say so explicitly (D1 fixes it) rather than inventing a phantom bug.
+- Sanity-check the key-rendering path holds up: a used key (count 0) is filtered
+  out and never lingers; `icon_key_{colour}` matches the label colour for all seven
+  colours; the D1 re-spacing leaves no gap.
+- Do **not** open a headless reproduction hunt for a bug we no longer believe
+  exists. If any genuine defect surfaces incidentally while doing D1/D3, capture
+  it; otherwise record the closure.
+
+Deliverable: a one-paragraph note in `kb/findings.md` recording that the "key
+inventory looked wrong" report is considered resolved (artifact of an
+already-fixed defect), with D1 removing the last cosmetic wart (the redundant
+`×1`). Note for the record: keys are **consumed on door-open** (`world.py:518`
+`use_key`) so a carried key disappears once its door is opened — this is current,
+intended behaviour and is explicitly out of scope here.
 
 ## D3 — Key icons in the HUD status line
 
-Add a **key strip** to the HUD showing `icon_key_{colour}` (20 px) for every key
-the player currently holds (`count > 0`), left-to-right in `KEY_NAMES` order.
+Add a **fixed-width key strip** to the HUD showing `icon_key_{colour}` (20 px) for
+every key the player currently holds (`count > 0`), left-aligned in `KEY_NAMES`
+order.
+
+**Fixed width, no reflow (decided).** The strip reserves a constant width sized to
+the maximum number of distinct key colours — `len(KEY_COLORS) == 7` — so the rest
+of the HUD never shifts as keys are picked up or used, matching the `SHIELD`
+"always reserve, draw invisibly when inactive" convention. Held icons are drawn
+left-aligned within the reserved strip; unused slots draw nothing (empty). The
+strip width is a constant derived from `7 * (20 + gap_px)` — do **not** size it to
+the per-level colour count (that would reflow between levels and defeats the point).
+
+> A future backlog item adds a **bridge counter** to the HUD (to the left of the
+> WALL counter). This spec does not add it, but the generalisation below — letting
+> a HUD element be a pre-rendered surface at a fixed reserved width — is the same
+> mechanism that item will reuse; keep it generic.
 
 Geometry (28 px HUD row, icons 20 px, centred vertically at
-`cy = hud_y + (STATUS_H - 20)//2 = 512 + 4`):
+`cy = hud_y + (STATUS_H - 20)//2 = 512 + 4`; 7 fixed slots, held icons
+left-aligned):
 
 ```
  col: 0                                                              960
       +-----------------------------------------------------------------+
- 512  | SCORE …  LEVEL …  LIVES …  SEEK …  [KEYS ▤▤▤]  SHIELD …  WALLS … |
+ 512  | SCORE …  LEVEL …  LIVES …  SEEK …  [KEYS ▤▤▤····]  SHIELD …  WALLS … |
  540  +-----------------------------------------------------------------+
-              each ▤ = one 20px icon_key_<colour>, ~2px gap
+        KEYS strip = fixed 7-slot width; held icons left-aligned,
+        remaining slots empty (·). Each ▤ = one 20px icon_key_<colour>.
 ```
 
 Placement in the element list: insert the key strip **after** the `SEEK:`/`LOOT`
 element and **before** the `BOSS`/`HARD`/`SHIELD`/`WALLS` status cluster — i.e. in
-the "collectibles" region of the row.
+the "collectibles" region of the row (approved: keys next to LOOT).
 
 Implementation: `_render_hud` currently builds `elems` as `(text, colour)` tuples,
-then renders each to an image. Generalise so an element may also be a
-pre-rendered `pygame.Surface` (the key strip), inserted into `imgs` at the chosen
-position; the existing even-spacing loop then places it like any other element.
-
-**Layout-stability decision (needs confirmation).** The rest of the HUD must not
-jump when keys are picked up or used. Two options:
-
-- **(A) Recommended — variable-width strip, only held keys drawn.** The key strip
-  is exactly as wide as the icons currently held (0 icons ⇒ zero-width, drawn
-  nothing). The HUD reflows via its existing per-frame even-spacing, so the other
-  elements shift slightly when a key is gained/lost. Keys change only on discrete
-  pickup/door-open events (not every frame), so the occasional reflow is
-  acceptable and the code stays simple.
-- **(B) Fixed reservation.** Reserve a constant strip width (e.g. 7 slots ≈
-  7×22 px ≈ 154 px, or the number of key colours present in the current level),
-  left-aligning held icons within it so the surrounding HUD never moves — matching
-  the `SHIELD` "always reserve, draw invisibly when inactive" convention. Costs
-  a large fixed chunk of the 960 px row even when no keys are held.
-
-This spec proposes **(A)**; confirm before implementing.
+then renders each to an image and places them with a computed even-spacing `gap`.
+Generalise so an element may also be a pre-rendered fixed-width `pygame.Surface`
+(the key strip: a 7-slot-wide transparent surface with held icons blitted
+left-aligned), inserted into the image list at the chosen position; the existing
+even-spacing loop then places it like any other element. Because its width is
+constant regardless of how many keys are held, the surrounding elements never
+move.
 
 ## D4 — Verification
 
@@ -169,11 +174,12 @@ re-record them and review the pixel diff intentionally.
 
 - [ ] **D1** — Inventory Keys section renders `[icon] Name` with no `×N` and no
   leftover column gap; Materials counters unchanged. *(commit: ____)*
-- [ ] **D2** — Root cause of the "looked wrong" report identified and written to
-  `kb/findings.md`; fixed if it is a real rendering defect, or explicitly recorded
-  as covered-by-D1 / deferred-to-a-new-backlog-item (mechanics). *(commit: ____)*
-- [ ] **D3** — HUD status line shows `icon_key_{colour}` for every held key, in the
-  agreed layout, without destabilising the rest of the HUD. *(commit: ____)*
+- [ ] **D2** — `kb/findings.md` records the "key inventory looked wrong" report as
+  resolved (artifact of an already-fixed defect; D1 removes the last cosmetic
+  wart); key-rendering sanity checks pass. *(commit: ____)*
+- [ ] **D3** — HUD status line shows `icon_key_{colour}` for every held key in a
+  fixed 7-slot strip after LOOT; the rest of the HUD never shifts as keys change.
+  *(commit: ____)*
 - [ ] **D4** — Inventory + HUD screenshot goldens re-recorded and reviewed; the
   headless render assertion passes; Daniel confirms both views in-game. *(commit:
   ____)*
