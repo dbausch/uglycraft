@@ -241,27 +241,34 @@ def _build_sfx(np) -> dict:
         return _to_sound(np, _saturate(np, buf, 3.0))
 
     def sfx_entrance_open():
-        # The entrance unlocks (spec 0066): a short brass "ta-daa" fanfare —
-        # a stab, then a note a perfect FOURTH above, held and ringing
-        # (~1 s).  Its brassy, sustained fanfare character sets it apart from
-        # every other cue, so it never reads as "the usual" pickup sound.
-        def _brass(midi, n, vol, env):
+        # The entrance unlocks (spec 0066): a big, distorted "ta-daa" fanfare
+        # — a stab, then a note a perfect FOURTH above, held and ringing
+        # (~1 s).  A detuned-sawtooth ENSEMBLE with vibrato gives a choir
+        # "aah" shimmer over the brass core; heavy tanh saturation adds the
+        # grit.  Distinct from every other cue, so it never reads as "usual".
+        def _voice(midi, n, vol, env):
+            t = np.arange(n, dtype=np.float32) / _RATE
             f = _hz(midi)
-            # Detuned square pair + a fifth partial → a bright brass stab.
-            a = (_sq(np, f, n, 1.0)
-                 + _sq(np, f * 1.006, n, 0.6)
-                 + _sq(np, f * 1.5,   n, 0.3))
-            return _saturate(np, a * env * vol, 2.2)
+            vib = 1.0 + 0.006 * np.sin(2.0 * np.pi * 5.5 * t)   # ~5.5 Hz vibrato
+            # Choir: an ensemble of detuned saws (supersaw) → many-voices "aah".
+            choir = np.zeros(n, dtype=np.float32)
+            for d in (-0.013, -0.008, -0.003, 0.003, 0.008, 0.013, 0.019):
+                ph = np.cumsum(2.0 * np.pi * f * (1.0 + d) * vib / _RATE)
+                choir += 2.0 * ((ph / (2.0 * np.pi)) % 1.0) - 1.0
+            choir /= 7.0
+            # Brass core (square + fifth) for the fanfare body.
+            core = _sq(np, f, n, 0.7) + _sq(np, f * 1.5, n, 0.35)
+            return _saturate(np, (choir * 1.5 + core) * env * vol, 7.0)
 
-        ta  = round(_RATE * 0.20)          # "ta"  — short accent
+        ta  = round(_RATE * 0.18)          # "ta"  — short accent
         gap = round(_RATE * 0.02)
-        daa = round(_RATE * 0.76)          # "daa" — held resolution
+        daa = round(_RATE * 0.80)          # "daa" — held, swelling choir
         buf = np.zeros(ta + gap + daa, dtype=np.float32)
-        buf[:ta] += _brass(67, ta, 0.30,   # G4
-                           _env(np, ta, 0.006, 0.04, 0.70, 0.05))
+        buf[:ta] += _voice(67, ta, 0.34,   # G4
+                           _env(np, ta, 0.006, 0.05, 0.70, 0.05))
         off = ta + gap
-        buf[off:off+daa] += _brass(72, daa, 0.32,   # C5 — a fourth above G4
-                                   _env(np, daa, 0.010, 0.12, 0.72, 0.34))
+        buf[off:off+daa] += _voice(72, daa, 0.36,   # C5 — a fourth above G4
+                                   _env(np, daa, 0.030, 0.12, 0.78, 0.35))
         return _to_sound(np, np.clip(buf, -1.0, 1.0))
 
     return {
