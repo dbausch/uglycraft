@@ -46,6 +46,10 @@ class Enemy(Entity):
         self.room_name = None       # graph node this enemy belongs to
         self.room_tiles = None      # set of (col, row) tiles in this room
 
+    def reset_patrol(self):
+        """Restore patrol progress on respawn (spec 0067) — no-op for a
+        plain chaser; PatrolEnemy overrides."""
+
     def wander(self, blocked, occupied=frozenset()):
         """Move to a random adjacent tile within this enemy's room."""
         options = []
@@ -135,6 +139,11 @@ class PatrolEnemy(Enemy):
     def __init__(self, col, row, waypoints):
         super().__init__(col, row)
         self.waypoints = waypoints
+        self._wp_idx = 0
+        self._forward = True
+
+    def reset_patrol(self):
+        """Respawn (spec 0067): resume the patrol from its first leg."""
         self._wp_idx = 0
         self._forward = True
 

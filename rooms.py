@@ -9,14 +9,17 @@ class Room:
     room-scoped.  Rooms persist by IDENTITY — entering a visited room
     swaps World.room to this object; there is no snapshot copying."""
 
-    __slots__ = ('key', 'data', 'cells', 'enemies', 'blocks',
-                 'blocks_initial', 'tile_owner', 'dead_squares')
+    __slots__ = ('key', 'data', 'cells', 'enemies', 'enemies_initial',
+                 'blocks', 'blocks_initial', 'tile_owner', 'dead_squares')
 
     def __init__(self, key, data, cells, enemies, blocks):
         self.key = key
         self.data = data
         self.cells = cells
         self.enemies = enemies
+        # Original spawn tiles, captured once (spec 0067) — the death-respawn
+        # reset restores from these, exactly as blocks_initial does for blocks.
+        self.enemies_initial = tuple((e.col, e.row) for e in enemies)
         self.blocks = blocks                  # [Block, ...] — occupants
         self.blocks_initial = tuple((b.col, b.row) for b in blocks)
         self.tile_owner = data.get('tile_owner', {})

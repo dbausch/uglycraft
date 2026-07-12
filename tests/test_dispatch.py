@@ -261,9 +261,10 @@ def test_placed_wall_breaks_in_three_player_bumps():
     w, orig = _world(make)
     try:
         w._place_credits = 1
+        w.player.col, w.player.row = (12, 8)   # off the respawn tile (spec 0067)
         w.place()                              # placed barrier under player
         w.drain_events()
-        w.player.col, w.player.row = (9, 8)    # step off, bump it from left
+        w.player.col, w.player.row = (11, 8)   # step off, bump it from left
         events = []
         for _ in range(3):
             _step(w, 1, 0)

@@ -70,7 +70,8 @@ def test_shield_buy_and_expiry():
 
 def test_death_and_penalty():
     """Enemy placed on an adjacent tile, player steps into it: caught,
-    -500 (clamped at 0), life lost, respawn far away."""
+    -500 (clamped at 0), life lost, player + all enemies respawn at their
+    starts (spec 0067)."""
     with Harness(level=1, seed=1234) as h:
         h.game.world.score = 700
         e = h.game.enemies[0]

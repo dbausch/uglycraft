@@ -29,7 +29,7 @@ from levels import (TOTAL_LEVELS, get_level, new_game_levels,
 from entities import Block, Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import Room, find_exit
 from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
-from cells import BARRIER_BUMP, Barrier
+from cells import BARRIER_BUMP, Barrier, _exit_tiles
 
 NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10
@@ -617,9 +617,17 @@ class World:
         else:
             self._place_wall()
 
+    def _is_respawn_tile(self, c, r):
+        """The start room's player_start — where the player respawns on death
+        (spec 0067).  A crafted wall/block here would trap the player, so
+        placement on it is refused."""
+        return (self._current_room == self._level_data['start_room']
+                and (c, r) == tuple(self._level_data['player_start']))
+
     def _place_wall(self):
         c, r = self.player.col, self.player.row
-        if self._place_credits > 0 and not self.blocked(c, r):
+        if (self._place_credits > 0 and not self.blocked(c, r)
+                and not self._is_respawn_tile(c, r)):
             self._place_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
             self._emit('wall_placed')
@@ -629,7 +637,7 @@ class World:
         c, r = self.player.col, self.player.row
         active = self.inventory.active_item
         if active == CRAFT_STONE_WALL:
-            if not self.blocked(c, r):
+            if not self.blocked(c, r) and not self._is_respawn_tile(c, r):
                 if self.inventory.has_item(CRAFT_STONE_WALL):
                     self.inventory.use_item(CRAFT_STONE_WALL)
                 elif self.inventory.can_quick_place_wall():
@@ -668,9 +676,12 @@ class World:
         self._emit('level_intro')
 
     def _on_caught(self, enemy):
-        """Handle player-enemy collision: respawn the enemy far away, then apply hit."""
-        self._respawn_enemy(enemy)
+        """Player-enemy collision.  Shielded: shove the catcher away and spend
+        the shield (no life lost).  Otherwise lose a life — the full
+        death-respawn reset (spec 0067) handles every enemy, so no pre-relocate
+        here."""
         if self.shield:
+            self._respawn_enemy(enemy)
             self.shield = False
             self._shield_timer = 0
             self._emit('caught_shielded')
@@ -685,9 +696,14 @@ class World:
         if self.lives <= 0:
             self._end_game(won=False)
         else:
+            # Respawn at the start (spec 0067): return to the start room
+            # (Decision 1), reposition the player, and reset blocks + every
+            # enemy to their starts.
             data = get_level(self.level)
+            self._enter_room(self._level_data['start_room'])
             self.player.col, self.player.row = data['player_start']
             self._reset_blocks()
+            self._reset_enemies()
 
     def _reset_blocks(self):
         """Reset all pushable blocks to their starting positions and close
@@ -717,31 +733,85 @@ class World:
                     self._emit('bumped')
                 return
 
-    def _respawn_enemy(self, enemy):
-        """Teleport enemy to a tile at significant BFS distance from the player.
-        In Act 2, the enemy stays within its own room."""
-        dist = self._bfs_from(self.player.col, self.player.row)
-        others = {(e.col, e.row) for e in self.enemies if e is not enemy}
+    def _room_blocked(self, room, c, r):
+        """`blocked` for an arbitrary room (not necessarily the current one)."""
+        if not (0 <= c < COLS and 0 <= r < ROWS):
+            return True
+        if room.cells.blocked(c, r, self._channels):
+            return True
+        return room.block_at(c, r) is not None
+
+    def _bfs_seeds(self, room, seeds):
+        """BFS distance map over `room`'s unblocked tiles from many seeds."""
+        dist = {s: 0 for s in seeds}
+        q = deque(dist)
+        while q:
+            c, r = q.popleft()
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nc, nr = c + dc, r + dr
+                if (nc, nr) not in dist and not self._room_blocked(room, nc, nr):
+                    dist[(nc, nr)] = dist[(c, r)] + 1
+                    q.append((nc, nr))
+        return dist
+
+    def _player_reach(self, room):
+        """Tiles the player can reach in `room` (spec 0067): from the player's
+        own tile in the current room, else from the room's entry tiles (the
+        border gaps the player crosses to get in).  A tile absent from this
+        map is unblocked-unreachable — a sealed pocket."""
+        if room is self.room:
+            return self._bfs_from(self.player.col, self.player.row)
+        return self._bfs_seeds(room, list(_exit_tiles(room.data.get('exits', {}))))
+
+    def _reset_enemies(self):
+        """Respawn every visited room's enemies to their starts (spec 0067),
+        but only where that is SAFE: unblocked, clear of the player, and in the
+        component the player reaches in that room.  Otherwise relocate into
+        that component (never inside a wall, on/beside the player, or sealed in
+        a pocket the player can't reach)."""
+        for room in self._rooms.values():
+            reach = self._player_reach(room)
+            for enemy, home in zip(room.enemies, room.enemies_initial):
+                if self._safe_home(home, room, reach):
+                    enemy.col, enemy.row = home
+                else:
+                    self._respawn_enemy(enemy, reach, room)
+                enemy.reset_patrol()
+
+    def _safe_home(self, home, room, reach):
+        """Is an enemy's start tile a safe respawn given `reach`?"""
+        if room is self.room:
+            return reach.get(home, 0) >= 2   # reachable, and not on/next to player
+        return home in reach                 # reachable from the room's entries
+
+    def _respawn_enemy(self, enemy, reach=None, room=None):
+        """Place `enemy` on a tile the player can reach, far from the player
+        when possible, confined to the enemy's `room_tiles` (spec 0067).
+
+        `reach` is a player-reachable distance map (defaults to a fresh BFS
+        from the player, the shielded-catch case); `room` is the enemy's room
+        (defaults to the current room)."""
+        room = room or self.room
+        if reach is None:
+            reach = self._bfs_from(self.player.col, self.player.row)
+        others = {(e.col, e.row) for e in room.enemies if e is not enemy}
         excl = {self.treasure_pos} if self.treasure_pos else set()
-        room = enemy.room_tiles
+        confine = enemy.room_tiles
 
         def _valid(pos, min_dist):
-            if dist.get(pos, 0) < min_dist:
+            if reach.get(pos, 0) < min_dist:
                 return False
             if pos in excl or pos in others:
                 return False
-            if room is not None and pos not in room:
+            if confine is not None and pos not in confine:
                 return False
             return True
 
-        candidates = [p for p in dist if _valid(p, 8)]
-        if not candidates:
-            candidates = [p for p in dist if _valid(p, 4)]
-        if not candidates and room is not None:
-            candidates = [p for p in room
-                          if not self.blocked(p[0], p[1]) and p not in others]
-        if candidates:
-            enemy.col, enemy.row = random.choice(candidates)
+        for min_dist in (8, 4, 1):           # prefer far; min 1 keeps off the player
+            candidates = [p for p in reach if _valid(p, min_dist)]
+            if candidates:
+                enemy.col, enemy.row = random.choice(candidates)
+                return
 
     def _end_game(self, won):
         self._final_score = self.score * max(1, self.lives)

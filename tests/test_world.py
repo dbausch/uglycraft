@@ -113,6 +113,7 @@ def test_bump_consumed_until_key_release(act1):
 
 def test_place_wall_costs_credit(act1):
     act1._place_credits = 1
+    act1.player.col, act1.player.row = 14, 3   # off the respawn tile (spec 0067)
     c, r = act1.player.col, act1.player.row
     act1.place()
     assert _kinds(act1.drain_events()) == ['wall_placed']
