@@ -1082,3 +1082,38 @@ the existing subprocess probe (`test_generation_determinism.py`) as a readable
 BL-40 regression net.
 
 ---
+
+## BL-50 · P2 · On death, player AND all enemies respawn at their original start positions
+
+On any life loss, the player and every enemy should return to their level/room
+start positions. Currently `_lose_life` (world.py) moves the player back to
+`player_start` and resets blocks, but enemies are NOT returned to their level
+start positions — they stay wherever they had wandered to. `_respawn_enemy`
+only relocates a single caught enemy far from the player, not a full reset. On
+death the level should snap back to its initial actor layout: player at
+`player_start`, each enemy at its original `enemy_starts` position for the
+current room/level.
+
+**Fix hint:** in `_lose_life` (world.py), after repositioning the player, also
+restore each enemy's (col, row) from the room's original `enemy_starts`.
+`Room.from_data` builds enemies from `data['enemy_starts']`; the initial
+positions likely need to be captured at room construction (analogous to
+`blocks_initial` / `_room_blocks_initial`) so the original coordinates survive
+enemy movement. Relates to spec 0066 death semantics and BL-37 (exploding
+blocks / self-healing level, which will supersede `_reset_blocks`).
+
+---
+
+## BL-51 · P2 · Disallow placing a user-crafted block/wall at the player respawn position
+
+A player-placed wall (or crafted block) on the `player_start` tile would trap
+the player on respawn after death — they would materialise inside a wall. Forbid
+placing a wall or crafted item on the current room's/level's `player_start`
+(respawn) tile.
+
+**Fix hint:** guard the placement paths in world.py (`_place_wall` and
+`_act2_place`) — reject placement when (c, r) == the current room's
+player_start / respawn tile. Depends conceptually on BL-50 (which defines the
+respawn position that must stay clear).
+
+---
