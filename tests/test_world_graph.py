@@ -198,6 +198,32 @@ class TestGenerateBranching:
         assert d is not None
         assert 'rooms' in d
 
+    @pytest.mark.parametrize('seed', range(30))
+    def test_respects_room_count(self, seed):
+        """The generator lays out a number of base rooms within the requested
+        `room_count` range.
+
+        Rethought from the old fixed-count check (`== 3`), which was flaky
+        (`4 != 3`) for two reasons: it passed no seed, and it counted every
+        non-corridor node — including the auxiliary CLOSET rooms each
+        ROOM/HALL may grow with `closet_prob` (spec 0032).  Here closets are
+        disabled and excluded, and the assertion is the range, not a point.
+        `room_count` is clamped up to the number of distinct required edge
+        types (`max(randint, len(required))`); with `edge_types` shorter than
+        `room_min` that clamp never raises the floor."""
+        lo, hi = 3, 5
+        fs = {
+            'room_count': (lo, hi),
+            'edge_types': [EdgeType.OPEN, EdgeType.BREAKABLE],
+            'node_sizes': [NodeSize.ROOM, NodeSize.HALL],
+            'closet_prob': 0.0,
+        }
+        graph = LevelGraph.generate(fs, rng=random.Random(seed))
+        rooms = [n for n in graph.nodes.values()
+                 if n.size not in (NodeSize.CORRIDOR, NodeSize.CLOSET)]
+        assert lo <= len(rooms) <= hi, (
+            f"seed={seed}: {len(rooms)} base rooms not in [{lo}, {hi}]")
+
     @pytest.mark.parametrize('n', [1, 2, 3, 5, 7, 10])
     def test_grid_count_produces_correct_border_edges(self, n):
         """N grids → exactly N-1 BORDER edges (spanning tree)."""
