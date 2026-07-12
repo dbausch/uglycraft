@@ -962,3 +962,23 @@ elision around line 794 was exercised only by failing examples per the
 hypothesis coverage note). Related: BL-44 (R-K1, spec 0061).
 
 ---
+
+## BL-47 · P2 · Speed up the test suite (10:30 wall clock)
+
+From the 2026-07-12 test-suite review (to be discussed before implementation).
+Measured with `--durations=50` on 2026-07-12: 722 tests in 10:30. Act 2
+generator property sweeps ≈ 6 min (worst single test:
+`test_key_placement.py::test_key_door_pairing` 61 s = 25 hypothesis examples ×
+4 feature sets; `test_entrance` ≈ 58 s, `test_border_continuity` ≈ 41 s,
+`test_sokoban` ≈ 39 s, `test_placement_rules` ≈ 34 s, `test_act2_solvability`
+≈ 30 s per file). Pygame harness/golden/screenshot tests ≈ 3 min at a flat
+~2.5 s each.
+
+**Fix hint:** in order of effort: (a) pytest-xdist `-n auto` — tests are
+independent and CPU-bound, likely 4-8× wall-clock cut, zero code change;
+(b) a hypothesis settings profile (fewer `max_examples` for local runs, full
+sweep on demand via env var); (c) structural: the sweep files each rebuild
+near-identical (feature-set, seed) levels — a shared memoized build fixture
+would dedupe most generation work but touches many test files.
+
+---
