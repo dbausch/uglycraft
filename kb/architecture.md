@@ -280,7 +280,7 @@ dominated by two functions, both in `levellayout.py`:
 
 Both are byte-output-preserving (verified by `test_golden_*` +
 `test_generation_determinism`); together ≈ −16 % generation wall. Harness:
-`$CLAUDE_JOB_DIR/tmp/profile_gen.py` pattern (six sweep feature sets × 25 seeds).
+`scratchpad/profile_generation.py` (six sweep feature sets × 25 seeds).
 
 **Why generation speed matters for the tests.** The property sweeps are
 generation-bound, and the suite is **CPU-core-bound**: `poe test` uses
