@@ -2,24 +2,24 @@
 
 ## Status
 
-- [ ] `build_level_dict`'s barrier loop raises `LayoutError` for a LOCKED
+- [x] `build_level_dict`'s barrier loop raises `LayoutError` for a LOCKED
       edge with an unplaced endpoint (packer-dropped room / uncarved
       closet) instead of silently skipping the door
-- [ ] Same loud treatment for a LOCKED edge between placed nodes whose
+- [x] Same loud treatment for a LOCKED edge between placed nodes whose
       connection tile is not found (should-be-unreachable per R-E4)
-- [ ] Every `LayoutError` escaping the top-level `build_level_dict` call
+- [x] Every `LayoutError` escaping the top-level `build_level_dict` call
       is appended to `uglycraft-layout.log`: timestamp, message, the
       failing grid's name, and — multi-grid — an ASCII canvas of the
       grids built so far with the failing grid annotated at its super
       position (absorbed per-strategy candidates never log)
-- [ ] `leveldump.render_rooms(...)`: public dict-level renderer (no
+- [x] `leveldump.render_rooms(...)`: public dict-level renderer (no
       `World`, no `get_level`) used by the log — the BL-48 enabler
-- [ ] Deterministic pinned regression test (FS_ALL, seed 584) green;
+- [x] Deterministic pinned regression test (FS_ALL, seed 584) green;
       `test_key_door_pairing` green including the persisted hypothesis
       example; log entry asserted for the pinned failure
-- [ ] Sweep: ≥ 300 builds across the key feature sets succeed (the retry
+- [x] Sweep: ≥ 300 builds across the key feature sets succeed (the retry
       absorbs the raise); Act 2 goldens byte-identical
-- [ ] `poe test` exits 0; R-K1 / R-P3 wording reconciled in
+- [x] `poe test` exits 0; R-K1 / R-P3 wording reconciled in
       `kb/requirements.md`; BL-46 closed
 
 ## Problem
@@ -216,15 +216,25 @@ New `tests/test_layout_log.py` (D2):
 
 ## Done when:
 
-- [ ] Pinned seed-584 regression red before the fix, green after
-- [ ] `test_key_door_pairing` green (including the persisted example)
-- [ ] Escaping LayoutErrors append a log entry (grid name, message,
+- [x] Pinned seed-584 regression red before the fix, green after
+      (c393fcc)
+- [x] `test_key_door_pairing` green (including the persisted example)
+      (c393fcc)
+- [x] Escaping LayoutErrors append a log entry (grid name, message,
       annotated canvas of grids built so far); absorbed per-strategy
-      candidates never log
-- [ ] `leveldump.render_rooms` exists as the public dict-level renderer
-      (BL-48(a) enabler)
-- [ ] Full `poe test` exits 0; Act 2 goldens byte-identical
-- [ ] `kb/requirements.md` R-K1 enforcement note + R-P3 rewording
-      committed
-- [ ] BL-46 closed in `kb/backlog.md` (backlog agent); BL-48 updated
-      (enabler landed)
+      candidates never log (c393fcc; multi-grid entry verified by a
+      forced mid-loop failure on the level-13 set)
+- [x] `leveldump.render_rooms` exists as the public dict-level renderer
+      (BL-48(a) enabler) (c393fcc)
+- [x] Full `poe test` exits 0 (727 passed); Act 2 goldens byte-identical
+      (c393fcc)
+- [x] `kb/requirements.md` R-K1 enforcement note + R-P3 rewording
+      committed (32a2c7d)
+- [x] BL-46 closed in `kb/backlog.md` (backlog agent); BL-48 updated
+      (enabler landed) (fb5eeb1)
+
+Note (implementation, c393fcc): the spec assumed the K1 hypothesis
+sweeps built through `_build_retry`; `test_keys_never_dropped` /
+`test_no_softlocked_doors` actually built retry-less, so their `_build`
+helper now retries like `_generate_act2` — a retry-less build fails on
+seeds production simply retries.
