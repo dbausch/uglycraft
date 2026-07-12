@@ -2,23 +2,30 @@
 
 ## Status
 
-- [ ] Red tests: pinned BL-45 reproduction (anchored solver rejects the
+> **Confirmed working (accepted via validated sweep, 2026-07-12).** Red
+> tests 18f1ccc, implementation b0e86bd, detector 3a57580+grid-wide fix,
+> kb 9bd7b82, acceptance amendment 1e3f770. Sweep: 14 landing + 5
+> entry-unsolvable in 120 pre-fix levels, 0 post-fix; goldens
+> byte-identical; timing within budget (L20 worst 2.35 s); suite 667
+> passed.
+
+- [x] Red tests: pinned BL-45 reproduction (anchored solver rejects the
       2-high forced-push room; the unanchored one accepted it); no block
       start on a doorway landing tile (property over generated levels)
-- [ ] `_sokoban_bfs` starts from anchor zones only (no
+- [x] `_sokoban_bfs` starts from anchor zones only (no
       try-every-component); `_place_puzzle` accepts a block start only if
       its forward-start player zone contains the corridor anchor;
       `validate_push_puzzles` anchors at the plate room's doorways
-- [ ] Block starts excluded from doorway landing tiles (R-P7 mirror)
-- [ ] Detector sweep (anchored-solver replica + landing-tile check):
+- [x] Block starts excluded from doorway landing tiles (R-P7 mirror)
+- [x] Detector sweep (anchored-solver replica + landing-tile check):
       violations found pre-fix or the pinned case stands as the red
       witness; 0 violations post-fix across ≥ 120 levels
-- [ ] Goldens re-recorded once with reviewed diffs (gated levels' pair
+- [x] Goldens re-recorded once with reviewed diffs (gated levels' pair
       pools shrink → rng streams shift); generation time re-measured
-- [ ] `poe test` exits 0
-- [ ] KB updated (R-P11 in `kb/requirements.md`; solver section in
+- [x] `poe test` exits 0
+- [x] KB updated (R-P11 in `kb/requirements.md`; solver section in
       `kb/architecture.md`); BL-45 closed
-- [ ] Acceptance by validated sweep (statistical-sweep practice, Daniel
+- [x] Acceptance by validated sweep (statistical-sweep practice, Daniel
       2026-07-12): the defect is too rare (~19 hits / 120 levels
       pre-fix) for a play-test to verify its absence — the detector,
       validated against the pre-fix commit, stands in for it
@@ -143,16 +150,16 @@ block starts on a landing tile (R-P7's set). Enforced at placement
 
 ## Done when:
 
-- [ ] Pinned reproduction red→green; solvable control case never
+- [x] Pinned reproduction red→green; solvable control case never
       rejected
-- [ ] No block start on a landing tile across generated levels
-- [ ] Anchored validation green suite-wide; detector sweep 0 violations
+- [x] No block start on a landing tile across generated levels
+- [x] Anchored validation green suite-wide; detector sweep 0 violations
       across ≥ 120 levels
-- [ ] Goldens re-recorded once with reviewed diffs; L11 byte-identical;
+- [x] Goldens re-recorded once with reviewed diffs; L11 byte-identical;
       timing within the 0060 budget
-- [ ] `poe test` exits 0
-- [ ] R-P11 in `kb/requirements.md`; `kb/architecture.md` solver notes
+- [x] `poe test` exits 0
+- [x] R-P11 in `kb/requirements.md`; `kb/architecture.md` solver notes
       updated; BL-45 closed in `kb/backlog.md`
-- [ ] Accepted via the validated detector sweep (in lieu of a play-test
+- [x] Accepted via the validated detector sweep (in lieu of a play-test
       — rare generative property, statistical-sweep practice): pre-fix
       14 landing + 5 entry-unsolvable in 120 levels, post-fix 0

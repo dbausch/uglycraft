@@ -874,7 +874,13 @@ the spec.
 
 ---
 
-## BL-45 · P1 · Unsolvable push puzzle: block on the entrance landing tile of a 2-high room
+## BL-45 · FIXED · Unsolvable push puzzle: block on the entrance landing tile of a 2-high room
+
+Fixed in b0e86bd (spec/0063-anchored-push-puzzles.md), accepted via the
+validated detector sweep 2026-07-12 (rare generative property — in lieu
+of a play-test): pre-fix 14 landing-tile blocks + 5 entry-unsolvable
+puzzles in 120 levels, post-fix 0. Solvers anchored to the player's
+real entry (R-P11); block starts barred from landing tiles.
 
 Observed in play by Daniel 2026-07-12. A 2-row room entered from the top; the
 pushable block sits directly inside the entrance (on its landing tile), the
