@@ -436,7 +436,7 @@ over terrain (later wins the cell listed first here):
 | `w` | wooden wall (breakable) | barrier `wooden` |
 | `D` | locked door (colour not encoded) | barrier `door` |
 | `G` | gate | barrier `gate` |
-| `X` | exit gap on the border (inter-grid staircase) | `exits` keys |
+| `X` | exit gap on the border — same-floor corridor transition between grids (never stairs; spec 0056) | `exits` keys |
 | `_` | pressure plate | fixture `plate` |
 | `!` | flame nozzle | fixture `flame_nozzle` |
 | `*` | treasure (pre-placed cell item, or the live Act 1 spawn) | item / `world.treasure_pos` |
