@@ -1,4 +1,4 @@
-# 0065 — Loud LayoutError when a LOCKED edge loses its door (BL-46)
+# 0065 — Loud LayoutError when a LOCKED edge loses its door; layout failure log (BL-46)
 
 ## Status
 
@@ -7,9 +7,16 @@
       closet) instead of silently skipping the door
 - [ ] Same loud treatment for a LOCKED edge between placed nodes whose
       connection tile is not found (should-be-unreachable per R-E4)
+- [ ] Every `LayoutError` escaping the top-level `build_level_dict` call
+      is appended to `uglycraft-layout.log`: timestamp, message, the
+      failing grid's name, and — multi-grid — an ASCII canvas of the
+      grids built so far with the failing grid annotated at its super
+      position (absorbed per-strategy candidates never log)
+- [ ] `leveldump.render_rooms(...)`: public dict-level renderer (no
+      `World`, no `get_level`) used by the log — the BL-48 enabler
 - [ ] Deterministic pinned regression test (FS_ALL, seed 584) green;
       `test_key_door_pairing` green including the persisted hypothesis
-      example
+      example; log entry asserted for the pinned failure
 - [ ] Sweep: ≥ 300 builds across the key feature sets succeed (the retry
       absorbs the raise); Act 2 goldens byte-identical
 - [ ] `poe test` exits 0; R-K1 / R-P3 wording reconciled in
@@ -50,6 +57,8 @@ locked room.** One must yield — and per the 0048/0061 philosophy the
 answer is: such a level must not exist.
 
 ## Design
+
+### D1 — the loud raise
 
 Make the residual case loud, in `levellayout.py`'s barrier loop
 (`build_level_dict`, the "Locked doors, gates, and water tiles from
@@ -97,6 +106,61 @@ Scope decisions:
   caught by the same check, deliberately: retry rather than orphan the
   key.
 
+### D2 — every escaping LayoutError writes a diagnostic log entry
+
+Today a `LayoutError` is silently absorbed by the fresh-seed retry —
+the failure that triggered a retry is unrecoverable after the fact.
+Every `LayoutError` that **escapes the top-level `build_level_dict`
+call** (i.e. aborts one whole build attempt) is appended to a log file
+before propagating, so retries leave a diagnostic trail:
+
+```
+== LayoutError 2026-07-12T14:33:07 ==
+grid: grid_2 (3 of 5 built)
+message: no strategy placed grid 'room_7'
+
+grid_a @ (2, 1)   exits: ...
+grid_1 @ (1, 1)   exits: ...
+grid_2 @ (1, 0)   <-- FAILED: no strategy placed grid 'room_7'
+
+<2D canvas of the grids built so far; at grid_2's super position a
+ 30×16 placeholder box of '!' with 'FAILED' centred>
+```
+
+Mechanics:
+
+- **Log file**: `uglycraft-layout.log` in the working directory (same
+  convention as `uglycraft.hsc`), plain text, append. Path in a module
+  variable `levellayout.LAYOUT_LOG_PATH` so tests redirect it; entries
+  are ≤ ~6 KB, the file may be deleted freely, no rotation.
+- **What logs**: only failures of a whole build attempt. `_build_grid`'s
+  per-strategy candidates (`except (LayoutError, ValueError): continue`)
+  are routine iteration, not failures — the recursive per-grid
+  `build_level_dict` calls pass an internal `_log=False`, so absorbed
+  candidates never log. When no candidate works, the escaping
+  `"no strategy placed grid"` raise logs exactly once.
+- **Context attachment**: `_build_super_grid` wraps its grid-building
+  loop; on `LayoutError` it attaches `failing_grid` (grid name),
+  `rooms_so_far` (the completed grids' room dicts), and their super
+  positions (from the corridors' `super_pos` — the stitch exits do not
+  exist yet at this point, so positions are passed explicitly, never
+  BFS-derived) to the exception and re-raises. The single-grid body
+  attaches `failing_grid='main'` and no rooms (no "so far" exists —
+  the room dict only assembles at the end of the build; the entry then
+  carries grid name + message only, stated limitation).
+- **Rendering**: a new public `leveldump.render_rooms(rooms, positions,
+  failed=(name, msg))` — the dict-level renderer slice of BL-48(a):
+  renders room dicts via `Room.from_data` (HARD, so all authored
+  enemies show; no `World`, no `get_level`), places blocks at the given
+  super positions on the 2D canvas, marks the failing grid's index line
+  with `<-- FAILED: <msg>` and draws a `!`-bordered placeholder block
+  with `FAILED` centred at its super position. `leveldump` is imported
+  by `levellayout` only inside the logging helper (no import cycle:
+  `leveldump`'s module-level imports are `cells`/`rooms`/`entities`/
+  `constants`).
+- The game/runtime is untouched: logging happens inside levellayout,
+  headless-safe, and only on failures.
+
 ### Invariant reconciliation (kb/requirements.md)
 
 - **R-K1** stands as written — after this fix it is actually guaranteed,
@@ -130,11 +194,37 @@ In `tests/test_key_placement.py` (R-K1 section):
    test needed, but the full suite must stay green with no new
    `LayoutError` leaking out of retry loops.
 
+New `tests/test_layout_log.py` (D2):
+
+4. **Renderer unit**: `leveldump.render_rooms` over two hand-written
+   room dicts at explicit super positions with `failed=('grid_2', msg)`
+   — canvas blocks at the right offsets, the index line carries
+   `<-- FAILED`, the placeholder block of `!` sits at the failing
+   grid's position. Red today (function does not exist).
+5. **Log integration**: with `levellayout.LAYOUT_LOG_PATH` pointed at a
+   tmp file, the pinned seed-584 first attempt (post-D1 it raises)
+   appends an entry containing the timestamp header, `grid: main`, and
+   the BL-46 LOCKED-edge message. Red today (no log is written).
+6. **No spam**: build a healthy multi-grid level (e.g. the level-13 set,
+   seed 777) with the log redirected — per-strategy candidate failures
+   inside `_build_grid` must leave the log **empty** if the build
+   succeeds on the first attempt, or contain only whole-attempt
+   entries otherwise.
+7. Suite hygiene: an autouse conftest fixture redirects
+   `LAYOUT_LOG_PATH` into `tmp_path` for the whole suite so tests never
+   pollute the working directory.
+
 ## Done when:
 
 - [ ] Pinned seed-584 regression red before the fix, green after
 - [ ] `test_key_door_pairing` green (including the persisted example)
+- [ ] Escaping LayoutErrors append a log entry (grid name, message,
+      annotated canvas of grids built so far); absorbed per-strategy
+      candidates never log
+- [ ] `leveldump.render_rooms` exists as the public dict-level renderer
+      (BL-48(a) enabler)
 - [ ] Full `poe test` exits 0; Act 2 goldens byte-identical
 - [ ] `kb/requirements.md` R-K1 enforcement note + R-P3 rewording
       committed
-- [ ] BL-46 closed in `kb/backlog.md` (backlog agent)
+- [ ] BL-46 closed in `kb/backlog.md` (backlog agent); BL-48 updated
+      (enabler landed)
