@@ -1,23 +1,36 @@
-# Spec 0059 — Overlay message box sized to fit its text (BL-24)
+# Spec 0059 — Win message "YOU WON!", overlay box sized to fit its text (BL-24)
 
 ## Overview
 
 The "THE  FORGE  IS  DEFEATED!" win message overflows the fixed-width overlay
-message box. Fix: size the box to the widest of the title and sub-line texts
-(plus padding), keeping the current 420 px as a minimum so all existing
-overlays render pixel-identically.
+message box — and the review (Daniel, 2026-07-12) disliked the sentence
+itself. Two deliverables:
+
+1. **The win message becomes "YOU  WON!"** — the forge string and its
+   conditional are deleted. (The `else "YOU  WON!"` branch was dead code
+   anyway: the WIN state only triggers on completing level `NUM_LEVELS`
+   = 20 — `world.py`, `_end_game(won=True)` — so `_final_level` is always
+   20 and the forge string was the *only* reachable win message.)
+2. **Any overlay box auto-adapts to longer text**: size the box to the
+   widest of the title and sub-line texts (plus padding), keeping the
+   current 420 px as a minimum so all existing overlays render
+   pixel-identically. With the short message nothing overflows today;
+   the formula is the permanent guarantee for future strings.
 
 ### Status checklist
 
+- [ ] Win message is `YOU  WON!` unconditionally; forge string and the
+      dead `_final_level` conditional removed
 - [ ] Pure box-width helper (`overlay_box_width`) added to `game.py`, computing
       `max(420, title_w + 2·PAD, sub_w + 2·PAD)` clamped to `LOGICAL_W − 40`
 - [ ] `_render_overlay_text` uses the helper instead of the hard-coded
       `box_w = 420`; vertical layout unchanged
 - [ ] Headless pytest coverage: formula properties + real-font fit check for
-      the forge win message (`poe test` green)
-- [ ] Manual check: forge-defeat message fits inside the box border
+      every remaining call-site title + a synthetic overlong title
+      (`poe test` green)
+- [ ] Manual check: the win screen shows `YOU  WON!` inside its box
 - [ ] Manual check: all other overlays (level intro, pause, game over,
-      you-won, play-again) look unchanged
+      play-again) look unchanged
 
 ## Background (current behaviour)
 
@@ -87,10 +100,23 @@ Only the forge message exceeds 420 px: it overflows by 55 px total
 
 ### Approach chosen
 
-**Size the box to the text** (option 3 from the backlog hint). Shortening the
-message would lose flavour; multi-line wrapping is disproportionate for a
-one-line overflow and would complicate the fixed vertical layout. Sizing is a
-strict superset fix: any future long title or sub-line is handled too.
+**Change the message AND size the box to the text** (review, 2026-07-12 —
+supersedes the original size-only approach; "shortening loses flavour" no
+longer applies since the flavour sentence itself was rejected).
+
+**Message change**: in the WIN branch of `render()` (game.py, currently
+~line 466) the conditional
+
+```python
+win_msg = "THE  FORGE  IS  DEFEATED!" if self._final_level >= 20 else "YOU  WON!"
+```
+
+becomes the constant `"YOU  WON!"` (double-space style as elsewhere). The
+conditional is dead: wins only occur at level 20.
+
+**Box sizing** stays as the general mechanism — any overlay box adapts to
+longer text automatically; sizing is a strict superset fix for any future
+long title or sub-line.
 
 ### Box-width formula
 
@@ -144,35 +170,39 @@ driver, so this is unit-testable. New test module (e.g.
    - wide sub dominates when wider than the title;
    - never exceeds `LOGICAL_W - 40` for absurd inputs.
 2. **Real-font fit check**: load `fonts/ShareTechMono-Regular.ttf` at 36 pt,
-   render each title string used at the call sites (including
-   `THE  FORGE  IS  DEFEATED!`), and assert
+   render each title string used at the call sites (now all short) plus one
+   synthetic overlong title (e.g. the retired forge string as a fixture),
+   and assert
    `rendered_width + 2*PAD <= overlay_box_width(rendered_width, 0) <= LOGICAL_W - 40`
-   — i.e. every actual in-game title fits inside its computed box.
+   — i.e. every title, current or hypothetical, fits inside its computed box.
+3. **Message test**: the WIN state renders `YOU  WON!` (assert the forge
+   string no longer occurs in `game.py`; a harness WIN-state render smoke
+   works headlessly).
 
 ### Manual verification (visual, user acceptance)
 
 The actual on-screen appearance cannot be asserted headlessly; confirm by eye:
 
-1. `poe run --level 20`, defeat the forge → the
-   `THE  FORGE  IS  DEFEATED!` title sits fully inside the box border with
-   visible padding on both sides; the `Final score: …` sub-line is centred
-   below it.
+1. `poe run --level 20`, complete the level → the win box shows
+   `YOU  WON!` fully inside its border with the `Final score: …` sub-line
+   centred below it.
 2. In any level: pause (`PAUSED` box), level-intro box, and — after losing all
    lives — `GAME  OVER` and `PLAY AGAIN?` boxes all look exactly as before
    (420 px wide, unchanged layout).
-3. Win on a non-forge final level (e.g. `poe run --level 10`, easy) →
-   `YOU  WON!` box unchanged.
 
 ## Done when:
 
+- [ ] The win message is `YOU  WON!` unconditionally; the forge string and
+      the dead conditional are gone from `game.py`
 - [ ] `overlay_box_width` exists as a pure module-level function in `game.py`
       implementing `min(max(420, title_w + 2·24, sub_w + 2·24), LOGICAL_W − 40)`
 - [ ] `_render_overlay_text` computes `box_w` from the rendered text surfaces
       via that helper; box height, colours, radius, and text positions
       unchanged
-- [ ] New headless tests (formula properties + real-font fit for all call-site
-      titles) pass; full suite `poe test` exits 0
-- [ ] Manual check confirmed by the user: forge-defeat message fits inside its
-      box (`poe run --level 20`)
+- [ ] New headless tests (formula properties + real-font fit for call-site
+      titles and a synthetic overlong one + win-message assertion) pass;
+      full suite `poe test` exits 0
+- [ ] Manual check confirmed by the user: win screen shows `YOU  WON!`
+      inside its box (`poe run --level 20`)
 - [ ] Manual check confirmed by the user: level-intro, pause, game-over,
-      you-won, and play-again overlays are visually unchanged
+      and play-again overlays are visually unchanged
