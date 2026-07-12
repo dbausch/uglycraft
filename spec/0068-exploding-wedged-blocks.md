@@ -23,8 +23,12 @@
       room floor — a pure `reverse_reachable(passable, target)` helper
 - [ ] A block **on a plate is always safe** (a plate is the reverse-reachability
       seed, so it is in its own `safe_tiles`) — the goal-state exclusion, free
-- [ ] Fuse is **per-push, non-cancelling** (Decision 1): a lit fuse always
-      detonates; it is not re-evaluated or cancelled
+- [ ] Fuse is a **5-second, non-cancelling** countdown (Decision 1): the block
+      **stays movable** during it but can never re-enter the safe area (proven
+      below), so the fuse always runs to detonation
+- [ ] The fused block **blends from its normal look to a red glow** over the 5 s
+      (keyed on the remaining fuse), then plays a short **4-frame fiery blast**
+      at detonation
 - [ ] Each exploding block **deducts `BLOCK_EXPLOSION_PENALTY` (500) points**
       (Daniel), floored at 0 — mirrors `LIFE_PENALTY`
 - [ ] On detonation the block respawns at its **start tile** if free, else at
@@ -33,8 +37,7 @@
 - [ ] `World.update` gains a **block-fuse system** slotted explicitly into the
       pinned system order (spec 0052 G5); the contract note is updated
 - [ ] Two new world events — `block_fuse_lit` and `block_exploded` — mapped to
-      new SFX in `game.py`; the fuse and explosion are drawn (animated
-      countdown on the tile, then a burst)
+      new SFX in `game.py` (drive the glow start and the blast)
 - [ ] The **on-death `_reset_blocks` path is removed** (Decision 6): dying no
       longer resets blocks or closes plate-gates; `_lose_life` keeps the spec
       0067 player + enemy reset. Gates self-correct via the per-tick latch; the
@@ -68,8 +71,14 @@ change.
 
 ## Decisions (resolved 2026-07-12)
 
-1. **Fuse model — per-push, non-cancelling.** Detection runs right after a
-   successful push; a lit fuse always detonates, not re-checked each tick.
+1. **Fuse model — 5 s, per-push, non-cancelling.** Detection runs right after a
+   successful push; the fuse (`BLOCK_FUSE_MS = 5000`) always runs to detonation
+   and is not re-checked each tick. The block **remains movable** while it burns.
+   *Why that is safe (invariant):* the safe area is exactly the tiles from which
+   a block can be pushed to the plate; if a block is already outside it, every
+   tile one push away is also outside it (otherwise the current tile would reach
+   the plate too). So a fused block can only move among unsafe tiles — it can
+   never be pushed back into the safe area, and cancelling would be pointless.
 2. **Push mechanics — allow leaving the safe area, confine to the room (Daniel).**
    - Remove the guard that refused pushes outside the safe area
      (`_try_push_block`, world.py:479): a block may be pushed anywhere in its
@@ -231,7 +240,7 @@ pattern marks; everything else (unsafe corners, non-puzzle floor) is plain.
 (None = inert; int = remaining ms). New constants in `constants.py`:
 
 ```python
-BLOCK_FUSE_MS = 1500           # doomed-block explosion countdown (tunable)
+BLOCK_FUSE_MS = 5000           # 5 s red-glow countdown before a doomed block blasts
 BLOCK_EXPLOSION_PENALTY = 500  # points lost per exploding block (cf. LIFE_PENALTY)
 ```
 
@@ -303,16 +312,22 @@ blocked, so it never lands on another block).
   `sfx_block_explode` (noise burst); register both.
 - **Event map** (`game.py` `_EVENT_SOUNDS`, line 178): `'block_fuse_lit' →
   'block_fuse'`, `'block_exploded' → 'block_explode'`.
-- **Fuse animation** (`game.py` block draw loop, line 582): when `b.fuse` is not
-  None, overlay a countdown cue keyed on `b.fuse / BLOCK_FUSE_MS`.
-- **Explosion** (`game.py`): on `block_exploded`, spawn a brief timer-driven
-  burst at the emitted position (drawn from `sprites.py`, like the screen flash).
+- **Red-glow blend** (`game.py` block draw loop, line 582; `sprites.py`): when
+  `b.fuse` is not None, draw the block blended from its normal appearance toward
+  a **red glow** by `glow = 1 − b.fuse / BLOCK_FUSE_MS` (0 at ignition → 1 at
+  detonation). Either pre-render the glow sprite and alpha-blit it over the base
+  at `glow`, or tint procedurally in `sprites.py`.
+- **4-frame blast** (`sprites.py` + `game.py`): add a **4-frame fiery
+  explosion** sprite sequence. On `block_exploded`, start a timer-driven overlay
+  at the emitted position that steps through the 4 frames once (≈exploding over
+  a few hundred ms), then clears. Runs like the existing screen-flash timer;
+  purely presentational, driven by the world event.
 
 ## Tests (world-level, pygame-free unless noted)
 
-- **Per-plate safe sets built:** a puzzle room exposes `room.safe_tiles` keyed
-  by plate; each plate's set contains the plate tile and excludes an unreachable
-  corner; `room.safe_tile_set` is their union.
+- **Plate owns its safe tiles:** each plate fixture exposes `plate.safe_tiles`
+  containing the plate tile and excluding an unreachable corner;
+  `room.safe_tile_set` is the union over the room's plate objects.
 - **Leaving the safe set ignites:** push a block onto a tile not in
   `safe_tile_set` (previously refused); assert the push *succeeds*, `b.fuse` is
   set, and `block_fuse_lit` fired.
@@ -325,6 +340,9 @@ blocked, so it never lands on another block).
   never fused; its gate stays open.
 - **Inside the safe set stays safe:** push a block onto a safe tile; assert it
   is not fused.
+- **Fused block stays movable but can't re-enter safe area:** after a block is
+  fused, push it again; assert the push succeeds, the fuse is unchanged (not
+  re-lit, not cancelled), and its new tile is still outside `safe_tile_set`.
 - **Respawn relocates when home blocked:** occupy the start tile, detonate;
   assert nearest open tile, never on the player or another block.
 - **On death, blocks are NOT reset:** solve a puzzle, move another block,
@@ -338,8 +356,8 @@ blocked, so it never lands on another block).
 ## Manual verification
 
 - `poe run` an Act 2 push-puzzle level: push a block out of the tinted safe area
-  → it flashes a countdown, the score drops 500, it explodes and reappears at
-  its start.
+  → over ~5 s it glows red, then blasts (4-frame animation), the score drops
+  500, and it reappears at its start.
 - Try to push a block through a doorway out of its room → it won't move past the
   room edge.
 - Observe the floor tint: the **safe** placement tiles are patterned.
@@ -369,8 +387,9 @@ blocked, so it never lands on another block).
       entrance persists (`_channels` untouched)
 - [ ] The four `_reset_blocks`-locking tests removed/rewritten;
       entrance-persists-across-death re-pinned
-- [ ] `block_fuse_lit` / `block_exploded` mapped to new SFX; fuse countdown and
-      explosion are drawn
+- [ ] `block_fuse_lit` / `block_exploded` mapped to new SFX; the fused block
+      blends toward a red glow over the 5 s and plays a 4-frame fiery blast at
+      detonation; the block stays pushable while burning
 - [ ] New tests red first, then green; `poe test` exits 0 with any affected
       goldens deliberately re-recorded
 - [ ] User confirms in-game: a block pushed out of the safe area counts down,
