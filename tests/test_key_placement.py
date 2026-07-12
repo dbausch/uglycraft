@@ -55,11 +55,21 @@ def _level_key_stats(level):
 
 
 def _build(fs, seed):
-    rng = random.Random(seed)
-    graph = LevelGraph.generate(fs, rng)
-    kg = _keys_graph(graph)
-    level = build_level_dict(graph, rng=rng, strategies=fs.get('layout_strategies'))
-    return graph, kg, level
+    """Build with the standard fresh-rng retry (mirrors _generate_act2).
+    Since spec 0065 a dropped locked room aborts the attempt loudly, so a
+    retry-less build would fail on seeds production simply retries."""
+    from levellayout import LayoutError
+    base = random.Random(seed)
+    for _ in range(60):
+        rng = random.Random(base.randint(0, 2 ** 31))
+        graph = LevelGraph.generate(fs, rng)
+        try:
+            level = build_level_dict(graph, rng=rng,
+                                     strategies=fs.get('layout_strategies'))
+        except LayoutError:
+            continue
+        return graph, _keys_graph(graph), level
+    raise AssertionError(f"build never succeeded seed={seed}")
 
 
 # ── K1: no key is ever dropped (spec 0032 C7 spills an unplaced node's keys) ──
@@ -165,6 +175,18 @@ def test_key_door_pairing(seed):
             f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
             f"keys={dict(keys)} != doors={dict(doors)} — orphan keys or "
             f"key-less doors")
+
+
+def test_pinned_dropped_locked_room():
+    """FS_ALL seed 584 (BL-46 / spec 0065): the packer drops locked
+    room_5 on the first build attempt; pre-fix its cyan door was silently
+    elided while the spilled key survived (K1) — an orphan key violating
+    R-K1.  Post-fix that attempt raises LayoutError and the retry yields
+    a paired level.  Pinned explicitly so the regression does not depend
+    on the local .hypothesis/ database."""
+    _g, lv = _build_retry(FS_ALL, 584)
+    keys, doors = _colour_counts(lv)
+    assert keys == doors, f"keys={dict(keys)} doors={dict(doors)}"
 
 
 def test_pinned_L13_orphan_keys():

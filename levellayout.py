@@ -7,6 +7,7 @@ Edges are the ONLY passages between rooms — exactly one wall tile per edge
 is converted to a doorway/lock/gate. This guarantees the grid faithfully
 represents the graph topology.
 """
+import datetime
 import random
 from collections import deque
 from constants import (COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN)
@@ -2655,12 +2656,47 @@ def _generate_flame_jets(placed_node, walls, rng, entry=None):
 
 # ── Game-format output ────────────────────────────────────────────────────────
 
+# Diagnostic trail for build attempts aborted by LayoutError (spec 0065
+# D2): the fresh-seed retry silently absorbs the raise, so each escaping
+# error appends an entry here before propagating.  Working-directory
+# convention like uglycraft.hsc; module variable so tests redirect it.
+LAYOUT_LOG_PATH = 'uglycraft-layout.log'
+
+
+def _log_layout_error(exc):
+    """Append a log entry for a LayoutError that aborts a whole build
+    attempt.  Context (failing grid, grids built so far, super positions)
+    rides on the exception where available.  Best-effort on the canvas: a
+    render problem degrades the entry, never masks the original error."""
+    grid = getattr(exc, 'failing_grid', 'unknown')
+    built = getattr(exc, 'rooms_so_far', None)
+    positions = getattr(exc, 'super_positions', None)
+    total = getattr(exc, 'total_grids', None)
+    idx = getattr(exc, 'grid_index', None)
+    head = f"grid: {grid}"
+    if idx is not None and total is not None:
+        head += f" ({idx} of {total} built)"
+    stamp = datetime.datetime.now().isoformat(timespec='seconds')
+    entry = [f"== LayoutError {stamp} ==", head, f"message: {exc}"]
+    if built:
+        try:
+            import leveldump
+            failed = ((grid, str(exc))
+                      if positions and grid in positions else None)
+            entry += ['', leveldump.render_rooms(
+                built, positions, failed=failed).rstrip('\n')]
+        except Exception as render_exc:
+            entry += ['', f"<canvas render failed: {render_exc!r}>"]
+    with open(LAYOUT_LOG_PATH, 'a') as f:
+        f.write('\n'.join(entry) + '\n\n')
+
+
 def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                      required_exits=None, is_start_grid=True,
                      occupied_sides=frozenset(), progress=None,
                      corridor_anchor=None, entrance_side=None,
                      place_enemies=True, global_key_colours=None,
-                     defer_gate_elision=False):
+                     defer_gate_elision=False, _log=True):
     """Generate the complete level dict that game.py expects.
 
     Auto-detects multi-grid from BORDER edges in the graph.
@@ -2675,7 +2711,44 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     progress: optional callable(done, total) invoked as generation proceeds so
               callers can render a loading indicator.  For multi-grid levels the
               unit is one grid; for single-grid levels it fires (0, 1)/(1, 1).
+    _log: internal (spec 0065 D2) — a LayoutError escaping this top-level
+          call appends a diagnostic entry to LAYOUT_LOG_PATH.  The recursive
+          per-grid calls from _build_grid pass False: their raises are
+          routine strategy iteration, absorbed by the candidate loop, not
+          failures of a build attempt.
     """
+    try:
+        return _build_level_dict(
+            graph, rng=rng, strategies=strategies, grid_count=grid_count,
+            required_exits=required_exits, is_start_grid=is_start_grid,
+            occupied_sides=occupied_sides, progress=progress,
+            corridor_anchor=corridor_anchor, entrance_side=entrance_side,
+            place_enemies=place_enemies,
+            global_key_colours=global_key_colours,
+            defer_gate_elision=defer_gate_elision)
+    except LayoutError as exc:
+        if not hasattr(exc, 'failing_grid'):
+            # Single-grid builds have no "so far" to render — the room
+            # dict only assembles at the very end — so the entry carries
+            # grid name + message only.  Multi-grid errors from the grid-
+            # building loop arrive with full context attached; anything
+            # multi-grid without it failed after all grids were built.
+            exc.failing_grid = (
+                'main' if not any(e.edge_type == EdgeType.BORDER
+                                  for e in graph.edges)
+                else 'stitched level')
+        if _log:
+            _log_layout_error(exc)
+        raise
+
+
+def _build_level_dict(graph, rng=None, strategies=None, grid_count=1,
+                      required_exits=None, is_start_grid=True,
+                      occupied_sides=frozenset(), progress=None,
+                      corridor_anchor=None, entrance_side=None,
+                      place_enemies=True, global_key_colours=None,
+                      defer_gate_elision=False):
+    """build_level_dict's implementation body — see the public wrapper."""
     rng = rng or random.Random()
 
     if any(e.edge_type == EdgeType.BORDER for e in graph.edges):
@@ -2923,6 +2996,17 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
 
     for edge in graph.edges:
         if edge.node_a not in placed or edge.node_b not in placed:
+            # BL-46 (spec 0065): a LOCKED edge whose room the packer
+            # dropped (or whose closet could not be carved) would lose its
+            # door while the key survives via spill (K1) — an orphan key
+            # violating R-K1.  Such a level must not exist: abort loudly
+            # and let the fresh-seed retry produce one that places it.
+            if edge.edge_type == EdgeType.LOCKED:
+                raise LayoutError(
+                    f"LOCKED edge {edge.node_a}--{edge.node_b} "
+                    f"({edge.params['key_colour']}) has an unplaced "
+                    f"endpoint — door would be elided, key orphaned "
+                    f"(BL-46)")
             continue
         if edge.edge_type not in (EdgeType.LOCKED, EdgeType.GATED, EdgeType.WATER):
             continue
@@ -2930,6 +3014,11 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         pb = placed[edge.node_b]
         conn = _find_connection_tile(pa, pb, orig_walls)
         if conn is None:
+            if edge.edge_type == EdgeType.LOCKED:
+                raise LayoutError(
+                    f"LOCKED edge {edge.node_a}--{edge.node_b} "
+                    f"({edge.params['key_colour']}) has no connection "
+                    f"tile (R-E4 should have raised) — BL-46 loud net")
             continue
         if edge.edge_type == EdgeType.LOCKED:
             colour = edge.params['key_colour']
@@ -3172,7 +3261,7 @@ def _build_super_grid(graph, rng, strategies, progress=None):
                     entrance_side=(entrance_side if i == 0 else None),
                     place_enemies=False,
                     global_key_colours=all_key_colours,
-                    defer_gate_elision=True)
+                    defer_gate_elision=True, _log=False)
             except (LayoutError, ValueError):
                 continue
             if anchor is not None:
@@ -3204,41 +3293,56 @@ def _build_super_grid(graph, rng, strategies, progress=None):
     total_grids = len(corridor_order)
     if progress:
         progress(0, total_grids)
-    for i, corridor in enumerate(corridor_order):
-        anchor = None
-        if i > 0:
-            for nbr, edge in graph.neighbors(corridor):
-                if edge.edge_type != EdgeType.BORDER or nbr not in built:
-                    continue
-                if edge.node_a == corridor:
-                    child_side = edge.params['exit_side']
-                    parent_side = edge.params['entry_side']
-                else:
-                    child_side = edge.params['entry_side']
-                    parent_side = edge.params['exit_side']
-                parent_band = _face_band(all_rooms[grid_name_map[nbr]],
-                                         nbr, parent_side)
-                if parent_band == _FULL[parent_side]:
-                    # full_border parent: actively choose a varied exit band and
-                    # have the child continue it (recorded so the stitch uses it
-                    # even when the child is also full_border).
-                    lo, w = _varied_band(child_side)
-                    anchor = (child_side, lo, w)
-                    chosen_pos[frozenset((corridor, nbr))] = lo + w // 2
-                elif parent_band:
-                    lo = min(parent_band)
-                    w = max(parent_band) - lo + 1
-                    anchor = (child_side, lo, w)
-                break
-        sub = _build_subgraph(corridor, is_start_grid=(i == 0))
-        d = _build_grid(sub, corridor, i, anchor)
-        gname = grid_name_map[corridor]
-        all_rooms[gname] = d['rooms']['main']
-        all_player_starts[gname] = d['player_start']
-        built.add(corridor)
-        if progress:
-            progress(i + 1, total_grids)
-
+    try:
+        for i, corridor in enumerate(corridor_order):
+            anchor = None
+            if i > 0:
+                for nbr, edge in graph.neighbors(corridor):
+                    if edge.edge_type != EdgeType.BORDER or nbr not in built:
+                        continue
+                    if edge.node_a == corridor:
+                        child_side = edge.params['exit_side']
+                        parent_side = edge.params['entry_side']
+                    else:
+                        child_side = edge.params['entry_side']
+                        parent_side = edge.params['exit_side']
+                    parent_band = _face_band(all_rooms[grid_name_map[nbr]],
+                                             nbr, parent_side)
+                    if parent_band == _FULL[parent_side]:
+                        # full_border parent: actively choose a varied exit
+                        # band and have the child continue it (recorded so the
+                        # stitch uses it even when the child is also
+                        # full_border).
+                        lo, w = _varied_band(child_side)
+                        anchor = (child_side, lo, w)
+                        chosen_pos[frozenset((corridor, nbr))] = lo + w // 2
+                    elif parent_band:
+                        lo = min(parent_band)
+                        w = max(parent_band) - lo + 1
+                        anchor = (child_side, lo, w)
+                    break
+            sub = _build_subgraph(corridor, is_start_grid=(i == 0))
+            d = _build_grid(sub, corridor, i, anchor)
+            gname = grid_name_map[corridor]
+            all_rooms[gname] = d['rooms']['main']
+            all_player_starts[gname] = d['player_start']
+            built.add(corridor)
+            if progress:
+                progress(i + 1, total_grids)
+    except LayoutError as exc:
+        # Spec 0065 D2: attach what the failure log needs to render an
+        # annotated canvas — the grids built so far and their super
+        # positions.  The stitch exits do not exist yet at this point, so
+        # positions come from the corridors' super_pos, never a BFS over
+        # exits.
+        exc.failing_grid = grid_name_map[corridor]
+        exc.grid_index = i + 1
+        exc.total_grids = total_grids
+        exc.rooms_so_far = dict(all_rooms)
+        exc.super_positions = {
+            grid_name_map[c]: graph.nodes[c].super_pos
+            for c in corridor_order[:i + 1]}
+        raise
 
     player_start = all_player_starts[grid_name_map[corridor_order[0]]]
 

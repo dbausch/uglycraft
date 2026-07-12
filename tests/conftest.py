@@ -86,3 +86,18 @@ ALL_FEATURE_SETS = [FS_OPEN, FS_LOCKED, FS_GATED, FS_WATER, FS_ALL]
 def rng(request):
     """Deterministic RNG seeded by the parametrize index."""
     return random.Random(request.param)
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _layout_log_to_tmp(tmp_path_factory):
+    """Spec 0065: escaping LayoutErrors append to a diagnostic log file.
+    Redirect it for the whole suite so tests never pollute the working
+    directory.  Session-scoped: a function-scoped autouse fixture would
+    trip hypothesis's function_scoped_fixture health check on every
+    @given test."""
+    import levellayout
+    old = getattr(levellayout, 'LAYOUT_LOG_PATH', None)
+    levellayout.LAYOUT_LOG_PATH = str(
+        tmp_path_factory.mktemp('layout-log') / 'uglycraft-layout.log')
+    yield
+    levellayout.LAYOUT_LOG_PATH = old

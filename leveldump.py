@@ -8,11 +8,15 @@ Single-grid levels print in the spec-0064 diagram format (two ruler
 lines + numbered rows).  Multi-grid levels print an index of grids and
 one large 2D canvas with every grid at its super-grid position, derived
 by BFS over the stitch topology in the rooms' `exits` keys.
+
+render_rooms is the dict-level slice of the same canvas (no World, no
+get_level): raw room dicts at explicit super positions, used by the
+layout failure log (spec 0065 D2 / BL-48(a)).
 """
 import random
 
 from cells import _exit_tiles
-from constants import COLS, ROWS, EASY
+from constants import COLS, ROWS, EASY, HARD
 from entities import ForgeOgre, PatrolEnemy
 from rooms import Room
 
@@ -99,6 +103,22 @@ def _single_grid_text(rows):
     return '\n'.join(lines) + '\n'
 
 
+def _canvas_body(grids, positions):
+    """Assemble rendered grid blocks into one 2D canvas string.  Positions
+    without a rendered block (a failed grid drew its placeholder into
+    `grids` beforehand — or nothing at all) leave their cell blank."""
+    width = (max(x for x, _ in positions.values()) + 1) * (COLS + 1) - 1
+    height = (max(y for _, y in positions.values()) + 1) * (ROWS + 1) - 1
+    canvas = [[' '] * width for _ in range(height)]
+    for key, (gx, gy) in positions.items():
+        if key not in grids:
+            continue
+        ox, oy = gx * (COLS + 1), gy * (ROWS + 1)
+        for r, row in enumerate(grids[key]):
+            canvas[oy + r][ox:ox + COLS] = row
+    return '\n'.join(''.join(row).rstrip() for row in canvas)
+
+
 def _canvas_text(data, grids, positions):
     start = data['start_room']
     keys = [start] + sorted((k for k in grids if k != start), key=str)
@@ -107,15 +127,48 @@ def _canvas_text(data, grids, positions):
         exits = data['rooms'][key].get('exits', {})
         exits_txt = ', '.join(f'{ek} -> {tgt}' for ek, tgt in exits.items())
         index.append(f'{key} @ {positions[key]}   exits: {exits_txt}')
-    width = (max(x for x, _ in positions.values()) + 1) * (COLS + 1) - 1
-    height = (max(y for _, y in positions.values()) + 1) * (ROWS + 1) - 1
-    canvas = [[' '] * width for _ in range(height)]
-    for key, (gx, gy) in positions.items():
-        ox, oy = gx * (COLS + 1), gy * (ROWS + 1)
-        for r, row in enumerate(grids[key]):
-            canvas[oy + r][ox:ox + COLS] = row
-    body = '\n'.join(''.join(row).rstrip() for row in canvas)
-    return '\n'.join(index) + '\n\n' + body + '\n'
+    return '\n'.join(index) + '\n\n' + _canvas_body(grids, positions) + '\n'
+
+
+def _failed_block(label='FAILED'):
+    """A 30×16 placeholder block: '!' border, label centred."""
+    rows = ['!' + ' ' * (COLS - 2) + '!' for _ in range(ROWS)]
+    rows[0] = rows[ROWS - 1] = '!' * COLS
+    mid = ROWS // 2
+    start = (COLS - len(label)) // 2
+    rows[mid] = rows[mid][:start] + label + rows[mid][start + len(label):]
+    return rows
+
+
+def render_rooms(rooms, positions, failed=None, difficulty=HARD):
+    """Index + 2D canvas of raw room dicts — the dict-level renderer
+    (spec 0065 D2 / BL-48(a)): no World, no get_level, HARD by default so
+    every authored enemy shows.
+
+    rooms: {grid_name: room_dict}; positions: {grid_name: (x, y)} super
+    positions with any origin (normalised here), listed in the order the
+    index should show, and possibly naming one grid absent from `rooms` —
+    the failed one.  failed=(grid_name, msg) marks that grid's index line
+    with '<-- FAILED: msg' and draws a !-bordered placeholder block with
+    FAILED centred at its position.
+    """
+    failed_name, failed_msg = failed if failed else (None, None)
+    min_x = min(x for x, _ in positions.values())
+    min_y = min(y for _, y in positions.values())
+    pos = {k: (x - min_x, y - min_y) for k, (x, y) in positions.items()}
+    grids = {key: _render_grid(Room.from_data(key, rdata, difficulty), rdata)
+             for key, rdata in rooms.items()}
+    if failed_name is not None:
+        grids[failed_name] = _failed_block()
+    index = []
+    for key in pos:
+        if key == failed_name:
+            index.append(f'{key} @ {pos[key]}   <-- FAILED: {failed_msg}')
+        else:
+            exits = rooms[key].get('exits', {})
+            exits_txt = ', '.join(f'{ek} -> {t}' for ek, t in exits.items())
+            index.append(f'{key} @ {pos[key]}   exits: {exits_txt}')
+    return '\n'.join(index) + '\n\n' + _canvas_body(grids, pos) + '\n'
 
 
 def dump_level(level_num, difficulty=EASY, seed=None):

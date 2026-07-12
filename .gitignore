@@ -31,6 +31,7 @@ packaging/uglycraft-git/
 
 # Runtime data
 uglycraft.hsc
+uglycraft-layout.log
 ugli.log
 
 # Claude Code worktrees (transient git worktrees for isolated agent work)
