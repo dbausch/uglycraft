@@ -27,10 +27,9 @@ itself. Two deliverables:
       `box_w = 420`; vertical layout unchanged
 - [ ] Headless pytest coverage: formula properties + real-font fit check for
       every remaining call-site title + a synthetic overlong title
-      (`poe test` green)
-- [ ] Manual check: the win screen shows `YOU  WON!` inside its box
-- [ ] Manual check: all other overlays (level intro, pause, game over,
-      play-again) look unchanged
+- [ ] Screenshot goldens: pause/game-over/intro/play-again pre-recorded and
+      unchanged post-implementation; `shot_overlay_win` shows `YOU  WON!`
+      in its box (replaces manual acceptance — review 2026-07-12)
 
 ## Background (current behaviour)
 
@@ -179,16 +178,27 @@ driver, so this is unit-testable. New test module (e.g.
    string no longer occurs in `game.py`; a harness WIN-state render smoke
    works headlessly).
 
-### Manual verification (visual, user acceptance)
+### Screenshot goldens (replaces manual acceptance — review, 2026-07-12)
 
-The actual on-screen appearance cannot be asserted headlessly; confirm by eye:
+Overlay appearance is asserted via the spec-0044 screenshot-golden tier
+(`tests/harness.py` `screen_hash` / `assert_golden`, headless dummy video
+driver, re-recordable with `UGLYCRAFT_REGOLD=1`), extending
+`tests/test_render.py` with one shot per overlay state (state set directly
+on the harness game, as `test_shot_title` already does; `_final_score` /
+`_final_level` seeded deterministically for the win screen):
 
-1. `poe run --level 20`, complete the level → the win box shows
-   `YOU  WON!` fully inside its border with the `Final score: …` sub-line
-   centred below it.
-2. In any level: pause (`PAUSED` box), level-intro box, and — after losing all
-   lives — `GAME  OVER` and `PLAY AGAIN?` boxes all look exactly as before
-   (420 px wide, unchanged layout).
+1. `shot_overlay_pause`, `shot_overlay_game_over`, `shot_overlay_intro`,
+   `shot_overlay_play_again` — goldens recorded **BEFORE** the
+   implementation (red phase): they must still pass unchanged afterwards,
+   which machine-proves the four existing overlays stay pixel-identical
+   (the 420 px minimum doing its job).
+2. `shot_overlay_win` — golden recorded **after** the implementation
+   (the message changes by design); red until then (missing golden), then
+   pinned: `YOU  WON!` centred in its box with the score sub-line.
+
+Per review, the closing gate is the affected test modules
+(`tests/test_overlay_box.py`, `tests/test_render.py`), not a full-suite
+run.
 
 ## Done when:
 
@@ -200,9 +210,11 @@ The actual on-screen appearance cannot be asserted headlessly; confirm by eye:
       via that helper; box height, colours, radius, and text positions
       unchanged
 - [ ] New headless tests (formula properties + real-font fit for call-site
-      titles and a synthetic overlong one + win-message assertion) pass;
-      full suite `poe test` exits 0
-- [ ] Manual check confirmed by the user: win screen shows `YOU  WON!`
-      inside its box (`poe run --level 20`)
-- [ ] Manual check confirmed by the user: level-intro, pause, game-over,
-      and play-again overlays are visually unchanged
+      titles and a synthetic overlong one + win-message assertion) pass
+- [ ] Screenshot goldens: the four pre-recorded overlay shots (pause,
+      game-over, intro, play-again) pass **unchanged** after the
+      implementation; `shot_overlay_win` recorded once showing
+      `YOU  WON!` inside its box
+- [ ] Affected test modules green (`tests/test_overlay_box.py`,
+      `tests/test_render.py`); no full-suite rerun required (review,
+      2026-07-12)
