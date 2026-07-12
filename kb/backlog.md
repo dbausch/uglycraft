@@ -941,3 +941,24 @@ global scope; interior-gate plates roam) — awaiting Daniel's play-test
 confirmation before closing this entry.
 
 ---
+
+## BL-46 · P2 · R-K1 violation found by hypothesis: per-colour key count != locked-door count (seed 584, single grid)
+
+Found by hypothesis on 2026-07-12:
+`tests/test_key_placement.py::test_key_door_pairing` failed with
+"seed=584 fs grids=1: keys={'blue': 1, 'orange': 1, 'cyan': ...} != doors —
+orphan keys or key-less doors" (message truncated in the log; per-colour key
+count != locked-door count in a generated single-grid level). Not related to
+spec 0064 (that session touched only Act 1 data and a read-only dump tool).
+
+Note: hypothesis persists the failing example in `.hypothesis/`, so the full
+suite will keep re-failing this test until fixed.
+
+**Fix hint:** reproduce with the test's own `_build_retry(fs, 584)` over its
+feature sets (tests/test_key_placement.py:~156). If a colour has MORE doors
+than keys it is a soft-lock and should be re-triaged P1; an orphan key is
+cosmetic. Suspect key/door elision paths in `levellayout.py` (gate/door
+elision around line 794 was exercised only by failing examples per the
+hypothesis coverage note). Related: BL-44 (R-K1, spec 0061).
+
+---
