@@ -60,49 +60,49 @@ def _band(rd, side, corname):
 _SETS = (FS_CROWDED_LOCKED, FS_CROWDED_WATER)
 
 
+@pytest.mark.parametrize('fs', _SETS)
 @given(st.integers(min_value=0, max_value=2 ** 32 - 1))
 @settings(max_examples=30, deadline=None)
-def test_border_openings_land_on_corridor(seed):
+def test_border_openings_land_on_corridor(fs, seed):
     """Every BORDER opening's inner tile is owned by that grid's corridor."""
-    for fs in _SETS:
-        for gc in (2, 3):
-            graph, lv = _build(fs, seed, gc)
-            cor = _cor_names(graph)
-            for gname, rd in lv['rooms'].items():
-                for ek in rd.get('exits', {}):
-                    side, _, pos = ek.rpartition('_')
-                    inner = INNER[side](int(pos))
-                    owner = rd['tile_owner'].get(inner)
-                    assert owner in cor, (
-                        f"fs={fs.get('name')} seed={seed} gc={gc}: opening {ek} "
-                        f"on {gname} lands on {owner!r} (inner {inner}), not a corridor")
+    for gc in (2, 3):
+        graph, lv = _build(fs, seed, gc)
+        cor = _cor_names(graph)
+        for gname, rd in lv['rooms'].items():
+            for ek in rd.get('exits', {}):
+                side, _, pos = ek.rpartition('_')
+                inner = INNER[side](int(pos))
+                owner = rd['tile_owner'].get(inner)
+                assert owner in cor, (
+                    f"fs={fs.get('name')} seed={seed} gc={gc}: opening {ek} "
+                    f"on {gname} lands on {owner!r} (inner {inner}), not a corridor")
 
 
+@pytest.mark.parametrize('fs', _SETS)
 @given(st.integers(min_value=0, max_value=2 ** 32 - 1))
 @settings(max_examples=30, deadline=None)
-def test_corridors_continue_across_border(seed):
+def test_corridors_continue_across_border(fs, seed):
     """For a BORDER edge with neither grid full_border, the two corridor face
     bands are identical (the corridor continues through the border)."""
-    for fs in _SETS:
-        for gc in (2, 3):
-            graph, lv = _build(fs, seed, gc)
-            cor = _cor_names(graph)
-            rooms = lv['rooms']
-            cor_grid = {}                      # corridor node name -> gname
-            for gname, rd in rooms.items():
-                cor_grid[_grid_corridor(rd, cor)] = gname
-            for e in graph.edges:
-                if e.edge_type != EdgeType.BORDER:
-                    continue
-                ga, gb = cor_grid[e.node_a], cor_grid[e.node_b]
-                es, en = e.params['exit_side'], e.params['entry_side']
-                ba = _band(rooms[ga], es, e.node_a)
-                bb = _band(rooms[gb], en, e.node_b)
-                if ba == FULL[es] or bb == FULL[en]:
-                    continue               # full_border source/entry: FREE
-                assert ba == bb, (
-                    f"fs={fs.get('name')} seed={seed} gc={gc}: corridor does not "
-                    f"continue across {ga}({es})->{gb}({en}): {sorted(ba)} != {sorted(bb)}")
+    for gc in (2, 3):
+        graph, lv = _build(fs, seed, gc)
+        cor = _cor_names(graph)
+        rooms = lv['rooms']
+        cor_grid = {}                      # corridor node name -> gname
+        for gname, rd in rooms.items():
+            cor_grid[_grid_corridor(rd, cor)] = gname
+        for e in graph.edges:
+            if e.edge_type != EdgeType.BORDER:
+                continue
+            ga, gb = cor_grid[e.node_a], cor_grid[e.node_b]
+            es, en = e.params['exit_side'], e.params['entry_side']
+            ba = _band(rooms[ga], es, e.node_a)
+            bb = _band(rooms[gb], en, e.node_b)
+            if ba == FULL[es] or bb == FULL[en]:
+                continue               # full_border source/entry: FREE
+            assert ba == bb, (
+                f"fs={fs.get('name')} seed={seed} gc={gc}: corridor does not "
+                f"continue across {ga}({es})->{gb}({en}): {sorted(ba)} != {sorted(bb)}")
 
 
 def _build_forced(fs, seed, gc, strategies):
@@ -181,50 +181,50 @@ def _expected_record(edge, gname_a, pos, rooms):
     return ('open', None, None)
 
 
+@pytest.mark.parametrize('fs', _REC_SETS)
 @given(st.integers(min_value=0, max_value=2 ** 32 - 1))
 @settings(max_examples=15, deadline=None)
-def test_border_barrier_records_on_both_sides(seed):
-    for fs in _REC_SETS:
-        for gc in (2, 3):
-            graph, lv = _build(fs, seed, gc)
-            cor = _cor_names(graph)
-            rooms = lv['rooms']
-            cor_grid = {}
-            for gname, rd in rooms.items():
-                cor_grid[_grid_corridor(rd, cor)] = gname
-                assert set(rd.get('exits', {})) == \
-                    set(rd.get('border_barriers', {})), (
-                        f"fs={fs.get('name')} seed={seed} gc={gc}: exits and "
-                        f"border_barriers keys differ on {gname}")
-            for e in graph.edges:
-                if e.edge_type != EdgeType.BORDER:
-                    continue
-                ga, gb = cor_grid[e.node_a], cor_grid[e.node_b]
-                es, en = e.params['exit_side'], e.params['entry_side']
-                key_a = next(k for k, v in rooms[ga]['exits'].items()
-                             if v == gb and k.rpartition('_')[0] == es)
-                pos = int(key_a.rpartition('_')[2])
-                key_b = f'{en}_{pos}'
-                rec_a = rooms[ga]['border_barriers'][key_a]
-                rec_b = rooms[gb]['border_barriers'][key_b]
-                assert rec_a == rec_b, (
-                    f"records differ across {ga}({es})->{gb}({en}): "
-                    f"{rec_a} != {rec_b}")
-                assert rec_a == _expected_record(e, ga, pos, rooms)
-                kind, param, home = rec_a
-                bt = _BORDER_TILE[es](pos)
-                doors_at_bt = [d for d in rooms[ga].get('locked_doors', [])
-                               if (d[0], d[1]) == bt]
-                gates_at_bt = [g for g in rooms[ga].get('gates', [])
-                               if (g[0], g[1]) == bt]
-                if kind == 'locked':
-                    assert doors_at_bt == [(*bt, param)]
-                    assert home == (ga, bt)
-                elif kind == 'gated':
-                    assert gates_at_bt == [(*bt, param)]
-                else:
-                    assert not doors_at_bt and not gates_at_bt, (
-                        f"open record but entity at {bt} on {ga}")
+def test_border_barrier_records_on_both_sides(fs, seed):
+    for gc in (2, 3):
+        graph, lv = _build(fs, seed, gc)
+        cor = _cor_names(graph)
+        rooms = lv['rooms']
+        cor_grid = {}
+        for gname, rd in rooms.items():
+            cor_grid[_grid_corridor(rd, cor)] = gname
+            assert set(rd.get('exits', {})) == \
+                set(rd.get('border_barriers', {})), (
+                    f"fs={fs.get('name')} seed={seed} gc={gc}: exits and "
+                    f"border_barriers keys differ on {gname}")
+        for e in graph.edges:
+            if e.edge_type != EdgeType.BORDER:
+                continue
+            ga, gb = cor_grid[e.node_a], cor_grid[e.node_b]
+            es, en = e.params['exit_side'], e.params['entry_side']
+            key_a = next(k for k, v in rooms[ga]['exits'].items()
+                         if v == gb and k.rpartition('_')[0] == es)
+            pos = int(key_a.rpartition('_')[2])
+            key_b = f'{en}_{pos}'
+            rec_a = rooms[ga]['border_barriers'][key_a]
+            rec_b = rooms[gb]['border_barriers'][key_b]
+            assert rec_a == rec_b, (
+                f"records differ across {ga}({es})->{gb}({en}): "
+                f"{rec_a} != {rec_b}")
+            assert rec_a == _expected_record(e, ga, pos, rooms)
+            kind, param, home = rec_a
+            bt = _BORDER_TILE[es](pos)
+            doors_at_bt = [d for d in rooms[ga].get('locked_doors', [])
+                           if (d[0], d[1]) == bt]
+            gates_at_bt = [g for g in rooms[ga].get('gates', [])
+                           if (g[0], g[1]) == bt]
+            if kind == 'locked':
+                assert doors_at_bt == [(*bt, param)]
+                assert home == (ga, bt)
+            elif kind == 'gated':
+                assert gates_at_bt == [(*bt, param)]
+            else:
+                assert not doors_at_bt and not gates_at_bt, (
+                    f"open record but entity at {bt} on {ga}")
 
 
 def test_border_barrier_kinds_covered():

@@ -8,8 +8,10 @@ K3  Graph-side key reachability is sound: validate_playability() == [].
 """
 import random
 
+import pytest
 from hypothesis import given, settings, strategies as st
 
+import levels as _levels
 from levelgraph import LevelGraph, EdgeType, NodeSize
 from levellayout import build_level_dict
 from tests.conftest import FS_LOCKED, FS_ALL
@@ -79,47 +81,47 @@ def _build(fs, seed):
 # unplaced node's content into a placed room/corridor, so the guarantee is the
 # full one: every key in the graph reaches the level dict.
 
+@pytest.mark.parametrize('fs', _FEATURE_SETS)
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=100, deadline=None)
-def test_keys_never_dropped(seed):
-    for fs in _FEATURE_SETS:
-        graph, kg, level = _build(fs, seed)
-        if kg == 0:
-            continue
-        kd, _, _ = _level_key_stats(level)
-        assert kd == kg, (
-            f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
-            f"keys_graph={kg} keys_dict={kd} — a key was lost"
-        )
+def test_keys_never_dropped(fs, seed):
+    graph, kg, level = _build(fs, seed)
+    if kg == 0:
+        return
+    kd, _, _ = _level_key_stats(level)
+    assert kd == kg, (
+        f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
+        f"keys_graph={kg} keys_dict={kd} — a key was lost"
+    )
 
 
 # ── K2: every locked door has a surviving key (no soft-lock) ─────────────────
 
+@pytest.mark.parametrize('fs', _FEATURE_SETS)
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=100, deadline=None)
-def test_no_softlocked_doors(seed):
-    for fs in _FEATURE_SETS:
-        graph, kg, level = _build(fs, seed)
-        if kg == 0:
-            continue
-        _, door_colours, key_colours = _level_key_stats(level)
-        soft = [c for c in door_colours if c not in key_colours]
-        assert not soft, (
-            f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
-            f"locked doors with no key anywhere: {soft}"
-        )
+def test_no_softlocked_doors(fs, seed):
+    graph, kg, level = _build(fs, seed)
+    if kg == 0:
+        return
+    _, door_colours, key_colours = _level_key_stats(level)
+    soft = [c for c in door_colours if c not in key_colours]
+    assert not soft, (
+        f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
+        f"locked doors with no key anywhere: {soft}"
+    )
 
 
 # ── K3: graph-side key reachability is sound ─────────────────────────────────
 
+@pytest.mark.parametrize('fs', _FEATURE_SETS)
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=200)
-def test_graph_keys_reachable(seed):
-    for fs in _FEATURE_SETS:
-        graph = LevelGraph.generate(fs, random.Random(seed))
-        assert graph.validate_playability() == [], (
-            f"seed={seed}: validate_playability reported unreachable nodes"
-        )
+def test_graph_keys_reachable(fs, seed):
+    graph = LevelGraph.generate(fs, random.Random(seed))
+    assert graph.validate_playability() == [], (
+        f"seed={seed}: validate_playability reported unreachable nodes"
+    )
 
 
 # ── R-K1 (spec 0061): barrier↔prerequisite pairing, prerequisites roam ────────
@@ -130,8 +132,6 @@ def test_graph_keys_reachable(seed):
 # global surviving-plate scope.
 
 import collections
-
-import pytest
 
 from levellayout import LayoutError
 
@@ -163,18 +163,17 @@ def _colour_counts(level):
     return keys, doors
 
 
+@pytest.mark.parametrize('fs', (*_FEATURE_SETS, _levels.ACT2_FEATURE_SETS[2]))
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=25, deadline=None)
-def test_key_door_pairing(seed):
+def test_key_door_pairing(fs, seed):
     """R-K1: for every colour, #keys == #locked doors (interior+border)."""
-    import levels as _levels
-    for fs in (*_FEATURE_SETS, _levels.ACT2_FEATURE_SETS[2]):
-        _graph, level = _build_retry(fs, seed)
-        keys, doors = _colour_counts(level)
-        assert keys == doors, (
-            f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
-            f"keys={dict(keys)} != doors={dict(doors)} — orphan keys or "
-            f"key-less doors")
+    _graph, level = _build_retry(fs, seed)
+    keys, doors = _colour_counts(level)
+    assert keys == doors, (
+        f"seed={seed} fs grids={fs.get('grid_count', 1)}: "
+        f"keys={dict(keys)} != doors={dict(doors)} — orphan keys or "
+        f"key-less doors")
 
 
 def test_pinned_dropped_locked_room():

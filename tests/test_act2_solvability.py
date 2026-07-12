@@ -98,12 +98,12 @@ def assert_layout_solvable(graph, level):
 _CHEAP_SETS = (FS_LOCKED, FS_GATED, FS_WATER, FS_ALL)
 
 
+@pytest.mark.parametrize('fs', _CHEAP_SETS)
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=60, deadline=None)
-def test_single_grid_levels_solvable(seed):
-    for fs in _CHEAP_SETS:
-        graph, level = _build(fs, seed)
-        assert_layout_solvable(graph, level)
+def test_single_grid_levels_solvable(fs, seed):
+    graph, level = _build(fs, seed)
+    assert_layout_solvable(graph, level)
 
 
 # ── Crowded multi-grid: exercises border doors + multi-water-room grids ──────
@@ -111,12 +111,12 @@ def test_single_grid_levels_solvable(seed):
 _CROWDED_SETS = (FS_CROWDED_LOCKED, FS_CROWDED_WATER)
 
 
+@pytest.mark.parametrize('fs', _CROWDED_SETS)
 @given(st.integers(min_value=0, max_value=2**32 - 1))
 @settings(max_examples=25, deadline=None)
-def test_crowded_multigrid_levels_solvable(seed):
-    for fs in _CROWDED_SETS:
-        graph, level = _build(fs, seed)
-        assert_layout_solvable(graph, level)
+def test_crowded_multigrid_levels_solvable(fs, seed):
+    graph, level = _build(fs, seed)
+    assert_layout_solvable(graph, level)
 
 
 # ── Regression over the REAL Act 2 feature sets (shipping content) ───────────
