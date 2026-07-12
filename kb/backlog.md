@@ -399,7 +399,13 @@ grids). Invariants now hold: keys_dict==keys_graph, planks_dict==planks_graph.
 
 ---
 
-## BL-24 · P2 · "The forge is defeated" text overflows the message box
+## BL-24 · FIXED · "The forge is defeated" text overflows the message box
+
+Fixed in 0f2b59f (spec/0059-overlay-box-fit-text.md), accepted via
+screenshot goldens 2026-07-12. The win message is now an unconditional
+"YOU  WON!" (the forge sentence was rejected in review; its branch was
+dead code), and overlay_box_width makes every overlay box auto-fit its
+text (min 420 px, clamped to LOGICAL_W - 40) as a permanent safety net.
 
 The message shown when the forge (forge ogre) is defeated — text along the lines
 of "The forge is defeated" — is too long and overflows its message/dialog box.

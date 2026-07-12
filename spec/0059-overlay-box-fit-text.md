@@ -2,6 +2,12 @@
 
 ## Overview
 
+> **Confirmed working (accepted via screenshot goldens, 2026-07-12).**
+> Red tests 4e2778a (four unchanged-overlay goldens pre-recorded),
+> implementation 0f2b59f. The four invariance goldens passed unchanged
+> post-implementation (pixel-identity proven); shot_overlay_win recorded
+> once; affected modules 22/22 green per the targeted-gate review.
+
 The "THE  FORGE  IS  DEFEATED!" win message overflows the fixed-width overlay
 message box — and the review (Daniel, 2026-07-12) disliked the sentence
 itself. Two deliverables:
@@ -19,15 +25,15 @@ itself. Two deliverables:
 
 ### Status checklist
 
-- [ ] Win message is `YOU  WON!` unconditionally; forge string and the
+- [x] Win message is `YOU  WON!` unconditionally; forge string and the
       dead `_final_level` conditional removed
-- [ ] Pure box-width helper (`overlay_box_width`) added to `game.py`, computing
+- [x] Pure box-width helper (`overlay_box_width`) added to `game.py`, computing
       `max(420, title_w + 2·PAD, sub_w + 2·PAD)` clamped to `LOGICAL_W − 40`
-- [ ] `_render_overlay_text` uses the helper instead of the hard-coded
+- [x] `_render_overlay_text` uses the helper instead of the hard-coded
       `box_w = 420`; vertical layout unchanged
-- [ ] Headless pytest coverage: formula properties + real-font fit check for
+- [x] Headless pytest coverage: formula properties + real-font fit check for
       every remaining call-site title + a synthetic overlong title
-- [ ] Screenshot goldens: pause/game-over/intro/play-again pre-recorded and
+- [x] Screenshot goldens: pause/game-over/intro/play-again pre-recorded and
       unchanged post-implementation; `shot_overlay_win` shows `YOU  WON!`
       in its box (replaces manual acceptance — review 2026-07-12)
 
@@ -202,19 +208,19 @@ run.
 
 ## Done when:
 
-- [ ] The win message is `YOU  WON!` unconditionally; the forge string and
+- [x] The win message is `YOU  WON!` unconditionally; the forge string and
       the dead conditional are gone from `game.py`
-- [ ] `overlay_box_width` exists as a pure module-level function in `game.py`
+- [x] `overlay_box_width` exists as a pure module-level function in `game.py`
       implementing `min(max(420, title_w + 2·24, sub_w + 2·24), LOGICAL_W − 40)`
-- [ ] `_render_overlay_text` computes `box_w` from the rendered text surfaces
+- [x] `_render_overlay_text` computes `box_w` from the rendered text surfaces
       via that helper; box height, colours, radius, and text positions
       unchanged
-- [ ] New headless tests (formula properties + real-font fit for call-site
+- [x] New headless tests (formula properties + real-font fit for call-site
       titles and a synthetic overlong one + win-message assertion) pass
-- [ ] Screenshot goldens: the four pre-recorded overlay shots (pause,
+- [x] Screenshot goldens: the four pre-recorded overlay shots (pause,
       game-over, intro, play-again) pass **unchanged** after the
       implementation; `shot_overlay_win` recorded once showing
       `YOU  WON!` inside its box
-- [ ] Affected test modules green (`tests/test_overlay_box.py`,
+- [x] Affected test modules green (`tests/test_overlay_box.py`,
       `tests/test_render.py`); no full-suite rerun required (review,
       2026-07-12)
