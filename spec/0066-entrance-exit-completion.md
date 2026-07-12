@@ -268,6 +268,16 @@ respawns at `player_start` (directly inside the open door) and can walk
 straight out. Confirm `_entrance_pos` is still the start-grid entrance after
 an Act 2 death (respawn returns to the start grid — see Verification).
 
+**This `_reset_blocks` accommodation is temporary.** It exists only because
+today death wipes all channels wholesale to reset plate-held gates. When
+BL-37 (exploding push-blocks → a self-healing level) lands, the
+reset-blocks-on-death path goes away entirely — the spec supersedes
+`_reset_blocks` — and with it the wholesale channel wipe. At that point
+nothing closes channels on death, so the entrance channel persists on its
+own: this `self._channels & {ENTRANCE_CHANNEL}` line is **deleted together
+with `_reset_blocks`**, not migrated. Until BL-37, the one-line preservation
+keeps the door open across death.
+
 ## Rendering (`game.py`)
 
 - New sprite `draw_level_entrance_open` (open archway / door swung inward,
