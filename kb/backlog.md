@@ -982,3 +982,23 @@ near-identical (feature-set, seed) levels — a shared memoized build fixture
 would dedupe most generation work but touches many test files.
 
 ---
+
+## BL-48 · P3 · Reuse leveldump in existing tests: failure diagnostics + readable goldens
+
+From the spec 0064 review (2026-07-12 test-suite review; to be discussed
+before implementation). Enabler: a small public dict-level entry point in
+`leveldump.py` that renders an already-built level dict via `Room.from_data`
+(no World, no `get_level`) — generator sweeps build raw dicts from custom
+feature sets which `dump_level` cannot reach.
+
+Then: (a) attach the ASCII render to assertion failures in the generator
+sweeps (`test_act2_solvability`, `test_key_placement`, `test_placement_rules`,
+`test_entrance`) — hypothesis failures currently print bare counters (see
+BL-46 for a live example that would have benefited); (b) `tests/_gen_hash.py`
+emits the dump alongside the sha256 so a determinism failure yields a readable
+diff; (c) dump-goldens for the hand-written mechanic fixtures in
+`tests/act2_fixtures.py` (their comment diagrams can drift); (d) extend
+`tests/test_leveldump.py`'s masked verbatim pin from level 2 to all ten Act 1
+spec-0064 diagrams, locking spec drawings to shipped data.
+
+---
