@@ -14,6 +14,7 @@ import random
 
 from hypothesis import given, settings, strategies as st
 
+from constants import WALL_REINFORCED
 from levelgraph import LevelGraph, EdgeType
 from levellayout import build_level_dict, LayoutError
 from tests.conftest import FS_FLAMES, FS_GATED, FS_WATER, FS_WATER_FLAMES
@@ -205,4 +206,49 @@ def test_plates_never_on_landing_tiles(seed):
                 npos = (pc + dc, pr + dr)
                 assert not is_passage(npos, owner), (
                     f'seed {seed}: plate ({pc},{pr}) on landing tile of '
+                    f'passage {npos}')
+
+
+# ── Spec 0063 (BL-45): blocks never START on landing tiles (R-P7 mirror) ─────
+
+@given(st.integers(min_value=0, max_value=2**32 - 1))
+@settings(max_examples=40, deadline=None)
+def test_blocks_never_start_on_landing_tiles(seed):
+    """A block on the floor tile just inside a passage of its room means
+    the first entry through that passage is a forced push (BL-45: in a
+    2-high room this wedges the puzzle unsolvably).  Same landing-tile
+    set as R-P7 uses for plates: existing passages and water flanks."""
+    graph = LevelGraph.generate(FS_GATED_WATER, random.Random(seed))
+    try:
+        level = build_level_dict(graph, rng=random.Random(seed))
+    except LayoutError:
+        return
+    for room in level['rooms'].values():
+        owners = room.get('tile_owner', {})
+        walls = room['walls']
+        openable = {(c, r) for c, r, _ in room.get('locked_doors', [])}
+        openable |= {(c, r) for c, r, _ in room.get('gates', [])}
+        water = {tuple(t) for t in room.get('water_tiles', [])}
+
+        def is_passage(pos, owner):
+            if pos in owners or pos in water:
+                return False
+            if (walls.get(pos) == WALL_REINFORCED
+                    and pos not in openable):
+                return False
+            others = {owners.get((pos[0] + dc, pos[1] + dr))
+                      for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))}
+            others.discard(None)
+            others.discard(owner)
+            return bool(others)
+
+        for bc, br in room.get('pushable_blocks', []):
+            owner = owners.get((bc, br))
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                npos = (bc + dc, br + dr)
+                assert npos not in water, (
+                    f'seed {seed}: block ({bc},{br}) on water-flank '
+                    f'landing tile of {npos}')
+                assert not is_passage(npos, owner), (
+                    f'seed {seed}: block ({bc},{br}) on landing tile of '
                     f'passage {npos}')

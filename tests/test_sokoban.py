@@ -500,3 +500,60 @@ def test_place_puzzle_honours_plate_exclusions():
     with pytest.raises(LayoutError):
         _place_puzzle('room', 'g1', placed, set(floor), set(),
                       random.Random(0), plate_excluded=frozenset(floor))
+
+
+# ── Spec 0063 (BL-45): solvability anchored to the player's real entry ───────
+# _sokoban_bfs gains a required `anchors` argument: the player may only
+# start in the connected components containing an anchor tile (the
+# doorway / corridor side).  The unanchored solver accepted puzzles that
+# are only solvable from standing positions the player can never reach.
+
+class TestAnchoredSokoban:
+
+    def _bl45_room(self):
+        """The BL-45 shape: 2-high room, doorway at (4, 0), block on the
+        entrance landing tile (4, 1), plate at (8, 1).
+
+            Wall:   #### #######
+            row 1   #   B   P  #
+            row 2   #          #
+            Wall:   ############
+        """
+        passable = frozenset(
+            {(c, r) for c in range(1, 11) for r in (1, 2)} | {(4, 0)})
+        return passable, (4, 1), (8, 1), (4, 0)
+
+    def test_bl45_room_unsolvable_from_the_doorway(self):
+        """Entering pushes the block into the dead bottom row; pushing it
+        right along row 1 requires standing at (3, 1), reachable only
+        through the block's own tile.  Anchored at the doorway, the
+        solver must reject this — the unanchored solver accepted it from
+        the unreachable interior component (the BL-45 bug)."""
+        passable, block, plate, doorway = self._bl45_room()
+        dead = _compute_dead_squares(passable, [plate])
+        assert not _sokoban_bfs(block, plate, passable, dead,
+                                anchors=[doorway]), (
+            "solver accepted the BL-45 forced-push room from the doorway")
+
+    def test_bl45_control_solvable_from_the_doorway(self):
+        """Same room with the block one tile deep at (6, 1): the player
+        enters freely, walks around via row 2, and pushes right — the
+        anchored solver must keep accepting this (no over-rejection)."""
+        passable, _b, plate, doorway = self._bl45_room()
+        block = (6, 1)
+        dead = _compute_dead_squares(passable, [plate])
+        assert _sokoban_bfs(block, plate, passable, dead,
+                            anchors=[doorway]), (
+            "anchored solver over-rejects a doorway-solvable room")
+
+    def test_anchor_in_sealed_component_rejects(self):
+        """An anchor whose component cannot push at all means unsolvable,
+        even when another component could."""
+        passable, block, plate, doorway = self._bl45_room()
+        dead = _compute_dead_squares(passable, [plate])
+        # anchor deep inside the sealed-off left interior: (1, 1)
+        interior = _sokoban_bfs(block, plate, passable, dead,
+                                anchors=[(1, 1)])
+        assert interior, "sanity: interior component can push right"
+        assert not _sokoban_bfs(block, plate, passable, dead,
+                                anchors=[doorway])
