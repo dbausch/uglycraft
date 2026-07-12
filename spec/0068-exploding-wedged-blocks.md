@@ -1,26 +1,28 @@
-# 0068 — Doomed push-blocks explode and respawn; dead-square push allowed; on-death block reset removed (BL-37)
+# 0068 — Doomed push-blocks explode and respawn; per-plate safe tiles; on-death block reset removed (BL-37)
 
 ## Status
 
-- [ ] Pushing a block is **no longer blocked by dead squares**: a block *may* be
-      pushed onto a dead square — the consequence is that it now *ignites*
-      (Daniel). The `_dead_squares` push guard in `_try_push_block` is removed
+- [ ] Each **plate object owns its `safe_tiles`** (Daniel): the room-floor
+      tiles from which a block can still be pushed to *that* plate, stored on the
+      plate fixture — not in a position-keyed map beside it. The room's safe area
+      is a property that unions over its plate objects. These tiles are
+      **tinted**, and a block pushed **out of** the safe area is what *ignites*
+- [ ] Pushing a block is **no longer blocked**: a block *may* be pushed onto a
+      tile outside the safe area — the consequence is that it now *ignites*
+      (Daniel). The old unsafe-tile push guard in `_try_push_block` (world.py:479)
+      is removed
 - [ ] A block **can never be pushed off its room's floor tiles** (Daniel):
       confinement to the block's own room (via `tile_owner`; Act 1 = the whole
-      interior). This keeps a block in its puzzle
-- [ ] Detection is a **static dead-square membership check** (Daniel): the
-      safe/dead partition is fixed (single block, confined to its room,
-      temporary obstacles ignored), so **no per-push recomputation** is needed —
-      after a push, a block whose tile is in the room's precomputed dead-square
-      set (dead *with respect to the plate*) is doomed and ignites
-- [ ] Detection reuses the generator's precomputed `room.dead_squares`
-      (reverse-reachability from all plates, permanent walls only —
-      levellayout.py:1688/2916), exposed on `World` as `_dead_squares`
-- [ ] A block **on a plate is never dead** (a plate is a reverse-flood target,
-      never in the dead set) — the goal-state exclusion, for free
-- [ ] **Floor tinting is reversed** (Daniel): the floor pattern now marks the
-      **safe** tiles (a puzzle room's floor minus its dead squares), not the
-      dead ones
+      interior)
+- [ ] Detection is a **static safe-set membership check** (Daniel): the safe
+      set is fixed (single block, confined to its room, temporary obstacles
+      ignored), so **no per-push recomputation** — after a push, a block whose
+      tile is **not** in any plate's safe set is doomed and ignites
+- [ ] Each plate's `safe_tiles` is computed once (at plate build) by
+      reverse-reachability from the plate over permanent walls, restricted to its
+      room floor — a pure `reverse_reachable(passable, target)` helper
+- [ ] A block **on a plate is always safe** (a plate is the reverse-reachability
+      seed, so it is in its own `safe_tiles`) — the goal-state exclusion, free
 - [ ] Fuse is **per-push, non-cancelling** (Decision 1): a lit fuse always
       detonates; it is not re-evaluated or cancelled
 - [ ] Each exploding block **deducts `BLOCK_EXPLOSION_PENALTY` (500) points**
@@ -39,56 +41,55 @@
       open entrance persists because `_channels` is left untouched on death
 - [ ] `_reset_blocks` and its four locking tests (`test_registry`,
       `test_rooms`, `test_dispatch`, `test_entrance_exit`) are removed or
-      rewritten to the new behaviour; entrance-persists-across-death is re-pinned
+      rewritten; entrance-persists-across-death is re-pinned
 - [ ] New tests red before the change, green after; `poe test` exits 0 with any
       affected goldens deliberately re-recorded
-- [ ] Manual check: push a block onto a dead square → it counts down, deducts
-      500, explodes, and respawns at its start; a block can't be pushed out of
-      its room; the safe tiles are the tinted ones; die on a solved grid → the
-      solved puzzle is preserved (user acceptance)
+- [ ] Manual check: push a block out of the tinted safe area → it counts down,
+      deducts 500, explodes, and respawns at its start; a block can't be pushed
+      out of its room; die on a solved grid → the solved puzzle is preserved
+      (user acceptance)
 
 ## Problem
 
 Today a block pushed toward a tile from which the puzzle becomes unsolvable is
-*prevented* from moving there (`_try_push_block` refuses dead squares), and a
-genuinely wedged block just stays wedged. The only recovery is death, which
+*prevented* from moving there (`_try_push_block` refuses tiles outside the safe
+area), and a genuinely stuck block just stays stuck. The only recovery is death,
+which
 triggers `_reset_blocks` (world.py:708) — a blunt instrument that resets **all**
 blocks and closes all plate-gates, wiping legitimately-solved puzzle progress
 along with the mistake.
 
 BL-37 makes the game **self-healing** and less fiddly: a block may be pushed
-anywhere in its room (dead squares included); if that strands it, it visibly
-reacts — an animated countdown, a 500-point penalty, an explosion — and
-respawns at its start. With that in place, the on-death block reset becomes
-redundant and actively harmful (it discards solved progress), so it is removed
-in the same change.
+anywhere in its room; if that pushes it out of the safe area, it visibly
+reacts — an animated countdown, a 500-point penalty, an explosion — and respawns
+at its start. With that in place, the on-death block reset becomes redundant and
+actively harmful (it discards solved progress), so it is removed in the same
+change.
 
 ## Decisions (resolved 2026-07-12)
 
 1. **Fuse model — per-push, non-cancelling.** Detection runs right after a
    successful push; a lit fuse always detonates, not re-checked each tick.
-2. **Push mechanics — allow dead squares, confine to the room (Daniel).**
-   - Remove the `(nc, nr) not in self._dead_squares` guard in
-     `_try_push_block` (world.py:479): a block may be pushed onto a dead square;
-     it ignites as a consequence.
+2. **Push mechanics — allow leaving the safe area, confine to the room (Daniel).**
+   - Remove the guard that refused pushes outside the safe area
+     (`_try_push_block`, world.py:479): a block may be pushed anywhere in its
+     room, including out of the safe area; it ignites as a consequence.
    - Add **room-floor confinement**: reject a push whose destination leaves the
-     block's room floor (same `tile_owner`; Act 1 has no `tile_owner`, so the
-     whole interior is one room and the existing interior-bounds check already
-     confines).
-3. **Detection — static dead-square membership, no recomputation (Daniel).**
-   For a single block, confined to its room, with temporary obstacles (other
-   blocks, doors, gates, breakable walls, unbridged water) ignored, the set of
-   dead tiles *with respect to the plate* is **fixed**. So detection does not
-   re-flood per push: after a push, a block is doomed iff its tile is in the
-   room's precomputed dead-square set. Reuse the generator's
-   `room.dead_squares` (reverse-reachability from all plates over permanent
-   walls, levellayout.py:1688; stored at 2916, surfaced by `World._dead_squares`,
-   world.py:215). Target = any plate (no block→plate pairing is stored,
-   levellayout.py:2900; the dead-square set already targets all plates).
+     block's room floor (same `tile_owner`; Act 1's interior is one room and the
+     existing interior-bounds check already confines).
+3. **Representation — `safe_tiles` on each plate object (Daniel).** The data
+   lives **on the plate fixture** as `plate.safe_tiles`: the room-floor tiles
+   from which a block can be pushed to that plate (reverse-reachability over
+   permanent walls, restricted to that plate's room). No position-keyed map
+   beside the plates. The room's safe area is a **property** unioning over its
+   plate objects. Because the block is single, confined, and temporary obstacles
+   are ignored, each `safe_tiles` is **fixed** — computed once when the plate is
+   built, never recomputed per push. Detection: a block is doomed iff its tile
+   is **not** in the room's safe area (it can reach no plate). Target = any plate
+   (no block→plate pairing is stored, levellayout.py:2900).
 4. **Respawn when home is occupied — relocate to nearest open tile.** If the
    start tile is free at detonation it respawns there; otherwise the nearest
-   open tile (BFS over unblocked tiles from the start), excluding the player's
-   tile.
+   open tile (BFS from the start, excluding the player's tile).
 5. **Score penalty — 500 points per exploding block.** `BLOCK_EXPLOSION_PENALTY
    = 500` (mirrors `LIFE_PENALTY`), deducted per block at detonation, floored
    at 0.
@@ -96,16 +97,16 @@ in the same change.
    or closes plate-gates. The spec 0067 player + enemy reset stays. Gates
    recompute via the per-tick `_latch_channels`; the open entrance survives
    because `_channels` is left untouched on death.
-7. **Reverse the floor tinting (Daniel).** The floor pattern marks the **safe**
-   tiles — a puzzle room's floor minus its dead squares — instead of the dead
-   ones. Non-puzzle rooms (no plate) get plain floor.
+7. **Tinting = the safe set.** The floor pattern marks the union safe area (only
+   room tiles). Non-puzzle rooms (no plate) get plain floor.
 
-**Residuals (accepted):** the static dead-square set ignores (a) player
-reachability and (b) temporary obstacles, so it *under-detects* — a block
-stranded by a not-yet-built bridge or a player-access quirk on a nominally
-"alive" tile is not ignited. And in a hypothetical multi-puzzle room the set
-ignores the other block. None of these occur with the current one-puzzle-per-room
-levels; the common case is exact and cheap.
+**Residuals (accepted):** the safe set ignores (a) player reachability and
+(b) temporary obstacles, so detection *under*-detects — a block stranded by a
+not-yet-built bridge or a player-access quirk on a nominally-safe tile is not
+ignited. And in a hypothetical multi-puzzle room the sets ignore the other
+block. None occur with the current one-puzzle-per-room levels; the common case
+is exact and cheap. Detection never *falsely* ignites a block still inside the
+safe set.
 
 ### Room invariant relied upon
 
@@ -116,11 +117,51 @@ levellayout.py:2525). So an exploding block's respawn need only avoid the
 
 ## Design
 
-### A — Push mechanics (`_try_push_block`)
+### A — Representation: `safe_tiles` on the plate object
 
-Replace the destination test (in-bounds ∧ not blocked ∧ **not a dead square**)
-with (in-bounds ∧ not blocked ∧ **within the block's room floor**), then run the
-doom check:
+A plate is a `Fixture` object (cells.py:87, `kind='plate'`, `payload=channel`).
+Give the plate its own `safe_tiles: frozenset` and compute it **when the plate
+is built** — no external map, no position key. The pure helper:
+
+```python
+def reverse_reachable(passable, target):
+    """Tiles from which a block can be pushed to `target` (reverse-BFS:
+    a block at Q could have been pushed from Q−d with the player at Q−2d,
+    when both are passable)."""
+    reach, q = {target}, deque([target])
+    while q:
+        bx, by = q.popleft()
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            origin, stood = (bx - dc, by - dr), (bx - 2*dc, by - 2*dr)
+            if origin in passable and stood in passable and origin not in reach:
+                reach.add(origin); q.append(origin)
+    return frozenset(reach)
+```
+
+Populate at room build (in `build_room_cells` / a post-pass on `RoomCells`,
+which knows the room's permanent walls and floor): for each plate fixture,
+`plate.safe_tiles = reverse_reachable(perm_passable, plate_pos) & room_floor`.
+`perm_passable` = interior tiles minus permanent (reinforced) walls;
+`room_floor` = tiles owned by the plate's room. This lives on the object, so it
+serializes nowhere and never appears in a room-data key or a golden dump.
+
+`Room` exposes the union as a computed property:
+
+```python
+@property
+def safe_tile_set(self):
+    return frozenset().union(
+        *(f.safe_tiles for _, f in self.cells.fixtures_of_kind('plate')))
+```
+
+`World._safe_tiles → self.room.safe_tile_set`. (If a typed home reads better
+than a field on the generic `Fixture`, a dedicated `Plate` fixture is a fine
+alternative — the point is the set lives on the plate, not in a keyed map.)
+
+### B — Push mechanics + detection (`_try_push_block`)
+
+Destination test becomes (in-bounds ∧ not blocked ∧ **within the block's room
+floor**); then the doom check fires:
 
 ```python
 nc, nr = bc + dcol, br + drow
@@ -131,58 +172,43 @@ if (not self.blocked(nc, nr)
     self._light_doomed_fuses()                        # detection (Decision 3)
     return True
 return False
-```
 
-`_room_floor(c, r)` = floor tiles sharing `(c, r)`'s `tile_owner`
-(`{t for t, o in self._tile_owner.items() if o == self._tile_owner.get((c, r))}`)
-when a `tile_owner` exists, else `INTERIOR_TILES` (Act 1). Cache per owner.
-
-### B — Detection: static dead-square membership
-
-No runtime Sokoban. The safe/dead partition is the generator's precomputed set,
-already on the room:
-
-```python
 def _light_doomed_fuses(self):
-    dead = self._dead_squares            # room.dead_squares (world.py:215)
+    safe = self._safe_tiles                            # room.safe_tile_set
     for b in self.room.blocks:
-        if b.fuse is None and (b.col, b.row) in dead:
+        if b.fuse is None and (b.col, b.row) not in safe:
             b.fuse = BLOCK_FUSE_MS
             self._emit('block_fuse_lit', b.col, b.row)
 ```
 
-- `room.dead_squares` = tiles from which a block can never be pushed to any
-  plate (reverse-reachability over permanent walls). A block *on a plate* is a
-  reverse-flood target, so it is never in the set → never ignites (goal-state
-  exclusion, free).
-- Scanning all room blocks (not just the pushed one) costs nothing and covers a
-  hypothetical multi-block room.
+`_room_floor(c, r)` = floor tiles sharing `(c, r)`'s `tile_owner` (else
+`INTERIOR_TILES` on Act 1); cache per owner. A block *on a plate* is in that
+plate's safe set (the flood seed), so it is always safe.
 
 ### Geometry (confirm before code — geometry rule)
 
-`#` wall, `.` floor, `B` block, `T` plate. `room.dead_squares` = floor tiles the
-block can never be pulled back from the plate to reach.
+`#` wall, `.` floor, `B` block, `T` plate, `S` = safe tile (in a plate's safe
+set / tinted). `room.safe_tile_set` = tiles from which the block can be pushed
+to a plate.
 
-**(1) Corner is a dead square — pushing there now IGNITES.** Reverse-pull from
-`T` cannot reach `(1,1)` (both perpendicular pulls need a wall tile behind), so
-`(1,1) ∈ dead_squares`:
-
-```
-      c0 c1 c2 c3
-  r0   #  #  #  #
-  r1   #  d  .  #        d = dead square (in dead_squares); T elsewhere
-  r2   #  .  .  #        old rule refused the push here; new rule allows it
-  r3   #  #  #  #        and the block ignites on arrival
-```
-
-**(2) Plate tile is never dead — SAFE.** A block on `T` is on a reverse-flood
-target:
+**(1) Outside the safe set — pushing there IGNITES.** The corner `(1,1)` is not
+reverse-reachable from `T`, so it is **not** safe:
 
 ```
       c0 c1 c2 c3
   r0   #  #  #  #
-  r1   #  B  .  #        B(1,1) on plate T=(1,1): not in dead_squares -> safe
-  r2   #  .  .  #
+  r1   #  .  S  #        (1,1) is NOT in the safe set; pushing B there was
+  r2   #  S  S  #        refused before, now it is allowed and B ignites
+  r3   #  #  #  #        (T is a plate among the S tiles)
+```
+
+**(2) Plate tile is safe.** A block on `T` is in `T`'s own safe set (seed):
+
+```
+      c0 c1 c2 c3
+  r0   #  #  #  #
+  r1   #  B  S  #        B on plate T=(1,1) ∈ safe(T) -> safe, never a fuse
+  r2   #  S  S  #
   r3   #  #  #  #
 ```
 
@@ -196,9 +222,8 @@ pushed into the doorway / next room (owner `A2`):
   r2   #  #  #  #  #        B's room floor)
 ```
 
-**(4) Tinting reversed — safe tiles are the tinted ones.** In a puzzle room, the
-floor pattern marks `room_floor − dead_squares` (the safe placement region);
-dead squares and non-puzzle floor render plain.
+**(4) Tinting = the safe area.** The `S` tiles above are exactly what the floor
+pattern marks; everything else (unsafe corners, non-puzzle floor) is plain.
 
 ### C — Fuse state + constants
 
@@ -270,11 +295,10 @@ blocked, so it never lands on another block).
 
 ### G — Rendering & sound
 
-- **Floor tint reversal** (`game.py`, line 528): replace the dead-square tint
-  with a **safe-tile** tint. Build `safe_tiles = { floor tiles whose owning room
-  has a plate } − dead_squares` (Act 1: interior floor − dead_squares when the
-  level has a plate); render the pattern sprite on `safe_tiles`, plain floor
-  elsewhere. Rename the sprite key `dead_floor → safe_floor` for clarity.
+- **Floor tint = safe area** (`game.py`, line 528): tint `self._safe_tiles` (the
+  room's safe area) instead of the old unsafe-tile tint. Render the pattern
+  sprite on those tiles, plain floor elsewhere. Rename the tint sprite key to
+  `safe_floor`.
 - **Sound** (`sounds.py`): add `sfx_block_fuse` (short rising tick) and
   `sfx_block_explode` (noise burst); register both.
 - **Event map** (`game.py` `_EVENT_SOUNDS`, line 178): `'block_fuse_lit' →
@@ -286,60 +310,60 @@ blocked, so it never lands on another block).
 
 ## Tests (world-level, pygame-free unless noted)
 
-- **Dead-square push now allowed + ignites:** push a block onto a tile in
-  `room.dead_squares` (previously refused); assert the push *succeeds*, `b.fuse`
-  is set, and `block_fuse_lit` fired.
-- **Confinement:** attempt to push a block off its room floor (toward a doorway
-  / another owner); assert the push is refused and the block does not move.
+- **Per-plate safe sets built:** a puzzle room exposes `room.safe_tiles` keyed
+  by plate; each plate's set contains the plate tile and excludes an unreachable
+  corner; `room.safe_tile_set` is their union.
+- **Leaving the safe set ignites:** push a block onto a tile not in
+  `safe_tile_set` (previously refused); assert the push *succeeds*, `b.fuse` is
+  set, and `block_fuse_lit` fired.
+- **Confinement:** attempt to push a block off its room floor; assert the push
+  is refused and the block does not move.
 - **Explode + penalty + respawn:** advance `update` past `BLOCK_FUSE_MS`; assert
-  `block_exploded` fired, `score` dropped by 500 (floored at 0), and the block
-  is back at its start.
-- **Block on a plate never ignites:** a block parked on its plate is never in
-  `dead_squares` → never fused; its gate stays open.
-- **Safe tile stays safe:** push a block onto a non-dead room tile; assert it is
-  not fused.
-- **Respawn relocates when home blocked:** occupy the start tile (wall / another
-  block), detonate; assert it lands on the nearest open tile, never on the
-  player or another block.
-- **On death, blocks are NOT reset:** solve a puzzle (block on plate), move
-  another block, non-fatal `_lose_life`; assert blocks stay put (plate block
-  still on the plate, gate still open) and only player + enemies reset.
+  `block_exploded` fired, `score` dropped by 500 (floored at 0), block back at
+  its start.
+- **Block on a plate never ignites:** a block on its plate is in the safe set →
+  never fused; its gate stays open.
+- **Inside the safe set stays safe:** push a block onto a safe tile; assert it
+  is not fused.
+- **Respawn relocates when home blocked:** occupy the start tile, detonate;
+  assert nearest open tile, never on the player or another block.
+- **On death, blocks are NOT reset:** solve a puzzle, move another block,
+  non-fatal `_lose_life`; assert blocks stay put and only player + enemies reset.
 - **Entrance persists across death (new mechanism):** open the entrance, die;
   assert `ENTRANCE_CHANNEL` still latched via `_channels` untouched.
-- **System order:** the block-fuse system runs before `_latch_channels` — a
-  detonation moving a block off a plate closes its gate the same tick.
-- **Safe-tile tint (rendering):** in a puzzle room the tinted set equals
-  `room_floor − dead_squares`; a non-puzzle grid tints nothing.
+- **System order:** the block-fuse system runs before `_latch_channels`.
+- **Safe-tile tint (rendering):** the tinted set equals `room.safe_tile_set`; a
+  non-puzzle grid tints nothing.
 
 ## Manual verification
 
-- `poe run` an Act 2 push-puzzle level: push a block onto a dead square → it
-  flashes a countdown, the score drops 500, it explodes and reappears at its
-  start.
+- `poe run` an Act 2 push-puzzle level: push a block out of the tinted safe area
+  → it flashes a countdown, the score drops 500, it explodes and reappears at
+  its start.
 - Try to push a block through a doorway out of its room → it won't move past the
   room edge.
-- Observe the floor tint: the **safe** placement tiles are patterned, dead
-  squares are plain.
+- Observe the floor tint: the **safe** placement tiles are patterned.
 - Park a block on its plate (solve the puzzle) → no countdown; the gate stays
   open.
-- Solve a puzzle, then die on that grid → the solved puzzle is preserved (block
-  still on the plate, gate still open); player and enemies reset as before.
+- Solve a puzzle, then die on that grid → the solved puzzle is preserved; player
+  and enemies reset as before.
 - Open the entrance (collect all awards), then die → the entrance is still open.
 
 ## Done when:
 
-- [ ] `_try_push_block` drops the dead-square guard and adds room-floor
-      confinement; a block may be pushed onto a dead square but never off its
-      room
-- [ ] `_light_doomed_fuses` ignites any block whose tile is in the room's
-      precomputed `dead_squares` (no per-push recomputation); a block on a plate
-      is never in the set
+- [ ] Each plate fixture owns `plate.safe_tiles` (reverse-reachable room tiles),
+      computed once at build; `Room.safe_tile_set` (a property over the plate
+      objects) and `World._safe_tiles` surface the union — no position-keyed map
+- [ ] `_try_push_block` drops the old unsafe-tile guard and adds room-floor
+      confinement; a block may leave the safe area but never its room
+- [ ] `_light_doomed_fuses` ignites any block whose tile is not in
+      `safe_tile_set` (no per-push recomputation); a block on a plate is always
+      safe
 - [ ] `_tick_block_fuses` decrements fuses at the pinned slot (before
       `_latch_channels`); at zero the block deducts `BLOCK_EXPLOSION_PENALTY`,
       emits `block_exploded`, and respawns at its start else the nearest open
       non-player tile
-- [ ] Floor tinting marks the safe tiles (`room_floor − dead_squares` in puzzle
-      rooms), not the dead ones
+- [ ] Floor tinting marks `room.safe_tile_set` (the safe area)
 - [ ] On-death `_reset_blocks` call and method removed; `_lose_life` keeps the
       0067 player + enemy reset; gates self-correct via the latch; the open
       entrance persists (`_channels` untouched)
@@ -349,7 +373,7 @@ blocked, so it never lands on another block).
       explosion are drawn
 - [ ] New tests red first, then green; `poe test` exits 0 with any affected
       goldens deliberately re-recorded
-- [ ] User confirms in-game: a block on a dead square counts down, costs 500,
-      explodes, and respawns; blocks can't be pushed out of their room; safe
-      tiles are the tinted ones; dying preserves solved puzzle progress (manual
-      acceptance)
+- [ ] User confirms in-game: a block pushed out of the safe area counts down,
+      costs 500, explodes, and respawns; blocks can't be pushed out of their
+      room; safe tiles are the tinted ones; dying preserves solved puzzle
+      progress (manual acceptance)
