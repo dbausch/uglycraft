@@ -2051,10 +2051,6 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
             comp_cache[block_pos] = comp
         return comp_cache[block_pos]
 
-    def get_zone(player_pos, block_pos):
-        cm = _comp_map(block_pos)
-        return cm.get(player_pos)   # None if player_pos == block_pos (shouldn't happen)
-
     anchor_zone_cache: dict = {}
 
     def anchor_zones(block_pos):
@@ -2094,6 +2090,9 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
 
         while bfs_q:
             curr_block, curr_zone = bfs_q.popleft()
+            # curr_block is constant across the 4-direction loop; fetch its
+            # component map once instead of per direction (spec 0070).
+            cm_curr = _comp_map(curr_block)
 
             for dc, dr in _CARDINAL:
                 old_block = (curr_block[0] - dc, curr_block[1] - dr)
@@ -2106,11 +2105,11 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
                     continue
 
                 # After the push the player is at old_block — must be in curr_zone.
-                if get_zone(old_block, curr_block) != curr_zone:
+                if cm_curr.get(old_block) != curr_zone:
                     continue
 
                 # Before the push: block at old_block, player at push_from.
-                new_zone = get_zone(push_from, old_block)
+                new_zone = _comp_map(old_block).get(push_from)
                 new_state = (old_block, new_zone)
 
                 if new_state in visited:
