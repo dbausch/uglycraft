@@ -844,7 +844,12 @@ tests/test_entrance.py (uniformity + anchoring down to grid_count 1).
 
 ---
 
-## BL-42 · P2 · Act 1 levels (1–10) shall have an entrance door at a fixed per-level position
+## BL-42 · FIXED · Act 1 levels (1–10) shall have an entrance door at a fixed per-level position
+
+Landed in 4677ce1 (Act 1 `entrance` keys + repositioned player/enemy starts)
+and a141822 (`--dump-level` export), spec/0064-act1-entrance-doors.md.
+Accepted by Daniel 2026-07-12 (manual check of levels 1–10). BL-43 (entrance
+opens after all awards, level ends by leaving through it) builds on this.
 
 Generated Act 2 levels (11–20) display a level entrance (stairs sprite on a
 border tile next to the player start — spec 0053/0055 grid zero). The

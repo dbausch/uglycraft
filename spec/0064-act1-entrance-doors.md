@@ -2,22 +2,25 @@
 
 ## Status
 
-- [ ] Every Act 1 level dict (1–10) carries an `entrance` key at the
+- [x] Every Act 1 level dict (1–10) carries an `entrance` key at the
       explicitly assigned border position (table below), with
       `player_start` on the interior floor tile directly inside it
-- [ ] `enemy_starts` adjusted per level to the assigned positions
+      (`4677ce1`)
+- [x] `enemy_starts` adjusted per level to the assigned positions
       (every level's enemies move; enemies are border-adjacent like the
-      player)
-- [ ] `_as_multiroom` forwards `entrance` into the single-room dict so the
+      player) (`4677ce1`)
+- [x] `_as_multiroom` forwards `entrance` into the single-room dict so the
       existing sprite render path (game.py:538) draws it in Act 1
-- [ ] `--dump-level N [--seed S]` CLI option: headless ASCII export of any
+      (`4677ce1`)
+- [x] `--dump-level N [--seed S]` CLI option: headless ASCII export of any
       level 1–20 **as loaded** — the world state at the moment control
       would be handed to the player — with multi-grid levels laid out in
       2D on a super-grid canvas (new module `leveldump.py`, wired into
-      `main.py`)
-- [ ] New tests red before the change, green after; `poe test` exits 0
-      with all affected goldens deliberately re-recorded
-- [ ] Manual check: entrance sprite, player start, and enemy starts
+      `main.py`) (`a141822`)
+- [x] New tests red before the change, green after; `poe test` exits 0
+      with all affected goldens deliberately re-recorded (`d634a2c`,
+      `4677ce1`)
+- [x] Manual check: entrance sprite, player start, and enemy starts
       correct on levels 1–10 (user acceptance)
 
 ## Problem
@@ -548,13 +551,15 @@ change Act 1 screenshot goldens:
 
 ## Done when:
 
-- [ ] All ten Act 1 dicts carry the table's `entrance` + `player_start`
-      + `enemy_starts`
-- [ ] `_as_multiroom` forwards `entrance`; sprite renders in Act 1
-- [ ] `--dump-level N [--seed S]` prints the handover-state ASCII export
+- [x] All ten Act 1 dicts carry the table's `entrance` + `player_start`
+      + `enemy_starts` (`4677ce1`)
+- [x] `_as_multiroom` forwards `entrance`; sprite renders in Act 1
+      (`4677ce1`)
+- [x] `--dump-level N [--seed S]` prints the handover-state ASCII export
       for any level 1–20 — multi-grid levels as a 2D super-grid canvas —
-      and exits without opening a window
-- [ ] New tests red first, then green; `poe test` exits 0 with Act 1
+      and exits without opening a window (`a141822`)
+- [x] New tests red first, then green; `poe test` exits 0 with Act 1
       goldens deliberately re-recorded and Act 2 goldens byte-identical
-- [ ] User confirms entrance sprites, moved starts, and moved enemies on
-      levels 1–10 (explicit message; manual acceptance)
+      (`d634a2c`, `4677ce1`)
+- [x] User confirms entrance sprites, moved starts, and moved enemies on
+      levels 1–10 (explicit message; manual acceptance — 2026-07-12)
