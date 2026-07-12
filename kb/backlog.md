@@ -1171,3 +1171,20 @@ a held key doesn't retrigger). Needs its own spec: enumerate the exact set of
 denial sites, the event name, and the SFX character.
 
 ---
+
+## BL-53 · P2 · Draw movable box on top of door/gate/bridge fixtures so it stays visible when overlapping
+
+Movable blocks can be pushed through a passage and out of their room, so a
+movable box can end up occupying the same cell as a door/gate/bridge fixture.
+Currently the draw order can cause the box to be hidden behind (or visually
+conflict with) the door/gate/bridge sprite. The movable box sprite must be drawn
+LATER (on top of / after) the door/gate/bridge sprite so it remains visible when
+it overlaps one of those fixtures.
+
+**Fix hint:** in the rendering path (game.py presentation layer), order the
+sprite draw so terrain/fixture sprites (door, gate, bridge) are painted first and
+the movable box sprite is painted afterward, on the same cell. Check the per-cell
+draw loop that renders cells.py fixtures vs. block/box sprites and ensure boxes
+come after fixtures.
+
+---
