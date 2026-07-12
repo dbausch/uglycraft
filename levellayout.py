@@ -1527,6 +1527,18 @@ def validate_layout(graph, placed, walls):
         pa = placed[name_a]
         for name_b in names[i + 1:]:
             pb = placed[name_b]
+            edge_type = edge_set.get((name_a, name_b))
+
+            # Bounding-box prune (spec 0070): a pair with no graph edge whose
+            # floor bounding boxes — expanded by 1 — cannot intersect has no
+            # adjacent floor tiles and no shared-boundary passages, so it can
+            # contribute no error.  floor_tiles ⊆ the (col,row,w,h) box, so this
+            # is a safe over-approximation.  Edge pairs are always scanned: a
+            # misplaced far-apart edge must still be flagged as 0-passage.
+            if edge_type is None and (
+                    pa.col + pa.w < pb.col - 1 or pb.col + pb.w < pa.col - 1 or
+                    pa.row + pa.h < pb.row - 1 or pb.row + pb.h < pa.row - 1):
+                continue
 
             # Check for directly adjacent floor tiles (no wall at all)
             for (c, r) in pa.floor_tiles:
@@ -1553,7 +1565,6 @@ def validate_layout(graph, placed, walls):
                     if adj_a and adj_b:
                         passages.append((c, r))
 
-            edge_type = edge_set.get((name_a, name_b))
             if edge_type is not None:
                 if edge_type == EdgeType.WATER:
                     if len(passages) < 1:
