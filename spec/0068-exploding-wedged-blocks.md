@@ -196,43 +196,79 @@ plate's safe set (the flood seed), so it is always safe.
 
 ### Geometry (confirm before code — geometry rule)
 
-`#` wall, `.` floor, `B` block, `T` plate, `S` = safe tile (in a plate's safe
-set / tinted). `room.safe_tile_set` = tiles from which the block can be pushed
-to a plate.
+Legend (same for every diagram): `#` = permanent wall; `T` = the plate (the
+goal — always safe, it is the reverse-reachability seed); `S` = **safe** floor
+tile (a block here can still be pushed to the plate → **tinted**); `x` =
+**unsafe** floor tile (a block here can never reach the plate → pushing a block
+onto it lights the fuse). The **room** is every `T`/`S`/`x` tile; the **safe
+area** is `T` + `S`. Every map below is *computed* by reverse-reachability
+(`origin = Q−d`, player `stood = Q−2d`, both passable), not eyeballed.
 
-**(1) Outside the safe set — pushing there IGNITES.** The corner `(1,1)` is not
-reverse-reachable from `T`, so it is **not** safe:
+A push along `d` needs the player able to stand behind the block (at `pos−d`)
+and the destination `pos+d` passable — so a tile is safe only if a *chain* of
+such pushes reaches `T`.
 
-```
-      c0 c1 c2 c3
-  r0   #  #  #  #
-  r1   #  .  S  #        (1,1) is NOT in the safe set; pushing B there was
-  r2   #  S  S  #        refused before, now it is allowed and B ignites
-  r3   #  #  #  #        (T is a plate among the S tiles)
-```
-
-**(2) Plate tile is safe.** A block on `T` is in `T`'s own safe set (seed):
-
-```
-      c0 c1 c2 c3
-  r0   #  #  #  #
-  r1   #  B  S  #        B on plate T=(1,1) ∈ safe(T) -> safe, never a fuse
-  r2   #  S  S  #
-  r3   #  #  #  #
-```
-
-**(3) Confinement — push refused at the room edge.** `B` (owner `A`) cannot be
-pushed into the doorway / next room (owner `A2`):
+**(1) Rectangular room, plate in a corner.** The safe area is the upper-left
+block; the far column and far row are unsafe (no room to stand behind the block
+to push it back toward `T`):
 
 ```
-      c0 c1 c2 c3 c4        owners: c1,c2 = room A ; c3 = doorway/room A2
-  r0   #  #  #  #  #
-  r1   #  B  .  o  #        pushing B right past c2 is refused (dest not in
-  r2   #  #  #  #  #        B's room floor)
+     c0 c1 c2 c3 c4 c5
+  r0  #  #  #  #  #  #
+  r1  #  T  S  S  x  #
+  r2  #  S  S  S  x  #
+  r3  #  x  x  x  x  #
+  r4  #  #  #  #  #  #
 ```
 
-**(4) Tinting = the safe area.** The `S` tiles above are exactly what the floor
-pattern marks; everything else (unsafe corners, non-puzzle floor) is plain.
+**(2) Plate in open space has a *small* safe area.** With `T` mid-room and walls
+on all four sides, the block can only be pushed onto `T` along the one row where
+the player can stand behind it — so only three tiles are safe:
+
+```
+     c0 c1 c2 c3 c4 c5 c6
+  r0  #  #  #  #  #  #  #
+  r1  #  x  x  x  x  x  #
+  r2  #  x  S  T  S  x  #
+  r3  #  x  x  x  x  x  #
+  r4  #  #  #  #  #  #  #
+```
+
+**(3) Non-rectangular / maze room (a spur wall).** The safe area threads around
+the interior wall; the tint shows the viable corridor:
+
+```
+     c0 c1 c2 c3 c4 c5 c6
+  r0  #  #  #  #  #  #  #
+  r1  #  T  S  S  S  x  #
+  r2  #  S  #  #  #  x  #
+  r3  #  x  x  x  x  x  #
+  r4  #  #  #  #  #  #  #
+```
+
+**(4) Confinement — refused at the room boundary (ownership, not walls).** Two
+rooms in one grid: room `a` (owner A) and room `b` (owner B), joined by a
+doorway `D`. The block `O` may be pushed among `a` tiles, but a push whose
+destination is `D` or a `b` tile is refused — it can never leave its room:
+
+```
+     c0 c1 c2 c3 c4 c5 c6      A = room-a floor, B = room-b floor,
+  r0  #  #  #  #  #  #  #      D = doorway (owner B), O = the block (in room A)
+  r1  #  a  a  a  #  b  #
+  r2  #  a  O  a  D  b  #      pushing O onto D (owner B) is refused
+  r3  #  a  a  a  #  b  #
+  r4  #  #  #  #  #  #  #
+```
+
+**Maze caveat (for the planned maze — important).** The safe area *is* exactly
+the set of block positions from which the puzzle is still solvable, so the
+intended solution path is always fully safe. But Sokoban pushing needs clearance
+*behind* the block: in **1-wide winding corridors the safe area collapses toward
+nothing** (the player often cannot get behind the block at a bend), which would
+ignite a block almost anywhere. A maze added to a push-puzzle room must stay
+Sokoban-solvable — generation's existing solvability guarantee (the block start
+and its solution stay reverse-reachable) already enforces this; the tint simply
+reveals the viable region to the player.
 
 ### C — Fuse state + constants
 
