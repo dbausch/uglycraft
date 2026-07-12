@@ -260,15 +260,31 @@ destination is `D` or a `b` tile is refused — it can never leave its room:
   r4  #  #  #  #  #  #  #
 ```
 
-**Maze caveat (for the planned maze — important).** The safe area *is* exactly
-the set of block positions from which the puzzle is still solvable, so the
-intended solution path is always fully safe. But Sokoban pushing needs clearance
-*behind* the block: in **1-wide winding corridors the safe area collapses toward
-nothing** (the player often cannot get behind the block at a bend), which would
-ignite a block almost anywhere. A maze added to a push-puzzle room must stay
-Sokoban-solvable — generation's existing solvability guarantee (the block start
-and its solution stay reverse-reachable) already enforces this; the tint simply
-reveals the viable region to the player.
+**Maze note (for the planned maze).** The safe area *is* exactly the set of
+block positions from which the puzzle is still solvable, so the intended
+solution path is always fully safe. Sokoban pushing needs clearance *behind* the
+block, so geometry matters:
+
+- **1-wide winding corridors collapse the safe area toward nothing** (the player
+  can't get behind the block at a bend) — such a maze would ignite a block
+  almost anywhere and isn't even solvable. Avoid.
+- **2–3-tile-wide floor with a few turns keeps most of the room safe** — e.g. a
+  2-wide L keeps 11 of 16 floor tiles safe (only the dead corners are unsafe):
+
+```
+     c0 c1 c2 c3 c4 c5 c6
+  r0  #  #  #  #  #  #  #
+  r1  #  T  S  S  S  x  #
+  r2  #  x  S  S  S  x  #
+  r3  #  #  #  S  S  #  #
+  r4  #  #  #  S  S  #  #
+  r5  #  #  #  x  x  #  #
+  r6  #  #  #  #  #  #  #
+```
+
+Generation's existing solvability guarantee (block start + solution stay
+reverse-reachable) keeps any maze in the solvable class; the tint reveals the
+viable region to the player.
 
 ### C — Fuse state + constants
 
