@@ -16,8 +16,8 @@ help  = "Create venv and install all dependencies"
 shell = "virtualenv .venv && .venv/bin/pip install -r requirements.txt"
 
 [tool.poe.tasks.test]
-help = "Run the full test suite (generator, goldens, world-model units)"
-cmd  = ".venv/bin/python -m pytest tests/ -v"
+help = "Run the full test suite in parallel (generator, goldens, world-model units). Serial: poe test -- -n0"
+cmd  = ".venv/bin/python -m pytest tests/ -n auto"
 
 [tool.poe.tasks.run]
 help = "Run the game (e.g. poe run --level 5)"
