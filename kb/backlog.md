@@ -1126,3 +1126,49 @@ player_start / respawn tile. Depends conceptually on BL-50 (which defines the
 respawn position that must stay clear).
 
 ---
+
+## BL-52 · P2 · A single shared "disallowed action" SFX, played whenever a deliberate action is refused
+
+Today when the player attempts a deliberate action that the rules refuse, the
+game is silent — there is no audio feedback that the action was disallowed. Add
+ONE shared sound effect (the same sound for every case) that plays whenever such
+an attempted action is rejected. This is about refused DELIBERATE actions
+(SPACE / bump-to-interact), NOT walking into a plain wall (that already has the
+'bump' sound and would be too noisy).
+
+Surveyed refusal sites in the code (all currently return silently with no
+distinct event/sound) — the SFX should fire at each:
+- **Locked door bumped without the matching key:** world.py `_try_auto_open_door`
+  (barrier is a door but `inventory.has_key(colour)` is False).
+- **Bridge refused:** world.py `_try_auto_bridge` — no bridge item / not enough
+  planks (`inventory.has_item(CRAFT_BRIDGE)` False), water room already bridged,
+  landing tile carries a plate, or no open floor on the far side.
+- **Wall/block placement refused:** world.py `_place_wall` (Act 1: no
+  `_place_credits`, target blocked, or target is the respawn tile) and
+  `_act2_place` (Act 2: no crafted wall item and can't quick-place, target
+  blocked, or respawn tile).
+- **Placement on the respawn tile / player_start** (spec 0067 `_is_respawn_tile`),
+  and any future "no placing right next to an entry/entrance" rule — Daniel
+  explicitly wants the denial sound here.
+- **Buy shield refused:** world.py `buy_shield` — insufficient score or already
+  shielded.
+- **Crafting a recipe without enough materials:** game.py inventory handler
+  (~line 405) where `inventory.can_craft(cursor)` is False so `craft()` is not
+  called.
+- **Consider (judgement call, may be too frequent/noisy):** bumping an
+  indestructible/inert barrier — border / reinforced / closed gate — where
+  `BARRIER_BUMP[kind] is None` in world.py `_register_bump` (currently returns
+  inert with no event). Decide during spec whether these count as "disallowed
+  actions" or are excluded as normal navigation.
+
+**Fix hint:** introduce a single new world event (e.g. `'action_denied'`) emitted
+via `self._emit('action_denied')` at each refusal site listed above, immediately
+before the early `return` / `return False`. Map it to one new SFX in game.py's
+`_EVENT_SOUNDS` table (a short buzzer/thunk `sfx_denied` added to `_build_sfx` in
+sounds.py and its return dict). Guard against spamming the sound when a bump key
+is held (reuse the `_bump_consumed` / key-release gate that walls already use, so
+a held key doesn't retrigger). Needs its own spec: enumerate the exact set of
+denial sites (resolve the inert-barrier question), the event name, and the SFX
+character.
+
+---
