@@ -257,7 +257,11 @@ lands on the player's starting position.
 
 ---
 
-## BL-17 · P3 · Completely empty rooms are still generated
+## BL-17 · WONTFIX · Completely empty rooms are still generated
+
+Dropped by design decision (Daniel, 2026-07-12): the fix is expected to do
+more harm than good — forcing an item into every room would hurt more than
+the dead space it fixes. Empty rooms stay as acceptable variety.
 
 Some generated Act 2 rooms contain no items or enemies at all (dead space) —
 observed during testing. Treasure/material/enemy distribution in
