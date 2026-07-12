@@ -942,7 +942,17 @@ confirmation before closing this entry.
 
 ---
 
-## BL-46 · P2 · R-K1 violation found by hypothesis: per-colour key count != locked-door count (seed 584, single grid)
+## BL-46 · FIXED · R-K1 violation found by hypothesis: per-colour key count != locked-door count (seed 584, single grid)
+
+Fixed in c393fcc (spec/0065-loud-locked-edge-elision.md): the
+build_level_dict barrier loop raises LayoutError for a LOCKED edge with
+an unplaced endpoint or missing connection tile — door elision / orphan
+key impossible; the standard fresh-seed retry absorbs the raise, and
+escaping LayoutErrors now append a diagnostic entry to
+uglycraft-layout.log. KB reconciled (R-P3/R-K1) in 32a2c7d. Pinned
+regression: tests/test_key_placement.py::test_pinned_dropped_locked_room
+(FS_ALL seed 584). Resolved 2026-07-12. Verification: full suite 727
+passed; 300-build sweep_orphan_keys: 0 violations.
 
 Found by hypothesis on 2026-07-12:
 `tests/test_key_placement.py::test_key_door_pairing` failed with
@@ -1029,6 +1039,12 @@ before implementation). Enabler: a small public dict-level entry point in
 `leveldump.py` that renders an already-built level dict via `Room.from_data`
 (no World, no `get_level`) — generator sweeps build raw dicts from custom
 feature sets which `dump_level` cannot reach.
+
+**Enabler landed** (commit c393fcc, spec 0065 D2):
+`leveldump.render_rooms(rooms, positions, failed=None, difficulty=HARD)`
+renders raw room dicts via `Room.from_data` at explicit super positions —
+no World, no `get_level`; unit-tested in `tests/test_layout_log.py`.
+Items (a)–(d) below remain open.
 
 Then: (a) attach the ASCII render to assertion failures in the generator
 sweeps (`test_act2_solvability`, `test_key_placement`, `test_placement_rules`,
