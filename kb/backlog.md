@@ -1040,7 +1040,27 @@ fixing).
 
 ---
 
-## BL-47 · P2 · Speed up the test suite (10:30 wall clock)
+## BL-47 · DONE · Speed up the test suite (10:30 wall clock)
+
+**DONE (specs 0069 + 0070).** Shipped pytest-xdist: `poe test` now runs
+`-n auto` (spec/0069-parallelize-test-suite.md) — measured ~2.1× on this
+machine (~10:30 serial → ~4:57 parallel), zero code change. Then a generation
+hot-path optimization (spec/0070-generation-hot-path.md): bounding-box prune in
+`validate_layout` plus a `_comp_map` hoist / `get_zone` inline in
+`_place_puzzle` — byte-identical generator output; cProfile 29.4 s → 24.8 s
+(−15.6 %), full suite ~4:57 → ~4:03 (−18 %). Combined with xdist: ~10:30 →
+~4:03 ≈ **2.6×**. See the "Generation performance" section of
+kb/architecture.md.
+
+Key finding: this machine is 2 physical cores (i5-3320M, HT → 4 logical), so
+the suite is CPU-core-bound. The xdist ceiling is ~2.1× and item-splitting adds
+no wall-clock gain here — only ≥3–4 physical cores (or CI) would benefit, and
+none exists. Build memoization is useless: measured 1–3 % duplicate (fs, seed)
+builds because hypothesis draws independent seeds. Fix-hint options (b)
+hypothesis profile and (c) shared memoized build fixture are therefore NOT
+pursued — (c) is disproven by the 1–3 % measurement; (b) would weaken coverage.
+Further speedup would need deeper generation optimization (diminishing returns
+beyond spec 0070) or more physical cores.
 
 From the 2026-07-12 test-suite review (to be discussed before implementation).
 Measured with `--durations=50` on 2026-07-12: 722 tests in 10:30. Act 2
