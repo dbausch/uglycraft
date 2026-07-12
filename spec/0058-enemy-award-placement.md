@@ -2,28 +2,30 @@
 
 ## Status
 
-- [ ] Red sweep tests: no enemy start in the corridor; per room, enemy count
+> **Confirmed working (Daniel, 2026-07-12).** Red tests 6603b82, implementation bbf02ea, suite port e9388c7, kb 6c41d49. The late-level capacity gate was closed by spec 0060 (7d4cfd5); final sweep 0 violations / 120 levels; play-tested with 0060-0062.
+
+- [x] Red sweep tests: no enemy start in the corridor; per room, enemy count
       `n ≤ s − 2` (`s` = side of the room's largest all-floor square); total
       enemies exactly `2 × G` for `G` grids; every award item lies in a
       challenge-protected room or an enemy room; award conservation
       `#awards = #challenge rooms + #enemies`
-- [ ] Graph phase: `add_enemies` removed (`Node.enemies` gone, subgraph
+- [x] Graph phase: `add_enemies` removed (`Node.enemies` gone, subgraph
       copies dropped); `add_treasures` replaced by challenge rewards — one
       award per locked / gated / flame / water room; feature-set
       `treasure_count` / `enemy_count` keys retired
-- [ ] Challenge scaling: exactly `max(1, G // 2)` flame rooms and
+- [x] Challenge scaling: exactly `max(1, G // 2)` flame rooms and
       `max(1, G // 3)` water rooms per level; WATER removed from the
       stochastic edge draw
-- [ ] Layout phase: enemy total fixed at `2 × G`; distribution by
+- [x] Layout phase: enemy total fixed at `2 × G`; distribution by
       the size rule (fewest-enemies candidate, largest effective size
       `e = s − k`, forge ogre first); one award item placed alongside each
       enemy in its room
-- [ ] Goldens: all Act 2 goldens and spec-0054 canonical hashes shift
+- [x] Goldens: all Act 2 goldens and spec-0054 canonical hashes shift
       (graph stream changes); re-recorded once and reviewed
-- [ ] KB updated: R-P9 + R-P10 in `kb/requirements.md`, graph/item-placement
+- [x] KB updated: R-P9 + R-P10 in `kb/requirements.md`, graph/item-placement
       sections in `kb/architecture.md`, BL-20 closed in `kb/backlog.md`
-- [ ] Full suite green (`poe test` exits 0)
-- [ ] User play-test confirmation
+- [x] Full suite green (`poe test` exits 0)
+- [x] User play-test confirmation
 
 ## Revision history
 
@@ -295,20 +297,20 @@ New `tests/test_enemy_room_size.py` (or extension of
 
 ## Done when:
 
-- [ ] Sweep tests green: corridor ban + per-room `n ≤ s − 2`; enemy total
+- [x] Sweep tests green: corridor ban + per-room `n ≤ s − 2`; enemy total
       exactly `2 × G`; every award challenge- or enemy-motivated; award
       conservation — all red before the change
-- [ ] Directed distributor tests green: biggest-empty-first, round-robin,
+- [x] Directed distributor tests green: biggest-empty-first, round-robin,
       largest-effective within round, capacity stop, drop past capacity,
       guard-award pairing
-- [ ] Graph tests green: no enemy data on generated graphs; exactly one
+- [x] Graph tests green: no enemy data on generated graphs; exactly one
       award per challenge room and none elsewhere; `max(1, G // 2)` flame
       and `max(1, G // 3)` water rooms per enabled level
-- [ ] Manual detector sweep: violations found pre-fix, 0 post-fix across
+- [x] Manual detector sweep: violations found pre-fix, 0 post-fix across
       ≥ 100 levels
-- [ ] All shifted goldens and canonical hashes re-recorded once and
+- [x] All shifted goldens and canonical hashes re-recorded once and
       reviewed; `poe test` exits 0
-- [ ] R-P9 + R-P10 in `kb/requirements.md`; `kb/architecture.md` graph and
+- [x] R-P9 + R-P10 in `kb/requirements.md`; `kb/architecture.md` graph and
       item-placement sections updated; BL-20 closed in `kb/backlog.md`
-- [ ] Daniel confirms in play: no cramped-room or corridor enemies, enemy
+- [x] Daniel confirms in play: no cramped-room or corridor enemies, enemy
       density feels right, and awards read as challenge rewards
