@@ -1200,7 +1200,17 @@ denial sites, the event name, and the SFX character.
 
 ---
 
-## BL-53 · P2 · Draw movable box on top of door/gate/bridge fixtures so it stays visible when overlapping
+## BL-53 · OBSOLETE · Draw movable box on top of door/gate/bridge fixtures so it stays visible when overlapping
+
+Closed as obsolete (2026-07-12): the premise no longer holds. Push-blocks are
+now confined to their own room floor (`World._room_floor`) — a block can never be
+pushed through a passage and out of its room, and a wall opening / gate / door is
+never a valid push-stand tile (spec 0068 / BL-37; safe set is player-reachability
+-bound over the room's own walkable floor). A movable box therefore can no longer
+come to occupy the same cell as a door/gate/bridge fixture, so the draw-order
+overlap this item set out to fix cannot occur. See
+`spec/0068-exploding-wedged-blocks.md` and the "Doomed push-blocks & the safe
+set" section of `kb/findings.md`.
 
 Movable blocks can be pushed through a passage and out of their room, so a
 movable box can end up occupying the same cell as a door/gate/bridge fixture.
