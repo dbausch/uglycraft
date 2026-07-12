@@ -5,9 +5,11 @@
 - [ ] On any life loss, **every enemy** (in every visited room) is respawned
       to its start — not just the player (BL-50)
 - [ ] Enemy respawn is **safe**: an enemy returns to its start tile only when
-      that tile is unblocked and clear of the player; otherwise it falls back
-      to a safe far tile. Never inside a block/wall, never on or beside the
-      player (never a position it could immediately catch from)
+      that tile is unblocked, clear of the player, **and reachable from the
+      player by an actual path**; otherwise it falls back to a safe far tile
+      in the player's own component. Never inside a block/wall, never on or
+      beside the player, and never sealed off from the player — so the player
+      cannot wall an enemy in and then die to neutralise it
 - [ ] The caught enemy is respawned with the rest (its pre-death
       `_respawn_enemy` relocation applies only on a **shielded** hit, where no
       life is lost)
@@ -70,26 +72,43 @@ enemy's captured start tile can be unusable by the time it dies —
   (Act 1 spec 0064 / Act 2 `_distribute_enemies`), the reset must still never
   seat an enemy **on or beside the player** it could catch on the next tick.
 
-So reset to the start tile only when it is safe; otherwise fall back to
-`_respawn_enemy`, which already picks an unblocked tile far from the player,
-confined to the enemy's `room_tiles`:
+There is also an **anti-trap** requirement: the player must not be able to
+build a closed wall around an enemy's home tile and then die on purpose,
+leaving the enemy sealed in a pocket it can never leave. So the home tile is
+usable only when it lies in the **same connected component as the player** —
+i.e. there is an actual path between them. This falls out of `_bfs_from`,
+which floods only **unblocked** tiles reachable from a source: a tile in
+`pdist = _bfs_from(player)` is, by construction, unblocked *and* connected to
+the player. So `_reset_enemies` computes the player-reachable set once and
+uses it as the safety test; the fallback `_respawn_enemy` draws its tiles from
+that same BFS (far from the player, confined to the enemy's `room_tiles`), so
+a relocated enemy can always path to the player:
 
 ```python
 def _reset_enemies(self):
+    pdist = self._bfs_from(self.player.col, self.player.row)  # unblocked & player-reachable
     for room in self._rooms.values():
         for enemy, home in zip(room.enemies, room.enemies_initial):
-            if self._safe_home(home, room):
+            if self._safe_home(home, room, pdist):
                 enemy.col, enemy.row = home
             else:
-                self._respawn_enemy(enemy)   # safe far fallback
+                self._respawn_enemy(enemy)   # safe far tile in the player's component
             enemy.reset_patrol()             # PatrolEnemy: back to its first leg
 ```
 
-`_safe_home(home, room)` is True iff `home` is not blocked
-(`room.cells.blocked` / no block there) **and**, for the room the player is in
-(the start room, post-Decision-1), `home` is not the player's tile nor
-Manhattan-adjacent to it. Enemies in other visited rooms only need the
-not-blocked check (the player isn't there).
+`_safe_home(home, room, pdist)`:
+
+- **Player's room** (`room is self.room` — the start room after Decision 1):
+  safe iff `pdist.get(home, 0) >= 2`. Membership in `pdist` already means
+  *unblocked and connected to the player by a real path*; the `>= 2` also
+  keeps the enemy off the player and its immediate neighbours. If the player
+  has sealed the home off, it is simply absent from `pdist` → not safe →
+  `_respawn_enemy` seats the enemy on a player-reachable tile, so the trap
+  never works.
+- **Other visited rooms:** safe iff `home` is unblocked there
+  (`not room.cells.blocked(*home, self._channels)` and no block on it).
+  Cross-grid reachability to the player is impossible under room confinement,
+  so only the not-in-a-wall guard applies.
 
 `PatrolEnemy` carries a waypoint target; resetting position without it leaves
 the patrol heading to a stale waypoint. Give `Enemy` a base `reset_patrol()`
@@ -181,6 +200,10 @@ already-blocked tile does today (no barrier set, no credit/item consumed):
 - **Never respawns onto/next to the player:** across a death, assert no enemy
   ends on the player's tile or Manhattan-adjacent to it (would catch next
   tick).
+- **Anti-trap — sealed home relocates into the player's component:** wall the
+  enemy's home tile off into a closed 1-tile pocket (placed walls all around),
+  then die; assert the enemy respawns on a tile that is reachable from the
+  player (`_bfs_from(player)` contains it) — never sealed inside the pocket.
 - **Multi-room reset:** an Act 2 fixture with enemies in two visited rooms;
   move both, die, assert both rooms' enemies reset (visited-rooms-only, like
   `_reset_blocks`).
@@ -206,13 +229,18 @@ already-blocked tile does today (no barrier set, no credit/item consumed):
   at `player_start` with all enemies back at their starts.
 - Place a wall on an enemy's start tile, then die on that grid → the enemy
   does not reappear inside the wall.
+- Wall an enemy completely in (a closed box around its start), then die on
+  purpose → the enemy reappears out in the open with a path to you, not sealed
+  inside the box.
 
 ## Done when:
 
 - [ ] `Room.enemies_initial` captured at construction; `World._reset_enemies()`
       respawns every visited room's enemies (position + patrol leg)
 - [ ] Enemy respawn is safe: never onto a blocked tile, never onto/adjacent to
-      the player — falls back to `_respawn_enemy` when the start is unusable
+      the player, and never sealed off from the player — the home is used only
+      when it is in the player's `_bfs_from` component (`pdist[home] >= 2`),
+      else `_respawn_enemy` relocates into that component (anti-trap)
 - [ ] `_lose_life` returns the player to the start room, then resets player,
       blocks, and all enemies; `_on_caught` only relocates the catcher on a
       shielded (no-life-lost) hit
