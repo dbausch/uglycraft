@@ -515,6 +515,18 @@ crafting-menu open/handler is also in game.py — gate it behind a constant so i
 be hidden for the test build (ties in with BL-26's 'hide unfinished content'
 constants).
 
+**HUD bridge counter — conditional visibility** (Daniel, 2026-07-13, established
+while implementing spec 0071 / BL-27's HUD key tracker): show the BRIDGE counter
+only when the level actually contains planks (a plank/plank-pack material somewhere
+in the level); if the level has no planks, omit the counter entirely and let the
+HUD's even-spacing redistribute its space — do not reserve an empty slot. This
+mirrors the spec 0071 key tracker (`World._level_key_colours` + `_hud_key_strip`
+returning `None` when the level has no keys). Reuse the same mechanism: a HUD
+element in `game.py` `_render_hud` that may be a pre-rendered `pygame.Surface` OR
+absent (`imgs.insert` only when non-None), so its space is redistributed once per
+level. See spec 0071 D3 and `kb/uglycraft-display.md` 'HUD Layout' (item 5, key
+tracker) for the pattern to copy.
+
 ---
 
 ## BL-29 · FIXED · Unsolvable level: grid edge attaches to a gate-locked zone of a corridor-based room
