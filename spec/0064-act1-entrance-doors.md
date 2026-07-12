@@ -6,7 +6,8 @@
       explicitly assigned border position (table below), with
       `player_start` on the interior floor tile directly inside it
 - [ ] `enemy_starts` adjusted per level to the assigned positions
-      (levels 1, 3, 7, 10 keep their current enemies)
+      (every level's enemies move; enemies are border-adjacent like the
+      player)
 - [ ] `_as_multiroom` forwards `entrance` into the single-room dict so the
       existing sprite render path (game.py:538) draws it in Act 1
 - [ ] `--dump-level N [--seed S]` CLI option: headless ASCII export of any
@@ -53,33 +54,32 @@ Daniel's assignment (entrance position, then enemies):
 > L9: center right (enemies left top corner, center, and bottom corner)
 > L10: center left (boss enemy center right)
 
-Translated to coordinates using the codebase's established conventions:
+Translated to coordinates:
 
-- **Centre row = 8** (matches the existing centre-left/right enemy
-  convention (2, 8) / (27, 8)) — except level 10, whose symmetry axis
-  (rings, crown, boss) is row 7.
+- **Centre row = 7** for player and enemies alike (also level 10's
+  symmetry axis: rings, crown, boss).
 - **Centre column = 15** for entrance/player on top/bottom sides (the
   existing player column), **14** for centre-top/bottom *enemies*
   (established by level 7's (14, 14)).
-- **Corner enemies** sit one tile off the grid corner in the established
-  (2, 13) style: (2, 2) / (27, 2) / (2, 13) / (27, 13) — except level 6,
-  whose col-2 pillars occupy those tiles; its left-corner enemies sit on
-  the border-adjacent column at (1, 1) / (1, 14).
+- **Enemies sit right next to the wall/corner — just like the player**:
+  centre-side enemies on the border-adjacent lane (col 1 / col 28 /
+  row 1 / row 14), corner enemies on the true interior corners
+  (1, 1) / (28, 1) / (1, 14) / (28, 14).
 - `enemy_starts` keeps the parenthetical order above — EASY difficulty
   always takes the **first** entry.
 
 | Level | `entrance` | `player_start` (was) | `enemy_starts` (was) |
 |---|---|---|---|
-| 1  | (29, 8)  | (28, 8) — was (15, 8) | (2, 8) — unchanged |
+| 1  | (29, 7)  | (28, 7) — was (15, 8) | (1, 7) — was (2, 8) |
 | 2  | (15, 0)  | (15, 1) — was (15, 3) | (14, 14) — was (2, 8) |
-| 3  | (29, 8)  | (28, 8) — was (15, 4) | (2, 8) — unchanged |
-| 4  | (15, 0)  | (15, 1) — was (15, 4) | (2, 13), (27, 13) — was (2, 4), (27, 11) |
-| 5  | (15, 15) | (15, 14) — was (15, 8) | (2, 2), (27, 2) — was (27, 8), (2, 12) |
-| 6  | (29, 8)  | (28, 8) — was (28, 3) | (1, 1), (1, 14) — was (2, 8), (3, 13) |
-| 7  | (14, 0)  | (14, 1) — unchanged | (2, 8), (27, 8), (14, 14) — unchanged |
-| 8  | (29, 8)  | (28, 8) — was (27, 3) | (2, 8), (14, 1), (14, 14) — was (2, 12), (13, 2), (23, 12) |
-| 9  | (29, 8)  | (28, 8) — was (15, 8) | (2, 2), (2, 8), (2, 13) — was (2, 8), (27, 8), (2, 13) |
-| 10 | (0, 7)   | (1, 7) — was (2, 7) | (27, 7) — unchanged (boss) |
+| 3  | (29, 7)  | (28, 7) — was (15, 4) | (1, 7) — was (2, 8) |
+| 4  | (15, 0)  | (15, 1) — was (15, 4) | (1, 14), (28, 14) — was (2, 4), (27, 11) |
+| 5  | (15, 15) | (15, 14) — was (15, 8) | (1, 1), (28, 1) — was (27, 8), (2, 12) |
+| 6  | (29, 7)  | (28, 7) — was (28, 3) | (1, 1), (1, 14) — was (2, 8), (3, 13) |
+| 7  | (14, 0)  | (14, 1) — unchanged | (1, 7), (28, 7), (14, 14) — was (2, 8), (27, 8), (14, 14) |
+| 8  | (29, 7)  | (28, 7) — was (27, 3) | (1, 7), (14, 1), (14, 14) — was (2, 12), (13, 2), (23, 12) |
+| 9  | (29, 7)  | (28, 7) — was (15, 8) | (1, 1), (1, 7), (1, 14) — was (2, 8), (27, 8), (2, 13) |
+| 10 | (0, 7)   | (1, 7) — was (2, 7) | (28, 7) — was (27, 7) (boss) |
 
 All positions below were machine-validated against each level's wall set:
 every player start and enemy start is an interior floor tile, entrance and
@@ -117,8 +117,8 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    4 #............................#
    5 #............................#
    6 #............................#
-   7 #............................#
-   8 #.e.........................PE
+   7 #e..........................PE
+   8 #............................#
    9 #............................#
   10 #............................#
   11 #............................#
@@ -163,8 +163,8 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    4 #......#..............#......#
    5 #......#..............#......#
    6 #......#..............#......#
-   7 #......#######..#######......#
-   8 #.e....#..............#.....PE
+   7 #e.....#######..#######.....PE
+   8 #......#..............#......#
    9 #......#..............#......#
   10 #......#..............#......#
   11 #......#..............#......#
@@ -192,8 +192,8 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
   10 #....#..................#....#
   11 #....#..................#....#
   12 #....#..................#....#
-  13 #.e..#..................#..e.#
-  14 #............................#
+  13 #....#..................#....#
+  14 #e..........................e#
   15 ##############################
 ```
 
@@ -203,8 +203,8 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
      000000000011111111112222222222
      012345678901234567890123456789
    0 ##############################
-   1 #............................#
-   2 #.e........................e.#
+   1 #e..........................e#
+   2 #............................#
    3 #......################......#
    4 #......#..............#......#
    5 #......#..............#......#
@@ -232,8 +232,8 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    4 #.#.#..#.#..######..#.#..#.#.#
    5 #.#.#..#.#..........#.#..#.#.#
    6 #.#.#..#.#..######..#.#..#.#.#
-   7 #............................#
-   8 #...........................PE
+   7 #...........................PE
+   8 #............................#
    9 #.#.#..#.#..######..#.#..#.#.#
   10 #.#.#..#.#..........#.#..#.#.#
   11 #.#.#..#.#..######..#.#..#.#.#
@@ -255,8 +255,8 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    4 #.#.......#........#.......#.#
    5 #.#.......#........#.......#.#
    6 #.#.......#........#.......#.#
-   7 #.#########........#########.#
-   8 #.e........................e.#
+   7 #e#########........#########e#
+   8 #............................#
    9 #........############........#
   10 #........#..........#........#
   11 #........#..........#........#
@@ -278,8 +278,8 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    4 #.....#.....#.....#.....#....#
    5 #.....#.....#.....#.....#....#
    6 #.....#.....#.....#.....#....#
-   7 #.....#.....#.....#.....#....#
-   8 #.e...#.....#.....#.....#...PE
+   7 #e....#.....#.....#.....#...PE
+   8 #.....#.....#.....#.....#....#
    9 #.....#.....#.....#.....#....#
   10 #.....#.....#.....#.....#....#
   11 #.....#.....#.....#.....#....#
@@ -295,20 +295,20 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
      000000000011111111112222222222
      012345678901234567890123456789
    0 ##############################
-   1 #.............##.............#
-   2 #.e...........##.............#
+   1 #e............##.............#
+   2 #.............##.............#
    3 #.............##.............#
    4 #.............##.............#
    5 #.###########.##.###########.#
    6 #............................#
-   7 #............................#
-   8 #.e.........................PE
+   7 #e..........................PE
+   8 #............................#
    9 #............................#
   10 #.###########.##.###########.#
   11 #.............##.............#
   12 #.............##.............#
-  13 #.e...........##.............#
-  14 #.............##.............#
+  13 #.............##.............#
+  14 #e............##.............#
   15 ##############################
 ```
 
@@ -324,7 +324,7 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
    4 #...#....#.########.#....#...#
    5 #....#...#.#......#.#...#....#
    6 #........#.#.####.#.#........#
-   7 EP.....#.#.#.#C.#.#.#.#....e.#
+   7 EP.....#.#.#.#C.#.#.#.#.....e#
    8 #........#.#.####.#.#........#
    9 #........#.#......#.#........#
   10 #...###..#.########.#..###...#
@@ -460,8 +460,8 @@ the dump is a geometry tool, not a full state dump.
 
 1. **`levels.py`** — each of the ten Act 1 dicts gains
    `'entrance': (col, row)` and gets `player_start` and `enemy_starts`
-   updated per the table (levels 1, 3, 7, 10 keep their enemies; 7 keeps
-   its start).
+   updated per the table (only level 7 keeps its start; every level's
+   enemies move).
 2. **`world.py` `_as_multiroom`** — forward the key into the single room
    dict: `'entrance': data['entrance']` (all Act 1 dicts will have it).
    Without this the renderer never sees it — the wrapper currently copies
