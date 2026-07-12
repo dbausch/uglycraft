@@ -866,7 +866,16 @@ since they are per-level design decisions.
 
 ---
 
-## BL-43 · P2 · Entrance door opens after all awards are collected; level ends by leaving through it
+## BL-43 · FIXED · Entrance door opens after all awards are collected; level ends by leaving through it
+
+Landed in 9076676 (spec/0066-entrance-exit-completion.md), sound in 87950fa
++ 1ab2a77. Accepted by Daniel 2026-07-12 (sprite, item collection, ta-daa
+fanfare, and the two-press walk-out all confirmed on Act 1 and Act 2). The
+entrance is a gate barrier on a reserved ENTRANCE_CHANNEL; collecting the
+last award latches it open (walkable exit gap via the ordinary
+cells.blocked query); an off-screen press while on the open door advances
+the level. Act 1 enemies now confined to INTERIOR_TILES. The
+_reset_blocks channel-preservation is temporary — it dies with BL-37.
 
 For ALL levels (1–20): today a level ends the instant the last award item is
 collected. Instead, collecting all awards shall OPEN the entrance door, and

@@ -2,32 +2,35 @@
 
 ## Status
 
-- [ ] Collecting the **last** award no longer ends the level; instead it
+- [x] Collecting the **last** award no longer ends the level; instead it
       **opens** the entrance door, for every level 1–20 — the entrance is a
       gate barrier on a reserved channel; opening latches that channel high
-      and emits a new `entrance_opened` event
-- [ ] While open, the entrance border tile becomes **walkable** — exactly
+      and emits a new `entrance_opened` event (`9076676`)
+- [x] While open, the entrance border tile becomes **walkable** — exactly
       like a grid-exit gap — through the ordinary `cells.blocked(c, r,
-      channels)` gate query, with **no** change to `world.blocked()`
-- [ ] Act 1 enemies are **confined to the interior** (their `room_tiles` is
+      channels)` gate query, with **no** change to `world.blocked()` (`9076676`)
+- [x] Act 1 enemies are **confined to the interior** (their `room_tiles` is
       the full interior tile set) so they can never occupy any border tile,
       the open entrance included; Act 2 enemies are already room-confined
-- [ ] The level ends only on the **second** press — a bump against the
+      (`9076676`)
+- [x] The level ends only on the **second** press — a bump against the
       screen edge while standing on the open entrance tile — mirroring the
       grid-change flow (`_try_room_transition`): `advance_level()`
-      (level-up on 1–19, `game_over(won=True)` on 20)
-- [ ] A dedicated **open-entrance sprite** (`draw_level_entrance_open` /
+      (level-up on 1–19, `game_over(won=True)` on 20) (`9076676`)
+- [x] A dedicated **open-entrance sprite** (`draw_level_entrance_open` /
       `level_entrance_open`) renders while `world.entrance_open` is true; a
-      distinct chime plays on `entrance_opened`
-- [ ] The door stays open after death — `_reset_blocks` preserves the
+      distinct chime plays on `entrance_opened` — a distorted choir "ta-daa"
+      fanfare (`9076676`, `87950fa`, `1ab2a77`)
+- [x] The door stays open after death — `_reset_blocks` preserves the
       entrance channel (`self._channels & {ENTRANCE_CHANNEL}`); it is
-      re-closed only when a fresh level starts (`start_level`)
-- [ ] New tests red before the change, green after; `poe test` exits 0 with
-      any affected goldens deliberately re-recorded
-- [ ] Manual check: on Act 1 and Act 2 samples, collecting the last award
+      re-closed only when a fresh level starts (`start_level`) (`9076676`)
+- [x] New tests red before the change, green after; `poe test` exits 0 with
+      any affected goldens deliberately re-recorded (`9dd052d`, `9076676`)
+- [x] Manual check: on Act 1 and Act 2 samples, collecting the last award
       opens the door (sprite + sound); the player then walks **onto** the
       door and a further press off the screen edge ends the level (user
-      acceptance)
+      acceptance — 2026-07-12: sprite, item collection, sound, and walk-out
+      all confirmed)
 
 ## Problem
 
@@ -360,24 +363,28 @@ eyeball the diffs. Act 2 generation/runtime is otherwise unchanged.
 
 ## Done when:
 
-- [ ] The entrance loads as a `Barrier('gate', channel=ENTRANCE_CHANNEL)`;
+- [x] The entrance loads as a `Barrier('gate', channel=ENTRANCE_CHANNEL)`;
       last-award collection latches that channel high, emits `entrance_opened`,
-      and does **not** advance the level (both Act 1 and Act 2 paths)
-- [ ] While open, the entrance tile is walkable through the ordinary
+      and does **not** advance the level (both Act 1 and Act 2 paths) (`9076676`)
+- [x] While open, the entrance tile is walkable through the ordinary
       `cells.blocked(c, r, channels)` gate query (`world.blocked` unchanged)
       and the player can step onto it; while closed it is solid and inert
-- [ ] Standing on the open entrance, an off-screen press calls
+      (`9076676`)
+- [x] Standing on the open entrance, an off-screen press calls
       `advance_level()` (level-up 1–19, win on 20); one press alone (just
-      stepping on) does not advance
-- [ ] Act 1 enemies carry `room_tiles == INTERIOR_TILES` (`room_name` still
+      stepping on) does not advance (`9076676`)
+- [x] Act 1 enemies carry `room_tiles == INTERIOR_TILES` (`room_name` still
       None) and never occupy any border tile, the open entrance included;
-      Act 1 enemy goldens stay byte-identical
-- [ ] `ENTRANCE_CHANNEL` survives death (`_reset_blocks` preserves it) and is
-      cleared only by `start_level`; plate gates still close on death
-- [ ] `game.py` shows the open-door sprite while `entrance_open` and plays a
-      distinct chime on `entrance_opened`
-- [ ] New tests red first, then green; `poe test` exits 0 with affected Act 1
-      goldens deliberately re-recorded and Act 2 traces byte-identical
-- [ ] User confirms, on Act 1 and Act 2 samples, that the door opens on the
+      Act 1 enemy goldens stayed byte-identical (`9076676`)
+- [x] `ENTRANCE_CHANNEL` survives death (`_reset_blocks` preserves it) and is
+      cleared only by `start_level`; plate gates still close on death (`9076676`)
+- [x] `game.py` shows the open-door sprite while `entrance_open` and plays a
+      distinct chime on `entrance_opened` — the entrance gate is excluded from
+      the generic gate overlay so a door, not a portcullis, renders (`9076676`)
+- [x] New tests red first, then green; `poe test` exits 0. Act 1 goldens
+      stayed byte-identical; the two Act 2 goldens that reached the last loot
+      (`act2_door`, `act2_water`) were deliberately re-recorded — they now open
+      the entrance instead of advancing (`9dd052d`, `9076676`)
+- [x] User confirms, on Act 1 and Act 2 samples, that the door opens on the
       last award and the level ends by walking onto it then bumping the screen
-      edge (explicit message; manual acceptance)
+      edge (explicit message; manual acceptance — 2026-07-12)
