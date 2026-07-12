@@ -1155,11 +1155,11 @@ distinct event/sound) — the SFX should fire at each:
 - **Crafting a recipe without enough materials:** game.py inventory handler
   (~line 405) where `inventory.can_craft(cursor)` is False so `craft()` is not
   called.
-- **Consider (judgement call, may be too frequent/noisy):** bumping an
-  indestructible/inert barrier — border / reinforced / closed gate — where
-  `BARRIER_BUMP[kind] is None` in world.py `_register_bump` (currently returns
-  inert with no event). Decide during spec whether these count as "disallowed
-  actions" or are excluded as normal navigation.
+
+Bumping an indestructible/inert barrier (border / reinforced / closed gate,
+`BARRIER_BUMP[kind] is None` in world.py `_register_bump`) is explicitly OUT OF
+SCOPE (Daniel, 2026-07-12): it counts as normal navigation, not a deliberate
+disallowed action, and gets no denial sound.
 
 **Fix hint:** introduce a single new world event (e.g. `'action_denied'`) emitted
 via `self._emit('action_denied')` at each refusal site listed above, immediately
@@ -1168,7 +1168,6 @@ before the early `return` / `return False`. Map it to one new SFX in game.py's
 sounds.py and its return dict). Guard against spamming the sound when a bump key
 is held (reuse the `_bump_consumed` / key-release gate that walls already use, so
 a held key doesn't retrigger). Needs its own spec: enumerate the exact set of
-denial sites (resolve the inert-barrier question), the event name, and the SFX
-character.
+denial sites, the event name, and the SFX character.
 
 ---
