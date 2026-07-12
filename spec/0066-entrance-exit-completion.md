@@ -7,7 +7,10 @@
       `entrance_open` state flag), for every level 1–20
 - [ ] While open, the entrance border tile becomes **walkable** — exactly
       like a grid-exit gap: the player can step onto it (`blocked()` returns
-      False there), enemies stay confined out as they already are at exits
+      False there)
+- [ ] Act 1 enemies are **confined to the interior** (their `room_tiles` is
+      the full interior tile set) so they can never occupy any border tile,
+      the open entrance included; Act 2 enemies are already room-confined
 - [ ] The level ends only on the **second** press — a bump against the
       screen edge while standing on the open entrance tile — mirroring the
       grid-change flow (`_try_room_transition`): `advance_level()`
@@ -166,19 +169,51 @@ centre-bottom `(14,15)`/`(14,14)` (press down twice), centre-left
 `(0,7)`/`(1,7)` (press left twice) — the sole interior neighbour is always
 the player start's side, and the second press is always the off-screen one.
 
-### Enemies at the open door
+### Keeping enemies off the open door — Act 1 confinement
 
 The open tile is passable via `blocked()`, so — exactly as with a grid-exit
-gap — nothing in the model forbids an actor from standing on it. Act 2
-enemies are room-confined (BFS/wander over `room_tiles`, spec 0051/BL-34) and
-never leave their room, so they cannot reach the start-grid entrance anyway.
-Act 1 has no confinement, so an enemy *may* occasionally wander onto the open
-door; this matches grid-exit semantics (the gap tile is passable for all) and
-cannot soft-lock the level — an enemy on the door cannot trigger completion
-(only the player-move path does), enemies chase rather than camp, and after a
-death the player respawns inside with the door still open. We accept this
-parity; restricting the open door to the player alone is a possible follow-up
-only if play-testing shows it matters.
+gap — nothing in `blocked()` forbids an actor from standing on it. Act 2
+enemies are room-confined (BFS/wander/respawn restricted to `room_tiles`,
+spec 0051/BL-34) and never leave their room, so they cannot reach the
+start-grid entrance. Act 1 enemies have no room today (`room_tiles is None`,
+because the Act 1 room dict carries no `tile_owner`, so
+`_tag_enemies_with_rooms` early-returns), so an unconfined enemy *could* step
+onto the open door.
+
+Fix: **attach every Act 1 enemy to the single interior room.** Define the
+interior tile set once —
+
+```python
+INTERIOR_TILES = frozenset((c, r) for c in range(1, COLS - 1)
+                                   for r in range(1, ROWS - 1))
+```
+
+— and in `_tag_enemies_with_rooms` (`world.py:346`), when `self._tile_owner`
+is empty (the Act 1 single-room case), assign `enemy.room_tiles =
+INTERIOR_TILES` to every enemy instead of returning early. Leave
+`enemy.room_name = None`: the chase/wander branch (`world.py:756`) keys
+always-chase off `room_name is None`, so Act 1 enemies keep chasing exactly
+as today, while `room_tiles` now confines them to the interior in
+`wander` / `move_toward` / `move_bfs` (`entities.py:57,74,112`) and in
+`_respawn_enemy` (`world.py:684`).
+
+The confinement is invisible while the door is closed: every border tile is
+already `blocked()`, so `room_tiles = INTERIOR_TILES` removes no candidate an
+enemy could have taken — Act 1 enemy movement (and its goldens) stays
+byte-identical. It only bites once the door opens, precisely excluding the
+one newly-passable border tile. No enemy can ever occupy the entrance, so the
+open door cannot be blocked or camped.
+
+### Future direction — grid zero becomes a real transition
+
+Grid zero (the outside) is planned to become a per-level boss area (or
+similar) rather than "the level just ends." When that lands, leaving through
+the entrance becomes a **real grid transition** into grid zero, not a
+level-up. This spec therefore deliberately routes the exit through the same
+off-screen branch as `_try_room_transition`: the future change is swapping
+the `advance_level()` call for a transition into grid zero, leaving the
+walk-onto-then-bump-off feel untouched. For now, leaving simply ends the
+level (`advance_level()`).
 
 ### Rejected alternative — model the entrance as a gate channel
 
@@ -250,6 +285,10 @@ World-level (pygame-free), in the existing suite:
   the start-room entrance, press off-screen → advance. Confirm an off-screen
   press from a non-start-room border still only runs `_try_room_transition`
   (no `_entrance_pos` there).
+- **Act 1 enemies are interior-confined:** after `start_level`, every Act 1
+  enemy has `room_tiles == INTERIOR_TILES` and `room_name is None`; drive
+  many ticks with the entrance open and assert no enemy ever occupies any
+  border tile (the open entrance included).
 
 Goldens: the Act 1 sequential-completion trace and any screenshot golden that
 renders a completed field (fanfare now on walk-out, open-door sprite, and the
@@ -280,8 +319,9 @@ eyeball the diffs. Act 2 generation/runtime is otherwise unchanged.
 - [ ] Standing on the open entrance, an off-screen press calls
       `advance_level()` (level-up 1–19, win on 20); one press alone (just
       stepping on) does not advance
-- [ ] Enemies never leave via the entrance; no soft-lock from an enemy on the
-      open door
+- [ ] Act 1 enemies carry `room_tiles == INTERIOR_TILES` (`room_name` still
+      None) and never occupy any border tile, the open entrance included;
+      Act 1 enemy goldens stay byte-identical
 - [ ] `entrance_open` survives death and is reset only by `start_level`
 - [ ] `game.py` shows the open-door sprite while `entrance_open` and plays a
       distinct chime on `entrance_opened`
