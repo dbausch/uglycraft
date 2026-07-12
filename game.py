@@ -682,6 +682,30 @@ class Game:
             if skey is not None and skey in sp:
                 self.surf.blit(sp[skey], (c * TILE, r * TILE))
 
+    # Fixed geometry for the HUD key strip (spec 0071 D3).
+    _KEY_ICON = 20
+    _KEY_SLOT = 23   # icon + 3px pad
+
+    def _hud_key_strip(self):
+        """Fixed-width HUD strip of the keys the player is currently holding.
+
+        Reserves one slot per possible key colour (`len(KEY_COLORS)`) so the
+        strip width is constant no matter how many keys are held — the rest of
+        the HUD never shifts. Held keys are drawn left-aligned in KEY_NAMES
+        order; the remaining slots stay empty (spec 0071 D3).
+        """
+        strip = pygame.Surface((self._KEY_SLOT * len(KEY_COLORS), self._KEY_ICON),
+                               pygame.SRCALPHA)
+        sp = self.sprites
+        x = 0
+        for key_color in KEY_NAMES:
+            if self.inventory.keys.get(key_color, 0) > 0:
+                skey = f'icon_key_{key_color}'
+                if skey in sp:
+                    strip.blit(sp[skey], (x, 0))
+                x += self._KEY_SLOT
+        return strip
+
     def _render_hud(self):
         hud_y = ROWS * TILE
         pygame.draw.rect(self.surf, HUD_BG, (0, hud_y, LOGICAL_W, STATUS_H))
@@ -726,12 +750,17 @@ class Game:
         elems.append((f"WALLS {self._place_credits:>2}{walls_dot}", wall_color))
 
         imgs = [self.font_hud.render(txt, True, col) for txt, col in elems]
+        # Key strip goes right after the SEEK/LOOT element (index 3), before the
+        # BOSS/HARD/SHIELD/WALLS status cluster (spec 0071 D3). Fixed width, so
+        # the surrounding elements never shift as keys are gained/used.
+        imgs.insert(4, self._hud_key_strip())
+
         total_w = sum(img.get_width() for img in imgs)
         margin = 10
         gap = (LOGICAL_W - 2 * margin - total_w) / max(len(imgs) - 1, 1)
-        cy = hud_y + (STATUS_H - imgs[0].get_height()) // 2
         x = float(margin)
         for img in imgs:
+            cy = hud_y + (STATUS_H - img.get_height()) // 2
             self.surf.blit(img, (round(x), cy))
             x += img.get_width() + gap
 
@@ -833,9 +862,10 @@ class Game:
                 icon_key = f'icon_key_{key_color}'
                 if icon_key in sp:
                     self.surf.blit(sp[icon_key], (panel_x, panel_y))
+                # Keys are unique per colour (levelgraph distinct-colour pool),
+                # so no count is shown — [icon] Name only, aligned with Tools
+                # (spec 0071 D1).
                 col = KEY_COLORS.get(key_color, WHITE)
-                txt = self.font_small.render(f"×{count}", True, col)
-                self.surf.blit(txt, (count_x, panel_y + 2))
                 nm = self.font_small.render(name, True, col)
                 self.surf.blit(nm, (name_x, panel_y + 2))
                 panel_y += ROW

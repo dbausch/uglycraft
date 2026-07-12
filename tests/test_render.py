@@ -6,6 +6,7 @@ freetype/SDL versions). Re-record with UGLYCRAFT_REGOLD=1 after any
 intentional visual change; drop or reduce these if they cost more than
 they catch.
 """
+from game import Game
 from tests import act2_fixtures as fx
 from tests.harness import Harness, assert_golden, screen_hash
 
@@ -62,10 +63,42 @@ def test_shot_act2_field():
 
 
 def test_shot_inventory():
-    """Inventory/crafting screen over the showcase fixture."""
+    """Inventory/crafting screen over the showcase fixture.
+
+    Holds three keys so the golden covers the counter-free Keys section
+    (spec 0071 D1): keys are unique per colour, so no ×N is drawn.
+    """
     with Harness(level_dict=fx.showcase_level(), seed=42) as h:
+        for c in ('red', 'cyan', 'orange'):
+            h.game.inventory.add_key(c)
         h.run(['wait:2', 'key:tab', 'wait:2'])
         _shot('inventory', h)
+
+
+def test_shot_hud_keys():
+    """HUD status line with a few keys held — the fixed-width key strip
+    after LOOT shows the held-key icons (spec 0071 D3)."""
+    with Harness(level=3, seed=1234) as h:
+        for c in ('red', 'green', 'purple'):
+            h.game.inventory.add_key(c)
+        h.run(['wait:3'])
+        _shot('hud_keys', h)
+
+
+def test_hud_key_strip_fixed_width():
+    """The HUD key strip reserves a constant width regardless of how many
+    keys are held, so the rest of the HUD never reflows (spec 0071 D3)."""
+    from crafting import KEY_COLORS
+    with Harness(level=3, seed=1234) as h:
+        inv = h.game.inventory
+        w0 = h.game._hud_key_strip().get_width()
+        for c in ('red', 'cyan', 'orange'):
+            inv.add_key(c)
+        w3 = h.game._hud_key_strip().get_width()
+        for c in ('blue', 'green', 'yellow', 'purple'):
+            inv.add_key(c)
+        w7 = h.game._hud_key_strip().get_width()
+        assert w0 == w3 == w7 == Game._KEY_SLOT * len(KEY_COLORS)
 
 
 # ── Spec 0056 (BL-12): border-exit sprite selection ──────────────────────────

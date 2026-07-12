@@ -36,6 +36,22 @@
 
 ### Python
 
+**Key inventory "looked wrong" — resolved, no standalone bug (spec 0071, BL-27):**
+The BL-27 observation that "during play the key inventory sometimes looked wrong"
+was investigated and closed as an artifact of a separate, already-fixed defect —
+Daniel confirmed the key inventory renders correctly in recent play (2026-07-12).
+The key-rendering path is sound: keys are **unique per colour** (`levelgraph.py:441`
+builds a shuffled colour pool and `pop()`s one distinct colour per locked door, so
+at most one key per colour), a used key (`use_key` → count 0) is filtered out of
+the inventory list and never lingers, and each `icon_key_{colour}` matches its
+label colour. The only genuine wart was cosmetic — a redundant `×1` count beside
+each key — removed by spec 0071 D1 (inventory now shows `[icon] Name`, aligned
+with the Tools list). Note the current, intended semantics: **keys are consumed on
+door-open** (`world.py:518` `_try_auto_open_door` → `inventory.use_key`), so a
+carried key disappears the instant its door is opened (not a bug; not a trophy
+system). Spec 0071 also adds a fixed-width HUD key strip → see
+`kb/uglycraft-display.md` "HUD Layout".
+
 **Entrance-as-gate gotchas (spec 0066, BL-43):** modelling the level
 entrance as a `Barrier('gate', channel=ENTRANCE_CHANNEL)` surfaced three
 non-obvious interactions:

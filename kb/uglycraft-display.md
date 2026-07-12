@@ -27,10 +27,13 @@ Single row at `y = ROWS * TILE = 512`, height `STATUS_H = 28 px`. Elements space
 1. `SCORE NNNNNNN` (7-char right-padded score)
 2. `LEVEL  N` (2-char right-padded level)
 3. `LIVES  N` (red)
-4. `SEEK: name` (padded to longest treasure name)
-5. `BOSS` (magenta) or `HARD` (red) or nothing (easy non-boss shows nothing)
-6. `SHIELD XX` or `SHIELD   ` (9 chars; rendered in `HUD_BG` when inactive — invisible, maintains layout)
-7. `WALLS  N.` (dot if `_breaks_toward_credit > 0`; colour: LTGREEN if credits > 0, YELLOW if partial progress, GRAY otherwise)
+4. `SEEK: name` (padded to longest treasure name) — or `LOOT c/t` (gold) in `preplaced` spawn mode
+5. **Key strip** (spec 0071 `_hud_key_strip`): a fixed-width surface reserving one 20 px slot per possible key colour (`_KEY_SLOT=23 × len(KEY_COLORS)=7 → 161 px`). Held keys' `icon_key_{colour}` are blitted **left-aligned** in `KEY_NAMES` order; unused slots stay empty. Width is constant regardless of keys held, so the rest of the HUD never reflows when a key is gained/used (SHIELD-style reservation). Always present, even with zero keys (leaves a reserved gap).
+6. `BOSS` (magenta) or `HARD` (red) or nothing (easy non-boss shows nothing)
+7. `SHIELD XX` or `SHIELD   ` (9 chars; rendered in `HUD_BG` when inactive — invisible, maintains layout)
+8. `WALLS  N.` (dot if `_breaks_toward_credit > 0`; colour: LTGREEN if credits > 0, YELLOW if partial progress, GRAY otherwise)
+
+Each element is vertically centred by its own height (`cy = hud_y + (STATUS_H - img.height)//2`), so the 20 px key strip and the shorter text share a common centre line. The key strip is inserted into the rendered image list at index 4 (right after SEEK/LOOT). A future backlog item adds a **bridge counter** left of WALLS — it should reuse the same fixed-width-surface-as-HUD-element mechanism. Keys are unique per colour (`levelgraph.py:441` distinct-colour pool), so neither the HUD nor the inventory shows a count next to a key.
 
 ## Enemy Sprite Selection
 
