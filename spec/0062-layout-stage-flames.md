@@ -2,25 +2,27 @@
 
 ## Status
 
-- [ ] Red tests: flame-room count == max(1, G // 2) with real jets in the
+> **Confirmed working (Daniel, 2026-07-12).** Red tests 0044c2c, implementation 5843af7, conservation formula b1da648, kb 37dc0f9. Final-world sweep on HARD: 0 unguarded awards / 1990 rooms (was 18); L11/L13 goldens byte-identical; suite 663 passed. (No standalone backlog entry existed — the defect was found during the 0058 review.)
+
+- [x] Red tests: flame-room count == max(1, G // 2) with real jets in the
       dict; every flame room's award on far tiles; no jetless flame room
       with an award; graph carries no flame data; flame ∩ enemy and
       flame ∩ puzzle rooms empty; no item left on a jet line
-- [ ] Graph phase: `add_flames` and `Node.has_flames` removed;
+- [x] Graph phase: `add_flames` and `Node.has_flames` removed;
       `has_flames` stays a feature-set key consumed at layout
-- [ ] Layout phase: level-wide flame pass — jet-capable room selection
+- [x] Layout phase: level-wide flame pass — jet-capable room selection
       by geometry, conflicting items relocated off the jet line,
       challenge award on far tiles, before enemy distribution;
       `LayoutError` only when no room in the level can host a jet
-- [ ] Final-world sweep (`sweep_award_visibility2.py`): HARD E2
+- [x] Final-world sweep (`sweep_award_visibility2.py`): HARD E2
       violations 0 across ≥ 80 levels (currently ~18: jetless flame
       rooms with free awards)
-- [ ] Goldens/hashes checked (only levels 15–20 streams shift; the
+- [x] Goldens/hashes checked (only levels 15–20 streams shift; the
       L11/L13 golden walks are expected byte-identical); `poe test`
       exits 0
-- [ ] KB updated (architecture flame section; R-P10 wording; EASY
+- [x] KB updated (architecture flame section; R-P10 wording; EASY
       free-award design note); backlog entry closed
-- [ ] User play-test confirmation: every flame room has visible jets
+- [x] User play-test confirmation: every flame room has visible jets
       with its award behind them; no more free awards in plain rooms on
       HARD
 
@@ -146,12 +148,12 @@ dicts in insertion order).
 
 ## Done when:
 
-- [ ] Flame count/integrity, no-graph-flames, and disjointness tests
+- [x] Flame count/integrity, no-graph-flames, and disjointness tests
       green (red before)
-- [ ] Economy tests green with the dict-level challenge-room definition
-- [ ] Final-world sweep: 0 HARD E2 violations across ≥ 80 levels
-- [ ] L11/L13 goldens byte-identical; `poe test` exits 0
-- [ ] KB: architecture flame section rewritten, R-P10 updated, EASY
+- [x] Economy tests green with the dict-level challenge-room definition
+- [x] Final-world sweep: 0 HARD E2 violations across ≥ 80 levels
+- [x] L11/L13 goldens byte-identical; `poe test` exits 0
+- [x] KB: architecture flame section rewritten, R-P10 updated, EASY
       free-award design note added; backlog entry closed
-- [ ] Daniel confirms in play: flame rooms always burn, their award
+- [x] Daniel confirms in play: flame rooms always burn, their award
       sits behind the jet, and HARD shows no free awards in plain rooms

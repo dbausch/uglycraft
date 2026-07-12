@@ -333,7 +333,12 @@ same way flame-jet entry detection works) from the plate candidate set.
 
 ---
 
-## BL-20 · P2 · Place enemies only in rooms of width >= 3 and height >= 3
+## BL-20 · FIXED · Place enemies only in rooms of width >= 3 and height >= 3
+
+Fixed in bbf02ea (spec/0058-enemy-award-placement.md — the enemy & award
+economy redesign), confirmed by Daniel 2026-07-12. Enemies are
+layout-distributed (2 x G per level, capacity s - 2 over the largest
+all-floor square, corridor banned); invariant R-P9.
 
 Enemies placed in narrow rooms (bounding box width < 3 or height < 3) can trap
 the player with no room to dodge. Restrict enemy start placement to rooms whose
@@ -348,7 +353,10 @@ a sub-3x3 room.
 
 ---
 
-## BL-21 · P3 · Reduce the number of rooms in level 11
+## BL-21 · FIXED · Reduce the number of rooms in level 11
+
+Fixed in 7d4cfd5 (spec/0060-act2-room-scaling.md), confirmed by Daniel
+2026-07-12: level 11 is (2, 4) rooms on plain spines.
 
 Level 11 (the first Act 2 level, `ACT2_FEATURE_SETS` index 0) generates too many
 rooms for an introductory Act 2 level. Reduce its `room_count` range.
@@ -358,7 +366,11 @@ tuple for index 0 (level 11).
 
 ---
 
-## BL-22 · P3 · Remove the more complex layout options from levels 11-13
+## BL-22 · FIXED · Remove the more complex layout options from levels 11-13
+
+Fixed in 7d4cfd5 (spec/0060-act2-room-scaling.md), confirmed by Daniel
+2026-07-12: 11-12 = horizontal/vertical, 13 = horizontal/vertical/l;
+l added to 14-20; exit sides constrained to strategy coverage.
 
 Early Act 2 levels (11-13, `ACT2_FEATURE_SETS` indices 0-2) should ease the
 player in with simpler corridor layouts. Remove the more complex strategies
@@ -400,7 +412,11 @@ or size the box to the text. Check other in-game messages don't overflow either.
 
 ---
 
-## BL-25 · P3 · Scale room count with grid count so late Act 2 levels aren't boring full-border grids
+## BL-25 · FIXED · Scale room count with grid count so late Act 2 levels aren't boring full-border grids
+
+Fixed in 7d4cfd5 (spec/0060-act2-room-scaling.md), confirmed by Daniel
+2026-07-12: per-grid ramp (2, 4) at level 11 up to (40, 60) at level 20;
+generation got FASTER (level 20 worst 1.5 s, was 3.8 s).
 
 Levels 19-20 are visually boring: most grids are laid out with the `full_border`
 strategy because each grid contains only ONE room. Cause: in
@@ -891,7 +907,12 @@ sweep validated on a reproducing seed.
 
 ---
 
-## BL-44 · P1 · Interior locked doors silently elided when their key sits on another grid (orphan keys)
+## BL-44 · FIXED · Interior locked doors silently elided when their key sits on another grid (orphan keys)
+
+Fixed in c941f9c + 9060129 (spec/0061-no-silent-door-elision.md),
+confirmed by Daniel 2026-07-12. Doors unconditional with a loud
+LayoutError net; interior-gate plates roam; gate elision at global
+scope; invariant R-K1 (sweep: 421 -> 0 violations / 120 levels).
 
 Found in play 2026-07-11 (level 13: 5 keys, 3 doors). The spec-0030
 barrier↔prerequisite coupling checked `placed_key_colours` per grid, but keys
