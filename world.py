@@ -44,9 +44,10 @@ def _as_multiroom(data):
 
     Act 1 dicts (no 'rooms') become one-room multiroom levels.  The single
     room is keyed None — the 0044 golden traces record _current_room every
-    tick, and Act 1 has always reported None.  Only 'walls' and
-    'enemy_starts' go into the room dict; every other room key is read
-    with .get(..., default) downstream, so the empty defaults apply.
+    tick, and Act 1 has always reported None.  Only 'walls',
+    'enemy_starts', and 'entrance' (spec 0064) go into the room dict;
+    every other room key is read with .get(..., default) downstream, so
+    the empty defaults apply.
     The wrapper is runtime-only: levels.py's authoring format, and the
     direct get_level() reads of 'player_start'/'crown_pos', are untouched.
     """
@@ -54,7 +55,8 @@ def _as_multiroom(data):
         return data
     return {
         'rooms': {None: {'walls': data['walls'],
-                         'enemy_starts': data['enemy_starts']}},
+                         'enemy_starts': data['enemy_starts'],
+                         'entrance': data['entrance']}},
         'start_room': None,
         'player_start': data['player_start'],
         'spawn_mode': 'sequential',

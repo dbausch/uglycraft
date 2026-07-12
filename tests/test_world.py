@@ -79,13 +79,13 @@ def test_walk_emits_moved(act1):
 
 
 def test_bump_three_times_breaks_wall(act1):
-    """Level 2: walk from (15,3) down to (15,6), then three bumps break
-    the stone wall at (15,7).  A bump only counts after key release."""
-    for _ in range(3):
+    """Level 2: walk from (14,1) down to (14,6), then three bumps break
+    the stone wall at (14,7).  A bump only counts after key release."""
+    for _ in range(5):
         assert act1.try_move(*DIR_DOWN, KEY)
     act1.drain_events()
-    assert (act1.player.col, act1.player.row) == (15, 6)
-    assert act1.blocked(15, 7)
+    assert (act1.player.col, act1.player.row) == (14, 6)
+    assert act1.blocked(14, 7)
 
     events = []
     for _ in range(3):
@@ -93,22 +93,22 @@ def test_bump_three_times_breaks_wall(act1):
         act1.key_released(KEY)
         events += act1.drain_events()
     assert _kinds(events) == ['bumped', 'bumped', 'wall_broken']
-    assert not act1.blocked(15, 7)
+    assert not act1.blocked(14, 7)
     assert act1._breaks_toward_credit == 1
 
     assert act1.try_move(*DIR_DOWN, KEY)     # walk through the gap
-    assert (act1.player.col, act1.player.row) == (15, 7)
+    assert (act1.player.col, act1.player.row) == (14, 7)
 
 
 def test_bump_consumed_until_key_release(act1):
-    for _ in range(3):
+    for _ in range(5):
         act1.try_move(*DIR_DOWN, KEY)
     act1.drain_events()
     act1.try_move(*DIR_DOWN, KEY)
     assert _kinds(act1.drain_events()) == ['bumped']
     act1.try_move(*DIR_DOWN, KEY)            # key never released
     assert act1.drain_events() == []
-    assert act1.cells.barrier(15, 7).hits == 1
+    assert act1.cells.barrier(14, 7).hits == 1
 
 
 def test_place_wall_costs_credit(act1):

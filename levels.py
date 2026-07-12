@@ -34,15 +34,17 @@ LEVELS = [
 
     # 1 ── Open field
     {
-        'player_start':  (15, 8),
-        'enemy_starts': [(2, 8)],
+        'entrance':      (29, 7),
+        'player_start':  (28, 7),
+        'enemy_starts': [(1, 7)],
         'walls': _make_walls(),
     },
 
     # 2 ── Single horizontal wall
     {
-        'player_start':  (15, 3),
-        'enemy_starts': [(2, 8)],
+        'entrance':      (14, 0),
+        'player_start':  (14, 1),
+        'enemy_starts': [(14, 14)],
         'walls': _make_walls(
             _hwall(6, 23, 7),
         ),
@@ -50,8 +52,9 @@ LEVELS = [
 
     # 3 ── H-shape: two verticals + horizontal with centre gap
     {
-        'player_start':  (15, 4),
-        'enemy_starts': [(2, 8)],
+        'entrance':      (29, 7),
+        'player_start':  (28, 7),
+        'enemy_starts': [(1, 7)],
         'walls': _make_walls(
             _vwall(7,  3, 11),
             _vwall(22, 3, 11),
@@ -62,9 +65,10 @@ LEVELS = [
 
     # 4 ── Short pillars + horizontal wall with gap ── 2 enemies
     {
-        'player_start':  (15, 4),
-        'enemy_starts': [(2, 4),
-                         (27, 11)],
+        'entrance':      (14, 0),
+        'player_start':  (14, 1),
+        'enemy_starts': [(1, 14),
+                         (28, 14)],
         'walls': _make_walls(
             _vwall(5,  2, 6),
             _vwall(24, 2, 6),
@@ -77,9 +81,10 @@ LEVELS = [
 
     # 5 ── Cage with openings ── 2 enemies
     {
-        'player_start':  (15, 8),
-        'enemy_starts': [(27, 8),
-                         (2, 12)],
+        'entrance':      (14, 15),
+        'player_start':  (14, 14),
+        'enemy_starts': [(1, 1),
+                         (28, 1)],
         'walls': _make_walls(
             _vwall(7,  3, 12),
             _vwall(22, 3, 12),
@@ -91,9 +96,10 @@ LEVELS = [
 
     # 6 ── Grid of pillars ── 2 enemies
     {
-        'player_start':  (28, 3),
-        'enemy_starts': [(2, 8),
-                         (3, 13)],
+        'entrance':      (29, 7),
+        'player_start':  (28, 7),
+        'enemy_starts': [(1, 1),
+                         (1, 14)],
         'walls': _make_walls(
             *[_vwall(c, 2, 6)  for c in (2, 7, 20, 25)],
             *[_vwall(c, 9, 13) for c in (2, 7, 20, 25)],
@@ -106,9 +112,10 @@ LEVELS = [
 
     # 7 ── Three sealed vaults ── 3 enemies
     {
+        'entrance':      (14, 0),
         'player_start':  (14, 1),
-        'enemy_starts': [(2,  8),
-                         (27, 8),
+        'enemy_starts': [(1,  7),
+                         (28, 7),
                          (14, 14)],
         'walls': _make_walls(
             _hwall(2, 10, 2), _hwall(2, 10, 7),
@@ -122,10 +129,11 @@ LEVELS = [
 
     # 8 ── Slalom ── 3 enemies
     {
-        'player_start':  (27, 3),
-        'enemy_starts': [(2, 12),
-                         (13, 2),
-                         (23, 12)],
+        'entrance':      (29, 7),
+        'player_start':  (28, 7),
+        'enemy_starts': [(1,  7),
+                         (14, 1),
+                         (14, 14)],
         'walls': _make_walls(
             _vwall(6,  1, 11),
             _vwall(12, 4, 14),
@@ -136,10 +144,11 @@ LEVELS = [
 
     # 9 ── Divided chambers ── 3 enemies
     {
-        'player_start':  (15, 8),
-        'enemy_starts': [(2, 8),
-                         (27, 8),
-                         (2, 13)],
+        'entrance':      (29, 7),
+        'player_start':  (28, 7),
+        'enemy_starts': [(1, 1),
+                         (1, 7),
+                         (1, 14)],
         'walls': _make_walls(
             _vwall(14, 1, 5),
             _vwall(14, 10, 14),
@@ -154,8 +163,9 @@ LEVELS = [
 
     # 10 ── Boss level
     {
-        'player_start':  (2, 7),
-        'enemy_starts': [(27, 7)],
+        'entrance':      (0, 7),
+        'player_start':  (1, 7),
+        'enemy_starts': [(28, 7)],
         'crown_pos':     (14, 7),
         'walls': _make_walls(
             _hwall(9,  20,  2), _hwall(9,  20, 12),

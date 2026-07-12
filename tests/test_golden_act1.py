@@ -38,11 +38,11 @@ def test_wall_break_and_place():
     credit, place a wall (SPACE). Covers hits/crack/break/credit/place."""
     with Harness(level=2, seed=1234) as h:
         trace = h.run([
-            'hold:down:16',              # walk from (15,3) down to the wall
+            'hold:down:24',              # walk from (14,1) down to the wall
             'key:down', 'wait:3',        # bump (each press = one bump)
             'key:down', 'wait:3',
-            'key:down', 'wait:3',        # third hit breaks (15,7)
-            'key:left', 'wait:3',        # step left, face wall at (14,7)
+            'key:down', 'wait:3',        # third hit breaks (14,7)
+            'key:left', 'wait:3',        # step left, face wall at (13,7)
             'key:down', 'wait:3',
             'key:down', 'wait:3',
             'key:down', 'wait:3',        # second break -> 1 credit
