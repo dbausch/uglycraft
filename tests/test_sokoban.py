@@ -59,23 +59,23 @@ class TestSokobanBFS:
 
     def test_block_already_at_target(self):
         passable = self._rect_passable(1, 1, 5, 5)
-        assert _sokoban_bfs((3, 3), (3, 3), passable, set())
+        assert _sokoban_bfs((3, 3), (3, 3), passable, set(), passable)
 
     def test_one_push_right(self):
         passable = self._rect_passable(1, 1, 5, 3)
-        assert _sokoban_bfs((3, 2), (4, 2), passable, set())
+        assert _sokoban_bfs((3, 2), (4, 2), passable, set(), passable)
 
     def test_one_push_left(self):
         passable = self._rect_passable(1, 1, 5, 3)
-        assert _sokoban_bfs((3, 2), (2, 2), passable, set())
+        assert _sokoban_bfs((3, 2), (2, 2), passable, set(), passable)
 
     def test_one_push_down(self):
         passable = self._rect_passable(1, 1, 3, 5)
-        assert _sokoban_bfs((2, 2), (2, 3), passable, set())
+        assert _sokoban_bfs((2, 2), (2, 3), passable, set(), passable)
 
     def test_one_push_up(self):
         passable = self._rect_passable(1, 1, 3, 5)
-        assert _sokoban_bfs((2, 3), (2, 2), passable, set())
+        assert _sokoban_bfs((2, 3), (2, 2), passable, set(), passable)
 
     def test_multi_push_path(self):
         # 1×7 corridor: block starts at (2,1), target at (6,1).
@@ -83,21 +83,21 @@ class TestSokobanBFS:
         # Note: block at (1,1) would be unsolvable because the player cannot
         # stand at (0,1) to initiate the first push (not in passable).
         passable = frozenset((c, 1) for c in range(1, 8))
-        assert _sokoban_bfs((2, 1), (6, 1), passable, set())
+        assert _sokoban_bfs((2, 1), (6, 1), passable, set(), passable)
 
     def test_unsolvable_block_in_corner_no_target(self):
         # Block trapped in top-left corner, target is centre — dead square
         passable = self._rect_passable(1, 1, 5, 5)
         dead = _compute_dead_squares(passable, [(3, 3)])
         assert (1, 1) in dead
-        assert not _sokoban_bfs((1, 1), (3, 3), passable, dead)
+        assert not _sokoban_bfs((1, 1), (3, 3), passable, dead, passable)
 
     def test_unsolvable_impossible_path(self):
         # Block separated from target by a wall with no path around it
         passable = frozenset([(1, 1), (2, 1)])  # only two tiles
         # Target at (2,1), block at (1,1) — player cannot stand anywhere to push
         # (player needs to be at (0,1) which is not in passable)
-        result = _sokoban_bfs((1, 1), (2, 1), passable, set())
+        result = _sokoban_bfs((1, 1), (2, 1), passable, set(), passable)
         assert not result
 
 
@@ -125,7 +125,7 @@ def test_invariant_s_one_push_position_is_solvable(plate_c, plate_r, direction):
     assert block  in passable
     assert player in passable
 
-    result = _sokoban_bfs(block, plate, passable, dead_squares=set())
+    result = _sokoban_bfs(block, plate, passable, set(), passable)
     assert result, (
         f"1-push failed: direction={direction}, plate={plate}, "
         f"block={block}, player={player}")

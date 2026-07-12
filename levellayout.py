@@ -1624,6 +1624,7 @@ def validate_push_puzzles(room_data, tile_owner, require_plates=True):
         gate_rooms[gate_id] = tile_owner.get(plate_pos)
 
     # For each gate, check solvability
+    anchors = None   # computed lazily once (spec 0063 player anchors)
     for gc, gr, gate_id in gates_list:
         plate_pos = plate_map.get(gate_id)
         if plate_pos is None:
@@ -1642,18 +1643,40 @@ def validate_push_puzzles(room_data, tile_owner, require_plates=True):
             errors.append(f"Gate {gate_id}: no blocks in plate room {plate_room}")
             continue
 
-        # Room tiles for movement bounds
-        room_tiles = set()
-        if plate_room:
-            room_tiles = {pos for pos, name in tile_owner.items()
-                          if name == plate_room}
-        # Also include doorway tiles (not in tile_owner but passable)
-        for pos in passable:
-            if pos not in walls:
-                room_tiles.add(pos)
+        # Sokoban BFS: can ANY block reach the plate — pushed by a player
+        # who ENTERED the level (spec 0063)?  Anchors: every tile
+        # reachable from the corridor in the player-augmented graph,
+        # where openable barriers (doors, gates, breakable walls,
+        # bridgeable water) are traversable for entry.  The block itself
+        # is the only obstacle a player can never pass, which is exactly
+        # what separates the BL-45 forced-push shape from a legitimate
+        # puzzle behind a locked door.
+        if anchors is None:
+            aug = set(passable)
+            aug |= {(c, r) for c, r, _x in room_data.get('locked_doors', [])}
+            aug |= {(c, r) for c, r, _x in room_data.get('gates', [])}
+            aug |= {tuple(t) for t in room_data.get('water_tiles', [])}
+            aug |= {pos for pos, wt in walls.items()
+                    if wt != WALL_REINFORCED}
+            seed = next((t for t, o in sorted(tile_owner.items())
+                         if o.startswith('corridor') and t in aug), None)
+            if seed is None:
+                # Manually built dicts without a corridor (fixtures):
+                # fall back to the unanchored semantics.
+                anchors = frozenset(passable)
+            else:
+                reach = {seed}
+                frontier = deque([seed])
+                while frontier:
+                    tc, tr = frontier.popleft()
+                    for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nb = (tc + dc, tr + dr)
+                        if nb in aug and nb not in reach:
+                            reach.add(nb)
+                            frontier.append(nb)
+                anchors = frozenset(reach)
 
-        # Sokoban BFS: can ANY block reach the plate?
-        if _can_push_block_to(room_blocks, plate_pos, passable):
+        if _can_push_block_to(room_blocks, plate_pos, passable, anchors):
             continue
 
         errors.append(f"Gate {gate_id}: no block can be pushed to plate at {plate_pos}")
@@ -1722,8 +1745,9 @@ def compute_dead_squares_for_room(room_data):
     return _compute_dead_squares(passable, targets)
 
 
-def _can_push_block_to(block_positions, target, passable):
-    """Check if any block can be pushed to the target.
+def _can_push_block_to(block_positions, target, passable, anchors):
+    """Check if any block can be pushed to the target by a player
+    starting at an anchor (the entry side, spec 0063).
 
     Uses dead square detection + Sokoban BFS.
     Dead squares are computed with the block's starting tile included in
@@ -1734,7 +1758,7 @@ def _can_push_block_to(block_positions, target, passable):
         dead = _compute_dead_squares(p, [target])
         if block_start in dead:
             continue
-        if _sokoban_bfs(block_start, target, p, dead):
+        if _sokoban_bfs(block_start, target, p, dead, anchors):
             return True
     return False
 
@@ -1760,26 +1784,47 @@ def _normalize_player(player_pos, block_pos, passable):
     return min(reach)
 
 
-def _sokoban_bfs(block_start, target, passable, dead_squares):
+def _sokoban_bfs(block_start, target, passable, dead_squares, anchors):
     """Sokoban BFS for a single block with dead square pruning.
 
     State: (block_pos, player_zone).
     Rejects any state where the block is on a dead square.
+
+    anchors (spec 0063 / BL-45): tiles the player can occupy before the
+    first push — the entry side.  Player start zones are exactly the
+    connected components of passable − {block} containing an anchor;
+    "solvability" from any other component is meaningless, because the
+    only obstacle a player can never traverse is the block itself (the
+    old try-every-component behaviour accepted puzzles solvable solely
+    from standing positions sealed off by the block — the BL-45 bug).
     """
     if block_start == target:
         return True
 
-    player_candidates = [p for p in passable if p != block_start]
-    if not player_candidates:
-        return False
-
-    tried_starts = set()
-    for ps in player_candidates:
-        norm = _normalize_player(ps, block_start, passable)
-        if norm in tried_starts:
+    # One flood fill gives every component representative.
+    comp: dict = {}
+    for start in sorted(passable):
+        if start == block_start or start in comp:
             continue
-        tried_starts.add(norm)
+        q = deque([start])
+        members = []
+        while q:
+            pos = q.popleft()
+            if pos in comp or pos == block_start:
+                continue
+            comp[pos] = None
+            members.append(pos)
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nb = (pos[0] + dc, pos[1] + dr)
+                if nb in passable and nb != block_start and nb not in comp:
+                    q.append(nb)
+        rep = min(members)
+        for m in members:
+            comp[m] = rep
 
+    start_zones = {comp[a] for a in anchors
+                   if a in comp}
+    for norm in sorted(start_zones):
         start_state = (block_start, norm)
         visited = {start_state}
         queue = deque([start_state])
@@ -1920,7 +1965,8 @@ def _plate_exclusions(room_name, neighbours, placed, walls, water_tiles):
 
 
 def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
-                  prior_puzzles=(), plate_excluded=frozenset()):
+                  prior_puzzles=(), plate_excluded=frozenset(),
+                  block_excluded=frozenset(), anchor_tiles=None):
     """Atomically select a (plate, block) pair for gate_id in room_name.
 
     plate and block are chosen via a backward Sokoban BFS from the plate.
@@ -1940,6 +1986,17 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
     plate_excluded (spec 0049) constrains ONLY the plate position — blocks
     and solution paths may still use those tiles (landing tiles of the
     room's doorways and of buildable bridge passages).
+
+    block_excluded (spec 0063, R-P7 mirror): tiles the block may not START
+    on — the same landing-tile set as plate_excluded; a block on a landing
+    tile makes the first entry a forced push (BL-45).  Solution paths may
+    still cross these tiles.
+
+    anchor_tiles (spec 0063): tiles the player can reach from the corridor
+    through openable barriers before touching this puzzle.  A block start
+    is accepted only if its forward-start player zone contains an anchor —
+    the old behaviour accepted starts solvable solely from components the
+    block itself seals off (BL-45).  None = unanchored (legacy tests).
 
     Returns (plate_pos, block_pos, solution_tiles).
     Raises ValueError if no valid pair exists in the room.
@@ -1985,6 +2042,17 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
     def get_zone(player_pos, block_pos):
         cm = _comp_map(block_pos)
         return cm.get(player_pos)   # None if player_pos == block_pos (shouldn't happen)
+
+    anchor_zone_cache: dict = {}
+
+    def anchor_zones(block_pos):
+        """Zone representatives reachable by the player before the first
+        push, with the block at block_pos (spec 0063)."""
+        if block_pos not in anchor_zone_cache:
+            cm = _comp_map(block_pos)
+            anchor_zone_cache[block_pos] = {
+                cm[t] for t in anchor_tiles if t in cm}
+        return anchor_zone_cache[block_pos]
 
     pairs = []   # (P, B, sol_tiles)
 
@@ -2039,7 +2107,14 @@ def _place_puzzle(room_name, gate_id, placed, passable, excluded, rng,
                 visited[new_state] = ((curr_block, curr_zone), (dc, dr))
                 bfs_q.append(new_state)
 
-                if old_block not in found:
+                # Accept as a block START only if the player can actually
+                # begin here: not on a landing tile (block_excluded,
+                # spec 0063 D2) and with the forward-start zone anchored
+                # to the corridor side (D1).
+                if (old_block not in found
+                        and old_block not in block_excluded
+                        and (anchor_tiles is None
+                             or new_zone in anchor_zones(old_block))):
                     found[old_block] = new_state
 
         # Reconstruct solution tiles for each valid block start.
@@ -2706,6 +2781,33 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
     excluded = set()
     prior_puzzles = []   # (plate, block) for all already-placed puzzles
 
+    # Spec 0063: player entry anchors — every tile reachable from the
+    # corridor in the player-augmented graph, where openable barriers
+    # (doors, gates, breakable walls, bridgeable water) are traversable
+    # for entry.  Push-puzzle block starts must be workable from this
+    # set; the block itself is the only thing a player can never pass.
+    anchor_tiles = None
+    _cor = next((n for n, nd in graph.nodes.items()
+                 if nd.size == NodeSize.CORRIDOR and n in placed), None)
+    if _cor is not None:
+        _aug = (puzzle_passable | gate_tiles | lock_tiles
+                | {tuple(t) for t in water_tiles}
+                | {pos for pos, wt in walls.items()
+                   if wt != WALL_REINFORCED})
+        _seed = next((t for t in sorted(placed[_cor].floor_tiles)
+                      if t in _aug), None)
+        if _seed is not None:
+            _reach = {_seed}
+            _front = deque([_seed])
+            while _front:
+                _tc, _tr = _front.popleft()
+                for _dc, _dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    _nb = (_tc + _dc, _tr + _dr)
+                    if _nb in _aug and _nb not in _reach:
+                        _reach.add(_nb)
+                        _front.append(_nb)
+            anchor_tiles = frozenset(_reach)
+
     for name, node in graph.nodes.items():
         if name not in placed or not node.plates:
             continue
@@ -2719,7 +2821,8 @@ def build_level_dict(graph, rng=None, strategies=None, grid_count=1,
         for (gate_id,) in node.plates:
             plate, block, sol = _place_puzzle(
                 name, gate_id, placed, puzzle_passable, excluded, rng,
-                prior_puzzles=prior_puzzles, plate_excluded=plate_excluded)
+                prior_puzzles=prior_puzzles, plate_excluded=plate_excluded,
+                block_excluded=plate_excluded, anchor_tiles=anchor_tiles)
             all_plates.append((*plate, gate_id))
             all_blocks.append(block)
             global_used.update({plate, block})
