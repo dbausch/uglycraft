@@ -393,8 +393,11 @@ sequentially.
   grid (gx, gy) starts at character offset `(gx·31, gy·17)` — one blank
   gutter row/column between grids. Super-cells without a grid (including
   grid zero, spec 0053) stay blank.
-- Facing `X` exit gaps of adjacent grids line up across the gutter by
-  construction (a stitch opens both sides at the same row/col).
+- Facing exit openings of adjacent grids line up across the gutter by
+  construction (a stitch opens both sides at the same row/col). A side
+  shows `X` for a bare gap, or `D`/`G` when the stitch carries a locked
+  door / gate barrier on that border tile (spec 0056: entry tiles show
+  the real barrier, never a generic marker).
 - Above the canvas, one index line per grid: its key, derived super
   position, and exits — e.g.
   `grid_a @ (1, 0)   exits: left_7 -> grid_1, bottom_14 -> grid_2`.
@@ -508,8 +511,9 @@ New `tests/test_leveldump.py`:
    one 30×16 block per entry in the level dict's `rooms` at its
    BFS-derived super position (blocks separated by the one-char gutter,
    empty super-cells blank); exactly one `P` and one `E` overall, both in
-   the start grid; facing `X` gaps of adjacent grids align across the
-   gutter; calling twice with the same seed gives identical output.
+   the start grid; facing exit openings (`X`, or `D`/`G` on a doored /
+   gated stitch side) of adjacent grids align across the gutter; calling
+   twice with the same seed gives identical output.
 
 ### Golden-trace impact
 
