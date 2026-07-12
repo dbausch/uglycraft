@@ -112,21 +112,6 @@ def test_rooms_persist_by_identity():
         _restore(orig)
 
 
-def test_reset_blocks_covers_visited_only_and_unvisited_stay_initial():
-    w, orig = _world(_two_grids)
-    try:
-        from entities import Block
-        w.room.blocks[:] = [Block(9, 9)]      # moved in g1 (visited)
-        w._reset_blocks()                     # death reset
-        assert w.room.block_positions() == [(6, 8)]  # back at initial
-        assert 'g2' not in w._rooms           # unvisited: nothing to reset
-        w.player.col, w.player.row = 28, 8
-        _cross(w, 1)                          # first entry AFTER the death
-        assert w.room.key == 'g2'             # builds from pristine data
-    finally:
-        _restore(orig)
-
-
 def test_roomstate_is_gone():
     import rooms
     assert not hasattr(rooms, 'RoomState')

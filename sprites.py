@@ -123,8 +123,10 @@ def draw_floor(size=TILE):
     return s
 
 
-def draw_dead_floor(size=TILE):
-    """Floor tile with rough stone texture — block can't be pushed here."""
+def draw_safe_floor(size=TILE):
+    """Floor tile marking a SAFE push-block placement tile (spec 0068): a
+    block may be pushed here and still reach a plate.  Same rough-stone tint
+    that formerly marked dead squares — now applied to the safe area."""
     s = _surf(size, alpha=False)
     s.fill((10, 9, 14))
     # Scattered tiny speckles simulating rough, uneven stone
@@ -137,6 +139,27 @@ def draw_dead_floor(size=TILE):
                 s.set_at((i, j), speckle_dark)
             elif v < 20:
                 s.set_at((i, j), speckle_light)
+    return s
+
+
+def draw_block_glow(size=TILE):
+    """Solid red overlay for a doomed (fused) block (spec 0068).  Drawn with a
+    per-frame surface alpha scaled by the fuse progress, so the block reddens
+    as it counts down."""
+    s = _surf(size, alpha=False)
+    s.fill((230, 40, 20))
+    return s
+
+
+def draw_explosion(frame, size=TILE):
+    """One of four fiery blast frames for an exploding block (spec 0068)."""
+    s = _surf(size, alpha=True)
+    cx = cy = size // 2
+    radius = int((0.28 + 0.20 * frame) * size)
+    ring = [(255, 240, 130), (255, 170, 45), (255, 95, 25), (110, 45, 15)][frame]
+    pygame.draw.circle(s, ring, (cx, cy), radius)
+    if frame < 2:
+        pygame.draw.circle(s, (255, 255, 210), (cx, cy), max(1, int(radius * 0.45)))
     return s
 
 
@@ -774,9 +797,10 @@ def draw_locked_door(color, size=TILE):
 
 
 def draw_pressure_plate(size=TILE):
-    """Floor tile with a pressure plate."""
-    s = _surf(size, alpha=False)
-    s.fill((8, 8, 12))  # floor base
+    """Pressure plate on a TRANSPARENT background (spec 0068): the plate is
+    smaller than the tile, so the safe-area floor tint it sits on shows as a
+    border around it."""
+    s = _surf(size, alpha=True)
     m = 6
     pygame.draw.rect(s, (60, 55, 45), (m, m, size - 2 * m, size - 2 * m), border_radius=2)
     pygame.draw.rect(s, (80, 75, 60), (m, m, size - 2 * m, size - 2 * m), 1, border_radius=2)
@@ -1200,7 +1224,12 @@ def create_sprites():
         'crack1':        draw_damage_cracks(1),
         'crack2':        draw_damage_cracks(2),
         'floor':         draw_floor(),
-        'dead_floor':    draw_dead_floor(),
+        'safe_floor':    draw_safe_floor(),
+        'block_glow':    draw_block_glow(),
+        'explosion_0':   draw_explosion(0),
+        'explosion_1':   draw_explosion(1),
+        'explosion_2':   draw_explosion(2),
+        'explosion_3':   draw_explosion(3),
         'player':        draw_player(),
         'enemy_1':       draw_ogre_1(),
         'enemy_2':       draw_ogre_2(),

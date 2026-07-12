@@ -107,6 +107,21 @@ def _two_owner_level():
             'player_start': (8, 4)}
 
 
+def _entrance_puzzle_level():
+    """Room (cols 2-7, rows 2-4), plate at the top row, an entrance gap in the
+    bottom wall.  A block on the bottom floor row (adjacent to that wall) can
+    never be pushed up — the player can't stand on the entrance to push it —
+    so the whole bottom row must be UNSAFE (spec 0068 entrance-pocket fix)."""
+    walls = _ring(2, 7, 2, 4)
+    del walls[(4, 5)]                      # entrance gap in the bottom wall
+    owner = {(c, r): 'puzzle' for c in range(2, 8) for r in range(2, 5)}
+    main = _room(walls, tile_owner=owner,
+                 pressure_plates=[(4, 2, 'g1')],
+                 entrance=(4, 5))
+    return {'rooms': {'main': main}, 'start_room': 'main',
+            'player_start': (5, 3)}
+
+
 def _plate(w):
     (_pos, f), = w.room.cells.fixtures_of_kind('plate')
     return f
@@ -123,6 +138,21 @@ def test_plate_owns_safe_tiles():
         assert (5, 2) not in safe      # far column — unsafe
         assert (3, 4) not in safe      # bottom row — unsafe
         assert w._safe_tiles == w.room.safe_tile_set == safe
+    finally:
+        _restore(orig)
+
+
+def test_entrance_pocket_row_is_unsafe():
+    """The floor row adjacent to the entrance wall is unsafe: a block there
+    can't be pushed up because the player can't stand on the entrance pocket
+    to push it (spec 0068)."""
+    w, orig = _world(_entrance_puzzle_level)
+    try:
+        safe = w._safe_tiles
+        assert (4, 2) in safe                  # plate row (top) — safe
+        assert (4, 3) in safe                  # middle row — safe
+        for c in range(2, 8):                  # bottom row — all unsafe
+            assert (c, 4) not in safe
     finally:
         _restore(orig)
 
@@ -184,17 +214,18 @@ def test_confinement_refused_at_owner_boundary():
 def test_fused_block_stays_movable_but_stays_unsafe():
     w, orig = _world(_puzzle_level)
     try:
-        w.player.col, w.player.row = (2, 2)
-        _push(w, 1, 0)                             # ->(4,2)
-        _push(w, 1, 0)                             # ->(5,2), ignites
         b = w.room.blocks[0]
+        b.col, b.row = (5, 3)                      # an unsafe tile it can leave
+        w._light_doomed_fuses()                    # ignite via the real path
         assert b.fuse == constants.BLOCK_FUSE_MS
+        assert (5, 3) not in w._safe_tiles
         w.drain_events()
-        # push it down along the unsafe far column: still moves, fuse unchanged
-        assert _push(w, 0, 1)                      # (5,2)->(5,3)
-        assert w.room.block_positions() == [(5, 3)]
-        assert b.fuse == constants.BLOCK_FUSE_MS   # not re-lit, not cancelled
-        assert (5, 3) not in w._safe_tiles         # never back in the safe area
+        # push it down the unsafe far column: it still moves, fuse unchanged
+        w.player.col, w.player.row = (5, 2)
+        assert _push(w, 0, 1)                       # (5,3)->(5,4)
+        assert w.room.block_positions() == [(5, 4)]
+        assert b.fuse == constants.BLOCK_FUSE_MS    # not re-lit, not cancelled
+        assert (5, 4) not in w._safe_tiles          # never back in the safe area
     finally:
         _restore(orig)
 

@@ -111,21 +111,6 @@ def test_block_on_plate_holds_gate_open():
         _restore(orig)
 
 
-def test_reset_blocks_closes_gates_immediately():
-    """Death resets blocks AND the gate state in the same call — no open
-    gate survives until the next tick's plate pass."""
-    w, orig = _world(_gate_world)
-    try:
-        w.room.blocks[:] = [Block(*PLATE)]
-        w.update(DT)
-        assert not w.blocked(*GATE)
-        w._reset_blocks()
-        assert w.blocked(*GATE)               # closed synchronously
-        assert w.room.block_positions() == [BLOCK]   # block back at start
-    finally:
-        _restore(orig)
-
-
 def test_gate_state_not_visible_before_plate_pass():
     """Timing pin (the reason Stage 3 deferred derivation): occupancy
     changes become visible to passability only at the plate pass, never

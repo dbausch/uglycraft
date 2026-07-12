@@ -19,6 +19,9 @@ from crafting import (RECIPES, CRAFT_NAMES, CRAFT_ICONS,
                       TOOL_NAMES, TOOL_ICONS,
                       KEY_NAMES, KEY_COLORS)
 
+# Block-blast animation: 4 frames, one every _EXPLOSION_FRAME_MS (spec 0068).
+_EXPLOSION_FRAME_MS = 80
+
 # ── States ────────────────────────────────────────────────────────────────────
 TITLE       = 'title'
 QUIT_GAME   = 'quit'
@@ -96,6 +99,7 @@ class Game:
         self._init_fonts()
         self.difficulty = EASY   # persists across games; player changes it on difficulty screen
         self._debug    = False   # set by main.py when launched with --level; skips menus/hiscore
+        self._explosions = []    # active block blasts: [col, row, elapsed_ms] (spec 0068)
         self.state = TITLE
         self._title_init()
 
@@ -192,6 +196,8 @@ class Game:
         'level_advanced':  'level_up',
         'boss_appeared':   'boss_appear',
         'entrance_opened': 'entrance_open',
+        'block_fuse_lit':  'block_fuse',
+        'block_exploded':  'block_explode',
     }
 
     def _pump_world(self):
@@ -205,10 +211,13 @@ class Game:
             sound = self._EVENT_SOUNDS.get(kind)
             if sound is not None:
                 self.sounds.play(sound)
+            if kind == 'block_exploded':
+                self._explosions.append([event[1], event[2], 0])   # spec 0068
             if kind == 'level_started':
                 self._key_repeat   = {}
                 self._flash_timer  = 0
                 self._intro_timer  = 0
+                self._explosions   = []
                 self.sounds.start_music(event[1])
             elif kind == 'level_intro':
                 self._intro_timer = 2000
@@ -431,6 +440,11 @@ class Game:
         # decrement on the transition timer as seen at frame start.
         if self.world._transition_timer <= 0 and self._flash_timer > 0:
             self._flash_timer -= dt
+        # Advance block-blast animations and drop finished ones (spec 0068).
+        for e in self._explosions:
+            e[2] += dt
+        self._explosions = [e for e in self._explosions
+                            if e[2] < 4 * _EXPLOSION_FRAME_MS]
         self.world.update(dt, input_phase=self._key_repeat_phase)
         self._pump_world()
 
@@ -525,8 +539,8 @@ class Game:
                             if hits:
                                 self.surf.blit(sp[f'crack{hits}'], (x, y))
                 else:
-                    if (c, r) in getattr(self, '_dead_squares', set()):
-                        self.surf.blit(sp['dead_floor'], (x, y))
+                    if (c, r) in getattr(self, '_safe_tiles', frozenset()):
+                        self.surf.blit(sp['safe_floor'], (x, y))
                     else:
                         self.surf.blit(sp['floor'], (x, y))
 
@@ -581,6 +595,14 @@ class Game:
             self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))
         for b in self.room.blocks:
             self.surf.blit(sp['pushable_block'], (b.col * TILE, b.row * TILE))
+            if b.fuse is not None:                     # doomed: red-glow blend (spec 0068)
+                glow = 1.0 - max(0, b.fuse) / BLOCK_FUSE_MS
+                g = sp['block_glow']
+                g.set_alpha(int(30 + 170 * min(1.0, max(0.0, glow))))
+                self.surf.blit(g, (b.col * TILE, b.row * TILE))
+        for col, row, elapsed in self._explosions:     # 4-frame blast (spec 0068)
+            frame = min(3, int(elapsed // _EXPLOSION_FRAME_MS))
+            self.surf.blit(sp[f'explosion_{frame}'], (col * TILE, row * TILE))
         # Detect water orientation: if any neighbor up/down is also
         # water, the stream is vertical; otherwise horizontal.
         for wc, wr in self.cells.water_tiles():
@@ -1168,7 +1190,7 @@ _WORLD_ATTRS = (
     'cells', 'blocked', 'channel', 'room',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_place_credits', '_breaks_toward_credit',
-    '_opened_doors', '_dead_squares',
+    '_opened_doors', '_safe_tiles',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',
 )

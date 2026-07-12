@@ -8,9 +8,11 @@ Two-phase level completion, mirroring a grid change:
    `cells.blocked(c, r, channels)` gate query, no `world.blocked` change).
    The player steps onto it, and a further off-screen press ends the level.
 
-The entrance door persists across death (`_reset_blocks` preserves the
-channel while still closing plate gates), and Act 1 enemies are confined to
-the interior so they can never occupy the open door.
+The entrance door persists across death (spec 0068: `_lose_life` leaves
+`_channels` untouched, so the reserved channel stays high; plate gates now
+recompute from live occupancy at the next latch rather than being wiped), and
+Act 1 enemies are confined to the interior so they can never occupy the open
+door.
 
 These are the red-first tests for spec 0066; `world.blocked` and the gate
 query are exercised directly, no Game / Surface / harness.
@@ -165,17 +167,17 @@ def test_closed_entrance_is_inert_and_solid():
 # ── Death / reset: door stays open, plate gates still close ───────────────────
 
 def test_door_stays_open_across_death():
-    """A non-fatal death preserves the entrance channel (door stays open and
-    walkable) while a plate-held gate channel is cleared."""
+    """A non-fatal death preserves the entrance channel (spec 0068): `_lose_life`
+    leaves `_channels` untouched, so the opened entrance stays open and walkable.
+    Plate-held gates are no longer wiped on death — they recompute from live
+    occupancy at the next latch pass."""
     w = _world()
     w.room.enemies = []
     _open(w)
-    w._channels.add('g1')             # a fake plate-held gate channel
     w.lives = 3
     w._lose_life()
     assert w.lives == 2               # non-fatal
     assert ENTRANCE_CHANNEL in w._channels
-    assert 'g1' not in w._channels    # plate gates close on death
     assert w.entrance_open is True
     assert w.blocked(*ENT) is False   # still walkable
 

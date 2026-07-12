@@ -45,6 +45,15 @@ class Room:
                 for (c, r), f in self.cells.fixtures_of_kind('plate')]
 
     @property
+    def safe_tile_set(self):
+        """Union of every plate's `safe_tiles` (spec 0068): the room-floor
+        tiles from which a block can still be pushed to some plate.  A block
+        pushed off this set is doomed.  Computed from the plate objects — no
+        position-keyed map beside them."""
+        return frozenset().union(
+            *(f.safe_tiles for _, f in self.cells.fixtures_of_kind('plate')))
+
+    @property
     def flame_jets(self):
         """Jet dicts — a view over the flame-nozzle fixtures."""
         return [f.payload

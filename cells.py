@@ -23,8 +23,31 @@ channel state and the blocks live on the World.  This module is pygame-free
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from collections import deque
+
 from constants import (COLS, ROWS, ENTRANCE_CHANNEL, WALL_BUMPS,
-                       WALL_HITS_TO_BREAK, WALL_STONE, WALL_WOODEN)
+                       WALL_HITS_TO_BREAK, WALL_STONE, WALL_WOODEN,
+                       WALL_REINFORCED)
+
+
+def reverse_reachable(passable, target):
+    """Tiles from which a block can be pushed to `target` (spec 0068).
+
+    Reverse-BFS: a block that ended at Q could have been pushed there from
+    Q−d with the player standing at Q−2d, so both Q−d and Q−2d must be
+    passable.  `passable` is the tiles a block/player may occupy (permanent
+    walls excluded); the returned set always contains `target` itself."""
+    reach = {target}
+    q = deque([target])
+    while q:
+        bx, by = q.popleft()
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            origin = (bx - dc, by - dr)          # block came from here
+            stood = (bx - 2 * dc, by - 2 * dr)   # player stood here
+            if origin in passable and stood in passable and origin not in reach:
+                reach.add(origin)
+                q.append(origin)
+    return reach
 
 
 def parse_level_walls(raw):
@@ -88,9 +111,14 @@ class Fixture:
     """Generic non-blocking fixture (spec 0052 G2): kind ∈ 'plate'
     (payload = channel name) | 'flame_nozzle' (payload = the jet dict,
     tiles precomputed — ray-cast beams are future work).  Blocking
-    fixtures (barriers) keep their specialized one-per-cell store."""
+    fixtures (barriers) keep their specialized one-per-cell store.
+
+    A 'plate' also owns `safe_tiles` (spec 0068): the room-floor tiles from
+    which a block can still be pushed to it — everything else is a doom tile.
+    Empty for non-plate fixtures."""
     kind: str
     payload: object
+    safe_tiles: frozenset = frozenset()
 
 
 class RoomCells:
@@ -244,8 +272,28 @@ def _parse_items(kind, dict_key):
 
 
 def _parse_plates(cells, room_data):
-    for pc, pr, channel in room_data.get('pressure_plates', []):
-        cells.add_fixture((pc, pr), Fixture('plate', channel))
+    """Add each plate fixture and compute its `safe_tiles` (spec 0068): the
+    tiles of the plate's own room from which a block can still be pushed to
+    it (reverse-reachability over permanent walls)."""
+    plates = room_data.get('pressure_plates', [])
+    if not plates:
+        return
+    walls = room_data.get('walls', {})
+    owner = room_data.get('tile_owner', {})
+    perm_passable = {(c, r) for c in range(1, COLS - 1) for r in range(1, ROWS - 1)
+                     if walls.get((c, r)) != WALL_REINFORCED}
+    # The entrance is a one-way exit / dead-end pocket: the player cannot stand
+    # on it to push a block off the adjacent wall (reaching it means passing
+    # through the block), so it is not a valid push-stand tile (spec 0068).
+    ent = room_data.get('entrance')
+    if ent is not None:
+        perm_passable.discard(tuple(ent))
+    for pc, pr, channel in plates:
+        reach = reverse_reachable(perm_passable, (pc, pr))
+        if owner:
+            room_floor = {t for t, o in owner.items() if o == owner.get((pc, pr))}
+            reach &= room_floor
+        cells.add_fixture((pc, pr), Fixture('plate', channel, frozenset(reach)))
 
 
 def _parse_nozzles(cells, room_data):

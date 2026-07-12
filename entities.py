@@ -18,8 +18,13 @@ class Entity:
 
 
 class Block(Entity):
-    """Pushable block: an occupant with identity (spec 0052 G3) — the
-    hook for per-block state such as BL-37's explosion countdown."""
+    """Pushable block: an occupant with identity (spec 0052 G3).  Carries the
+    BL-37 explosion countdown: `fuse` is None while safe, else the remaining
+    milliseconds before it detonates (spec 0068)."""
+
+    def __init__(self, col, row):
+        super().__init__(col, row)
+        self.fuse = None
 
 
 class Player(Entity):

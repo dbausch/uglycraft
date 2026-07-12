@@ -113,22 +113,3 @@ def test_push_moves_the_same_block_object():
         assert w.blocked(5, 8) and not w.blocked(6, 8)
     finally:
         world_mod.get_level, world_mod.regenerate_level = orig
-
-
-def test_reset_creates_fresh_blocks_at_initial_positions():
-    def make():
-        return fx._level({'main': fx._room(
-            {}, pushable_blocks=[(6, 8)])}, player=(8, 8))
-    orig = world_mod.get_level, world_mod.regenerate_level
-    world_mod.get_level = lambda n, progress=None: make()
-    world_mod.regenerate_level = lambda n: make()
-    try:
-        random.seed(42)
-        w = World('easy')
-        moved = w.room.blocks[0]
-        moved.col = 3                            # displace
-        w._reset_blocks()
-        assert w.room.block_positions() == [(6, 8)]
-        assert w.room.blocks[0] is not moved     # fresh object
-    finally:
-        world_mod.get_level, world_mod.regenerate_level = orig

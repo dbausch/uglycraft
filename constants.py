@@ -61,6 +61,8 @@ ACT2_START_LEVEL = 11
 ACT2_BASE_MOVE_MS  = 80
 ACT2_BASE_ENEMY_MS = 200
 LIFE_PENALTY = 500         # flat points lost on death
+BLOCK_FUSE_MS = 5000       # 5 s red-glow countdown before a doomed block blasts (spec 0068)
+BLOCK_EXPLOSION_PENALTY = 500  # points lost per exploding block (spec 0068)
 
 # Points awarded when treasure item_no is collected (item_no 1 yields 0, 2→100, …)
 TREASURE_POINTS = {1: 100, 2: 200, 3: 300, 4: 400, 5: 500,

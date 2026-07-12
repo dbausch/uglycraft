@@ -26,7 +26,7 @@ from collections import deque
 from constants import *
 from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
-from entities import Block, Player, Enemy, PatrolEnemy, ForgeOgre
+from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import Room, find_exit
 from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
 from cells import BARRIER_BUMP, Barrier, _exit_tiles
@@ -212,8 +212,20 @@ class World:
         return ENTRANCE_CHANNEL in self._channels
 
     @property
-    def _dead_squares(self):
-        return self.room.dead_squares
+    def _safe_tiles(self):
+        """The current room's safe area (spec 0068): union of the plates'
+        `safe_tiles`.  A block pushed off this set is doomed."""
+        return self.room.safe_tile_set
+
+    def _room_floor(self, c, r):
+        """Floor tiles of the room that owns (c, r) — a block is confined to
+        these (spec 0068).  Act 1 has no `tile_owner`, so the whole interior
+        is one room."""
+        owner_map = self._tile_owner
+        if not owner_map:
+            return INTERIOR_TILES
+        o = owner_map.get((c, r))
+        return frozenset(t for t, oo in owner_map.items() if oo == o)
 
     @property
     def _flame_jets(self):
@@ -474,13 +486,27 @@ class World:
         if block is None:
             return False
         nc, nr = bc + dcol, br + drow
-        if (0 < nc < COLS - 1 and 0 < nr < ROWS - 1
-                and not self.blocked(nc, nr)
-                and (nc, nr) not in self._dead_squares):
+        # Confined to the block's own room floor (spec 0068): a block may be
+        # pushed anywhere in its room — including out of the safe area, which
+        # ignites it — but never off the room's floor.
+        if not self.blocked(nc, nr) and (nc, nr) in self._room_floor(bc, br):
             block.col, block.row = nc, nr
             self._emit('bumped')
+            self._light_doomed_fuses()
             return True
         return False
+
+    def _light_doomed_fuses(self):
+        """Ignite any block that has been pushed out of the safe area (spec
+        0068).  A block on a plate is always in the safe set, so it is never
+        lit; an already-fused block is left alone (the fuse never re-lights)."""
+        safe = self._safe_tiles
+        if not safe:
+            return          # no plate in this room → no puzzle → nothing to doom
+        for b in self.room.blocks:
+            if b.fuse is None and (b.col, b.row) not in safe:
+                b.fuse = BLOCK_FUSE_MS
+                self._emit('block_fuse_lit', b.col, b.row)
 
     def _try_auto_open_door(self, col, row):
         """Open a locked door at (col, row) if the player has the key."""
@@ -702,22 +728,55 @@ class World:
             data = get_level(self.level)
             self._enter_room(self._level_data['start_room'])
             self.player.col, self.player.row = data['player_start']
-            self._reset_blocks()
+            # Blocks are NOT reset on death (spec 0068): wedged blocks
+            # self-heal by exploding, so dying preserves solved puzzle
+            # progress.  `_channels` is left untouched so plate-gates recompute
+            # from live occupancy at the next latch and the open entrance
+            # persists.
             self._reset_enemies()
 
-    def _reset_blocks(self):
-        """Reset all pushable blocks to their starting positions and close
-        any gates that were held open by blocks on plates."""
-        # Visited rooms only (spec 0051): an unvisited room's blocks were
-        # never moved — its eventual first entry builds from pristine data.
-        for room in self._rooms.values():
-            room.blocks = [Block(c, r) for c, r in room.blocks_initial]
-        # Close everything synchronously (the old _gate_open.clear()): the
-        # next plate pass re-latches from the reset occupancy.  The entrance
-        # channel is NOT plate-held — an opened door stays open across death
-        # (spec 0066), so preserve it.  (This preservation goes away with
-        # _reset_blocks itself once BL-37's self-healing blocks land.)
-        self._channels = self._channels & {ENTRANCE_CHANNEL}
+    def _tick_block_fuses(self, dt):
+        """Count down every burning block and detonate at zero (spec 0068).
+        Runs before the plate latch so a detonation that moves a block off a
+        plate closes its gate the same tick."""
+        for b in self.room.blocks:
+            if b.fuse is None:
+                continue
+            b.fuse -= dt
+            if b.fuse <= 0:
+                b.fuse = None
+                self._detonate_block(b)
+
+    def _detonate_block(self, b):
+        """Explode a doomed block (spec 0068): deduct the penalty, emit the
+        blast, and respawn it at its start (or the nearest open tile)."""
+        home = self.room.blocks_initial[self.room.blocks.index(b)]
+        self.score = max(0, self.score - BLOCK_EXPLOSION_PENALTY)
+        self._emit('block_exploded', b.col, b.row)
+        b.col, b.row = self._block_respawn_tile(home)
+        b.fuse = None
+
+    def _block_respawn_tile(self, home):
+        """`home` if it is open and clear of the player, else the nearest open
+        non-player tile (spec 0068).  Blocks count as blocked, so it never
+        lands on another block; enemies never share a push-puzzle room (R-P9)."""
+        player = (self.player.col, self.player.row)
+        if not self.blocked(*home) and home != player:
+            return home
+        seen = {home}
+        q = deque([home])
+        while q:
+            c, r = q.popleft()
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nb = (c + dc, r + dr)
+                if nb in seen:
+                    continue
+                seen.add(nb)
+                if not self.blocked(*nb):
+                    if nb != player:
+                        return nb
+                    q.append(nb)          # walkable but the player is on it
+        return home
 
     def _forge_ogre_attack(self, enemy):
         """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""
@@ -832,10 +891,10 @@ class World:
         SYSTEM ORDER CONTRACT (spec 0052 G5): transition gate → shield
         timer → input phase → enemy movement (incl. forge attacks and
         boss relocation) → treasure/loot collection → player-enemy
-        collision → flame damage → channel latch (plate pass) → material
-        pickup → key pickup.  The goldens pin this sequence; any future
-        registry entry that ticks or collects must slot into it
-        explicitly, never reorder it."""
+        collision → flame damage → block-fuse detonation (spec 0068) →
+        channel latch (plate pass) → material pickup → key pickup.  The
+        goldens pin this sequence; any future registry entry that ticks or
+        collects must slot into it explicitly, never reorder it."""
         if self._transition_timer > 0:
             self._transition_timer -= dt
             return
@@ -925,6 +984,10 @@ class World:
                                 self._emit('caught')
                                 self._lose_life()
                                 return
+
+        # Doomed-block fuses (spec 0068): count down and detonate BEFORE the
+        # latch, so a block that explodes off a plate closes its gate this tick.
+        self._tick_block_fuses(dt)
 
         # Pressure plates (Act 2): the channel latch pass
         self._latch_channels()

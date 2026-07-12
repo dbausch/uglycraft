@@ -271,6 +271,20 @@ def _build_sfx(np) -> dict:
                                    _env(np, daa, 0.030, 0.12, 0.78, 0.35))
         return _to_sound(np, np.clip(buf, -1.0, 1.0))
 
+    def sfx_block_fuse():
+        # A doomed block lights its fuse (spec 0068): a short, bright rising
+        # tick — an alarm blip distinct from the bump.
+        n   = round(_RATE * 0.055)
+        sig = _impact(np, rng, n, 0.22, 420.0, 0.28, noise_decay=110.0, tone_decay=35.0)
+        return _to_sound(np, _saturate(np, sig, 2.5))
+
+    def sfx_block_explode():
+        # The block blasts (spec 0068): a low, gritty noise burst — heavier and
+        # boomier than a wall break.
+        n   = round(_RATE * 0.34)
+        sig = _impact(np, rng, n, 0.70, 55.0, 0.50, noise_decay=10.0, tone_decay=3.5)
+        return _to_sound(np, _saturate(np, sig, 6.0))
+
     return {
         'move':          sfx_move(),
         'bump':          sfx_bump(),
@@ -287,6 +301,8 @@ def _build_sfx(np) -> dict:
         'boss_appear':   sfx_boss_appear(),
         'item_hit':      sfx_item_hit(),
         'entrance_open': sfx_entrance_open(),
+        'block_fuse':    sfx_block_fuse(),
+        'block_explode': sfx_block_explode(),
     }
 
 

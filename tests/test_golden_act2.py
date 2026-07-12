@@ -26,21 +26,23 @@ def test_door_key():
 
 
 def test_gate_plate_block():
-    """Push block onto plate -> gate opens; cross; then die -> blocks and
-    gate reset, player back at start."""
+    """Push a block (it overshoots the plate to (3,8), leaving the gate
+    closed); then die.  Spec 0068: death no longer resets blocks or the gate —
+    the block stays where it was pushed and the player returns to start."""
     with Harness(level_dict=fx.gate_level(), seed=42) as h:
         h.run(['hold:left:12',
                'key:left', 'wait:3', 'key:left', 'wait:3',   # walk to block
-               'key:left', 'wait:3', 'key:left', 'wait:3',   # push to plate
-               'hold:right:60', 'wait:5'])                    # through gate
-        # death phase: force a catch, blocks + gate must reset
+               'key:left', 'wait:3', 'key:left', 'wait:3',   # push it left
+               'hold:right:60', 'wait:5'])
+        # death phase: force a catch
         e = h.game.enemies[0]
         e.col, e.row = h.game.player.col - 1, h.game.player.row
         trace = h.run(['key:left', 'wait:10'])
     keys = _sound_keys(trace)
     assert 'caught' in keys
-    # after death the block is back at (6,8): gate closed again
-    assert h.game.room.block_positions() == [(6, 8)]
+    # death does NOT reset the block (spec 0068): it stays where it was pushed
+    assert h.game.room.block_positions() == [(3, 8)]
+    # the plate is unpressed, so the gate is closed via the latch, not a reset
     assert not h.game.world._channels
     assert_golden('act2_gate', trace)
 
