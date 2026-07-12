@@ -9,7 +9,10 @@
 - [ ] `_as_multiroom` forwards `entrance` into the single-room dict so the
       existing sprite render path (game.py:538) draws it in Act 1
 - [ ] `--dump-level N [--seed S]` CLI option: headless ASCII export of any
-      level 1–20 (new module `leveldump.py`, wired into `main.py`)
+      level 1–20 **as loaded** — the world state at the moment control
+      would be handed to the player — with multi-grid levels laid out in
+      2D on a super-grid canvas (new module `leveldump.py`, wired into
+      `main.py`)
 - [ ] New tests red before the change, green after; `poe test` exits 0
       with all affected goldens deliberately re-recorded
 - [ ] Manual check: entrance sprite visible and player start correct on
@@ -87,8 +90,11 @@ between the divider and the row-10 wall) and at col 28 — not a trap.
 ## Full-grid diagrams
 
 All ten levels at full 30×16, with the new entrance and start applied.
-Generated from `levels.py` data (and machine-validated); these are also the
-expected grid output of `--dump-level 1` … `--dump-level 10` (see below).
+Generated from `levels.py` data (and machine-validated). These are the
+levels' *geometry*; `--dump-level N --hard` (see below) reproduces each
+diagram exactly, except that it additionally shows the one runtime-spawned
+treasure `*` — and on level 10 no `C`, since the crown only spawns as the
+tenth item, well after handover.
 
 Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
 `P` player start · `e` enemy start · `C` crown.
@@ -326,37 +332,89 @@ Legend: `#` wall (border + Act 1 stone) · `.` floor · `E` entrance ·
 ## `--dump-level` CLI — reusable ASCII level export
 
 The diagrams above should never have to be hand-drawn again. A new module
-**`leveldump.py`** (pygame-free — imports only `levels`, `cells`,
-`constants`) provides:
+**`leveldump.py`** (pygame-free — imports only `levels`, `cells`, `rooms`,
+`world`, `constants`, all of which are already pygame-free) provides:
 
 ```python
-def dump_level(level_num, seed=None) -> str
+def dump_level(level_num, difficulty=EASY, seed=None) -> str
 ```
 
 and `main.py` gains:
 
 ```
 --dump-level N     print an ASCII rendering of level N (1–20) and exit
---seed S           pin the Act 2 base seed (only meaningful with --dump-level)
+--seed S           pin all randomness (only meaningful with --dump-level)
 ```
 
-The dump path runs before any window is created (headless; usable over SSH
-and in tests).
+The existing `--easy` / `--hard` flags select the dump's difficulty;
+default EASY (the game's own default, game.py:97). The dump path runs
+before any window is created (headless; usable over SSH and in tests).
 
-### Behaviour
+### What is rendered: the situation at handover
 
-- **Act 1 (1–10)**: normalise via `world._as_multiroom` and render the
-  single room — output matches the diagrams above (one header line per
-  room is prepended, see format).
-- **Act 2 (11–20)**: generate the level via `levels.get_level` — with
-  `--seed S` pinned through `levels.set_game_seed(S)` first, otherwise the
-  process's fresh random seed — and render **every room** of the level
-  dict: start room first, remaining rooms in sorted key order. Each room
-  is preceded by a header line naming its key and its `exits` mapping.
-  With a fixed seed the output is deterministic (spec 0054).
-- Grid format per room: the two column-ruler lines, then 16 rows, each
-  `'  %2d '` row number + 30 symbol characters — exactly the diagram
-  format above.
+The dump renders the **final loaded state, exactly as it stands the moment
+control would normally be handed to the player** — not the raw level dict.
+It goes through the real loading path:
+
+1. `World(difficulty).start_level(N)` — the same call game.py makes. This
+   applies everything load does: `_as_multiroom` normalisation, difficulty
+   enemy filtering (EASY: one chaser), block verification, and for Act 1
+   the sequential `_spawn_treasure` draw (one `*` on a random open tile).
+2. The **start room** is rendered from the live `World`: `world.room`'s
+   cells/items/blocks, live enemies, `world.treasure_pos`, and the player
+   at `world.player` (= the new `player_start`).
+3. Every **other room** is rendered from
+   `Room.from_data(key, data, difficulty)` — byte-for-byte the state
+   `_enter_room` would create on the player's first entry, i.e. the
+   situation as it stands at handover for rooms not yet visited.
+
+With `--seed S` the output is fully deterministic: `S` pins both the Act 2
+base seed (`levels.set_game_seed`) and the runtime rng (`random.seed`, which
+feeds `_spawn_treasure`). Without it, each run shows a fresh level/spawn.
+
+### Output layout: the super-grid as a 2D canvas
+
+Multi-grid levels are **really laid out in 2D**: each grid's 30×16 block is
+placed on one large ASCII canvas at its super-grid position, not listed
+sequentially.
+
+- Super positions are not persisted in the level dict, so the dump
+  **derives** them from the stitch topology it already has: BFS over
+  `rooms[*]['exits']` starting at `start_room`, where an exit key
+  `'{side}_{pos}'` toward a neighbour places that neighbour one super-cell
+  in `side`'s direction. Stitches only ever connect adjacent grids, so the
+  assignment is consistent; a conflict raises (generator bug).
+- Positions are normalised so the top-left occupied super-cell is (0, 0);
+  grid (gx, gy) starts at character offset `(gx·31, gy·17)` — one blank
+  gutter row/column between grids. Super-cells without a grid (including
+  grid zero, spec 0053) stay blank.
+- Facing `X` exit gaps of adjacent grids line up across the gutter by
+  construction (a stitch opens both sides at the same row/col).
+- Above the canvas, one index line per grid: its key, derived super
+  position, and exits — e.g.
+  `grid_a @ (1, 0)   exits: left_7 -> grid_1, bottom_14 -> grid_2`.
+- The canvas itself carries no rulers (they would be ambiguous across
+  grids); single-grid levels (Act 1, level 11) render one grid with the
+  two ruler lines and row numbers — exactly the diagram format above.
+
+Sketch of a 3-grid canvas (grids shrunk for illustration; the super-cell
+at (0, 1), below grid_1, is empty and stays blank):
+
+```
+grid_a @ (1, 0)   exits: left_2 -> grid_1, bottom_6 -> grid_2
+grid_1 @ (0, 0)   exits: right_2 -> grid_a
+grid_2 @ (1, 1)   exits: top_6 -> grid_a
+
+##########  ####E#####
+#....e...#  #....P...#
+#........X  X........#
+##########  ######X###
+
+            ######X###
+            #.*......#
+            #......e.#
+            ##########
+```
 
 ### Symbol table
 
@@ -376,16 +434,16 @@ over terrain (later wins the cell listed first here):
 | `X` | exit gap on the border (inter-grid staircase) | `exits` keys |
 | `_` | pressure plate | fixture `plate` |
 | `!` | flame nozzle | fixture `flame_nozzle` |
-| `*` | treasure | item |
+| `*` | treasure (pre-placed cell item, or the live Act 1 spawn) | item / `world.treasure_pos` |
 | `m` | material | item |
 | `k` | key (colour not encoded) | item |
 | `O` | pushable block | occupant |
-| `e` | enemy start (chaser) | occupant |
-| `p` | patrol enemy start | occupant |
-| `F` | forge ogre start | occupant |
-| `C` | crown | `crown_pos` |
+| `e` | enemy (chaser) | occupant |
+| `p` | patrol enemy | occupant |
+| `F` | forge ogre | occupant |
+| `C` | crown (only if spawned — never at handover) | `world.treasure_pos` |
 | `E` | level entrance | `entrance` |
-| `P` | player start (start room only) | `player_start` |
+| `P` | player (start room only) | `world.player` |
 
 `border` and `stone` share `#` deliberately: stone is the default wall and
 Act 1 diagrams stay maximally readable; the rarer Act 2 kinds get their own
@@ -404,9 +462,11 @@ the dump is a geometry tool, not a full state dump.
 3. **No render change** — game.py:538 already draws `sp['level_entrance']`
    for any current room whose data has `entrance`; Act 2 behaviour is
    untouched (its room dicts already carry the key, spec 0022/0053).
-4. **`leveldump.py`** — `dump_level` as specified; **`main.py`** —
+4. **`leveldump.py`** — `dump_level` as specified (live start room from
+   `World(difficulty).start_level(N)`, other rooms via `Room.from_data`,
+   BFS-derived super positions, 2D canvas); **`main.py`** —
    `--dump-level` / `--seed` arguments, print-and-exit before pygame
-   window setup.
+   window setup (`--easy`/`--hard` select the dump difficulty).
 
 Item/award placement already avoids `player_start` (specs 0033/0057) by
 reading the effective value, so the moved starts need no further handling.
@@ -425,14 +485,23 @@ New `tests/test_act1_entrance.py`, over `levels.LEVELS`:
 
 New `tests/test_leveldump.py`:
 
-4. **Act 1 shape**: for levels 1–10, `dump_level(n)` renders one room —
-   grid lines are 16 rows × 30 symbols; exactly one `E` and one `P`; the
-   border ring is `#` except at `E`.
-5. **Act 1 pin**: `dump_level(2)`'s grid equals the Level 2 diagram in
-   this spec verbatim (rulers + rows).
-6. **Act 2**: with a pinned seed, `dump_level(13, seed=…)` returns one
-   grid per room in the level dict, start room first with exactly one `E`
-   and one `P`; calling twice with the same seed gives identical output.
+4. **Act 1 handover state**: for levels 1–10 with a pinned seed,
+   `dump_level(n, seed=…)` renders one grid of 16 rows × 30 symbols with
+   exactly one `E` (on the border, at the table position), one `P`
+   directly inside it, exactly one `*` on an open tile (the sequential
+   spawn), and no `C` — not even on level 10.
+5. **Act 1 masked pin**: `dump_level(2, difficulty=HARD, seed=…)` with
+   every `*` masked back to `.` equals the Level 2 diagram in this spec
+   verbatim (rulers + rows). HARD, so all authored enemies show, matching
+   the diagrams.
+6. **Difficulty**: on a multi-enemy level (e.g. 7), the EASY dump shows
+   one `e`, the HARD dump shows all three — the real load-path filtering.
+7. **Act 2 canvas**: with a pinned seed, `dump_level(13, seed=…)` places
+   one 30×16 block per entry in the level dict's `rooms` at its
+   BFS-derived super position (blocks separated by the one-char gutter,
+   empty super-cells blank); exactly one `P` and one `E` overall, both in
+   the start grid; facing `X` gaps of adjacent grids align across the
+   gutter; calling twice with the same seed gives identical output.
 
 ### Golden-trace impact
 
@@ -448,7 +517,9 @@ entrance sprite + moved player change Act 1 screenshot goldens:
   `shot_overlay_*` that render an Act 1 field behind the overlay are
   re-recorded (entrance sprite now visible, player elsewhere).
 - `act2_*` traces and goldens must stay **byte-identical** — nothing in the
-  Act 2 generation or runtime path changes (`--dump-level` only reads).
+  Act 2 generation or runtime path changes (`--dump-level` drives the
+  existing load path in its own process and adds no key, no rng draw, and
+  no code change to the generator or `World`).
 
 ## Manual verification
 
@@ -457,15 +528,17 @@ entrance sprite + moved player change Act 1 screenshot goldens:
 - Level 5: confirm the outside-the-cage start plays acceptably.
 - Level 10 (boss): entrance at (0, 7) visible, start (1, 7), boss behaviour
   unchanged.
-- `.venv/bin/python main.py --dump-level 5` reproduces the Level 5 diagram;
-  `--dump-level 13 --seed 777` prints all rooms of a generated level 13.
+- `.venv/bin/python main.py --dump-level 5 --hard` reproduces the Level 5
+  diagram plus one `*`; `--dump-level 13 --seed 777` prints the whole
+  level 13 super-grid as one 2D canvas with its grid index.
 
 ## Done when:
 
 - [ ] All ten Act 1 dicts carry the table's `entrance` + `player_start`
 - [ ] `_as_multiroom` forwards `entrance`; sprite renders in Act 1
-- [ ] `--dump-level N [--seed S]` prints the ASCII export for any level
-      1–20 and exits without opening a window
+- [ ] `--dump-level N [--seed S]` prints the handover-state ASCII export
+      for any level 1–20 — multi-grid levels as a 2D super-grid canvas —
+      and exits without opening a window
 - [ ] New tests red first, then green; `poe test` exits 0 with Act 1
       goldens deliberately re-recorded and Act 2 goldens byte-identical
 - [ ] User confirms entrance sprites + moved starts on levels 1–10
