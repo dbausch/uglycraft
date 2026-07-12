@@ -2,15 +2,22 @@
 
 ## Status
 
-- [ ] `pytest-xdist` added to `requirements.txt`; installed in `.venv`
-- [ ] `poe test` runs `pytest tests/ -n auto` (parallel by default; `-v` dropped)
-- [ ] FS-loop → `@pytest.mark.parametrize('fs', …)` hoist in the heavy sweep
-      tests (coverage-preserving; identical build count)
-- [ ] Discrete-`gc` hoist for the single 85 s outlier
-      `test_no_item_on_player_start_or_entrance` (budget-preserving 30 → 6×5)
-- [ ] Full suite green under `-n auto` (all 802 tests pass)
-- [ ] Wall-time measured and recorded; per-test example budgets unchanged
-- [ ] BL-47 closed; `kb/backlog.md` updated
+- [x] `pytest-xdist` added to `requirements.txt`; installed in `.venv` (ee606ef)
+- [x] `poe test` runs `pytest tests/ -n auto` (parallel by default; `-v` dropped) (ee606ef)
+- [x] FS-loop → `@pytest.mark.parametrize('fs', …)` hoist in the heavy sweep
+      tests (coverage-preserving; identical build count) (9890e3c)
+- [x] Discrete-`gc` hoist for the single 85 s outlier
+      `test_no_item_on_player_start_or_entrance` (budget-preserving 30 → 6×5) (cc1cda8)
+- [x] Full suite green under `-n auto` (823 tests pass — count grew from 802)
+- [x] Wall-time measured: ~10:30 serial → ~4:57 parallel (≈2.1×), dual-core bound
+- [ ] BL-47 closed; `kb/backlog.md` updated (see spec 0070 follow-up)
+
+**Outcome note.** On this 2-physical-core machine the item-splits give **no**
+measured wall gain over plain `-n auto` (pre-split 298 s vs post-split 296 s):
+the suite is core-bound, not tail-idle-bound, so splitting only helps on ≥3–4
+physical cores / CI (none here). Splits kept per user decision (coverage-neutral
+FS-hoists future-proof; gc-hoist reduction accepted). The real further lever is
+cutting generation cost — spec 0070.
 
 ## Motivation
 
@@ -139,13 +146,13 @@ alone.
 
 ## Done when:
 
-- [ ] `pytest-xdist` in `requirements.txt`, installed. — commit ____
-- [ ] `poe test` uses `-n auto`, `-v` dropped, serial fallback documented. — commit ____
-- [ ] FS-loop hoist applied to the 9 listed tests; each `(test, fs)` is a
-      distinct item; per-test build count unchanged. — commit ____
-- [ ] `gc` hoist applied to `test_no_item_on_player_start_or_entrance`
-      (6×5 = 30). — commit ____
-- [ ] Full suite green under `-n auto` (802 passed). — commit ____
-- [ ] Wall time measured and recorded in the commit / KB; `--durations` tail
-      confirms the top items are split. — commit ____
+- [x] `pytest-xdist` in `requirements.txt`, installed. — ee606ef
+- [x] `poe test` uses `-n auto`, `-v` dropped, serial fallback documented. — ee606ef
+- [x] FS-loop hoist applied to the 9 listed tests; each `(test, fs)` is a
+      distinct item; per-test build count unchanged. — 9890e3c
+- [x] `gc` hoist applied to `test_no_item_on_player_start_or_entrance`
+      (6×5 = 30). — cc1cda8
+- [x] Full suite green under `-n auto` (823 passed; count grew from 802). — ee606ef+
+- [x] Wall time measured and recorded (~2.1×, dual-core bound); `--durations`
+      confirms the top items are split (85 s outlier → 6 items). — this commit
 - [ ] BL-47 closed in `kb/backlog.md`. — commit ____
