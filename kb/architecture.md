@@ -260,6 +260,36 @@ work, blank window). The main loop also clamps `dt` to `MAX_DT_MS` so the long
 generation hitch no longer dumps a huge accumulated time into the update step
 (which caused the level-start enemy "burst").
 
+### Generation performance (spec 0070)
+
+`cProfile` of the build path (150 representative sweep builds ≈ 25 s) is
+dominated by two functions, both in `levellayout.py`:
+
+- **`_place_puzzle`** (~59 % cumulative) — the backward Sokoban BFS. Its nested
+  `_comp_map(block_pos)` (connected-component map of `effective_pass − {block}`)
+  is memoized in `comp_cache`, so its million-plus calls are cache **hits**;
+  the cost is Python call overhead in the BFS inner loop. `curr_block` is
+  constant across the 4-direction expansion, so `cm_curr = _comp_map(curr_block)`
+  is hoisted once per node and the old `get_zone` wrapper is inlined/removed.
+- **`validate_layout`** (~22 %) — was O(rooms²) × the full 28×14 interior grid.
+  Now a **bounding-box prune** skips no-edge room pairs whose floor boxes
+  (expanded by 1) cannot intersect — they can have no adjacent floor and no
+  shared-boundary passage. Edge pairs are always scanned (a misplaced far-apart
+  edge must still be flagged as 0-passage). `floor_tiles ⊆ (col,row,w,h)` box,
+  so the bbox test is a safe over-approximation.
+
+Both are byte-output-preserving (verified by `test_golden_*` +
+`test_generation_determinism`); together ≈ −16 % generation wall. Harness:
+`$CLAUDE_JOB_DIR/tmp/profile_gen.py` pattern (six sweep feature sets × 25 seeds).
+
+**Why generation speed matters for the tests.** The property sweeps are
+generation-bound, and the suite is **CPU-core-bound**: `poe test` uses
+`pytest-xdist -n auto`, but a dual-core machine caps the parallel win at ≈ 2.1×
+(10:30 → ~4:57) regardless of test splitting. Build **memoization across tests
+is useless** — hypothesis draws independent seeds, so measured duplicate
+`(fs, seed)` builds are only 1–3 %. The only lever left below that core ceiling
+is making generation itself cheaper. → `kb/backlog.md` BL-47; spec 0069/0070.
+
 ## The geometric challenge
 
 The critical constraint (R-E1): every edge between two placed nodes needs exactly
