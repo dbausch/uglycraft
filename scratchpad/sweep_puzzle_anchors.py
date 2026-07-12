@@ -116,50 +116,55 @@ def main(n_seeds=12):
                             print(f'LANDING: seed={seed} L{level_no} '
                                   f'block=({bc},{br}) passage={npos}')
 
-                # Anchored solvability per plate: puzzle scope = plate
-                # room floor + passable hole tiles.  Anchors are the
-                # ENTRY-side standable tiles: hole tiles themselves plus
-                # the landing tiles inside the room next to any passage
-                # (hole, door, gate, breakable) — the player traverses
-                # openable barriers to enter, but can never traverse the
-                # block (spec 0063 augmented-entry semantics).
+                # Anchored solvability per plate, GRID-WIDE passability
+                # (mirrors validate_push_puzzles' cells model: closed
+                # doors/gates, water, walls, and other blocks are
+                # obstacles; the player moves across the whole grid).
+                # Anchors: every tile reachable from the corridor in the
+                # player-augmented graph — openable barriers traversable
+                # for entry, the block never (spec 0063).
+                grid_passable = set()
+                for c in range(1, 29):
+                    for r in range(1, 15):
+                        t = (c, r)
+                        if (t in walls or t in doors or t in gates
+                                or t in water or t in blocks):
+                            continue
+                        grid_passable.add(t)
+                aug = (grid_passable | doors | gates | water
+                       | {pos for pos, wt in walls.items()
+                          if wt != WALL_REINFORCED})
+                cor_seed = next(
+                    (t for t, o in sorted(to.items())
+                     if o.startswith('corridor') and t in aug), None)
+                if cor_seed is None:
+                    continue
+                reach = {cor_seed}
+                fr = deque([cor_seed])
+                while fr:
+                    tc, tr = fr.popleft()
+                    for dc, dr in CARDINAL:
+                        nb = (tc + dc, tr + dr)
+                        if nb in aug and nb not in reach:
+                            reach.add(nb)
+                            fr.append(nb)
+                anchors = reach & grid_passable
+
                 for pc, pr, gid in plates:
                     proom = to.get((pc, pr))
-                    room_tiles = {t for t, o in to.items() if o == proom}
-                    holes = set()
-                    anchors = set()
-                    for t in room_tiles:
-                        for dc, dr in CARDINAL:
-                            nb = (t[0] + dc, t[1] + dr)
-                            if nb in to:
-                                continue
-                            is_hole = (nb not in walls
-                                       and nb not in water
-                                       and 0 < nb[0] < 29
-                                       and 0 < nb[1] < 15)
-                            openable = (nb in doors or nb in gates
-                                        or (nb in walls and
-                                            walls[nb] != WALL_REINFORCED))
-                            if is_hole:
-                                holes.add(nb)
-                                anchors.add(nb)
-                                anchors.add(t)   # landing tile
-                            elif openable:
-                                anchors.add(t)   # landing tile inside
-                    passable = (room_tiles | holes) - set(
-                        b for b in blocks)
-                    anchors &= passable | holes
+                    room_blocks = [b for b in blocks
+                                   if to.get(b) == proom]
+                    if not room_blocks:
+                        continue
                     ok = False
-                    for b in blocks:
-                        if to.get(b) != proom:
-                            continue
-                        p = (passable | {b})
+                    for b in room_blocks:
+                        p = grid_passable | {b}
                         dead = _compute_dead_squares(p, [(pc, pr)])
                         if _anchored_solvable(b, (pc, pr), p, dead,
                                               anchors):
                             ok = True
                             break
-                    if not ok and any(to.get(b) == proom for b in blocks):
+                    if not ok:
                         hits.append((seed, level_no, 'anchored',
                                      (pc, pr), gid))
                         print(f'ANCHORED: seed={seed} L{level_no} '
