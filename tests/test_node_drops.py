@@ -132,20 +132,30 @@ def _content_dict(level):
 
 def _assert_content_preserved(g, level, ctx):
     """Keys and materials are never lost (spilled when a node is unplaced).
-    Treasures: the dict carries the graph's challenge awards plus one guard
-    award per placed enemy (spec 0058).  Since spec 0058 flame awards are
-    relocated to jet far-tiles but never dropped, so the count is exact —
-    the old flame exemption is gone.  (Push-puzzle plates are excluded: a
-    dropped puzzle room's gate is elided.)"""
+    Treasures: the dict carries the graph's challenge awards (locked /
+    gated / water) plus one guard award per placed enemy (spec 0058) plus
+    one layout-placed flame award per flame room that was not already a
+    graph challenge room (spec 0062 — doubly-protected rooms have their
+    existing award moved, not duplicated).  (Push-puzzle plates are
+    excluded: a dropped puzzle room's gate is elided.)"""
     gk, gt, gm = _content_graph(g)
     dk, dt, dm = _content_dict(level)
     n_enemies = sum(len(rd.get('enemy_starts', []))
                     for rd in level['rooms'].values())
+    lgw = {e.node_b for e in g.edges
+           if e.edge_type in (EdgeType.LOCKED, EdgeType.GATED,
+                              EdgeType.WATER)}
+    flame_owners = set()
+    for rd in level['rooms'].values():
+        to = rd['tile_owner']
+        for jet in rd.get('flame_jets', []):
+            flame_owners.add(to.get(tuple(jet['tiles'][0])))
+    n_flame_new = len(flame_owners - lgw)
     assert dk == gk, f"{ctx}: keys graph={gk} dict={dk}"
     assert dm == gm, f"{ctx}: materials graph={gm} dict={dm}"
-    assert dt == gt + n_enemies, (
-        f"{ctx}: treasures graph={gt} + {n_enemies} guard awards "
-        f"!= dict={dt}")
+    assert dt == gt + n_enemies + n_flame_new, (
+        f"{ctx}: treasures graph={gt} + {n_enemies} guard + "
+        f"{n_flame_new} flame awards != dict={dt}")
 
 
 @given(st.integers(min_value=0, max_value=2**32 - 1))
