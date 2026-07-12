@@ -84,9 +84,59 @@ The `occupied` set prevents two enemies landing on the same tile. Enemies proces
 
 **Enemy respawn after catch:** BFS-teleports to tile with distance ≥ 8 from player; falls back to ≥ 4 if no candidates; does nothing if still no candidates (enemy remains on player tile — will trigger another catch next tick).
 
+**Act 1 enemy confinement (spec 0066):** Act 1 has no `tile_owner`, so
+`_tag_enemies_with_rooms` gives every Act 1 enemy `room_tiles = INTERIOR_TILES`
+(all non-border tiles) while leaving `room_name = None`. `room_name is None`
+keeps them always-chasing (the `move_toward`/`move_bfs` branch), and
+`room_tiles` bars them from every border tile — so no enemy can occupy the
+open entrance. Invisible while the door is closed (the border already
+`blocked()`), so Act 1 movement/goldens are byte-identical; it only bites the
+one newly-passable border tile once the entrance opens. Act 2 enemies were
+already room-confined (spec 0051/BL-34).
+
+## Level Completion (entrance exit, spec 0066)
+
+Collecting the **last** award no longer advances the level on pickup.
+Instead it **opens the entrance**, and the level ends only when the player
+**walks out** through it — a two-phase flow that mirrors an Act 2 grid
+change.
+
+- The entrance (a fixed per-level border tile, spec 0064) is a
+  `Barrier('gate', channel=ENTRANCE_CHANNEL)` — placed by the `_parse_entrance`
+  `CONTENT_PARSERS` entry in `cells.py`. `ENTRANCE_CHANNEL = '__entrance__'`
+  (constants.py) is reserved: no plate emits it, so `_latch_channels`'
+  targeted relatch never touches it.
+- **Open:** the last award (`item_no == 9` in Act 1 sequential;
+  `_loot_collected >= _loot_total` in Act 2 preplaced) calls
+  `World._open_entrance()` → adds `ENTRANCE_CHANNEL` to `self._channels`,
+  emits `entrance_opened`. Act 1 also clears `treasure_pos` so the final
+  treasure sprite disappears. `world.entrance_open` = `ENTRANCE_CHANNEL in
+  self._channels`.
+- **Walkable:** passability flows through the ordinary `cells.blocked(c, r,
+  channels)` gate query — `world.blocked` is unchanged. The open entrance is
+  a walkable exit gap; the player steps onto it like any tile.
+- **Leave:** standing on the open entrance, an **off-screen press** (the
+  outward bump against the screen edge, in `try_move`'s off-grid branch)
+  calls `advance_level()` — level-up on 1–19, `game_over(won=True)` on 20.
+  One press only steps onto the door; the second press exits.
+- **Persistence:** the door stays open across death — `_reset_blocks` now
+  does `self._channels = self._channels & {ENTRANCE_CHANNEL}` (was `set()`),
+  preserving the entrance while still closing plate gates. Only `start_level`
+  (`_channels = set()`) re-closes it. This `_reset_blocks` accommodation is
+  temporary: it is deleted with `_reset_blocks` when BL-37 (self-healing
+  exploding blocks) lands.
+- **Rendering:** `game.py` blits `level_entrance_open` vs `level_entrance` by
+  `world.entrance_open`, and **excludes** the entrance channel from the
+  generic gate overlay (else a portcullis would paint over the door). Sound:
+  `entrance_opened` → a distorted choir "ta-daa" fanfare (`sfx_entrance_open`).
+- **Future:** grid zero will become a per-level boss area; the exit will then
+  become a real grid transition (swap `advance_level()` for a transition),
+  which is why the exit is routed through the same off-screen branch.
+
 ## Level Progression
 
-**On level advance (`World.advance_level`):**
+**On level advance (`World.advance_level`, now triggered by walking out —
+spec 0066):**
 - `lives += 1`
 - `_place_credits += <count of 'placed' barriers in the current room>` — refund credits for remaining placed walls
 - `_bump_consumed.clear()`; barriers (and their damage) are rebuilt fresh for the new level

@@ -121,6 +121,17 @@ predate the spec-first workflow; their reference documentation is the linked
   [0018](../spec/0018-player-spawn-wall.md),
   [0020](../spec/0020-enemy-at-grid-entry.md),
   [0039](../spec/0039-entry-tile-exit-type.md).
+- **3.10 Act 1 fixed entrance doors** — hand-authored per-level entrance +
+  repositioned player/enemy starts for levels 1–10; `--dump-level` ASCII
+  export: [0064](../spec/0064-act1-entrance-doors.md) (BL-42).
+- **3.11 Entrance-exit level completion** — the last award **opens** the
+  entrance (a gate barrier on the reserved `ENTRANCE_CHANNEL`) instead of
+  advancing on pickup; the level ends when the player walks onto the open
+  door and presses off-screen (two-phase, mirrors a grid change). Door
+  persists across death; Act 1 enemies confined to `INTERIOR_TILES`; distinct
+  "ta-daa" fanfare on open. All levels 1–20:
+  [0066](../spec/0066-entrance-exit-completion.md) (BL-43). → grid zero will
+  later make this a real transition (per-level boss area).
 
 ## 4. Level generation (`levelgraph.py`, `levellayout.py`, `levels.py`)
 

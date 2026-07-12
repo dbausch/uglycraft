@@ -36,6 +36,28 @@
 
 ### Python
 
+**Entrance-as-gate gotchas (spec 0066, BL-43):** modelling the level
+entrance as a `Barrier('gate', channel=ENTRANCE_CHANNEL)` surfaced three
+non-obvious interactions:
+- **Gate overlay paints over the door.** `game.py`'s generic gate overlay
+  (`for (gc, gr), gate in self.cells.barriers('gate')`) blits a portcullis
+  over *every* gate barrier, drawn *after* the entrance sprite — so the
+  entrance rendered as an open/closed gate, not a door. Fix: `continue` when
+  `gate.channel == ENTRANCE_CHANNEL` (the entrance is drawn by the dedicated
+  `level_entrance`/`level_entrance_open` path).
+- **`_latch_channels` is a targeted relatch, not wholesale.** It does
+  `self._channels = (self._channels - local) | pressed` where `local` is only
+  *this room's* plate gate-ids — so a non-plate channel (like the entrance
+  channel) survives every tick untouched. (An earlier spec draft wrongly
+  claimed it recomputed `_channels` from scratch.) The one place that *does*
+  wipe channels wholesale is `_reset_blocks` (death) — hence the explicit
+  `self._channels & {ENTRANCE_CHANNEL}` preservation there.
+- **Act 1 sequential treasure sprite lingers.** Act 2 loot is removed from
+  the cell item layer on pickup, but Act 1's single roaming treasure is only
+  a `treasure_pos` — collecting the 9th award used to advance immediately
+  (clearing it); now that it opens the entrance instead, `treasure_pos` must
+  be set to `None` on the last pickup or the collected coin stays on screen.
+
 **FIXED (spec 0054) — Level generation depended on PYTHONHASHSEED (BL-40):**
 the same game seed produced different Act 2 level content in different
 Python processes — `get_level(13)` under `set_game_seed(777)` yielded 4
