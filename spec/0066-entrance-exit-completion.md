@@ -3,11 +3,12 @@
 ## Status
 
 - [ ] Collecting the **last** award no longer ends the level; instead it
-      **opens** the entrance door (a new `entrance_opened` event + a world
-      `entrance_open` state flag), for every level 1–20
+      **opens** the entrance door, for every level 1–20 — the entrance is a
+      gate barrier on a reserved channel; opening latches that channel high
+      and emits a new `entrance_opened` event
 - [ ] While open, the entrance border tile becomes **walkable** — exactly
-      like a grid-exit gap: the player can step onto it (`blocked()` returns
-      False there)
+      like a grid-exit gap — through the ordinary `cells.blocked(c, r,
+      channels)` gate query, with **no** change to `world.blocked()`
 - [ ] Act 1 enemies are **confined to the interior** (their `room_tiles` is
       the full interior tile set) so they can never occupy any border tile,
       the open entrance included; Act 2 enemies are already room-confined
@@ -18,7 +19,8 @@
 - [ ] A dedicated **open-entrance sprite** (`draw_level_entrance_open` /
       `level_entrance_open`) renders while `world.entrance_open` is true; a
       distinct chime plays on `entrance_opened`
-- [ ] The door stays open after death (award state already persists); it is
+- [ ] The door stays open after death — `_reset_blocks` preserves the
+      entrance channel (`self._channels & {ENTRANCE_CHANNEL}`); it is
       re-closed only when a fresh level starts (`start_level`)
 - [ ] New tests red before the change, green after; `poe test` exits 0 with
       any affected goldens deliberately re-recorded
@@ -55,15 +57,20 @@ leaving a grid.
 
 ### Phase 1 — award completion opens the door
 
-Add a world flag `self._entrance_open` (bool), initialised **False** in
-`start_level`. Replace the two `advance_level()` calls at award completion
-with `self._open_entrance()`:
+The open state lives in `self._channels` (empty at `start_level`, so the
+entrance starts closed). Replace the two `advance_level()` calls at award
+completion
+with `self._open_entrance()`. The entrance is modelled as an **openable gate
+barrier** driven by a reserved channel — the established openable-barrier
+pattern (spec 0050) — so opening is just latching that channel high:
 
 ```python
+ENTRANCE_CHANNEL = '__entrance__'      # reserved; never a plate/gate id
+
 def _open_entrance(self):
-    if self._entrance_open:
+    if ENTRANCE_CHANNEL in self._channels:
         return
-    self._entrance_open = True
+    self._channels.add(ENTRANCE_CHANNEL)
     self._emit('entrance_opened')
 ```
 
@@ -71,10 +78,23 @@ def _open_entrance(self):
 - `world.py:406` (Act 2): `if self._loot_collected >= self._loot_total:
   self._open_entrance()`
 
-Expose a read-only `world.entrance_open` property for the renderer.
+The channel membership **is** the open state — no separate `_entrance_open`
+flag. Expose a read-only `world.entrance_open` property returning
+`ENTRANCE_CHANNEL in self._channels` for the renderer.
 
-Track the current room's entrance tile: wherever `_current_room_data` is
-(re)assigned — `start_level` (Act 1) and `_enter_room` (Act 2) — refresh
+**The entrance is a gate cell.** In the cell model, place the entrance as
+`Barrier('gate', channel=ENTRANCE_CHANNEL)` at `room_data['entrance']` — a
+new one-line entry in `CONTENT_PARSERS` (`cells.py:263`), consistent with the
+"add a content kind = add one registry entry" philosophy. It overwrites the
+`'border'` barrier the border loop laid at that tile. Closed (channel low) it
+`blocks()` exactly like the border wall it replaces, and `BARRIER_BUMP['gate']
+is None` keeps the bump inert; `is_border` still wins in the renderer so it
+draws as `border_wall` under the closed-door sprite. Only the start room of
+an Act 2 level carries `entrance`, so only it gets the gate.
+
+Track the current room's entrance tile for the exit trigger: wherever
+`_current_room_data` is (re)assigned — `start_level` (Act 1) and `_enter_room`
+(Act 2) — refresh
 
 ```python
 self._entrance_pos = self._current_room_data.get('entrance')   # or None
@@ -87,22 +107,13 @@ barrier) at that tile; the player walks onto it and a subsequent off-screen
 press runs `_try_room_transition` (`world.py:566–570`). The open entrance
 mirrors this precisely.
 
-**Walkable when open.** Make the entrance tile query as passable while open,
-by one live check in `blocked()` (`world.py:161`, alongside the existing
-out-of-bounds and block checks — a query, never cached collision state):
-
-```python
-def blocked(self, c, r):
-    if not (0 <= c < COLS and 0 <= r < ROWS):
-        return True
-    if self._entrance_open and (c, r) == self._entrance_pos:
-        return False                      # open door = walkable exit gap
-    if self.cells.blocked(c, r, self._channels):
-        return True
-    if self.room.block_at(c, r) is not None:
-        return True
-    return False
-```
+**Walkable when open — with no change to `blocked()`.** Passability already
+flows through `cells.blocked(c, r, self._channels)` (`world.py:167`,
+`cells.py:134`): a gate barrier `blocks()` iff its channel is **not** in
+`channels`. Once `ENTRANCE_CHANNEL` is latched high, the entrance gate stops
+blocking and the tile is walkable — through the exact same query every gate
+and cross-grid door uses. No world-level tile exception, no cached collision
+state; `world.blocked` is untouched.
 
 Because the field renderer keys off `self.blocked` (`game.py:507`), the open
 tile automatically renders as floor (then the open-door sprite draws on top,
@@ -114,7 +125,7 @@ the level-exit when the player stands on the open entrance:
 
 ```python
 if not (0 <= tc < COLS and 0 <= tr < ROWS):
-    if self._entrance_open and (self.player.col, self.player.row) == self._entrance_pos:
+    if self.entrance_open and (self.player.col, self.player.row) == self._entrance_pos:
         self.advance_level()      # level-up 1–19, game_over(won=True) on 20
         return False
     self._try_room_transition()
@@ -215,25 +226,45 @@ the `advance_level()` call for a transition into grid zero, leaving the
 walk-onto-then-bump-off feel untouched. For now, leaving simply ends the
 level (`advance_level()`).
 
-### Rejected alternative — model the entrance as a gate channel
+### Why a channel, not a `blocked()` flag
 
-The entrance could be a `Barrier('gate', channel=…)` opened by adding its
-channel to `self._channels` (the established openable-barrier pattern). Two
-frictions make the dedicated flag cleaner: `_latch_channels` recomputes
-`self._channels` wholesale from plate occupancy every tick
-(`world.py:425`), so a persistent entrance channel would have to be re-ORed
-in each pass; and the entrance is a per-level singleton tied to award
-completion, not a plate/lever signal network. A single `_entrance_open` flag
-queried live by `blocked()` is smaller and reads clearer, without caching
-collision state.
+An earlier draft modelled the open state as a world `_entrance_open` flag
+with a special-case in `world.blocked()` (`return False` at `_entrance_pos`
+when open). The channel model is preferred because it keeps **all**
+passability inside the one canonical query, `cells.blocked(c, r, channels)`
+(spec 0047/0048/0050), instead of adding a tile exception in the hottest
+world-level predicate; it reuses the state the engine already carries for
+"what is open" (`self._channels`); and game.py already selects open/closed
+border-door sprites off `self.world._channels` (`game.py:554`), so the
+entrance sprite follows the same path. The two frictions that first steered
+me to the flag turned out to be non-issues:
+
+- `_latch_channels` does **not** recompute `self._channels` wholesale. It is
+  a *targeted* relatch — `self._channels = (self._channels - local) | pressed`
+  (`world.py:447`), where `local` is only this room's plate gate-ids. A
+  channel no plate emits (like `ENTRANCE_CHANNEL`) is never subtracted and
+  survives every pass untouched — the mechanism is built for exactly this
+  (the comment cites cross-grid gates held high from another room).
+- "A singleton, not a network" is no obstacle: a 1-emitter → 1-gate channel
+  is a valid degenerate case of the same abstraction.
 
 ### Death / reset semantics
 
 The door **stays open** after death. It opens only once the last award is
-collected and removed, so award state cannot regress. `_entrance_open` is
-therefore **not** touched by `_lose_life` / `_reset_blocks` — only
-`start_level` clears it (to False) for the next level. After a death the
-player respawns at `player_start` (directly inside the open door) and can walk
+collected and removed, so award state cannot regress. The only place that
+wipes channels wholesale is `_reset_blocks` (`world.py:662`,
+`self._channels = set()`, called from `_lose_life`), which would wrongly
+close the entrance on death. Change it to preserve the entrance channel while
+still closing plate-held gates:
+
+```python
+# was: self._channels = set()
+self._channels = self._channels & {ENTRANCE_CHANNEL}
+```
+
+`start_level` still sets `_channels = set()` (`world.py:270`), so a fresh
+level always starts with the entrance closed. After a death the player
+respawns at `player_start` (directly inside the open door) and can walk
 straight out. Confirm `_entrance_pos` is still the start-grid entrance after
 an Act 2 death (respawn returns to the start grid — see Verification).
 
@@ -263,12 +294,17 @@ an Act 2 death (respawn returns to the start grid — see Verification).
 
 World-level (pygame-free), in the existing suite:
 
+- **Entrance is a gate cell:** at level load the entrance tile holds a
+  `Barrier('gate', channel=ENTRANCE_CHANNEL)`; `ENTRANCE_CHANNEL` is not in
+  `world._channels` and `world.entrance_open` is False.
 - **Act 1 opens, does not advance:** drive a level to collect all 9 awards;
-  assert an `entrance_opened` event fired, `world.entrance_open` is True,
-  `world.level` is **unchanged**.
-- **Open door is walkable:** with the entrance open, assert
-  `world.blocked(*entrance_pos)` is False; from the interior neighbour, one
-  press toward the entrance moves the player **onto** the entrance tile.
+  assert an `entrance_opened` event fired, `ENTRANCE_CHANNEL in world._channels`
+  (i.e. `world.entrance_open` is True), and `world.level` is **unchanged**.
+- **Open door is walkable via the gate query:** with the entrance open,
+  assert `world.blocked(*entrance_pos)` is False and
+  `world.cells.blocked(*entrance_pos, world._channels)` is False; from the
+  interior neighbour, one press toward the entrance moves the player **onto**
+  the entrance tile.
 - **Second press (off-screen) advances:** standing on the open entrance,
   press outward (off-screen); assert `level_advanced` (or
   `game_over(won=True)` for the last level) and the level advanced.
@@ -278,9 +314,11 @@ World-level (pygame-free), in the existing suite:
 - **One press is not enough:** immediately after opening, a single outward
   press from the interior neighbour steps onto the door but does **not**
   advance; only the next press does.
-- **Door persists across death:** open the entrance, trigger a `_lose_life`
-  that does not end the game; assert `world.entrance_open` stays True and the
-  tile stays walkable.
+- **Door persists across death:** open the entrance, then trigger a
+  `_lose_life` that does not end the game (which runs `_reset_blocks`); assert
+  `ENTRANCE_CHANNEL` survives in `world._channels`, `world.entrance_open`
+  stays True, and the tile stays walkable — while any plate-held gate channel
+  is correctly cleared.
 - **Act 2 opens then exits:** collect all preplaced loot (open), walk onto
   the start-room entrance, press off-screen → advance. Confirm an off-screen
   press from a non-start-room border still only runs `_try_room_transition`
@@ -312,17 +350,20 @@ eyeball the diffs. Act 2 generation/runtime is otherwise unchanged.
 
 ## Done when:
 
-- [ ] Last-award collection emits `entrance_opened`, sets `entrance_open`,
+- [ ] The entrance loads as a `Barrier('gate', channel=ENTRANCE_CHANNEL)`;
+      last-award collection latches that channel high, emits `entrance_opened`,
       and does **not** advance the level (both Act 1 and Act 2 paths)
-- [ ] While open, the entrance tile is walkable (`blocked()` False there) and
-      the player can step onto it; while closed it is solid and inert
+- [ ] While open, the entrance tile is walkable through the ordinary
+      `cells.blocked(c, r, channels)` gate query (`world.blocked` unchanged)
+      and the player can step onto it; while closed it is solid and inert
 - [ ] Standing on the open entrance, an off-screen press calls
       `advance_level()` (level-up 1–19, win on 20); one press alone (just
       stepping on) does not advance
 - [ ] Act 1 enemies carry `room_tiles == INTERIOR_TILES` (`room_name` still
       None) and never occupy any border tile, the open entrance included;
       Act 1 enemy goldens stay byte-identical
-- [ ] `entrance_open` survives death and is reset only by `start_level`
+- [ ] `ENTRANCE_CHANNEL` survives death (`_reset_blocks` preserves it) and is
+      cleared only by `start_level`; plate gates still close on death
 - [ ] `game.py` shows the open-door sprite while `entrance_open` and plays a
       distinct chime on `entrance_opened`
 - [ ] New tests red first, then green; `poe test` exits 0 with affected Act 1
