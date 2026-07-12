@@ -1092,7 +1092,7 @@ BL-40 regression net.
 
 ---
 
-## BL-50 · P2 · On death, player AND all enemies respawn at their original start positions
+## BL-50 · DONE · On death, player AND all enemies respawn at their original start positions
 
 On any life loss, the player and every enemy should return to their level/room
 start positions. Currently `_lose_life` (world.py) moves the player back to
@@ -1111,9 +1111,17 @@ positions likely need to be captured at room construction (analogous to
 enemy movement. Relates to spec 0066 death semantics and BL-37 (exploding
 blocks / self-healing level, which will supersede `_reset_blocks`).
 
+**Resolution:** Implemented by spec 0067
+(`spec/0067-death-respawn-reset.md`, commit cbfe8ea), user-accepted
+2026-07-12. Enemy respawn is made safe in every grid (never into a wall,
+never on/beside the player, never sealed in a pocket) via
+`World._reset_enemies` / `_player_reach` / `_respawn_enemy`; the caught
+enemy is reset with the rest (pre-death relocation now only on a shielded
+hit).
+
 ---
 
-## BL-51 · P2 · Disallow placing a user-crafted block/wall at the player respawn position
+## BL-51 · DONE · Disallow placing a user-crafted block/wall at the player respawn position
 
 A player-placed wall (or crafted block) on the `player_start` tile would trap
 the player on respawn after death — they would materialise inside a wall. Forbid
@@ -1124,6 +1132,12 @@ placing a wall or crafted item on the current room's/level's `player_start`
 `_act2_place`) — reject placement when (c, r) == the current room's
 player_start / respawn tile. Depends conceptually on BL-50 (which defines the
 respawn position that must stay clear).
+
+**Resolution:** Implemented by spec 0067
+(`spec/0067-death-respawn-reset.md`, commit cbfe8ea), user-accepted
+2026-07-12. `World._is_respawn_tile` guards both `_place_wall` (Act 1) and
+`_act2_place` (Act 2); placement on the start room's `player_start` is
+rejected silently without consuming the credit/item.
 
 ---
 
