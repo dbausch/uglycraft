@@ -160,6 +160,21 @@ _pack_band_vertical: base = (zh - k) // (k + 1);  tiles = zw * base  (0 if base 
 Failure is rare and always resolves: some seed will produce a room count within
 the chosen strategy's zone capacity.
 
+**Layout failure log (spec 0065 D2).** Every `LayoutError` escaping the
+top-level `build_level_dict` call appends a diagnostic entry to
+`levellayout.LAYOUT_LOG_PATH` (`uglycraft-layout.log` in the working
+directory, same convention as `uglycraft.hsc`) before propagating into the
+retry: timestamp, failing grid, message, and — when grids were already
+built — an annotated super-grid canvas rendered by
+`leveldump.render_rooms` (the dict-level renderer: raw room dicts via
+`Room.from_data`, no `World`, no `get_level` — the BL-48(a) enabler).
+Per-strategy candidates absorbed inside `_build_grid` never log (the
+recursive per-grid builds pass `_log=False`); context rides on the
+exception (`failing_grid`, `rooms_so_far`, `super_positions` from the
+corridors' `super_pos` — the stitch exits do not exist yet).  The test
+suite redirects the path via a session-scoped autouse fixture in
+`tests/conftest.py`.
+
 ### Zone connectivity invariant
 
 The packing function must be chosen so that **every placed room** has a wall tile

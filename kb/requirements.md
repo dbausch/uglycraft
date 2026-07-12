@@ -26,8 +26,15 @@ No two `PlacedNode` instances share a tile. Violation = layout error.
 **R-P2** Every floor tile lies within interior bounds.
 `MIN_C ≤ c ≤ MAX_C` and `MIN_R ≤ r ≤ MAX_R` for all tiles.
 
-**R-P3** Every node in the graph appears in the `placed` dict.
-Unplaced nodes are a bug; `derive_walls` will raise on any edge whose endpoint is absent.
+**R-P3** Nodes MAY legitimately be missing from the `placed` dict: the zone
+packer drops rooms that no longer fit (R-P4/R-P6 overflow) and a closet can
+be uncarvable (R-T3); a dropped node's content spills into a placed
+neighbour or the corridor (spec 0032 C7), and edges with an unplaced
+endpoint create no passage (skipped by `derive_walls` and the barrier
+loop).  **Exception (spec 0065 / BL-46):** no LOCKED edge may lose an
+endpoint — the door would be elided while its key survives via spill, an
+orphan key violating R-K1 — so `build_level_dict`'s barrier loop raises
+`LayoutError` and the fresh-seed retry rebuilds.
 
 **R-P4** Minimum usable room dimensions: `w ≥ 2`, `h ≥ 2`.
 Rooms below these thresholds are silently skipped by the packing functions.
@@ -118,8 +125,12 @@ its `gate_id` somewhere in the level; a gate whose plate did not survive
 an open passage, decided at **global** scope in `_build_super_grid`.
 Prerequisites roam: keys and interior-gate plates may sit on any
 earlier-reachable grid (R-V3 philosophy; `_puzzle_candidates` spans all
-grids since spec 0061).  Tests: `tests/test_key_placement.py` R-K1
-section; sweep: `scratchpad/sweep_orphan_keys.py`.
+grids since spec 0061).  Dropped-room enforcement (spec 0065 / BL-46): a
+LOCKED edge with an unplaced endpoint (packer-dropped room, uncarved
+closet) aborts the build with a loud `LayoutError` instead of eliding
+the door and orphaning the spilled key — see R-P3 exception.  Tests:
+`tests/test_key_placement.py` R-K1 section; sweep:
+`scratchpad/sweep_orphan_keys.py`.
 
 **R-P11** Push puzzles are anchored to the player's real entry (spec
 0063 / BL-45): every puzzle is solvable by a player who reaches the
