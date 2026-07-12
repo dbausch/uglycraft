@@ -2,11 +2,12 @@
 
 ## Status
 
-- [ ] OPT-1: `validate_layout` bounding-box prune (skip room pairs whose
-      floor-boxes, expanded by 1, cannot intersect)
-- [ ] OPT-2: `_place_puzzle` inner-loop hoist + inline `get_zone`
-- [ ] Full suite green, unchanged (byte-identical generation output)
-- [ ] Generation wall time re-profiled and recorded
+- [x] OPT-1: `validate_layout` bounding-box prune (skip room pairs whose
+      floor-boxes, expanded by 1, cannot intersect) (68fbc08)
+- [x] OPT-2: `_place_puzzle` inner-loop hoist + inline `get_zone` (d787d67)
+- [x] Full suite green, unchanged (823 passed; goldens + determinism byte-identical)
+- [x] Generation wall time re-profiled: 29.4 s → 24.8 s (−15.6 %); full suite
+      ~4:57 → ~4:03 (−18 %)
 
 ## Motivation
 
@@ -122,7 +123,8 @@ is unchanged. Keep `get_zone` if any other caller remains; otherwise remove it.
 
 ## Done when:
 
-- [ ] OPT-1 implemented; `validate_layout` no longer scans far-apart pairs. — commit ____
-- [ ] OPT-2 implemented; `_place_puzzle` hoists `cm_curr`, inlines `get_zone`. — commit ____
-- [ ] `poe test` green, identical pass count; goldens/determinism unchanged. — commit ____
-- [ ] Before/after profile recorded (harness in scratchpad or KB). — commit ____
+- [x] OPT-1 implemented; `validate_layout` no longer scans far-apart pairs. — 68fbc08
+- [x] OPT-2 implemented; `_place_puzzle` hoists `cm_curr`, inlines `get_zone`. — d787d67
+- [x] `poe test` green, identical pass count (823); goldens/determinism unchanged. — d787d67
+- [x] Before/after profile recorded (KB architecture.md "Generation performance";
+      29.4 s → 24.8 s; validate_layout 6.38 s → 3.30 s). — this commit
