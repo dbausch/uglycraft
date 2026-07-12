@@ -62,13 +62,20 @@ def test_shot_act2_field():
         _shot('act2_field', h)
 
 
+def _keys_level(colours):
+    """Showcase fixture with the given key colours placed on left-room floor."""
+    lvl = fx.showcase_level()
+    lvl['rooms']['main']['keys'] = [(5, 8 - 2 * i, c) for i, c in enumerate(colours)]
+    return lvl
+
+
 def test_shot_inventory():
     """Inventory/crafting screen over the showcase fixture.
 
     Holds three keys so the golden covers the counter-free Keys section
     (spec 0071 D1): keys are unique per colour, so no ×N is drawn.
     """
-    with Harness(level_dict=fx.showcase_level(), seed=42) as h:
+    with Harness(level_dict=_keys_level(('red', 'cyan', 'orange')), seed=42) as h:
         for c in ('red', 'cyan', 'orange'):
             h.game.inventory.add_key(c)
         h.run(['wait:2', 'key:tab', 'wait:2'])
@@ -76,29 +83,38 @@ def test_shot_inventory():
 
 
 def test_shot_hud_keys():
-    """HUD status line with a few keys held — the fixed-width key strip
-    after LOOT shows the held-key icons (spec 0071 D3)."""
-    with Harness(level=3, seed=1234) as h:
-        for c in ('red', 'green', 'purple'):
+    """HUD key strip: one slot per key colour in the level, lit when held and
+    ghosted when not (spec 0071 D3). Level has red/green/purple/cyan; the
+    player holds red+green, so purple+cyan render ghosted."""
+    lvl = _keys_level(('red', 'green', 'purple', 'cyan'))
+    with Harness(level_dict=lvl, seed=1234) as h:
+        for c in ('red', 'green'):
             h.game.inventory.add_key(c)
         h.run(['wait:3'])
         _shot('hud_keys', h)
 
 
-def test_hud_key_strip_fixed_width():
-    """The HUD key strip reserves a constant width regardless of how many
-    keys are held, so the rest of the HUD never reflows (spec 0071 D3)."""
-    from crafting import KEY_COLORS
+def test_hud_key_strip_per_level_fixed_width():
+    """The strip reserves one slot per key colour PRESENT IN THE LEVEL, and
+    that width is constant no matter how many are held — no reflow during play
+    (spec 0071 D3, refined)."""
+    with Harness(level_dict=_keys_level(('red', 'green', 'purple')), seed=1234) as h:
+        expect = Game._KEY_SLOT * 3
+        assert h.game._level_key_colours == ['red', 'green', 'purple']
+        assert h.game._hud_key_strip().get_width() == expect      # 0 held
+        h.game.inventory.add_key('green')
+        assert h.game._hud_key_strip().get_width() == expect      # 1 held
+        for c in ('red', 'purple'):
+            h.game.inventory.add_key(c)
+        assert h.game._hud_key_strip().get_width() == expect      # all held
+
+
+def test_hud_key_strip_absent_without_keys():
+    """A level with no keys hides the strip entirely, so its HUD space is
+    redistributed (spec 0071 D3, refined). Act 1 levels have no keys."""
     with Harness(level=3, seed=1234) as h:
-        inv = h.game.inventory
-        w0 = h.game._hud_key_strip().get_width()
-        for c in ('red', 'cyan', 'orange'):
-            inv.add_key(c)
-        w3 = h.game._hud_key_strip().get_width()
-        for c in ('blue', 'green', 'yellow', 'purple'):
-            inv.add_key(c)
-        w7 = h.game._hud_key_strip().get_width()
-        assert w0 == w3 == w7 == Game._KEY_SLOT * len(KEY_COLORS)
+        assert h.game._level_key_colours == []
+        assert h.game._hud_key_strip() is None
 
 
 # ── Spec 0056 (BL-12): border-exit sprite selection ──────────────────────────

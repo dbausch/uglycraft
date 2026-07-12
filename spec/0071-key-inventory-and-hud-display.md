@@ -13,9 +13,9 @@ looked wrong").
 - [ ] **D2** — Display-bug follow-up: confirm the key inventory now renders
   correctly (Daniel: the earlier "looked wrong" was most likely an artifact of a
   separate, already-resolved defect); record the resolution in `kb/findings.md`.
-- [ ] **D3** — HUD status line shows the coloured icon of every key the player is
-  currently holding, in a **fixed-width** key strip (no reflow of the rest of the
-  HUD).
+- [ ] **D3** — HUD status line shows a per-level key tracker: one slot per key
+  colour present in the level, lit when held and ghosted (~15 %) when not; no strip
+  (space redistributed) when the level has no keys; never reflows during play.
 - [ ] **D4** — Verification: screenshot golden(s) for the inventory Keys section
   and the HUD key strip; a headless assertion that a held key renders without a
   count; user confirmation in-game.
@@ -97,48 +97,64 @@ intended behaviour and is explicitly out of scope here.
 
 ## D3 — Key icons in the HUD status line
 
-Add a **fixed-width key strip** to the HUD showing `icon_key_{colour}` (20 px) for
-every key the player currently holds (`count > 0`), left-aligned in `KEY_NAMES`
-order.
+Add a **per-level key-collection tracker** to the HUD: one 20 px slot for each key
+colour that appears **in the current level**, drawn `icon_key_{colour}` **lit** when
+the player holds that key and **ghosted** (~15 % opacity) when not.
 
-**Fixed width, no reflow (decided).** The strip reserves a constant width sized to
-the maximum number of distinct key colours — `len(KEY_COLORS) == 7` — so the rest
-of the HUD never shifts as keys are picked up or used, matching the `SHIELD`
-"always reserve, draw invisibly when inactive" convention. Held icons are drawn
-left-aligned within the reserved strip; unused slots draw nothing (empty). The
-strip width is a constant derived from `7 * (20 + gap_px)` — do **not** size it to
-the per-level colour count (that would reflow between levels and defeats the point).
+**Scope of the slots — the level's key colours (decided, refined).** The strip
+shows exactly the colours present in the level, not all seven. The colour set is
+computed once at level load — `World._level_key_colours`, the union of key colours
+across `data['rooms'][*]['keys']`, ordered by `KEY_NAMES` — and exposed to `game.py`
+via the `_WORLD_ATTRS` delegation. Within a level this set is constant, so the
+strip width is fixed and the rest of the HUD never reflows as keys are gained or
+used; it only differs between levels.
 
-> A future backlog item adds a **bridge counter** to the HUD (to the left of the
-> WALL counter). This spec does not add it, but the generalisation below — letting
-> a HUD element be a pre-rendered surface at a fixed reserved width — is the same
-> mechanism that item will reuse; keep it generic.
+**Ghosting, not empty slots (decided).** Every level-present colour always occupies
+its fixed slot: a held key is drawn at full opacity, a not-yet-held key at ~15 %
+opacity (`_KEY_GHOST_ALPHA = 38`, applied with
+`icon.fill((255,255,255,38), special_flags=BLEND_RGBA_MULT)` on a copy — the icons
+carry per-pixel alpha, so `set_alpha` would be ignored). This turns the reserved
+space into a collect-tracker rather than an empty gap. Because keys are consumed on
+door-open, a used key reverts from lit to ghosted — expected for a "currently held"
+tracker.
 
-Geometry (28 px HUD row, icons 20 px, centred vertically at
-`cy = hud_y + (STATUS_H - 20)//2 = 512 + 4`; 7 fixed slots, held icons
-left-aligned):
+**No keys ⇒ no strip (decided).** When the level has no keys at all
+(`_level_key_colours == []` — e.g. every Act 1 level), `_hud_key_strip()` returns
+`None` and the strip is **omitted**; the even-spacing loop then redistributes its
+space across the remaining HUD elements. Since the emptiness is fixed per level,
+this redistribution happens once per level.
+
+> The same conditional-visibility convention applies to the upcoming HUD **bridge
+> counter** (BL-28): show it only when the level contains planks, otherwise omit it
+> and redistribute the space. Both reuse the mechanism below — a HUD element that
+> may be a pre-rendered `pygame.Surface`, or absent — so keep it generic. (Filed as
+> a note on BL-28.)
+
+Geometry (28 px HUD row, icons 20 px; each element centred vertically by its own
+height, `cy = hud_y + (STATUS_H - img.height)//2`; N = number of key colours in the
+level, slot = 23 px):
 
 ```
  col: 0                                                              960
       +-----------------------------------------------------------------+
- 512  | SCORE …  LEVEL …  LIVES …  SEEK …  [KEYS ▤▤▤····]  SHIELD …  WALLS … |
+ 512  | SCORE …  LEVEL …  LIVES …  SEEK …  [🔑🔑▨▨]  SHIELD …  WALLS … |
  540  +-----------------------------------------------------------------+
-        KEYS strip = fixed 7-slot width; held icons left-aligned,
-        remaining slots empty (·). Each ▤ = one 20px icon_key_<colour>.
+        KEYS strip = N slots (N = level's key colours); 🔑 lit = held,
+        ▨ ghosted (~15%) = not held. No keys in the level ⇒ strip omitted,
+        space redistributed. Each slot = one 23px icon_key_<colour>.
 ```
 
 Placement in the element list: insert the key strip **after** the `SEEK:`/`LOOT`
 element and **before** the `BOSS`/`HARD`/`SHIELD`/`WALLS` status cluster — i.e. in
 the "collectibles" region of the row (approved: keys next to LOOT).
 
-Implementation: `_render_hud` currently builds `elems` as `(text, colour)` tuples,
-then renders each to an image and places them with a computed even-spacing `gap`.
-Generalise so an element may also be a pre-rendered fixed-width `pygame.Surface`
-(the key strip: a 7-slot-wide transparent surface with held icons blitted
-left-aligned), inserted into the image list at the chosen position; the existing
-even-spacing loop then places it like any other element. Because its width is
-constant regardless of how many keys are held, the surrounding elements never
-move.
+Implementation: `_render_hud` builds `elems` as `(text, colour)` tuples, renders
+each to an image, and places them with a computed even-spacing `gap`. Generalise so
+an element may also be a pre-rendered `pygame.Surface` (the key strip): build the
+strip via `_hud_key_strip()` and `imgs.insert(4, strip)` only when it is non-`None`.
+Each element is now centred by its own height so the 20 px strip and the shorter
+text share a centre line. Because the strip's width is fixed for the level, the
+surrounding elements never move during play.
 
 ## D4 — Verification
 
@@ -146,19 +162,22 @@ No general automated gameplay suite, but the render path has **screenshot
 goldens** (`tests/test_render.py`, `_shot(...)` + `assert_golden`) and a headless
 `Harness`. Verify with:
 
-1. **Inventory golden** — extend/adjust `test_shot_inventory` (or add a variant)
-   over a fixture where the player holds ≥2 keys, so the golden captures the
-   counter-free Keys section. Re-record with `UGLYCRAFT_REGOLD=1` and review the
-   diff by eye (the `×1` must be gone, no gap).
-2. **HUD golden** — add a screenshot golden of a playing frame where the player
-   holds ≥2 keys, capturing the HUD key strip. Re-record and review.
-3. **Headless assertion** — a small test that builds a `Game`, does
-   `inventory.add_key('blue')`, renders the inventory, and asserts the render did
-   not raise and (where cheaply checkable) that no `×` count glyph is emitted for
-   keys. Keep it in the existing render-test module.
+1. **Inventory golden** — `test_shot_inventory` holds three keys (red/cyan/orange,
+   also seeded into the fixture's `keys`) so the golden captures the counter-free
+   Keys section. Re-record with `UGLYCRAFT_REGOLD=1` and review the diff by eye (the
+   `×1` must be gone, no gap).
+2. **HUD golden** — `test_shot_hud_keys`: a playing frame over a level with four key
+   colours (red/green/purple/cyan) where the player holds two, so the golden
+   captures both lit and ghosted slots. Re-record and review.
+3. **Headless assertions** (non-fragile, alongside the goldens):
+   - `test_hud_key_strip_per_level_fixed_width` — strip width `== _KEY_SLOT × N`
+     (N = level's key colours) and constant across 0/1/all held (no reflow).
+   - `test_hud_key_strip_absent_without_keys` — a keyless level yields
+     `_level_key_colours == []` and `_hud_key_strip() is None` (strip omitted).
 4. **Manual check** — Daniel plays a level with locked doors and confirms: keys in
-   the inventory show no counter and read correctly; the HUD shows the held keys'
-   coloured icons; picking up and using keys updates both views correctly.
+   the inventory show no counter and read correctly; the HUD tracker shows the
+   level's key colours (lit when held, ghosted when not); picking up and using keys
+   updates both views correctly; keyless levels show no strip.
 
 Screenshot goldens are the deliberately fragile tier (spec 0044) — expect to
 re-record them and review the pixel diff intentionally.
@@ -177,9 +196,9 @@ re-record them and review the pixel diff intentionally.
 - [ ] **D2** — `kb/findings.md` records the "key inventory looked wrong" report as
   resolved (artifact of an already-fixed defect; D1 removes the last cosmetic
   wart); key-rendering sanity checks pass. *(commit: ____)*
-- [ ] **D3** — HUD status line shows `icon_key_{colour}` for every held key in a
-  fixed 7-slot strip after LOOT; the rest of the HUD never shifts as keys change.
-  *(commit: ____)*
-- [ ] **D4** — Inventory + HUD screenshot goldens re-recorded and reviewed; the
-  headless render assertion passes; Daniel confirms both views in-game. *(commit:
+- [ ] **D3** — HUD tracker shows one slot per key colour in the level (after LOOT),
+  lit when held and ghosted (~15 %) when not; omitted with space redistributed when
+  the level has no keys; never reflows during play. *(commit: ____)*
+- [ ] **D4** — Inventory + HUD screenshot goldens re-recorded and reviewed; the two
+  headless strip assertions pass; Daniel confirms both views in-game. *(commit:
   ____)*

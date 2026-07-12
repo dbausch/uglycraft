@@ -28,7 +28,7 @@ from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import Room, find_exit
-from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE
+from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE, KEY_NAMES
 from cells import BARRIER_BUMP, Barrier, _exit_tiles
 
 NUM_LEVELS  = TOTAL_LEVELS
@@ -291,6 +291,17 @@ class World:
         self._loot_total = sum(len(rdata.get('treasures', []))
                                for rdata in data['rooms'].values())
         self._loot_collected = 0
+        # Key colours actually present in this level (spec 0071 D3): the HUD
+        # key strip shows one ghosted slot per colour that appears as a key
+        # somewhere in the level, lit when held. Ordered by KEY_NAMES for a
+        # stable display; empty when the level has no keys (strip hidden and
+        # its HUD space redistributed).
+        self._level_key_colours = [
+            c for c in KEY_NAMES
+            if any(k[2] == c
+                   for rdata in data['rooms'].values()
+                   for k in rdata.get('keys', []))
+        ]
         self._channels = set()   # latched high channel names (spec 0050)
         self.treasure_pos = None
         self._opened_doors = set()

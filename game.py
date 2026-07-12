@@ -682,28 +682,38 @@ class Game:
             if skey is not None and skey in sp:
                 self.surf.blit(sp[skey], (c * TILE, r * TILE))
 
-    # Fixed geometry for the HUD key strip (spec 0071 D3).
+    # Geometry for the HUD key strip (spec 0071 D3).
     _KEY_ICON = 20
     _KEY_SLOT = 23   # icon + 3px pad
+    _KEY_GHOST_ALPHA = 38   # ~15% opacity for a colour not currently held
 
     def _hud_key_strip(self):
-        """Fixed-width HUD strip of the keys the player is currently holding.
+        """HUD key strip: one slot per key colour present in this level.
 
-        Reserves one slot per possible key colour (`len(KEY_COLORS)`) so the
-        strip width is constant no matter how many keys are held — the rest of
-        the HUD never shifts. Held keys are drawn left-aligned in KEY_NAMES
-        order; the remaining slots stay empty (spec 0071 D3).
+        The level's key colours (`_level_key_colours`, ordered by KEY_NAMES)
+        each get a fixed 20px slot, lit when the key is held and ghosted
+        (~15% opacity) when not — a collect-tracker. The colour set is
+        constant for the level, so the strip never reflows during play; it
+        only differs between levels. Returns None when the level has no keys,
+        so the strip is dropped and its HUD space redistributed (spec 0071 D3,
+        refined).
         """
-        strip = pygame.Surface((self._KEY_SLOT * len(KEY_COLORS), self._KEY_ICON),
-                               pygame.SRCALPHA)
+        colours = self._level_key_colours
+        if not colours:
+            return None
         sp = self.sprites
-        x = 0
-        for key_color in KEY_NAMES:
-            if self.inventory.keys.get(key_color, 0) > 0:
-                skey = f'icon_key_{key_color}'
-                if skey in sp:
-                    strip.blit(sp[skey], (x, 0))
-                x += self._KEY_SLOT
+        strip = pygame.Surface((self._KEY_SLOT * len(colours), self._KEY_ICON),
+                               pygame.SRCALPHA)
+        for i, key_color in enumerate(colours):
+            skey = f'icon_key_{key_color}'
+            if skey not in sp:
+                continue
+            icon = sp[skey]
+            if self.inventory.keys.get(key_color, 0) <= 0:
+                icon = icon.copy()
+                icon.fill((255, 255, 255, self._KEY_GHOST_ALPHA),
+                          special_flags=pygame.BLEND_RGBA_MULT)
+            strip.blit(icon, (i * self._KEY_SLOT, 0))
         return strip
 
     def _render_hud(self):
@@ -751,9 +761,12 @@ class Game:
 
         imgs = [self.font_hud.render(txt, True, col) for txt, col in elems]
         # Key strip goes right after the SEEK/LOOT element (index 3), before the
-        # BOSS/HARD/SHIELD/WALLS status cluster (spec 0071 D3). Fixed width, so
-        # the surrounding elements never shift as keys are gained/used.
-        imgs.insert(4, self._hud_key_strip())
+        # BOSS/HARD/SHIELD/WALLS status cluster (spec 0071 D3). Its width is
+        # fixed for the level, so it never shifts as keys are gained/used; a
+        # level with no keys omits it and the space is redistributed.
+        strip = self._hud_key_strip()
+        if strip is not None:
+            imgs.insert(4, strip)
 
         total_w = sum(img.get_width() for img in imgs)
         margin = 10
@@ -1220,7 +1233,7 @@ _WORLD_ATTRS = (
     'cells', 'blocked', 'channel', 'room',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_place_credits', '_breaks_toward_credit',
-    '_opened_doors', '_safe_tiles',
+    '_opened_doors', '_safe_tiles', '_level_key_colours',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',
 )
