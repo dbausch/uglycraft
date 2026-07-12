@@ -10,6 +10,7 @@ inside.
 import collections
 import random
 
+import pytest
 from hypothesis import given, settings, strategies as st
 
 import levels
@@ -177,11 +178,16 @@ def _assert_start_tiles_item_free(lv):
             f"{lname} on player_start/entrance {sorted(forbidden)}: {hit}")
 
 
-@given(st.integers(0, 2**32 - 1), st.integers(1, 6))
-@settings(max_examples=30, deadline=None)
-def test_no_item_on_player_start_or_entrance(seed, gc):
+@pytest.mark.parametrize('gc', range(1, 7))
+@given(st.integers(0, 2**32 - 1))
+@settings(max_examples=5, deadline=None)     # 6 × 5 = 30, same total as before
+def test_no_item_on_player_start_or_entrance(gc, seed):
     """No treasure, material, key, plate, or block may occupy the start
-    grid's player_start or entrance tile (R-P8)."""
+    grid's player_start or entrance tile (R-P8).
+
+    ``gc`` (grid count) is a pytest param, not a hypothesis draw, so each of
+    the 6 values becomes its own xdist-distributable item; the example budget
+    is split 6 × 5 to keep the total 30 builds unchanged (spec 0069)."""
     _g, lv = _build(seed, gc)
     _assert_start_tiles_item_free(lv)
 
