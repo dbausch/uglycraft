@@ -12,13 +12,16 @@ def _sound_keys(trace):
 
 
 def test_door_key():
-    """Collect key, bump door (auto-open), collect treasure -> advance."""
+    """Collect key, bump door (auto-open), collect treasure -> entrance opens.
+
+    Spec 0066: collecting the last award opens the exit (entrance_open)
+    rather than advancing instantly; the level ends only by walking out."""
     with Harness(level_dict=fx.door_level(), seed=42) as h:
         trace = h.run(['hold:left:40', 'hold:right:95', 'wait:10'])
     keys = _sound_keys(trace)
     assert keys.count('collect') == 2       # key + treasure
     assert 'break' in keys                  # door opened
-    assert 'level_up' in keys               # all loot -> advance
+    assert 'entrance_open' in keys          # all loot -> entrance opens
     assert_golden('act2_door', trace)
 
 
@@ -44,7 +47,10 @@ def test_gate_plate_block():
 
 def test_water_bridge():
     """Collect 2 planks, craft a bridge in the inventory (TAB), bump the
-    stream -> auto-bridge, cross, collect treasure -> advance."""
+    stream -> auto-bridge, cross, collect treasure -> entrance opens.
+
+    Spec 0066: the last award opens the exit (entrance_open) instead of
+    advancing on pickup."""
     with Harness(level_dict=fx.water_level(), seed=42) as h:
         trace = h.run([
             'hold:left:40',                  # collect both planks
@@ -56,7 +62,7 @@ def test_water_bridge():
     keys = _sound_keys(trace)
     assert 'credit' in keys                  # craft success sound
     assert 'place_wall' in keys              # bridge built
-    assert 'level_up' in keys                # treasure reached
+    assert 'entrance_open' in keys           # last treasure -> entrance opens
     assert_golden('act2_water', trace)
 
 

@@ -1026,6 +1026,46 @@ def draw_level_entrance(size=TILE):
     return s
 
 
+def draw_level_entrance_open(size=TILE):
+    """Level-entrance border tile, unlocked (spec 0066) — the door stands
+    open on a dark threshold that brightens to daylight at the far end,
+    signalling the way out.  A thin leaf of the door rests against the
+    right jamb."""
+    s = _surf(size, alpha=False)
+    frame   = (68,  63,  58)   # stone door frame
+    wood    = (46,  26,   8)   # dark oak door leaf
+    wood_hi = (72,  46,  16)
+    dark    = (14,  12,  10)   # threshold shadow (nearest)
+    mid     = (60,  58,  52)   # passage walls
+    day     = (150, 158, 150)  # daylight beyond
+
+    s.fill(frame)
+
+    fw = 2
+    opening = pygame.Rect(fw, fw, size - fw * 2, size - fw)
+
+    # Passage receding to daylight: concentric bands, dark in front → bright.
+    steps = ((0.0, dark), (0.30, mid), (0.62, (100, 104, 96)), (0.82, day))
+    for frac, col in steps:
+        inset = int(opening.width * frac / 2)
+        r = pygame.Rect(opening.left + inset, opening.top + inset,
+                        max(1, opening.width - inset * 2),
+                        max(1, opening.height - int(opening.height * frac)))
+        pygame.draw.rect(s, col, r)
+
+    # The open door leaf, folded against the right jamb.
+    leaf_w = max(3, size // 5)
+    lx = size - fw - leaf_w
+    pygame.draw.rect(s, wood, (lx, fw, leaf_w, size - fw))
+    pygame.draw.line(s, wood_hi, (lx, fw), (lx, size - 1), 1)
+
+    # Jamb highlights so the frame still reads as a doorway.
+    pygame.draw.line(s, (90, 84, 78), (fw, fw), (fw, size - 1), 1)
+    pygame.draw.line(s, (90, 84, 78), (fw, fw), (size - fw - 1, fw), 1)
+
+    return s
+
+
 def _rotate_h(surf):
     """Rotate a vertical-passage sprite 90° to make a horizontal-passage variant."""
     return pygame.transform.rotate(surf, 90)
@@ -1194,6 +1234,7 @@ def create_sprites():
         'door_open_h':   _rotate_h(draw_open_door()),
         'staircase':       draw_staircase(),
         'level_entrance':  draw_level_entrance(),
+        'level_entrance_open': draw_level_entrance_open(),
         'water_h':        draw_water(),
         'water_v':        pygame.transform.rotate(draw_water(), 90),
         'bridge_h':       draw_bridge_tile(),

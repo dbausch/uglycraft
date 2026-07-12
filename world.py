@@ -34,6 +34,12 @@ from cells import BARRIER_BUMP, Barrier
 NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10
 
+# Every non-border tile (spec 0066): the Act 1 single room owns all of these,
+# so its enemies are confined here and can never step on a border tile —
+# the open entrance included.
+INTERIOR_TILES = frozenset((c, r) for c in range(1, COLS - 1)
+                                  for r in range(1, ROWS - 1))
+
 
 def is_border(col, row):
     return col == 0 or col == COLS - 1 or row == 0 or row == ROWS - 1
@@ -200,6 +206,12 @@ class World:
         return self.room.tile_owner
 
     @property
+    def entrance_open(self):
+        """True once the level entrance has been unlocked (spec 0066): the
+        reserved channel is latched high, so the entrance gate is passable."""
+        return ENTRANCE_CHANNEL in self._channels
+
+    @property
     def _dead_squares(self):
         return self.room.dead_squares
 
@@ -315,6 +327,9 @@ class World:
         self.room = room
         self._flame_timer = 0
         self._bump_consumed.clear()
+        # The entrance-exit trigger (spec 0066) needs this room's entrance
+        # tile, if any; only the start grid of an Act 2 level carries one.
+        self._entrance_pos = self._current_room_data.get('entrance')
         self._tag_enemies_with_rooms()
         # The stuck-block net runs only on first entry of a freshly
         # generated room (spec 0048 U5 / BL-36): restored rooms are the
@@ -344,8 +359,15 @@ class World:
                 return
 
     def _tag_enemies_with_rooms(self):
-        """Assign each enemy to its room based on tile_owner map."""
+        """Assign each enemy to its room based on tile_owner map.
+
+        Act 1 has no tile_owner: its single room owns every interior tile, so
+        confine each enemy to INTERIOR_TILES (spec 0066) — leaving room_name
+        None keeps them always-chasing while barring them from the border,
+        the open entrance included."""
         if not self._tile_owner:
+            for enemy in self.enemies:
+                enemy.room_tiles = INTERIOR_TILES
             return
         room_tiles_cache = {}
         for enemy in self.enemies:
@@ -404,7 +426,7 @@ class World:
             self._emit('collected')
             self._loot_collected += 1
             if self._loot_collected >= self._loot_total:
-                self.advance_level()
+                self._open_entrance()      # spec 0066: leave via the entrance
 
     def _collect_materials(self):
         """Material pickup at the player's tile (Act 2)."""
@@ -564,8 +586,15 @@ class World:
             return True
         tc = self.player.col + dcol
         tr = self.player.row + drow
-        # Off-screen: grid transition if at an exit
+        # Off-screen press: leave the level through the open entrance (spec
+        # 0066), else a grid transition if standing on a border exit.  The
+        # entrance exit mirrors the grid-change flow — walk onto the open
+        # door, then this outward press ends the level.
         if not (0 <= tc < COLS and 0 <= tr < ROWS):
+            if self.entrance_open and \
+                    (self.player.col, self.player.row) == self._entrance_pos:
+                self.advance_level()
+                return False
             self._try_room_transition()
             return False
         if self.blocked(tc, tr):
@@ -619,6 +648,16 @@ class World:
 
     # ── Level transitions ─────────────────────────────────────────────────────
 
+    def _open_entrance(self):
+        """Award completion (spec 0066): unlock the level entrance by
+        latching its reserved channel high.  The gate barrier at the entrance
+        then stops blocking, so the tile becomes a walkable exit gap; leaving
+        through it (a further off-screen press) is what ends the level."""
+        if ENTRANCE_CHANNEL in self._channels:
+            return
+        self._channels.add(ENTRANCE_CHANNEL)
+        self._emit('entrance_opened')
+
     def advance_level(self):
         if self.level >= NUM_LEVELS:
             self._end_game(won=True)
@@ -657,9 +696,12 @@ class World:
         # never moved — its eventual first entry builds from pristine data.
         for room in self._rooms.values():
             room.blocks = [Block(c, r) for c, r in room.blocks_initial]
-        # Close everything synchronously (the old _gate_open.clear()):
-        # the next plate pass re-latches from the reset occupancy.
-        self._channels = set()
+        # Close everything synchronously (the old _gate_open.clear()): the
+        # next plate pass re-latches from the reset occupancy.  The entrance
+        # channel is NOT plate-held — an opened door stays open across death
+        # (spec 0066), so preserve it.  (This preservation goes away with
+        # _reset_blocks itself once BL-37's self-healing blocks land.)
+        self._channels = self._channels & {ENTRANCE_CHANNEL}
 
     def _forge_ogre_attack(self, enemy):
         """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""
@@ -787,7 +829,8 @@ class World:
                 self.score += TREASURE_POINTS.get(self.treasure_item_no, 0)
                 self._emit('collected')
                 if self.item_no == 9:
-                    self.advance_level()
+                    self.treasure_pos = None   # final award gone: clear its sprite
+                    self._open_entrance()      # spec 0066: leave via the entrance
                 else:
                     self._spawn_treasure()
 

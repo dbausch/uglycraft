@@ -23,8 +23,8 @@ channel state and the blocks live on the World.  This module is pygame-free
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from constants import (COLS, ROWS, WALL_BUMPS, WALL_HITS_TO_BREAK,
-                       WALL_STONE, WALL_WOODEN)
+from constants import (COLS, ROWS, ENTRANCE_CHANNEL, WALL_BUMPS,
+                       WALL_HITS_TO_BREAK, WALL_STONE, WALL_WOODEN)
 
 
 def parse_level_walls(raw):
@@ -255,6 +255,16 @@ def _parse_nozzles(cells, room_data):
         cells.add_fixture(source, Fixture('flame_nozzle', jet))
 
 
+def _parse_entrance(cells, room_data):
+    """The level entrance (spec 0066): an openable gate barrier on the
+    reserved ENTRANCE_CHANNEL, overwriting the border wall the border loop
+    laid at that tile.  Closed (channel low) it blocks and bumps inert like
+    the border; award completion latches the channel high to open it."""
+    ent = room_data.get('entrance')
+    if ent is not None:
+        cells.set_barrier(tuple(ent), Barrier('gate', channel=ENTRANCE_CHANNEL))
+
+
 # The parse registry (spec 0052 G1): one entry per cells-parsed room-dict
 # content key.  Occupants (pushable_blocks, enemy_starts, patrol_enemies)
 # belong to Room.from_data; tile_owner/dead_squares/exits are room
@@ -269,6 +279,7 @@ CONTENT_PARSERS = (
     ('keys',            _parse_items('key', 'keys')),
     ('pressure_plates', _parse_plates),
     ('flame_jets',      _parse_nozzles),
+    ('entrance',        _parse_entrance),
 )
 
 

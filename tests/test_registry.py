@@ -45,7 +45,7 @@ def test_content_parsers_cover_all_cell_content_keys():
     assert [key for key, _ in CONTENT_PARSERS] == [
         'walls', 'locked_doors', 'gates', 'water_tiles',
         'treasures', 'materials', 'keys',
-        'pressure_plates', 'flame_jets',
+        'pressure_plates', 'flame_jets', 'entrance',
     ]
 
 

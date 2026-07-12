@@ -191,6 +191,7 @@ class Game:
         'item_relocated':  'item_hit',
         'level_advanced':  'level_up',
         'boss_appeared':   'boss_appear',
+        'entrance_opened': 'entrance_open',
     }
 
     def _pump_world(self):
@@ -534,10 +535,13 @@ class Game:
         # Act 1, so none of these blocks needs an act gate any more.
         rk = self._current_room
 
-        # Level entrance sprite at the start-grid entry border tile
+        # Level entrance sprite at the start-grid entry border tile — open
+        # once all awards are collected (spec 0066), else the closed door.
         if 'entrance' in self._current_room_data:
             ec, er = self._current_room_data['entrance']
-            self.surf.blit(sp['level_entrance'], (ec * TILE, er * TILE))
+            key = 'level_entrance_open' if self.world.entrance_open \
+                else 'level_entrance'
+            self.surf.blit(sp[key], (ec * TILE, er * TILE))
 
         # Grid border exits mirror the source barrier's appearance (spec
         # 0056); an open border is just the gap in the border wall.
@@ -570,6 +574,8 @@ class Game:
         for pc, pr, _gid in self.room.plates:
             self.surf.blit(sp['pressure_plate'], (pc * TILE, pr * TILE))
         for (gc, gr), gate in self.cells.barriers('gate'):
+            if gate.channel == ENTRANCE_CHANNEL:
+                continue     # the entrance gate is drawn as a door, above
             o = self._door_orient(gc, gr)
             base = 'gate_open' if self.channel(gate.channel) else 'gate_closed'
             self.surf.blit(sp[f'{base}_{o}'], (gc * TILE, gr * TILE))

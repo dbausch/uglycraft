@@ -240,6 +240,27 @@ def _build_sfx(np) -> dict:
         buf[:n2] += ring
         return _to_sound(np, _saturate(np, buf, 3.0))
 
+    def sfx_entrance_open():
+        # The entrance unlocks (spec 0066): a doorbell "ding-dong" — two
+        # DESCENDING bell tones built from inharmonic sine partials.  A
+        # deliberately different family from the ascending FM pickup/success
+        # chimes (collect, credit, level_up) so it never reads as "the usual
+        # sound", yet stays short and pleasant.
+        def _bell(midi, n, vol):
+            t = np.arange(n, dtype=np.float32) / _RATE
+            f = _hz(midi)
+            sig = np.zeros(n, dtype=np.float32)
+            for ratio, amp in ((1.0, 1.0), (2.76, 0.42), (5.40, 0.20)):
+                sig += np.sin(2.0 * np.pi * f * ratio * t) * amp
+            return sig * np.exp(-t * 8.5) * vol
+
+        nd  = round(_RATE * 0.150)
+        off = round(_RATE * 0.115)          # dong starts as the ding rings on
+        buf = np.zeros(off + nd, dtype=np.float32)
+        buf[:nd]        += _bell(81, nd, 0.30)   # ding — A5
+        buf[off:off+nd] += _bell(76, nd, 0.30)   # dong — E5 (down a fourth)
+        return _to_sound(np, np.clip(buf, -1.0, 1.0))
+
     return {
         'move':          sfx_move(),
         'bump':          sfx_bump(),
@@ -255,6 +276,7 @@ def _build_sfx(np) -> dict:
         'game_over':     sfx_game_over(),
         'boss_appear':   sfx_boss_appear(),
         'item_hit':      sfx_item_hit(),
+        'entrance_open': sfx_entrance_open(),
     }
 
 

@@ -355,14 +355,18 @@ def test_two_materials_same_tile_need_two_ticks():
         _restore(orig)
 
 
-def test_last_treasure_advances_level():
+def test_last_treasure_opens_entrance():
+    """Spec 0066: collecting the last preplaced award opens the entrance
+    (entrance_opened) rather than advancing the level on pickup — the level
+    ends only when the player then walks out through the entrance."""
     w, orig = _world(_items_level(treasures=[(11, 8, 1)]))
     try:
         _step(w, 1, 0)
         w.drain_events()
         w.update(DT)
         kinds = _kinds(w.drain_events())
-        assert 'collected' in kinds and 'level_advanced' in kinds
+        assert 'collected' in kinds and 'entrance_opened' in kinds
+        assert 'level_advanced' not in kinds
     finally:
         _restore(orig)
 

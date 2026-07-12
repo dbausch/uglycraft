@@ -51,6 +51,11 @@ WALL_BUMPS = {
     WALL_WOODEN: 2,
 }
 
+# The level entrance is an openable gate barrier driven by this reserved
+# channel (spec 0066): award completion latches it high; no plate ever emits
+# it, so it survives the per-tick relatch and only start_level clears it.
+ENTRANCE_CHANNEL = '__entrance__'
+
 # ── Act 2 constants ──────────────────────────────────────────────────────────
 ACT2_START_LEVEL = 11
 ACT2_BASE_MOVE_MS  = 80
