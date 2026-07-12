@@ -116,23 +116,39 @@ def main(n_seeds=12):
                             print(f'LANDING: seed={seed} L{level_no} '
                                   f'block=({bc},{br}) passage={npos}')
 
-                # anchored solvability per plate: puzzle scope = plate
-                # room floor + its doorway tiles (mirrors validate)
+                # Anchored solvability per plate: puzzle scope = plate
+                # room floor + passable hole tiles.  Anchors are the
+                # ENTRY-side standable tiles: hole tiles themselves plus
+                # the landing tiles inside the room next to any passage
+                # (hole, door, gate, breakable) — the player traverses
+                # openable barriers to enter, but can never traverse the
+                # block (spec 0063 augmented-entry semantics).
                 for pc, pr, gid in plates:
                     proom = to.get((pc, pr))
                     room_tiles = {t for t, o in to.items() if o == proom}
-                    doorways = set()
+                    holes = set()
+                    anchors = set()
                     for t in room_tiles:
                         for dc, dr in CARDINAL:
                             nb = (t[0] + dc, t[1] + dr)
-                            if nb not in to and (
-                                    nb in doors or nb in gates
-                                    or (nb not in walls
-                                        and 0 < nb[0] < 29
-                                        and 0 < nb[1] < 15)):
-                                doorways.add(nb)
-                    passable = (room_tiles | doorways) - set(
+                            if nb in to:
+                                continue
+                            is_hole = (nb not in walls
+                                       and nb not in water
+                                       and 0 < nb[0] < 29
+                                       and 0 < nb[1] < 15)
+                            openable = (nb in doors or nb in gates
+                                        or (nb in walls and
+                                            walls[nb] != WALL_REINFORCED))
+                            if is_hole:
+                                holes.add(nb)
+                                anchors.add(nb)
+                                anchors.add(t)   # landing tile
+                            elif openable:
+                                anchors.add(t)   # landing tile inside
+                    passable = (room_tiles | holes) - set(
                         b for b in blocks)
+                    anchors &= passable | holes
                     ok = False
                     for b in blocks:
                         if to.get(b) != proom:
@@ -140,7 +156,7 @@ def main(n_seeds=12):
                         p = (passable | {b})
                         dead = _compute_dead_squares(p, [(pc, pr)])
                         if _anchored_solvable(b, (pc, pr), p, dead,
-                                              doorways):
+                                              anchors):
                             ok = True
                             break
                     if not ok and any(to.get(b) == proom for b in blocks):
