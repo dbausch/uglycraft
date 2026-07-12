@@ -1002,3 +1002,23 @@ diff; (c) dump-goldens for the hand-written mechanic fixtures in
 spec-0064 diagrams, locking spec drawings to shipped data.
 
 ---
+
+## BL-49 · P3 · New dump-based robustness tests (content conservation, canvas topology)
+
+From the spec 0064 review (2026-07-12 test-suite review; to be discussed
+before implementation). Depends on BL-48's dict-level entry point.
+
+(a) Rendered-content conservation: every key/material/treasure/enemy/block in
+a built level dict must appear as its symbol in the ASCII render — a symbol
+swallowed by a wall/water tile is a placement bug invisible to dict-level
+counting; piggyback on levels the existing sweeps already build (near-zero
+extra generation cost); needs per-kind stacking rules (a plate under a block
+is legitimate). (b) Canvas topology invariants over shipping content (levels
+11-20 × a seed or two): exactly one E/P, both in the start grid; border rings
+closed except X/D/G/E; facing stitch openings aligned; the canvas BFS in
+`leveldump` already raises on inconsistent stitch topology, doubling as a free
+structural validator. (c) Compare dump text across `PYTHONHASHSEED` values in
+the existing subprocess probe (`test_generation_determinism.py`) as a readable
+BL-40 regression net.
+
+---
