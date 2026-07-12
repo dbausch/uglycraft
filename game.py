@@ -46,6 +46,20 @@ _ITEM_SPRITE = {
 }
 
 
+_OVERLAY_PAD = 24          # px between overlay text edge and box border
+
+
+def overlay_box_width(title_w, sub_w):
+    """Overlay box width for rendered text widths (spec 0059).
+
+    Any box auto-adapts to longer text; the 420 px minimum keeps every
+    existing short-title overlay pixel-identical, and the clamp leaves a
+    20 px margin to each edge of the logical surface.
+    """
+    want = max(420, title_w + 2 * _OVERLAY_PAD, sub_w + 2 * _OVERLAY_PAD)
+    return min(want, LOGICAL_W - 40)
+
+
 def border_exit_sprite(record, orient, open_channels, opened_doors):
     """Sprite key for a grid-border exit tile, or None to draw nothing.
 
@@ -463,8 +477,9 @@ class Game:
         elif self.state == WIN:
             self._render_field()
             self._render_hud()
-            win_msg = "THE  FORGE  IS  DEFEATED!" if self._final_level >= 20 else "YOU  WON!"
-            self._render_overlay_text(win_msg, sub=f"Final score: {self._final_score}", color=YELLOW)
+            self._render_overlay_text("YOU  WON!",
+                                      sub=f"Final score: {self._final_score}",
+                                      color=YELLOW)
         elif self.state == PLAY_AGAIN:
             self._render_field()
             self._render_hud()
@@ -699,16 +714,21 @@ class Game:
         overlay.fill((0, 0, 0, 160))
         self.surf.blit(overlay, (0, 0))
 
-        box_w, box_h = 420, 90 if sub else 60
+        img = self.font_big.render(text, True, color)
+        simg = self.font_small.render(sub, True, GRAY) if sub else None
+
+        # Box adapts to the text (spec 0059); box and texts are all
+        # centred on LOGICAL_W // 2, so widening stays symmetric.
+        box_w = overlay_box_width(img.get_width(),
+                                  simg.get_width() if simg else 0)
+        box_h = 90 if sub else 60
         bx = (LOGICAL_W - box_w) // 2
         by = (ROWS * TILE - box_h) // 2
         pygame.draw.rect(self.surf, (30, 30, 50), (bx, by, box_w, box_h), border_radius=8)
         pygame.draw.rect(self.surf, color, (bx, by, box_w, box_h), 2, border_radius=8)
 
-        img = self.font_big.render(text, True, color)
         self.surf.blit(img, (LOGICAL_W // 2 - img.get_width() // 2, by + 10))
-        if sub:
-            simg = self.font_small.render(sub, True, GRAY)
+        if simg:
             self.surf.blit(simg, (LOGICAL_W // 2 - simg.get_width() // 2, by + 58))
 
     def _render_inventory(self):
