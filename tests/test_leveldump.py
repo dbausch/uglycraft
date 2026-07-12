@@ -150,17 +150,20 @@ def test_act2_canvas_layout():
         assert ' ' not in ''.join(block), f'{key}: block not fully rendered'
         for c, r in ((0, 0), (COLS - 1, 0), (0, ROWS - 1), (COLS - 1, ROWS - 1)):
             assert block[r][c] == '#', f'{key}: corner ({c},{r}) not wall'
-        # facing exit gaps align across the gutter
+        # facing exit openings align across the gutter — 'X' for a bare
+        # gap, 'D'/'G' when the stitch carries a door/gate barrier on
+        # that side's border tile (spec 0056: entry tiles show the real
+        # barrier, never a generic marker)
         for exit_key, target in data['rooms'][key].get('exits', {}).items():
             ec, er = _exit_tile(exit_key)
-            assert block[er][ec] == 'X', f'{key}: exit {exit_key} not X'
+            assert block[er][ec] in 'XDG', f'{key}: exit {exit_key} not open'
             tx, ty = positions[target]
             tox, toy = tx * (COLS + 1), ty * (ROWS + 1)
             side = exit_key.rsplit('_', 1)[0]
             fc, fr = _exit_tile({'left': f'right_{er}', 'right': f'left_{er}',
                                  'top': f'bottom_{ec}', 'bottom': f'top_{ec}'}[side])
-            assert cell(tox + fc, toy + fr) == 'X', \
-                f'{key}: facing gap of {exit_key} in {target} not X'
+            assert cell(tox + fc, toy + fr) in 'XDG', \
+                f'{key}: facing opening of {exit_key} in {target} missing'
 
     # empty super-cells (inside the bounding box) stay blank
     occupied = set(positions.values())

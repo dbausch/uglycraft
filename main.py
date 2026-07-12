@@ -11,6 +11,8 @@ Scaling:
 Debug flags (skip menus and highscore):
   --level N        start at level N (1–9)
   --easy / --hard  set difficulty   (default: easy)
+  --dump-level N   print an ASCII export of level N as loaded and exit
+                   (spec 0064); --seed S pins all randomness
 """
 import sys
 import argparse
@@ -51,6 +53,10 @@ def parse_args():
     p = argparse.ArgumentParser(description=TITLE)
     p.add_argument('--level', '-l', type=int, metavar='N',
                    help='Debug: start directly at level N (1–9)')
+    p.add_argument('--dump-level', type=int, metavar='N',
+                   help='Print an ASCII export of level N as loaded and exit')
+    p.add_argument('--seed', type=int, metavar='S',
+                   help='Pin all randomness (only meaningful with --dump-level)')
     g = p.add_mutually_exclusive_group()
     g.add_argument('--easy', action='store_true', help='Debug: use Easy difficulty')
     g.add_argument('--hard', action='store_true', help='Debug: use Hard difficulty')
@@ -59,6 +65,14 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    # ── Headless ASCII export (spec 0064): no window, print and exit ──────────
+    if args.dump_level is not None:
+        from leveldump import dump_level
+        level = max(1, min(args.dump_level, TOTAL_LEVELS))
+        print(dump_level(level, difficulty=HARD if args.hard else EASY,
+                         seed=args.seed), end='')
+        return
 
     pygame.mixer.pre_init(44100, -16, 2, 512)
     pygame.init()
