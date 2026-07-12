@@ -112,3 +112,51 @@ Probably died with spec 0029's replacement of the old per-grid bridge cap.
 - A staircase tile is a normal interior floor tile; it is NOT restricted to the 30×16 grid border. It can appear anywhere inside a room or corridor.
 - Each staircase goes in one direction only: **up** (to the layer above) or **down** (to the layer below) — never both.
 - Connecting layer N to layer N+1 therefore requires two separate stair nodes: one "stairs down" in layer N and one "stairs up" in layer N+1.
+
+## Doomed push-blocks & the safe set (spec 0068 / BL-37)
+
+A push-block that is pushed out of its plate's **safe area** lights a 5 s
+red-glow fuse, then explodes (−500 pts, `BLOCK_EXPLOSION_PENALTY`) and respawns
+at its start (or nearest open tile). Detection is a static membership check:
+`(block tile) ∉ Room.safe_tile_set → ignite` in `World._light_doomed_fuses`,
+run after every successful push. Blocks are confined to their room floor
+(`World._room_floor`), may be pushed onto unsafe tiles (the old dead-square push
+guard was removed), and stay movable while burning but can never re-enter the
+safe area (once outside the reverse-reachable set, every tile one push away is
+also outside it). On death, blocks are **not** reset — `_reset_blocks` was
+deleted; dying preserves solved-puzzle progress (the spec 0067 player+enemy
+reset stays; gates recompute via the plate latch).
+
+### The safe set is player-reachability-bound — a hard-won invariant
+
+`plate.safe_tiles` = the block positions from which the block can be pushed to
+that plate, computed by `cells.safe_block_positions(floor, plate)`. The critical,
+non-obvious facts (each cost a wrong attempt):
+
+- **Confine the analysis to the room's OWN walkable floor** — `tile_owner` tiles
+  minus walls/gates/doors/entrance. A **wall opening / gate / door is a way out,
+  not a push-stand tile**: the player can never stand *in* a doorway to push a
+  block off the adjacent wall. Using the grid-wide passable set (including the
+  opening) wrongly marks the wall-adjacent row safe.
+- **Track the player's zone, not just the stand tile.** A pull is legal only when
+  the player can actually **walk** — around the block, within the room floor — to
+  the tile it must push from. The block can block the player's *own only path*
+  (e.g. a block above a 1-wide opening cuts the room from a corridor below it), so
+  a standable tile beyond the block does not help. Plain reverse-reachability, a
+  "dead-end stand" (≤1 neighbour) rule, and a 2-core rule all FAILED for this
+  reason. The correct computation is a reverse Sokoban over `(block, player
+  component)` states, seeded from `(plate, every component of floor−plate)`,
+  validated tile-for-tile against a forward solver.
+- **Accepted residual:** "solvable for *some* player start" (seeds all zones), so
+  a single block that splits the room with the player stranded on the plate-less
+  side is still counted safe — a maze-only case, absent in one-puzzle-per-room
+  levels.
+- The safe area **is** the still-solvable block positions, so the intended
+  solution path is always safe; the floor tint marks it. Mazes must stay
+  Sokoban-solvable: 1-wide winding corridors collapse the safe area (can't get
+  behind the block at a bend); **2–3-wide floor with a few turns keeps most of
+  the room safe**.
+
+→ see `spec/0068-exploding-wedged-blocks.md` (Geometry section has computed
+diagrams incl. the wall-opening case). Enemies never share a push-puzzle room
+(R-P9, `kb/requirements.md`), so an exploded block's respawn need not avoid them.
