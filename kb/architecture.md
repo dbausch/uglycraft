@@ -442,7 +442,13 @@ single-grid push-puzzle placement are genuinely sound:
 - `_place_puzzle` (levellayout) selects each `(plate, block)` pair via a full
   **backward Sokoban BFS** — block confined to the room floor, player
   reachability computed across the whole grid, every *other* block treated as a
-  fixed obstacle. It raises if no solvable pair exists.
+  fixed obstacle. It raises if no solvable pair exists.  Since spec 0063 the
+  acceptance is **anchored**: the forward-start player zone must be reachable
+  from the corridor through the player-augmented graph (openable barriers
+  traversable for entry; the block itself never), and block starts are barred
+  from landing tiles (`block_excluded`, R-P7 mirror) — pre-0063 the solvers
+  accepted puzzles solvable only from components the block itself sealed off
+  (BL-45's forced-push wedge).  → R-P11.
 - `validate_push_puzzles` then re-verifies all puzzles together and `build_level_dict`
   **raises** on failure (→ `_generate_act2_level` retries with a fresh seed).
 

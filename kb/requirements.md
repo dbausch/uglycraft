@@ -121,6 +121,20 @@ earlier-reachable grid (R-V3 philosophy; `_puzzle_candidates` spans all
 grids since spec 0061).  Tests: `tests/test_key_placement.py` R-K1
 section; sweep: `scratchpad/sweep_orphan_keys.py`.
 
+**R-P11** Push puzzles are anchored to the player's real entry (spec
+0063 / BL-45): every puzzle is solvable by a player who reaches the
+grid through the corridor, traversing openable barriers (doors, gates,
+breakable walls, bridgeable water) but never the block itself — the
+solvers start only from anchor-containing player zones, not from
+components the block seals off.  Additionally no pushable block ever
+STARTS on a landing tile (R-P7's set): a block there makes the first
+entry a forced push (the BL-45 2-high-room wedge).  Enforced in
+`_place_puzzle` (anchored acceptance + `block_excluded`) and re-checked
+by `validate_push_puzzles` / `_sokoban_bfs(anchors=…)`.  Tests:
+`tests/test_sokoban.py` (TestAnchoredSokoban),
+`tests/test_placement_rules.py`; sweep:
+`scratchpad/sweep_puzzle_anchors.py`.
+
 ---
 
 ## W — Walls
