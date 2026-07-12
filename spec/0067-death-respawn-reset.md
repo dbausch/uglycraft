@@ -2,29 +2,29 @@
 
 ## Status
 
-- [ ] On any life loss, **every enemy** (in every visited room) is respawned
+- [x] On any life loss, **every enemy** (in every visited room) is respawned
       to its start — not just the player (BL-50)
-- [ ] Enemy respawn is **safe in every grid**: an enemy returns to its start
+- [x] Enemy respawn is **safe in every grid**: an enemy returns to its start
       tile only when that tile is unblocked, clear of the player, **and in the
       component the player reaches in that room** (the player's own tile in the
       start room; the room's entry tiles elsewhere); otherwise it relocates to
       a reachable far tile in that component. Never inside a block/wall, never
       on/beside the player, and never sealed in a pocket — the player cannot
       wall an enemy in and die to neutralise it, in any grid
-- [ ] The caught enemy is respawned with the rest (its pre-death
+- [x] The caught enemy is respawned with the rest (its pre-death
       `_respawn_enemy` relocation applies only on a **shielded** hit, where no
       life is lost)
-- [ ] `Room` captures `enemies_initial` at construction (parallel to
+- [x] `Room` captures `enemies_initial` at construction (parallel to
       `blocks_initial`); `World._reset_enemies()` restores from it, and
       `_lose_life` calls it alongside `_reset_blocks`
-- [ ] On death the player returns to the **start room** — `_lose_life` enters
+- [x] On death the player returns to the **start room** — `_lose_life` enters
       `start_room` before repositioning (Decision 1, confirmed)
-- [ ] Placing a crafted wall/block on the **respawn tile** (the start room's
+- [x] Placing a crafted wall/block on the **respawn tile** (the start room's
       `player_start`) is rejected — Act 1 (`_place_wall`) and Act 2
       (`_act2_place`) both guarded (BL-51)
-- [ ] New tests red before the change, green after; `poe test` exits 0 with
+- [x] New tests red before the change, green after; `poe test` exits 0 with
       any affected goldens deliberately re-recorded
-- [ ] Manual check: die mid-level → player and all enemies snap back to their
+- [x] Manual check: die mid-level → player and all enemies snap back to their
       starts (never into a wall, never on top of you); a crafted wall cannot
       be placed on the start tile (user acceptance)
 
@@ -252,21 +252,22 @@ already-blocked tile does today (no barrier set, no credit/item consumed):
 
 ## Done when:
 
-- [ ] `Room.enemies_initial` captured at construction; `World._reset_enemies()`
-      respawns every visited room's enemies (position + patrol leg)
-- [ ] Enemy respawn is safe in every grid: never onto a blocked tile, never
+- [x] `Room.enemies_initial` captured at construction; `World._reset_enemies()`
+      respawns every visited room's enemies (position + patrol leg) — cbfe8ea
+- [x] Enemy respawn is safe in every grid: never onto a blocked tile, never
       onto/adjacent to the player, and never sealed in a pocket — the home is
       used only when it is in the component the player reaches in that room
       (player's tile in the start room; entry tiles elsewhere), else
       `_respawn_enemy(enemy, reach)` relocates into that component (anti-trap)
-- [ ] `_lose_life` returns the player to the start room, then resets player,
+      — cbfe8ea
+- [x] `_lose_life` returns the player to the start room, then resets player,
       blocks, and all enemies; `_on_caught` only relocates the catcher on a
-      shielded (no-life-lost) hit
-- [ ] A crafted wall/block cannot be placed on the start room's `player_start`
+      shielded (no-life-lost) hit — cbfe8ea
+- [x] A crafted wall/block cannot be placed on the start room's `player_start`
       (Act 1 `_place_wall` and Act 2 `_act2_place`), rejected without consuming
-      the credit/item
-- [ ] New tests red first, then green; `poe test` exits 0 with any affected
-      death goldens deliberately re-recorded
-- [ ] User confirms in-game: death snaps player + all enemies back to starts
+      the credit/item — cbfe8ea
+- [x] New tests red first (fc77812), then green; `poe test` exits 0 (794
+      passed) with affected death goldens deliberately re-recorded — cbfe8ea
+- [x] User confirms in-game: death snaps player + all enemies back to starts
       (never into a wall, never on top of the player), and no wall can be
-      crafted on the start tile (manual acceptance)
+      crafted on the start tile (manual acceptance — confirmed 2026-07-12)
