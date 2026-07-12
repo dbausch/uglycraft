@@ -706,7 +706,7 @@ two-grid fixture, exit right, return).
 
 ---
 
-## BL-37 · P2 · Wedged push-block explodes and respawns after an animated countdown
+## BL-37 · DONE · Wedged push-block explodes and respawns after an animated countdown
 
 Feature idea (Daniel, 2026-07-12): when a pushable block is pushed onto a tile
 from which its puzzle becomes unsolvable (zero remaining push directions, or
@@ -748,6 +748,20 @@ Rendering: countdown/explosion animation in game.py/sprites.py. Interactions
 to decide in the spec: blocks resting on plates must not count as wedged
 (holding a gate open is the goal state), and the respawned block must not
 materialise on top of the player/an enemy.
+
+**Resolution:** Implemented by spec 0068
+(`spec/0068-exploding-wedged-blocks.md`), user-accepted in-game 2026-07-12.
+A push-block pushed out of its plate's safe area lights a 5 s red-glow fuse,
+then explodes (4-frame blast, -500 points via `BLOCK_EXPLOSION_PENALTY`) and
+respawns at its start (or nearest open tile); the block is confined to its
+room floor. The safe area is computed by `cells.safe_block_positions` — a
+player-zone reverse Sokoban confined to the room's own walkable floor
+(openings/gates/doors excluded; every pull requires the player to be able to
+walk to the push tile around the block) — stored on each plate fixture as
+`plate.safe_tiles` and unioned by `Room.safe_tile_set`. The on-death
+`_reset_blocks` path was removed (dying preserves solved-puzzle progress;
+the spec 0067 player+enemy reset stays). Commits: 3a5b5a2 (feature) and
+61eaf7a (final safe-set solver). 800 tests pass.
 
 ---
 
