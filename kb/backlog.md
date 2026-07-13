@@ -475,7 +475,14 @@ placeable-wall counter are decoupled).
 
 ---
 
-## BL-27 · P2 · Key inventory display: drop the counter (keys are unique) and check for a display bug
+## BL-27 · FIXED · Key inventory display: drop the counter (keys are unique) and check for a display bug
+
+Fixed by spec 0071 (`spec/0071-key-display.md`, all four deliverables D1–D4
+ticked), commits 041e394 and 6ef8709. The inventory key counter was dropped
+(keys are unique), and a coloured key strip was added to the HUD status line:
+per-level colours, ghost icons for keys not yet held, hidden entirely when the
+level has no keys (`World._level_key_colours` + `_hud_key_strip`). The suspected
+display bug was resolved as part of the redesign.
 
 Keys are unique — at most one of each colour — so the inventory should not show a
 quantity counter next to a key. During play the key inventory sometimes looked
