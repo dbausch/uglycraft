@@ -13,7 +13,7 @@ looked wrong").
 - [ ] **D2** — Display-bug follow-up: confirm the key inventory now renders
   correctly (Daniel: the earlier "looked wrong" was most likely an artifact of a
   separate, already-resolved defect); record the resolution in `kb/findings.md`.
-- [ ] **D3** — HUD status line shows a per-level key tracker: one slot per key
+- [x] **D3** — HUD status line shows a per-level key tracker: one slot per key
   colour present in the level, lit when held and ghosted (~15 %) when not; no strip
   (space redistributed) when the level has no keys; never reflows during play.
 - [ ] **D4** — Verification: screenshot golden(s) for the inventory Keys section
@@ -196,9 +196,9 @@ re-record them and review the pixel diff intentionally.
 - [ ] **D2** — `kb/findings.md` records the "key inventory looked wrong" report as
   resolved (artifact of an already-fixed defect; D1 removes the last cosmetic
   wart); key-rendering sanity checks pass. *(commit: ____)*
-- [ ] **D3** — HUD tracker shows one slot per key colour in the level (after LOOT),
+- [x] **D3** — HUD tracker shows one slot per key colour in the level (after LOOT),
   lit when held and ghosted (~15 %) when not; omitted with space redistributed when
-  the level has no keys; never reflows during play. *(commit: ____)*
+  the level has no keys; never reflows during play. *(commit: 041e394, 6ef8709)*
 - [ ] **D4** — Inventory + HUD screenshot goldens re-recorded and reviewed; the two
   headless strip assertions pass; Daniel confirms both views in-game. *(commit:
   ____)*
