@@ -450,9 +450,9 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
 ## Done when:
 
 - [ ] **D1** — `Inventory.can_quick_bridge()`/`quick_bridge()` added; water-bump
-  auto-crafts a bridge from 2 planks (menu-free) and prefers a crafted bridge when
-  present; all bridge guards intact; no plank spent on a rejected placement.
-  *(commit: ____)*
+  auto-crafts a bridge from 2 planks (menu-free), spending raw planks first and
+  falling back to a crafted bridge (mirroring `quick_place_wall`); all bridge guards
+  intact; no plank spent on a rejected placement. *(commit: ____)*
 - [ ] **D2** — `World._level_has_planks` computed at load and delegated; `BRIDGE N.`
   counter (= `planks//2` buildable, `.` for an odd plank) renders left of WALLS only
   on planks levels, omitted (space redistributed) otherwise; never reflows during
