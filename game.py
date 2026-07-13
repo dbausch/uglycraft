@@ -783,7 +783,8 @@ class Game:
         elements.append(LabelValue(f, "WALLS",
                                    f"{self._place_credits:>2}{walls_dot}", wall_color))
 
-        HBox(LOGICAL_W, margin=10).blit(self.surf, elements, hud_y, STATUS_H)
+        HBox(LOGICAL_W, margin=10, sep_color=HUD_SEP).blit(
+            self.surf, elements, hud_y, STATUS_H)
 
     # ── Overlays ─────────────────────────────────────────────────────────────
 

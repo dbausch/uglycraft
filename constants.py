@@ -102,3 +102,4 @@ HUD_BG   = ( 16,  16,  24)   # same blue-gray family as border_wall, but darker
 HUD_TEXT = (255, 200, 100)
 HUD_LIFE = (255,  80,  80)
 HUD_KEY  = (160, 220, 255)
+HUD_SEP  = ( 80,  80,  96)   # subtle gap divider between HUD elements (spec 0072 D4)
