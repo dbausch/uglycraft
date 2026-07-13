@@ -1,4 +1,4 @@
-# Spec 0072 — Auto-craft bridges from planks + HUD BRIDGE counter (with a HUD element-list refactor)
+# Spec 0072 — Auto-craft bridges from planks + HUD BRIDGE counter (with an OO HBox HUD redesign)
 
 Backlog: **BL-28 (P2)**. Two user-facing changes plus one engineering cleanup the
 user explicitly asked for while handling BL-28:
@@ -10,12 +10,15 @@ user explicitly asked for while handling BL-28:
 2. **HUD BRIDGE counter** left of the WALLS counter, shown only when the level
    contains planks, otherwise omitted and its space redistributed (the spec 0071
    key-strip conditional-visibility convention).
-3. **HUD element-list refactor.** The current `_render_hud` builds a list of
+3. **HUD OO redesign (HBox).** The current `_render_hud` builds a list of
    `(text, colour)` tuples and then splices the key-strip surface in by a hard-coded
    `imgs.insert(4, …)`. Adding a second conditional element (BRIDGE) on top of that
-   magic index is fragile. Replace it with a single ordered list of already-rendered
-   surfaces, built in display order with inline conditional inclusion — so both the
-   key strip (0071) and the bridge counter route through one uniform mechanism.
+   magic index is fragile. Redesign the HUD as a small GUI-toolkit-style **HBox**: a
+   new `hud.py` module with a `HudElement` base (signals its own tight width), a
+   reusable `LabelValue` element (the dominant `LABEL value` shape), an `IconStrip`
+   element (the key strip), and an `HBox` that measures each element's tight width and
+   evenly distributes the leftover space across the `n-1` gaps. Conditional elements
+   are simply omitted from the element list — no `None` sentinel, no magic index.
 
 ## Status checklist
 
@@ -26,13 +29,14 @@ user explicitly asked for while handling BL-28:
   `quick_bridge()` pair mirroring `can_quick_place_wall()` / `quick_place_wall()`.
 - [ ] **D2** — HUD shows a `BRIDGE N` counter immediately left of `WALLS`, present
   only when the level contains planks (`World._level_has_planks`); a level with no
-  planks omits it and the even-spacing loop redistributes the space. Never reflows
-  during play.
-- [ ] **D3** — `_render_hud` refactored: one ordered list of `pygame.Surface`
-  entries built in display order, conditional elements appended-or-skipped inline
-  (no `imgs.insert(<magic index>)`). Key strip and bridge counter are each a helper
-  returning a Surface or `None`. HUD output is pixel-identical to before for levels
-  without planks (pure refactor for the existing elements).
+  planks omits it and the HBox redistributes the space. `N` = buildable bridges
+  (`planks // 2`, plus any crafted bridge); a trailing `.` marks an odd leftover
+  plank (half a bridge banked), mirroring WALLS. Never reflows during play.
+- [ ] **D3** — HUD redesigned as an OO HBox in a new `hud.py`: `HudElement` base
+  (tight width), reusable `LabelValue`, `IconStrip` for the key strip, and an `HBox`
+  that even-distributes leftover space across `n-1` gaps. Conditional elements are
+  omitted from the list (no `None` sentinel, no `imgs.insert(<magic index>)`). HUD
+  output is pixel-identical to before for levels without planks.
 - [ ] **D4** — Verification: headless assertions for the auto-craft path and the
   counter's per-level presence/width; screenshot goldens for a planks level (with
   the BRIDGE counter) re-recorded and reviewed; user confirmation in-game.
@@ -172,76 +176,133 @@ self._level_has_planks = any(
 
 Expose it by appending `'_level_has_planks'` to `_WORLD_ATTRS` in `game.py`.
 
-**Counter value.** The number shown is the player's current **bridge capacity** —
-crafted bridges plus whole bridges' worth of planks:
+**Counter value.** The number shown is the count of **buildable bridges** from what
+the player is carrying — one bridge per two planks, plus any pre-crafted bridge:
 
 ```
-capacity = inventory.crafted.get(CRAFT_BRIDGE, 0) + inventory.materials[MAT_PLANKS] // 2
+buildable = inventory.crafted.get(CRAFT_BRIDGE, 0) + inventory.materials[MAT_PLANKS] // 2
+half      = (inventory.materials[MAT_PLANKS] % 2) == 1   # one plank toward the next
 ```
 
-A single leftover plank (`planks % 2 == 1`) is "half a bridge banked", shown with a
-trailing `.` exactly like the WALLS half-credit dot. Colour parallels WALLS:
-`LTGREEN` if `capacity > 0`, `YELLOW` if `capacity == 0` but a half-plank is banked,
-else `GRAY`. Rendered as `BRIDGE N` (2-wide right-padded N, matching the `WALLS N.`
-field), so the field width is stable.
+A single leftover plank is "half a bridge banked", shown with a trailing `.` exactly
+like the WALLS half-credit dot. Colour parallels WALLS: `LTGREEN` if
+`buildable > 0`, `YELLOW` if `buildable == 0` but `half` is banked, else `GRAY`.
+Rendered as `BRIDGE N.` (2-wide right-padded N + optional dot, matching the
+`WALLS N.` field), so the field width is stable within the level. (Crafted bridges
+are folded in only for completeness; with auto-craft they essentially never
+accumulate, so in practice `N == planks // 2`.)
 
-> **Decision needed (Q1):** capacity (`crafted + planks//2`, decrements as planks
-> are spent — recommended, most informative) vs. a raw crafted-bridge count
-> (`crafted[CRAFT_BRIDGE]`, which with auto-craft is almost always 0 and therefore
-> near-useless). This spec assumes **capacity**; confirm before implementation.
+**Placement & visibility.** The counter sits immediately **left of** `WALLS` (per
+BL-28). It is added to the HBox element list **only when** `_level_has_planks` is
+true; on a plankless level it is simply not constructed, and the HBox redistributes
+the freed space across the remaining `n-1` gaps. Because `_level_has_planks` is fixed
+per level, the counter's presence and field width are constant within a level, so the
+HUD never reflows as planks/bridges are gained or spent.
 
-**Placement & visibility.** Insert the counter immediately **left of** `WALLS` (per
-BL-28). Present only when `_level_has_planks` is true; otherwise the helper returns
-`None` and the element is skipped, letting the even-spacing loop redistribute the
-space — the spec 0071 convention. Because `_level_has_planks` is fixed per level, the
-counter's presence and field width are constant within a level, so the HUD never
-reflows as planks/bridges are gained or spent.
+## D3 — HUD OO redesign: an HBox of measured elements
 
-## D3 — HUD element-list refactor (remove the magic-index splice)
+Replace the tuple-list-plus-`imgs.insert` machinery with a small, testable,
+GUI-toolkit-style layout in a **new module `hud.py`** (presentation/pygame-side,
+parallel to `sprites.py`). The layout is a horizontal box: every element reports its
+own tight width; the box lays them out left→right and distributes the leftover
+horizontal space evenly across the `n-1` inter-element gaps — exactly the spacing the
+current HUD computes, now expressed as objects.
 
-Rebuild `_render_hud` so the element list is a single ordered sequence of
-already-rendered `pygame.Surface`s, constructed top-to-bottom in display order with
-conditional entries appended or skipped **in place** — no post-hoc index insertion.
-
-Sketch:
+### Classes (`hud.py`)
 
 ```python
-def _hud_text(self, txt, col):
-    return self.font_hud.render(txt, True, col)
+class HudElement:
+    """One HUD item. Owns a pre-rendered surface; reports its tight width."""
+    def __init__(self, surface):
+        self.surface = surface
+    @property
+    def width(self):
+        return self.surface.get_width()
+    def blit(self, target, x, top, row_h):
+        # vertically centred by its own height within the HUD row
+        cy = top + (row_h - self.surface.get_height()) // 2
+        target.blit(self.surface, (round(x), cy))
 
-# in _render_hud, after computing colours/strings:
-parts = [
-    self._hud_text(f"SCORE {self.score:>7}", HUD_TEXT),
-    self._hud_text(f"LEVEL {self.level:>2}",  HUD_TEXT),
-    self._hud_text(f"LIVES {self.lives:>2}",  HUD_LIFE),
-]
-parts.append(self._hud_text(loot_txt, GOLD) if self.spawn_mode == 'preplaced'
-             else self._hud_text(seek_txt, HUD_TEXT))
-strip = self._hud_key_strip()
-if strip is not None:
-    parts.append(strip)                          # keys, after SEEK/LOOT (0071)
-if self.level == ACT1_BOSS_LEVEL:
-    parts.append(self._hud_text("BOSS", MAGENTA))
-elif self.difficulty == HARD:
-    parts.append(self._hud_text("HARD", RED))
-parts.append(self._hud_text(shield_txt, shield_col))
-bridge = self._hud_bridge_counter()              # BL-28, may be None
-if bridge is not None:
-    parts.append(bridge)                         # left of WALLS
-parts.append(self._hud_text(walls_txt, wall_color))
-# even-space `parts` (each already a Surface) exactly as today
+
+class LabelValue(HudElement):
+    """The dominant `LABEL value` element (single colour).
+
+    Renders `f"{label} {value}"`, or just `label` when value is "". Value
+    padding (fixed-width fields that must not reflow) stays the caller's job
+    via format strings, exactly as today.
+    """
+    def __init__(self, font, label, value="", color=HUD_TEXT):
+        text = f"{label} {value}" if value != "" else label
+        super().__init__(font.render(text, True, color))
+
+
+class IconStrip(HudElement):
+    """A row of fixed-width icon slots (the key strip). Builds its own surface
+    from (icon, lit) pairs; width == slots * slot_w."""
+    def __init__(self, slots, slot_w, icon_h, ghost_alpha):
+        ...   # existing _hud_key_strip body, producing one SRCALPHA surface
+
+
+class HBox:
+    """Lay elements out horizontally, distributing slack across the gaps."""
+    def __init__(self, width, margin=10):
+        self.width, self.margin = width, margin
+    def blit(self, target, elements, top, row_h):
+        tight = sum(e.width for e in elements)
+        gap = (self.width - 2 * self.margin - tight) / max(len(elements) - 1, 1)
+        x = float(self.margin)
+        for e in elements:
+            e.blit(target, x, top, row_h)
+            x += e.width + gap
 ```
 
-`_hud_bridge_counter()` returns a rendered Surface or `None`, matching
-`_hud_key_strip()`'s shape, so "conditional HUD element" has exactly one idiom in the
-file: *a helper returning `Surface | None`, appended only when non-`None`.*
+### `_render_hud` becomes element construction + one `HBox.blit`
 
-**Constraint:** for any level **without** planks the produced `parts` list, and
-therefore the rendered HUD, must be byte-for-byte identical to today's output — the
-key strip stays at the same position (after SEEK/LOOT, before BOSS/HARD) and no new
-element appears. This is a pure refactor for every existing element; only the
-planks-level BRIDGE counter is new. The existing HUD screenshot goldens
-(`test_shot_hud*`) must pass **without** re-recording for keyless/plankless levels.
+```python
+def _render_hud(self):
+    hud_y = ROWS * TILE
+    pygame.draw.rect(self.surf, HUD_BG, (0, hud_y, LOGICAL_W, STATUS_H))
+    f = self.font_hud
+
+    elements = [
+        LabelValue(f, "SCORE", f"{self.score:>7}", HUD_TEXT),
+        LabelValue(f, "LEVEL", f"{self.level:>2}", HUD_TEXT),
+        LabelValue(f, "LIVES", f"{self.lives:>2}", HUD_LIFE),
+    ]
+    if self.spawn_mode == 'preplaced':
+        elements.append(LabelValue(f, "LOOT", f"{self._loot_collected:>2}/{self._loot_total}", GOLD))
+    else:
+        elements.append(LabelValue(f, "SEEK:", f"{item_name:<{max_name}}", HUD_TEXT))
+
+    if self._level_key_colours:                       # keys, after SEEK/LOOT (0071)
+        elements.append(self._key_strip_element())
+    if self.level == ACT1_BOSS_LEVEL:
+        elements.append(LabelValue(f, "BOSS", "", MAGENTA))
+    elif self.difficulty == HARD:
+        elements.append(LabelValue(f, "HARD", "", RED))
+    elements.append(LabelValue(f, "SHIELD", shield_val, shield_col))
+    if self._level_has_planks:                        # BL-28, left of WALLS
+        elements.append(LabelValue(f, "BRIDGE", f"{buildable:>2}{bridge_dot}", bridge_col))
+    elements.append(LabelValue(f, "WALLS", f"{self._place_credits:>2}{walls_dot}", wall_color))
+
+    HBox(LOGICAL_W, margin=10).blit(self.surf, elements, hud_y, STATUS_H)
+```
+
+Conditional elements (`IconStrip`, `BRIDGE`) are **omitted from the list** rather than
+appended-as-`None` — the "conditional HUD element" idiom is simply *don't add it*. No
+magic index, no sentinel.
+
+**Behaviour-preserving constraint.** `LabelValue`'s `f"{label} {value}"` reproduces
+every current string byte-for-byte (`"SCORE {score:>7}"`, the `"SHIELD   "` invisible
+padding, the `"WALLS N."` dot, the label-only `"BOSS"`/`"HARD"`), the element order is
+unchanged, and `HBox`'s gap math is the current computation lifted verbatim.
+Therefore for any keyless/plankless level the rendered HUD is **byte-for-byte
+identical** to today, and the existing HUD screenshot goldens (`test_shot_hud*`) must
+pass **without** re-recording. The key strip moves into `IconStrip` but produces the
+same surface at the same position.
+
+Update the architecture table in `CLAUDE.md` (now 15 files) and `kb/uglycraft-display.md`
+to describe the HBox model.
 
 ## D4 — Verification
 
@@ -260,16 +321,24 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
    one-per-water-room lock, plate-adjacency rejection, and far-side-open check still
    hold when the source is planks rather than a crafted item (no plank spent on a
    rejected placement).
-3. **Counter headless** — `test_hud_bridge_counter_present_with_planks` (a planks
-   level exposes `_level_has_planks is True` and `_hud_bridge_counter()` returns a
-   Surface) and `test_hud_bridge_counter_absent_without_planks` (a plankless level ⇒
-   `_level_has_planks is False`, helper returns `None`).
-4. **Refactor safety** — the existing HUD goldens for keyless and keyed levels pass
+3. **Counter presence** — `test_hud_bridge_present_with_planks` (a planks level
+   exposes `_level_has_planks is True`, and the rendered HUD element list includes a
+   `BRIDGE` element) and `test_hud_bridge_absent_without_planks` (a plankless level ⇒
+   `_level_has_planks is False`, no `BRIDGE` element in the list).
+4. **HBox / element unit tests (`tests/test_hud.py`, new — pure, no full Game)** —
+   `hud.py` is unit-testable in isolation:
+   - `LabelValue(font, "SCORE", "  1234").width` equals the width of the
+     `font.render("SCORE   1234")` surface; a value-less `LabelValue(font, "BOSS")`
+     renders just `"BOSS"`.
+   - `HBox` places `n` elements with `x[0] == margin`, `x[-1] + last.width ==
+     width - margin`, and equal gaps between consecutive elements (to ±1 px for
+     rounding); the degenerate `n == 1` case centres/lefts without division by zero.
+5. **Refactor safety** — the existing HUD goldens for keyless and keyed levels pass
    **unchanged** (proves D3 is behaviour-preserving for existing elements).
-5. **HUD golden (new)** — `test_shot_hud_bridge`: a playing frame over a planks level
+6. **HUD golden (new)** — `test_shot_hud_bridge`: a playing frame over a planks level
    showing the `BRIDGE N` counter left of `WALLS`. Re-record with
    `UGLYCRAFT_REGOLD=1` and review the diff by eye.
-6. **Manual check** — Daniel plays a level with a water room and confirms: bumping
+7. **Manual check** — Daniel plays a level with a water room and confirms: bumping
    water with only planks builds a bridge without opening the menu; the BRIDGE
    counter shows the right number, decrements on use, sits left of WALLS, and is
    absent on levels with no planks.
@@ -277,20 +346,23 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
 ## Out of scope
 
 - **BL-18** (4-plank bridges / mixed plank sources / single-plank item): this spec
-  keeps the 2-plank recipe. If Q1/Q2 decisions imply provisioning changes, file
-  against BL-18.
+  keeps the 2-plank recipe.
 - The `>7` locked-door colour-pool edge (unrelated).
-- Any change to the WALLS counter, SHIELD, or other HUD elements beyond the
-  structural refactor.
+- Any change to the WALLS counter, SHIELD, or other HUD elements beyond expressing
+  them as `LabelValue` in the HBox (behaviour unchanged).
 - Auto-craft for anything other than bridges and the existing walls.
+- A general layout engine: the HBox does horizontal even-gap distribution only — no
+  VBox, alignment modes, min/max sizing, or nesting. Add those only if a later HUD
+  need demands them.
 
-## Open questions
+## Resolved decisions
 
-- **Q1** — BRIDGE counter value: **capacity** (`crafted + planks//2`, recommended)
-  vs. raw crafted count. Spec assumes capacity.
-- **Q2** — Should the BRIDGE counter carry the half-bridge `.` dot + YELLOW/partial
-  colour parallel to WALLS, or stay a plain `LTGREEN/GRAY` count? Spec assumes the
-  full WALLS-parallel treatment.
+- **Counter value** — buildable bridges (`planks // 2`, plus any crafted bridge),
+  with a trailing `.` for one leftover plank; colour parallels WALLS
+  (LTGREEN / YELLOW-half / GRAY). Confirmed by Daniel 2026-07-13.
+- **HUD engineering** — object-oriented HBox in a new `hud.py`: `HudElement` reports
+  its tight width, `HBox` distributes slack across the `n-1` gaps, `LabelValue` is the
+  reusable `label:value` element. Confirmed by Daniel 2026-07-13.
 
 ## Done when:
 
@@ -298,13 +370,16 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
   auto-crafts a bridge from 2 planks (menu-free) and prefers a crafted bridge when
   present; all bridge guards intact; no plank spent on a rejected placement.
   *(commit: ____)*
-- [ ] **D2** — `World._level_has_planks` computed at load and delegated; `BRIDGE N`
-  counter renders left of WALLS only on planks levels, omitted (space redistributed)
-  otherwise; never reflows during play. *(commit: ____)*
-- [ ] **D3** — `_render_hud` builds one ordered `Surface` list with inline
-  conditional inclusion; the `imgs.insert(<magic index>)` splice is gone; HUD output
-  is identical for plankless/keyless levels (existing goldens pass unchanged).
-  *(commit: ____)*
-- [ ] **D4** — Auto-craft + counter-presence headless assertions pass; existing HUD
-  goldens pass unchanged; the new planks-level HUD golden is recorded and reviewed;
-  Daniel confirms the behaviour in-game. *(commit: ____)*
+- [ ] **D2** — `World._level_has_planks` computed at load and delegated; `BRIDGE N.`
+  counter (= `planks//2` buildable, `.` for an odd plank) renders left of WALLS only
+  on planks levels, omitted (space redistributed) otherwise; never reflows during
+  play. *(commit: ____)*
+- [ ] **D3** — HUD redesigned as an OO HBox in `hud.py` (`HudElement`/`LabelValue`/
+  `IconStrip`/`HBox`); `_render_hud` builds an element list + one `HBox.blit`; the
+  `imgs.insert(<magic index>)` splice is gone; HUD output byte-identical for
+  plankless/keyless levels (existing goldens pass unchanged); `hud.py` unit tests
+  pass. *(commit: ____)*
+- [ ] **D4** — Auto-craft + counter-presence headless assertions, `hud.py` HBox/
+  element unit tests, and the guard tests all pass; existing HUD goldens pass
+  unchanged; the new planks-level HUD golden is recorded and reviewed; Daniel confirms
+  the behaviour in-game. *(commit: ____)*
