@@ -1272,6 +1272,17 @@ is held (reuse the `_bump_consumed` / key-release gate that walls already use, s
 a held key doesn't retrigger). Needs its own spec: enumerate the exact set of
 denial sites, the event name, and the SFX character.
 
+**Chosen SFX (Daniel, 2026-07-14):** "wrongbeep" — a flat low square-wave beep
+with a fast rasp tremolo. Auditioned against `low_buzz`, `double_buzz`,
+`descend`, `downchirp`, and `thud`; "wrongbeep" won. Reproducible recipe (same
+chiptune synth style as sounds.py, to become `sfx_denied` in `_build_sfx`) —
+approximately:
+- square wave at 147 Hz, ~180 ms
+- multiplied by a 32 Hz half-amplitude square-wave tremolo:
+  `trem = 1.0 + 0.5*sign(sin(2*pi*32*t))` (the "rasp")
+- ADSR envelope `env(atk=0.003, dec=0.02, sus=0.85, rel=0.06)`
+- soft-saturate with drive ~2.5
+
 ---
 
 ## BL-53 · OBSOLETE · Draw movable box on top of door/gate/bridge fixtures so it stays visible when overlapping
