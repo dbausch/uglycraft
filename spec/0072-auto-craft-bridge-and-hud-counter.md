@@ -1,7 +1,7 @@
 # Spec 0072 — Auto-craft bridges from planks + HUD BRIDGE counter (with an OO HBox HUD redesign)
 
-Backlog: **BL-28 (P2)**. Two user-facing changes plus one engineering cleanup the
-user explicitly asked for while handling BL-28:
+Backlog: **BL-28 (P2)**. Two gameplay/HUD changes, one engineering redesign, and one
+readability tweak the user asked for while handling BL-28:
 
 1. **Auto-craft on water bump.** Bridges are already auto-*placed* when the player
    bumps a water tile holding a crafted bridge. Extend this so bumping water also
@@ -19,6 +19,9 @@ user explicitly asked for while handling BL-28:
    element (the key strip), and an `HBox` that measures each element's tight width and
    evenly distributes the leftover space across the `n-1` gaps. Conditional elements
    are simply omitted from the element list — no `None` sentinel, no magic index.
+4. **Subtle gap separators.** On top of the HBox, draw a faint 1 px medium-brightness
+   rule vertically centred in each inter-element gap, so a right-justified value stays
+   visually tied to its own label rather than drifting toward the next one.
 
 ## Status checklist
 
@@ -37,9 +40,14 @@ user explicitly asked for while handling BL-28:
   that even-distributes leftover space across `n-1` gaps. Conditional elements are
   omitted from the list (no `None` sentinel, no `imgs.insert(<magic index>)`). HUD
   output is pixel-identical to before for levels without planks.
-- [ ] **D4** — Verification: headless assertions for the auto-craft path and the
-  counter's per-level presence/width; screenshot goldens for a planks level (with
-  the BRIDGE counter) re-recorded and reviewed; user confirmation in-game.
+- [ ] **D4** — Subtle gap separators: the HBox draws a 1 px, medium-brightness
+  horizontal line vertically centred in each of the `n-1` inter-element gaps (never
+  in the outer margins), so right-justified values read against their own label. A
+  deliberate visual change — existing HUD goldens are re-recorded here.
+- [ ] **D5** — Verification: headless assertions for the auto-craft path and the
+  counter's per-level presence/width; `hud.py` HBox/element/separator unit tests;
+  HUD screenshot goldens re-recorded (separators + planks-level BRIDGE counter) and
+  reviewed; user confirmation in-game.
 
 ## Background — confirmed facts
 
@@ -292,19 +300,79 @@ Conditional elements (`IconStrip`, `BRIDGE`) are **omitted from the list** rathe
 appended-as-`None` — the "conditional HUD element" idiom is simply *don't add it*. No
 magic index, no sentinel.
 
-**Behaviour-preserving constraint.** `LabelValue`'s `f"{label} {value}"` reproduces
-every current string byte-for-byte (`"SCORE {score:>7}"`, the `"SHIELD   "` invisible
-padding, the `"WALLS N."` dot, the label-only `"BOSS"`/`"HARD"`), the element order is
-unchanged, and `HBox`'s gap math is the current computation lifted verbatim.
-Therefore for any keyless/plankless level the rendered HUD is **byte-for-byte
-identical** to today, and the existing HUD screenshot goldens (`test_shot_hud*`) must
-pass **without** re-recording. The key strip moves into `IconStrip` but produces the
-same surface at the same position.
+**Behaviour-preserving constraint (D3 alone).** `LabelValue`'s `f"{label} {value}"`
+reproduces every current string byte-for-byte (`"SCORE {score:>7}"`, the
+`"SHIELD   "` invisible padding, the `"WALLS N."` dot, the label-only
+`"BOSS"`/`"HARD"`), the element order is unchanged, and `HBox`'s gap math is the
+current computation lifted verbatim. Therefore **at the end of D3** (before the D4
+separators land) the rendered HUD for any keyless/plankless level is byte-for-byte
+identical to today, and the existing HUD screenshot goldens (`test_shot_hud*`) pass
+**without** re-recording. This is the checkpoint that proves the refactor is a pure
+restructuring; the D4 separators are the first intentional pixel change. Land D3 and
+D4 as **separate commits** so the behaviour-preserving refactor is verified on its own
+before any visual change. The key strip moves into `IconStrip` but produces the same
+surface at the same position.
 
 Update the architecture table in `CLAUDE.md` (now 15 files) and `kb/uglycraft-display.md`
 to describe the HBox model.
 
-## D4 — Verification
+## D4 — Subtle gap separators
+
+Right-justified numeric values (`SCORE   0`, `WALLS  3.`) can visually drift toward
+the *next* label. Draw a faint vertical-centre rule in each gap so each value stays
+anchored to its own label. The `HBox` owns gap geometry, so it draws them.
+
+**Geometry** (HUD row `y ∈ [ROWS*TILE, ROWS*TILE+STATUS_H) = [512, 540)`; for the gap
+between element `i` (right edge `Ri = x_i + w_i`) and element `i+1` (left edge
+`Ri + G`, where `G` is the computed even gap)):
+
+```
+ element i                    gap = G px                    element i+1
+ ┌──────────┐                                              ┌──────────┐
+ │ SCORE   0│                                              │ LEVEL  1 │
+ └──────────┘                                              └──────────┘
+ x_i       Ri = x_i + w_i                                  L = Ri + G
+            |<- inset ->|——————— line ———————|<- inset ->|
+                       gx0                   gx1
+ cy = 512 + STATUS_H//2 = 526          ← 1px line drawn here, colour HUD_SEP
+ gx0 = Ri + inset ;  gx1 = Ri + G − inset
+ drawn only when (gx1 − gx0) ≥ sep_min
+```
+
+**Parameters** (`HBox` constructor, with defaults): `sep_color = HUD_SEP`,
+`sep_inset = 6`, `sep_thick = 1`, `sep_min = 4`. Separators are opt-in
+(`sep_color=None` ⇒ none drawn); the HUD passes `HUD_SEP`. Only the `n-1`
+inter-element gaps get a line — never the outer `margin` before the first element or
+after the last.
+
+**New constant** `HUD_SEP = (80, 80, 96)` in `constants.py` — medium brightness,
+blue-grey to match the `HUD_BG = (16,16,24)` family. (Value confirmable at review.)
+
+**`HBox.blit` gains the draw** (unchanged layout math; only the separator lines are
+new):
+
+```python
+def blit(self, target, elements, top, row_h):
+    tight = sum(e.width for e in elements)
+    gap = (self.width - 2 * self.margin - tight) / max(len(elements) - 1, 1)
+    cy = top + row_h // 2
+    x = float(self.margin)
+    for i, e in enumerate(elements):
+        e.blit(target, x, top, row_h)
+        x_end = x + e.width
+        if self.sep_color is not None and i < len(elements) - 1:
+            gx0 = x_end + self.sep_inset
+            gx1 = x_end + gap - self.sep_inset
+            if gx1 - gx0 >= self.sep_min:
+                pygame.draw.line(target, self.sep_color,
+                                 (round(gx0), cy), (round(gx1), cy), self.sep_thick)
+        x = x_end + gap
+```
+
+This is a deliberate visual change to **every** HUD row (all levels), so the existing
+HUD goldens are re-recorded in D4's commit (not D3's).
+
+## D5 — Verification
 
 No general gameplay suite; use the headless `Harness` + screenshot goldens
 (`tests/test_render.py`, spec 0044/0071 pattern).
@@ -333,15 +401,27 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
    - `HBox` places `n` elements with `x[0] == margin`, `x[-1] + last.width ==
      width - margin`, and equal gaps between consecutive elements (to ±1 px for
      rounding); the degenerate `n == 1` case centres/lefts without division by zero.
-5. **Refactor safety** — the existing HUD goldens for keyless and keyed levels pass
-   **unchanged** (proves D3 is behaviour-preserving for existing elements).
-6. **HUD golden (new)** — `test_shot_hud_bridge`: a playing frame over a planks level
-   showing the `BRIDGE N` counter left of `WALLS`. Re-record with
-   `UGLYCRAFT_REGOLD=1` and review the diff by eye.
+   - **Separators (D4):** with `sep_color` set, an `HBox` of `n` elements draws
+     exactly `n-1` lines, each at `cy = top + row_h//2`, spanning
+     `[Ri+inset, Ri+G-inset]`; with `sep_color=None`, zero lines. A too-narrow gap
+     (`G - 2·inset < sep_min`) draws no line for that gap. Assert via a small
+     off-screen surface and pixel probes at the expected midpoints (lit) and just
+     inside the element edges (background).
+5. **Refactor checkpoint (D3, before D4)** — at the end of D3 the existing HUD
+   goldens for keyless and keyed levels pass **unchanged** (proves the refactor is
+   behaviour-preserving). This is asserted at the D3 commit; the D4 commit then
+   re-records them.
+6. **HUD goldens (D4 + counter)** — re-record all `test_shot_hud*` goldens once the
+   separators land, plus a new `test_shot_hud_bridge` (a playing frame over a planks
+   level showing the `BRIDGE N.` counter left of `WALLS`). Re-record with
+   `UGLYCRAFT_REGOLD=1` and review every diff by eye: confirm the faint gap lines
+   appear in each inter-element gap and nowhere else, and the BRIDGE counter reads
+   correctly.
 7. **Manual check** — Daniel plays a level with a water room and confirms: bumping
    water with only planks builds a bridge without opening the menu; the BRIDGE
    counter shows the right number, decrements on use, sits left of WALLS, and is
-   absent on levels with no planks.
+   absent on levels with no planks; and the gap separators subtly divide the HUD
+   without looking noisy.
 
 ## Out of scope
 
@@ -363,6 +443,9 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
 - **HUD engineering** — object-oriented HBox in a new `hud.py`: `HudElement` reports
   its tight width, `HBox` distributes slack across the `n-1` gaps, `LabelValue` is the
   reusable `label:value` element. Confirmed by Daniel 2026-07-13.
+- **Gap separators** — a faint 1 px medium-brightness horizontal rule, vertically
+  centred in each inter-element gap, to anchor right-justified values to their labels.
+  Requested by Daniel 2026-07-13; geometry/params to confirm at spec review.
 
 ## Done when:
 
@@ -377,9 +460,13 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
 - [ ] **D3** — HUD redesigned as an OO HBox in `hud.py` (`HudElement`/`LabelValue`/
   `IconStrip`/`HBox`); `_render_hud` builds an element list + one `HBox.blit`; the
   `imgs.insert(<magic index>)` splice is gone; HUD output byte-identical for
-  plankless/keyless levels (existing goldens pass unchanged); `hud.py` unit tests
-  pass. *(commit: ____)*
-- [ ] **D4** — Auto-craft + counter-presence headless assertions, `hud.py` HBox/
-  element unit tests, and the guard tests all pass; existing HUD goldens pass
-  unchanged; the new planks-level HUD golden is recorded and reviewed; Daniel confirms
-  the behaviour in-game. *(commit: ____)*
+  plankless/keyless levels (existing goldens pass unchanged **at this commit**);
+  `hud.py` unit tests pass. *(commit: ____)*
+- [ ] **D4** — `HBox` draws a 1 px `HUD_SEP` line vertically centred in each of the
+  `n-1` inter-element gaps (opt-in via `sep_color`, none in the outer margins, none
+  in gaps narrower than `sep_min`); `HUD_SEP` added to `constants.py`; separator unit
+  tests pass; HUD goldens re-recorded and reviewed. *(commit: ____)*
+- [ ] **D5** — Auto-craft + counter-presence headless assertions, `hud.py` HBox/
+  element/separator unit tests, and the guard tests all pass; HUD goldens re-recorded
+  (separators + planks-level BRIDGE counter) and reviewed; Daniel confirms the
+  behaviour in-game. *(commit: ____)*
