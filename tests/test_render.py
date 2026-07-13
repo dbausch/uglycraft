@@ -155,6 +155,16 @@ def test_hud_bridge_counter_absent_without_planks():
         assert 'BRIDGE' not in _hud_labels(h)
 
 
+def test_shot_hud_bridge():
+    """HUD over a planks level with the player carrying 3 planks: the BRIDGE
+    counter reads "BRIDGE  1." (1 buildable + an odd-plank dot) left of WALLS,
+    and the gap separators divide the row (spec 0072 D2/D4)."""
+    with Harness(level_dict=fx.water_level(), seed=42) as h:
+        h.game.inventory.add_material('planks', 3)
+        h.run(['wait:3'])
+        _shot('hud_bridge', h)
+
+
 # ── Spec 0056 (BL-12): border-exit sprite selection ──────────────────────────
 # Pure helper: (record, orient, open_channels, opened_doors) -> sprite key or
 # None.  Stairs are reserved for inter-floor travel — a same-floor border exit

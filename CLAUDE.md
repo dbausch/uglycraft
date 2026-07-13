@@ -251,11 +251,12 @@ Or directly: `.venv/bin/python main.py --level N --easy/--hard`
 
 In debug mode (`--level`) the high-score entry screen is suppressed.
 
-## Architecture (14 Python files)
+## Architecture (15 Python files)
 
 | File | Role |
 |---|---|
 | `constants.py` | Logical resolution, tile size, colours, timing, wall types |
+| `hud.py` | HUD layout primitives: `HudElement`/`LabelValue`/`IconStrip` + an `HBox` that distributes slack across the `n-1` gaps and draws subtle gap separators (spec 0072) |
 | `sprites.py` | All sprites drawn procedurally via `pygame.draw` — no image files |
 | `levels.py` | Act 1 levels (hand-authored) + Act 2 levels (graph-generated at import) |
 | `entities.py` | `Player`, `Enemy`, `PatrolEnemy` — tile-grid movement, BFS pathfinding, room confinement |
