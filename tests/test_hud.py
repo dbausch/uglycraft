@@ -20,15 +20,19 @@ def _elt(w, h=20):
 
 # ── dash_fill (spec 0072) ─────────────────────────────────────────────────────
 
-def test_dash_fill_collapses_long_space_runs():
-    assert dash_fill("SCORE       0") == "SCORE -- 0"     # 7 spaces -> " -- "
+def test_dash_fill_replaces_padding_preserving_length():
+    # a run of N>2 spaces -> one space, (N-2) dashes, one space (same length)
+    assert dash_fill("SCORE       0") == "SCORE ----- 0"  # 7 spaces preserved
+    assert len(dash_fill("SCORE       0")) == len("SCORE       0")
     assert dash_fill("LEVEL  1") == "LEVEL  1"            # exactly 2 -> unchanged
     assert dash_fill("LEVEL 10") == "LEVEL 10"            # 1 space -> unchanged
 
 
-def test_dash_fill_trailing_space_becomes_dash():
-    # a trailing padding run collapses then the final space turns into a dash
-    assert dash_fill("SEEK: Coin      ") == "SEEK: Coin ---"
+def test_dash_fill_trailing_space_becomes_dash_same_length():
+    # a trailing padding run is dashed then the final space becomes a dash;
+    # length is unchanged throughout
+    assert dash_fill("SEEK: Coin    ") == "SEEK: Coin ---"
+    assert len(dash_fill("SEEK: Coin    ")) == len("SEEK: Coin    ")
     assert dash_fill("WALLS 3 ") == "WALLS 3-"            # lone trailing space
 
 
@@ -37,8 +41,8 @@ def test_dash_fill_trailing_space_becomes_dash():
 def test_labelvalue_applies_dash_fill():
     f = _font()
     col = (255, 255, 255)
-    lv = LabelValue(f, "SCORE", "  1234", col)           # -> "SCORE -- 1234"
-    assert lv.width == f.render("SCORE -- 1234", True, col).get_width()
+    lv = LabelValue(f, "SCORE", "  1234", col)           # "SCORE   1234" -> "SCORE - 1234"
+    assert lv.width == f.render("SCORE - 1234", True, col).get_width()
 
 
 def test_labelvalue_label_only_when_value_empty():

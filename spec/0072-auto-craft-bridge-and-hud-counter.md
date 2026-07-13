@@ -465,12 +465,13 @@ direction; the KB (`kb/uglycraft-display.md`) reflects the final state.
   near-black background), inset `gap_inset = 6` px from the flanking elements (like the
   old line), drawn behind the elements and never in the outer margins.
   `HBox.gap_color`/`gap_inset` supersede the line params.
-- **Dash leaders + drawn tail indicators** — `hud.dash_fill` tidies every HUD string:
-  a run of > 2 spaces collapses to a `" -- "` leader (`SCORE -- 0`) and a trailing space
-  becomes a `-` (`SEEK: Coin ---`), keeping right-justified values linked to their labels
-  and preserving reserved widths. The WALLS/BRIDGE trailing indicator is now `_` for an
-  even count (whole) and a **drawn** lower-half block for a half (`LabelValue(tail_block=
-  True)`) — the HUD font has no block glyph — replacing the earlier `.` dot.
+- **Dash leaders + drawn tail indicators** — `hud.dash_fill` tidies every HUD string
+  **preserving length** (no reflow): a run of > 2 spaces becomes `" " + "-"*(n-2) + " "`
+  (`SCORE ----- 0`) and a trailing space becomes a `-` (`SEEK: Coin ---`), keeping
+  right-justified values linked to their labels while the field's width/right edge stays
+  fixed. The WALLS/BRIDGE trailing indicator is now `_` for an even count (whole) and a
+  **drawn** lower-half block for a half (`LabelValue(tail_block=True)`) — the HUD font has
+  no block glyph — replacing the earlier `.` dot.
 
 ## Done when:
 

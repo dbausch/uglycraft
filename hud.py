@@ -21,11 +21,15 @@ _SPACE_RUN = re.compile(r' {3,}')
 
 
 def dash_fill(s):
-    """Tidy a HUD string (spec 0072): collapse any run of >2 spaces to a
-    " -- " dash leader, then if the string still ends in a space turn that
-    trailing space into a dash too. Keeps label and right-justified value
-    visually linked and avoids wide blank gaps inside an element."""
-    s = _SPACE_RUN.sub(' -- ', s)
+    """Turn padding runs into dash leaders, **preserving length** (spec 0072).
+
+    Any run of > 2 spaces becomes ``" " + "-"*(n-2) + " "`` — one space, the
+    padding as dashes, one space — so a right-justified value stays linked to its
+    label (``SCORE ----- 0``) without changing the (monospace) width, i.e. no
+    reflow. A remaining trailing space then becomes a ``-`` (so left-justified
+    padding like ``SEEK: Coin␣␣␣`` reads ``SEEK: Coin ----``). Runs of ≤ 2 spaces
+    (e.g. ``LEVEL  1``) are left alone."""
+    s = _SPACE_RUN.sub(lambda m: ' ' + '-' * (len(m.group(0)) - 2) + ' ', s)
     if s.endswith(' '):
         s = s[:-1] + '-'
     return s
