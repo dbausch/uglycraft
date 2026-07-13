@@ -731,14 +731,16 @@ class Game:
         max_name = max(len(v) for v in TREASURE_NAMES.values())
         item_name = TREASURE_NAMES.get(self.treasure_item_no, "")
 
-        # SHIELD: always present; invisible (HUD_BG) when inactive so layout
-        # never shifts. Fixed width "SHIELD XX" — right-aligned 2-digit seconds.
+        # SHIELD: always present at fixed width "SHIELD XX" so layout never
+        # shifts. Active shows the remaining seconds in blue; inactive shows a
+        # dim grey "SHIELD --" placeholder (spec 0072 D4 follow-up — the gap
+        # separators made a blank reserved slot look like an empty element).
         if self.shield:
             shield_val = f"{max(1, (self._shield_timer + 999) // 1000):>2}"
             shield_col = LTBLUE
         else:
-            shield_val = "  "          # same width, rendered invisible
-            shield_col = HUD_BG
+            shield_val = "--"          # same width, dim placeholder
+            shield_col = GRAY
 
         # HUD elements in display order; conditional ones are simply not added.
         elements = [
