@@ -74,21 +74,16 @@ class HBox:
 
     ``blit`` places each element left-to-right starting at ``margin`` and spreads
     the leftover width evenly across the ``n-1`` inter-element gaps (the same
-    even-spacing the old HUD computed).  When ``sep_color`` is given, a
-    ``sep_thick``-px line is drawn vertically centred in each gap, inset
-    ``sep_inset`` px from the flanking elements and skipped when the remaining
-    span is under ``sep_min`` px — a subtle divider so right-justified values
-    read against their own label (spec 0072 D4).
+    even-spacing the old HUD computed).  When ``gap_color`` is given, each
+    inter-element gap is filled with a full-height rectangle of that colour — a
+    subtle brighter band that separates elements without the visual noise of a
+    line (spec 0072 D4).  The outer margins are never filled.
     """
 
-    def __init__(self, width, margin=10, sep_color=None,
-                 sep_inset=6, sep_thick=1, sep_min=4):
+    def __init__(self, width, margin=10, gap_color=None):
         self.width = width
         self.margin = margin
-        self.sep_color = sep_color
-        self.sep_inset = sep_inset
-        self.sep_thick = sep_thick
-        self.sep_min = sep_min
+        self.gap_color = gap_color
 
     def positions(self, elements):
         """Left-edge x offset of each element under even-gap layout.
@@ -110,13 +105,12 @@ class HBox:
         if not elements:
             return
         xs = self.positions(elements)
-        cy = top + row_h // 2
-        for i, (e, x) in enumerate(zip(elements, xs)):
+        # Gap bands first (behind), then the elements on top.
+        if self.gap_color is not None:
+            for i in range(len(elements) - 1):
+                gx0 = round(xs[i] + elements[i].width)
+                gx1 = round(xs[i + 1])
+                if gx1 > gx0:
+                    target.fill(self.gap_color, (gx0, top, gx1 - gx0, row_h))
+        for e, x in zip(elements, xs):
             e.blit(target, x, top, row_h)
-            if self.sep_color is not None and i < len(elements) - 1:
-                gx0 = x + e.width + self.sep_inset       # inset past this element
-                gx1 = xs[i + 1] - self.sep_inset         # inset before the next
-                if gx1 - gx0 >= self.sep_min:
-                    pygame.draw.line(target, self.sep_color,
-                                     (round(gx0), cy), (round(gx1), cy),
-                                     self.sep_thick)
