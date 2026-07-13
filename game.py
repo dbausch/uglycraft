@@ -718,13 +718,11 @@ class Game:
         pygame.draw.rect(self.surf, HUD_BG, (0, hud_y, LOGICAL_W, STATUS_H))
         f = self.font_hud
 
-        if self._place_credits > 0:
-            wall_color = LTGREEN
-        elif self._breaks_toward_credit > 0:
-            wall_color = YELLOW
-        else:
-            wall_color = GRAY
+        # One HUD text colour throughout (spec 0072): everything is HUD_TEXT;
+        # inactive/empty counters are dimmed to HUD_DIM (a darker shade of the
+        # same hue) rather than given a distinct colour.
         # WALLS: fixed width with optional "." when half a credit has been mined.
+        wall_color = HUD_TEXT if self._place_credits > 0 else HUD_DIM
         walls_dot = '.' if self._breaks_toward_credit > 0 else ' '
 
         # Pad SEEK name to the longest treasure name so the slot never shifts.
@@ -732,25 +730,25 @@ class Game:
         item_name = TREASURE_NAMES.get(self.treasure_item_no, "")
 
         # SHIELD: always present at fixed width "SHIELD XX" so layout never
-        # shifts. Active shows the remaining seconds in blue; inactive shows a
-        # dim grey "SHIELD --" placeholder (spec 0072 D4 follow-up — the gap
-        # separators made a blank reserved slot look like an empty element).
+        # shifts. Active shows the remaining seconds; inactive shows a dim
+        # "SHIELD --" placeholder (spec 0072 D4 follow-up — the gap separators
+        # made a blank reserved slot look like an empty element).
         if self.shield:
             shield_val = f"{max(1, (self._shield_timer + 999) // 1000):>2}"
-            shield_col = LTBLUE
+            shield_col = HUD_TEXT
         else:
             shield_val = "--"          # same width, dim placeholder
-            shield_col = GRAY
+            shield_col = HUD_DIM
 
         # HUD elements in display order; conditional ones are simply not added.
         elements = [
             LabelValue(f, "SCORE", f"{self.score:>7}", HUD_TEXT),
             LabelValue(f, "LEVEL", f"{self.level:>2}", HUD_TEXT),
-            LabelValue(f, "LIVES", f"{self.lives:>2}", HUD_LIFE),
+            LabelValue(f, "LIVES", f"{self.lives:>2}", HUD_TEXT),
         ]
         if self.spawn_mode == 'preplaced':
             elements.append(LabelValue(f, "LOOT",
-                                       f"{self._loot_collected:>2}/{self._loot_total}", GOLD))
+                                       f"{self._loot_collected:>2}/{self._loot_total}", HUD_TEXT))
         else:
             elements.append(LabelValue(f, "SEEK:", f"{item_name:<{max_name}}", HUD_TEXT))
 
@@ -759,9 +757,9 @@ class Game:
             elements.append(strip)
 
         if self.level == ACT1_BOSS_LEVEL:
-            elements.append(LabelValue(f, "BOSS", "", MAGENTA))
+            elements.append(LabelValue(f, "BOSS", "", HUD_TEXT))
         elif self.difficulty == HARD:
-            elements.append(LabelValue(f, "HARD", "", RED))
+            elements.append(LabelValue(f, "HARD", "", HUD_TEXT))
 
         elements.append(LabelValue(f, "SHIELD", shield_val, shield_col))
 
@@ -773,12 +771,7 @@ class Game:
             planks = self.inventory.materials.get(MAT_PLANKS, 0)
             buildable = self.inventory.crafted.get(CRAFT_BRIDGE, 0) + planks // 2
             bridge_dot = '.' if planks % 2 else ' '
-            if buildable > 0:
-                bridge_col = LTGREEN
-            elif bridge_dot == '.':
-                bridge_col = YELLOW
-            else:
-                bridge_col = GRAY
+            bridge_col = HUD_TEXT if buildable > 0 else HUD_DIM
             elements.append(LabelValue(f, "BRIDGE",
                                        f"{buildable:>2}{bridge_dot}", bridge_col))
 

@@ -100,6 +100,7 @@ CREAM    = (255, 245, 200)
 
 HUD_BG   = ( 16,  16,  24)   # same blue-gray family as border_wall, but darker
 HUD_TEXT = (255, 200, 100)
+HUD_DIM  = (115,  92,  48)   # dim shade of HUD_TEXT for inactive/empty counters (spec 0072)
 HUD_LIFE = (255,  80,  80)
 HUD_KEY  = (160, 220, 255)
 HUD_SEP  = ( 80,  80,  96)   # subtle gap divider between HUD elements (spec 0072 D4)
