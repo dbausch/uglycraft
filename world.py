@@ -28,7 +28,7 @@ from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import Room, find_exit
-from crafting import Inventory, CRAFT_BLOCK, CRAFT_BRIDGE, KEY_NAMES, MAT_PLANKS
+from crafting import Inventory, KEY_NAMES, MAT_ROCKS, MAT_PLANKS
 from cells import BARRIER_BUMP, Barrier, _exit_tiles
 
 NUM_LEVELS  = TOTAL_LEVELS
@@ -128,8 +128,13 @@ class World:
         self.move_ms      = BASE_MOVE_MS
         self.enemy_ms     = BASE_ENEMY_MS  # overridden to BOSS_MOVE_MS on level 10
         self.room = Room.placeholder()   # until the first room is entered
-        self._block_halves    = 0    # leftover breaks toward next credit
-        self._block_credits = 0   # available wall placements
+        # Credit economy (spec 0073 D2): halves bank toward whole credits
+        # (HALVES_PER_CREDIT == 2). Blocks: mining a wall or collecting rubble.
+        # Bridges: collecting a pack of planks.
+        self._block_halves   = 0
+        self._block_credits  = 0    # placeable blocks
+        self._bridge_halves  = 0
+        self._bridge_credits = 0    # buildable bridges
         self._bump_consumed = set()  # direction keys that must be released before next bump
         self.inventory = Inventory()
         self.start_level(1)
@@ -259,10 +264,22 @@ class World:
     def _break_wall(self, col, row):
         self.cells.remove_barrier((col, row))
         self._emit('wall_broken')
+        self._earn_block_half()   # a mined wall is half a block
+
+    def _earn_block_half(self):
+        """Bank half a block credit (spec 0073 D2): a mined wall or a rubble."""
         self._block_halves += 1
         if self._block_halves >= HALVES_PER_CREDIT:
             self._block_halves -= HALVES_PER_CREDIT
             self._block_credits += 1
+            self._emit('credit_earned')
+
+    def _earn_bridge_half(self):
+        """Bank half a bridge credit (spec 0073 D2): a pack of planks."""
+        self._bridge_halves += 1
+        if self._bridge_halves >= HALVES_PER_CREDIT:
+            self._bridge_halves -= HALVES_PER_CREDIT
+            self._bridge_credits += 1
             self._emit('credit_earned')
 
     # ── Level setup ───────────────────────────────────────────────────────────
@@ -460,10 +477,20 @@ class World:
                 self._open_entrance()      # spec 0066: leave via the entrance
 
     def _collect_materials(self):
-        """Material pickup at the player's tile (Act 2)."""
+        """Material pickup at the player's tile (Act 2).
+
+        Rubble and planks are credit-only (spec 0073 D2): a rubble banks half
+        a block, a pack of planks banks half a bridge — neither enters the
+        inventory. Other materials (metal/crystal, when re-enabled) still do.
+        """
         item = self._collect_item('material')
         if item is not None:
-            self.inventory.add_material(item.payload)
+            if item.payload == MAT_ROCKS:
+                self._earn_block_half()
+            elif item.payload == MAT_PLANKS:
+                self._earn_bridge_half()
+            else:
+                self.inventory.add_material(item.payload)
             self._emit('collected')
 
     def _collect_keys(self):
@@ -546,7 +573,7 @@ class World:
 
         One bridge per water ROOM (spec 0029 W2): once a water room has been
         made accessible, no further bridge to it can be built — so a bridge can
-        never be wasted.  Builds only if the player has a bridge item, the
+        never be wasted.  Builds only if the player has a bridge credit, the
         target room is not yet accessible, and the tile connects to open floor
         on the opposite side.
         """
@@ -564,10 +591,9 @@ class World:
         for pc, pr, _gid in self.room.plates:
             if abs(pc - col) + abs(pr - row) == 1:
                 return False
-        # A bridge is buildable if the player holds a crafted bridge OR enough
-        # planks to auto-craft one on the spot (spec 0072 D1) — the bridge
-        # analogue of the quick-place-wall path.
-        if not self.inventory.can_quick_bridge():
+        # A bridge is buildable when the player has at least one bridge credit
+        # (2 planks collected = 1 credit, spec 0073 D2).
+        if self._bridge_credits <= 0:
             return False
         # Check that the opposite side has open floor (not wall/water)
         pc, pr = self.player.col, self.player.row
@@ -575,7 +601,7 @@ class World:
         far_c, far_r = col + dc, row + dr
         if (0 < far_c < COLS - 1 and 0 < far_r < ROWS - 1
                 and not self.blocked(far_c, far_r)):
-            self.inventory.quick_bridge()
+            self._bridge_credits -= 1
             self.cells.add_bridge((col, row))
             self._bridged_water_rooms.add(water_room)
             self._emit('bridge_built')
@@ -659,11 +685,8 @@ class World:
         self._bump_consumed.discard(key)
 
     def place(self):
-        """SPACE: place the active item (credit wall / crafted item)."""
-        if self.crafting:
-            self._act2_place()
-        else:
-            self._place_block()
+        """SPACE: place a block from a block credit (spec 0073 D2)."""
+        self._place_block()
 
     def _is_respawn_tile(self, c, r):
         """The start room's player_start — where the player respawns on death
@@ -679,21 +702,6 @@ class World:
             self._block_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
             self._emit('block_placed')
-
-    def _act2_place(self):
-        """SPACE in Act 2: place the active item."""
-        c, r = self.player.col, self.player.row
-        active = self.inventory.active_item
-        if active == CRAFT_BLOCK:
-            if not self.blocked(c, r) and not self._is_respawn_tile(c, r):
-                if self.inventory.has_item(CRAFT_BLOCK):
-                    self.inventory.use_item(CRAFT_BLOCK)
-                elif self.inventory.can_quick_place_block():
-                    self.inventory.quick_place_block()
-                else:
-                    return
-                self.cells.set_barrier((c, r), Barrier('placed'))
-                self._emit('block_placed')
 
     def buy_shield(self):
         if not self.shield and self.score >= SHIELD_COST_PTS:

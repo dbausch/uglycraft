@@ -156,11 +156,12 @@ def test_hud_bridge_counter_absent_without_planks():
 
 
 def test_shot_hud_bridge():
-    """HUD over a planks level with the player carrying 3 planks: the BRIDGE
-    counter reads "BRIDGE  1." (1 buildable + an odd-plank dot) left of WALLS,
-    and the gap separators divide the row (spec 0072 D2/D4)."""
+    """HUD over a planks level with 1 bridge credit and a banked half: the
+    BRIDGES counter reads "BRIDGES  1" + a drawn half-block, left of BLOCKS,
+    with the gap bands dividing the row (spec 0072/0073)."""
     with Harness(level_dict=fx.water_level(), seed=42) as h:
-        h.game.inventory.add_material('planks', 3)
+        h.game.world._bridge_credits = 1
+        h.game.world._bridge_halves = 1
         h.run(['wait:3'])
         _shot('hud_bridge', h)
 

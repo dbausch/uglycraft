@@ -112,17 +112,17 @@ def test_room_transition_persistence():
 
 
 def test_forge_ogre_breaks_placed_block():
-    """Seal the ogre pocket with a placed stone wall; the ogre breaks it
+    """Seal the ogre pocket with a placed block; the ogre breaks it
     in 2 hits (block_bump_power)."""
     with Harness(level_dict=fx.forge_level(), seed=42) as h:
-        h.game.inventory.add_material('rocks', 3)
+        h.game.world._block_credits = 1          # one block to place (spec 0073 D2)
         trace = h.run(['key:left', 'wait:2',     # step to (10,8)
-                       'key:space', 'wait:2',    # quick-place wall there
+                       'key:space', 'wait:2',    # place a block there
                        'hold:right:10',          # retreat
                        'wait:60'])               # ogre hits twice -> break
     keys = _sound_keys(trace)
     assert 'place_block' in keys
-    assert 'break' in keys                   # ogre destroyed the wall
+    assert 'break' in keys                   # ogre destroyed the block
     assert not list(h.game.cells.barriers('placed'))
     assert_golden('act2_forge', trace)
 

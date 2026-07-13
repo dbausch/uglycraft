@@ -315,7 +315,7 @@ def test_treasure_material_key_on_one_tile_all_collected_in_one_tick():
         w.drain_events()
         w.update(DT)
         assert _kinds(w.drain_events()).count('collected') == 3
-        assert w.inventory.materials.get('planks', 0) == 1
+        assert w._bridge_halves == 1     # planks bank a bridge half (spec 0073 D2)
         assert w.inventory.has_key('red')
         assert w._loot_collected == 1
     finally:
@@ -333,8 +333,9 @@ def test_two_materials_same_tile_need_two_ticks():
         assert _kinds(w.drain_events()).count('collected') == 1
         w.update(DT)
         assert _kinds(w.drain_events()).count('collected') == 1
-        assert w.inventory.materials.get('planks', 0) == 1
-        assert w.inventory.materials.get('rocks', 0) == 1
+        # planks -> bridge half, rocks -> block half (credit-only, spec 0073 D2)
+        assert w._bridge_halves == 1
+        assert w._block_halves == 1
         w.update(DT)
         assert w.drain_events() == []          # nothing left
     finally:

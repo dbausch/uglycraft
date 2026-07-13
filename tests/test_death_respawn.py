@@ -16,7 +16,6 @@ import world as world_mod
 from world import World
 from constants import COLS, ROWS
 from cells import Barrier
-from crafting import CRAFT_BLOCK
 from tests import act2_fixtures as fx
 
 KEY = 7
@@ -181,13 +180,12 @@ def test_no_block_placed_on_respawn_tile_act2():
                       player=(10, 8))
     w, orig = _world(level)
     try:
-        w.inventory.crafted[CRAFT_BLOCK] = 2
-        w.inventory.active_item = CRAFT_BLOCK
+        w._block_credits = 2
         w.player.col, w.player.row = 10, 8            # the respawn tile
         w.place()
         assert _kinds(w.drain_events()) == []
         assert not w.blocked(10, 8)
-        assert w.inventory.crafted[CRAFT_BLOCK] == 2   # item not consumed
+        assert w._block_credits == 2                  # credit not consumed
     finally:
         _restore(orig)
 

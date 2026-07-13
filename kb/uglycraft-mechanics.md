@@ -52,7 +52,7 @@ On `KEYDOWN`: registers `(now, now)` per key. Each update tick: movement fires i
 ## Wall Breaking / Placement System
 
 - `WALL_HITS_TO_BREAK = 3` bumps (by any direction key) destroys one inner wall
-- `HALVES_PER_CREDIT = 2` walls destroyed earns 1 placement credit; counter (`_block_halves`) carries over between levels
+- Block credits (spec 0073 D2): a mined wall **or** a collected rubble each bank one half; `HALVES_PER_CREDIT = 2` halves earn 1 block-placement credit. Bridge credits are the same from planks (2 = 1). Half-counters (`_block_halves` / `_bridge_halves`) carry over between levels; rubble/planks are credit-only (never stored in the inventory)
 - Wall state: bump damage lives on the wall's `Barrier.hits` (cells.py); a new level builds fresh barriers, so damage never carries over
 - Bump consumed: once a key bumps a wall, that key must be released before registering another bump. A successful move clears the consumed flag. Border cells can never be bumped.
 - Crack sprites: `crack1` at hit 1, `crack2` at hit 2, wall disappears at hit 3

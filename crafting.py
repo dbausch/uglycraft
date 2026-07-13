@@ -71,9 +71,10 @@ CRAFT_ICONS = {
 # ── Recipes ───────────────────────────────────────────────────────────────────
 # Each recipe: (result, {material: count}, required_tool_or_None)
 
+# Blocks and bridges are earned as credits, not crafted (spec 0073 D2): the
+# player collects rubble / planks (or mines walls) to bank half-credits and
+# builds by placing.  Only the (still-dormant) advanced recipes remain.
 RECIPES = [
-    (CRAFT_BLOCK,  {MAT_ROCKS: 3},                        None),
-    (CRAFT_BRIDGE,      {MAT_PLANKS: 2},                       None),
     (CRAFT_BELL,        {MAT_METAL: 3},                        TOOL_HAMMER),
     (CRAFT_BARRICADE,   {MAT_ROCKS: 2, MAT_PLANKS: 1},        TOOL_CHISEL),
     (CRAFT_PORTAL_PAIR, {MAT_CRYSTAL: 2},                      TOOL_RUNESTONE),
@@ -173,30 +174,3 @@ class Inventory:
             return True
         return False
 
-    def can_quick_place_block(self):
-        """Check if we have enough rocks to auto-craft and place a stone wall."""
-        return self.materials.get(MAT_ROCKS, 0) >= 3
-
-    def quick_place_block(self):
-        """Auto-craft and consume a stone wall from rocks."""
-        if self.can_quick_place_block():
-            self.materials[MAT_ROCKS] -= 3
-            return True
-        if self.has_item(CRAFT_BLOCK):
-            return self.use_item(CRAFT_BLOCK)
-        return False
-
-    def can_quick_bridge(self):
-        """Enough planks (or a pre-crafted bridge) to build a bridge in one
-        action — the bridge analogue of can_quick_place_block (spec 0072 D1)."""
-        return self.materials.get(MAT_PLANKS, 0) >= 2 or self.has_item(CRAFT_BRIDGE)
-
-    def quick_bridge(self):
-        """Auto-craft and consume a bridge: spend 2 raw planks first, falling
-        back to a pre-crafted bridge (mirroring quick_place_block)."""
-        if self.materials.get(MAT_PLANKS, 0) >= 2:
-            self.materials[MAT_PLANKS] -= 2
-            return True
-        if self.has_item(CRAFT_BRIDGE):
-            return self.use_item(CRAFT_BRIDGE)
-        return False

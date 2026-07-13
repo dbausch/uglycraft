@@ -226,14 +226,14 @@ def test_no_bridge_created_beside_a_plate():
     neighbouring stream tile with plate-free landings still works."""
     w, saved = _fixture(_water_plate_level)
     try:
-        w.inventory.crafted['bridge'] = 1
+        w._bridge_credits = 1
         w.drain_events()
         w.player.col, w.player.row = 14, 8       # standing on the plate
         w.try_move(1, 0, KEY)                    # bump W(15,8) -> refused
         w.key_released(KEY)
         assert all(e[0] != 'bridge_built' for e in w.drain_events())
         assert w.blocked(15, 8)
-        assert w.inventory.has_item('bridge')    # nothing consumed
+        assert w._bridge_credits == 1            # nothing consumed
 
         # Control: W(15,7) one tile up the same stream is not
         # plate-adjacent — the water room stays reachable.
@@ -348,108 +348,153 @@ def test_fresh_entry_stuck_block_regenerates_without_stale_teleport():
         world_mod.get_level, world_mod.regenerate_level = orig
 
 
-def test_refused_bridge_never_consumes_the_item():
-    """BL-39 reproduction attempt (from kb/findings.md): with two crafted
-    bridges, the second placement attempt on an already-bridged water
-    room must be refused WITHOUT consuming the item.  Every refusal path
-    in _try_auto_bridge returns before inventory.use_item — this test is
-    the permanent guard for that ordering."""
+def test_refused_bridge_never_consumes_a_credit():
+    """BL-39 guard, credit model (spec 0073 D2): with two bridge credits, the
+    second placement attempt on an already-bridged water room is refused
+    WITHOUT spending a credit — every refusal path returns before the
+    _bridge_credits decrement."""
     w, saved = _fixture(fx.water_level)
     try:
-        w.inventory.crafted['bridge'] = 2
+        w._bridge_credits = 2
         w.drain_events()
         w.player.col, w.player.row = 14, 8
         w.try_move(1, 0, KEY)                    # bump W(15,8) -> builds
         w.key_released(KEY)
         assert any(e[0] == 'bridge_built' for e in w.drain_events())
-        assert w.inventory.crafted['bridge'] == 1   # exactly one consumed
+        assert w._bridge_credits == 1            # exactly one consumed
 
         w.player.col, w.player.row = 14, 7
         w.try_move(1, 0, KEY)                    # bump W(15,7): same water
         w.key_released(KEY)                      #   room -> refused
         assert all(e[0] != 'bridge_built' for e in w.drain_events())
-        assert w.inventory.crafted['bridge'] == 1   # NOT consumed
-        assert w.blocked(15, 7)                     # and nothing was built
+        assert w._bridge_credits == 1            # NOT consumed
+        assert w.blocked(15, 7)                  # and nothing was built
 
         w.player.col, w.player.row = 14, 9
         w.try_move(1, 0, KEY)                    # third tile, same room
         w.key_released(KEY)
-        assert w.inventory.crafted['bridge'] == 1   # still not consumed
+        assert w._bridge_credits == 1            # still not consumed
     finally:
         _restore(saved)
 
 
-# ── Auto-craft a bridge from planks on water-bump (spec 0072 D1, BL-28) ────────
+# ── Bridges built from bridge credits on water-bump (spec 0073 D2) ────────────
 
-def test_auto_bridge_crafts_from_planks():
-    """Bumping water with 2 planks and no crafted bridge auto-crafts and
-    places the bridge in one action (no crafting menu), consuming the planks."""
+def test_auto_bridge_from_credit():
+    """Bumping water with a bridge credit builds the bridge in one action and
+    spends the credit."""
     w, saved = _fixture(fx.water_level)
     try:
-        w.inventory.add_material('planks', 2)     # 2 planks, no crafted bridge
-        assert not w.inventory.has_item('bridge')
+        w._bridge_credits = 1
         w.drain_events()
         w.player.col, w.player.row = 14, 8
         w.try_move(1, 0, KEY)                      # bump W(15,8)
         assert any(e[0] == 'bridge_built' for e in w.drain_events())
         assert not w.blocked(15, 8)               # water now passable
-        assert w.inventory.materials['planks'] == 0   # both planks spent
+        assert w._bridge_credits == 0             # credit spent
     finally:
         _restore(saved)
 
 
-def test_auto_bridge_spends_planks_before_crafted():
-    """With both planks and a crafted bridge, raw planks are spent first
-    (mirroring quick_place_block); the crafted bridge is untouched."""
+def test_auto_bridge_no_credit_builds_nothing():
+    """No bridge credit: no bridge, nothing spent, and the water room stays
+    un-bridged so it can be built later."""
     w, saved = _fixture(fx.water_level)
     try:
-        w.inventory.crafted['bridge'] = 1
-        w.inventory.add_material('planks', 2)
-        w.drain_events()
-        w.player.col, w.player.row = 14, 8
-        w.try_move(1, 0, KEY)                      # bump W(15,8)
-        assert any(e[0] == 'bridge_built' for e in w.drain_events())
-        assert w.inventory.materials['planks'] == 0   # planks spent first
-        assert w.inventory.crafted['bridge'] == 1     # crafted untouched
-    finally:
-        _restore(saved)
-
-
-def test_auto_bridge_insufficient_planks_builds_nothing():
-    """One plank and no crafted bridge is not enough: no bridge, no plank
-    spent, and the water room stays un-bridged so it can be built later."""
-    w, saved = _fixture(fx.water_level)
-    try:
-        w.inventory.add_material('planks', 1)     # one plank only
+        w._bridge_credits = 0
         w.drain_events()
         w.player.col, w.player.row = 14, 8
         w.try_move(1, 0, KEY)                      # bump W(15,8) -> refused
         w.key_released(KEY)
         assert all(e[0] != 'bridge_built' for e in w.drain_events())
         assert w.blocked(15, 8)                   # nothing built
-        assert w.inventory.materials['planks'] == 1   # plank not spent
+        assert w._bridge_credits == 0
     finally:
         _restore(saved)
 
 
-def test_auto_bridge_from_planks_respects_room_lock():
-    """The one-bridge-per-water-room lock still holds when the source is
-    planks: a second bump on the same stream builds nothing and spends no
-    further planks (guard order unchanged)."""
+def test_auto_bridge_credit_respects_room_lock():
+    """The one-bridge-per-water-room lock holds: a second bump on the same
+    stream builds nothing and spends no further credit."""
     w, saved = _fixture(fx.water_level)
     try:
-        w.inventory.add_material('planks', 4)     # enough for two bridges
+        w._bridge_credits = 2                      # enough for two bridges
         w.drain_events()
         w.player.col, w.player.row = 14, 8
         w.try_move(1, 0, KEY)                      # bump W(15,8) -> builds
         w.key_released(KEY)
         assert any(e[0] == 'bridge_built' for e in w.drain_events())
-        assert w.inventory.materials['planks'] == 2
+        assert w._bridge_credits == 1
 
         w.player.col, w.player.row = 14, 7
         w.try_move(1, 0, KEY)                      # same room -> refused
         w.key_released(KEY)
         assert all(e[0] != 'bridge_built' for e in w.drain_events())
-        assert w.inventory.materials['planks'] == 2   # no further planks spent
+        assert w._bridge_credits == 1             # no further credit spent
+    finally:
+        _restore(saved)
+
+
+# ── Credit economy: mining / rubble / planks bank half-credits (spec 0073 D2) ─
+
+def test_earn_block_half_banks_a_credit_every_two():
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.drain_events()
+        w._earn_block_half()
+        assert (w._block_halves, w._block_credits) == (1, 0)
+        assert w.drain_events() == []                       # no credit yet
+        w._earn_block_half()
+        assert (w._block_halves, w._block_credits) == (0, 1)
+        assert 'credit_earned' in _kinds(w.drain_events())  # credit on the 2nd
+    finally:
+        _restore(saved)
+
+
+def test_earn_bridge_half_banks_a_credit_every_two():
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.drain_events()
+        w._earn_bridge_half()
+        assert (w._bridge_halves, w._bridge_credits) == (1, 0)
+        w._earn_bridge_half()
+        assert (w._bridge_halves, w._bridge_credits) == (0, 1)
+        assert 'credit_earned' in _kinds(w.drain_events())
+    finally:
+        _restore(saved)
+
+
+def _rubble_level():
+    """water_level with two rubble on the left floor instead of planks."""
+    lvl = fx.water_level()
+    lvl['rooms']['main']['materials'] = [(5, 8, 'rocks'), (6, 8, 'rocks')]
+    return lvl
+
+
+def test_collect_rubble_earns_block_credit_not_inventory():
+    """Two rubble = one block credit; rubble is never stored in the inventory."""
+    w, saved = _fixture(_rubble_level)
+    try:
+        w.drain_events()
+        for c in (5, 6):
+            w.player.col, w.player.row = c, 8
+            w._collect_materials()
+        assert w.inventory.materials.get('rocks', 0) == 0   # not stored
+        assert w._block_credits == 1                        # 2 rubble = 1 block
+    finally:
+        _restore(saved)
+
+
+def test_collect_planks_earns_bridge_credit_not_inventory():
+    """Two planks = one bridge credit; planks are never stored in the inventory
+    (water_level seeds two planks at (5,8) and (6,8))."""
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.drain_events()
+        for c in (5, 6):
+            w.player.col, w.player.row = c, 8
+            w._collect_materials()
+        assert w.inventory.materials.get('planks', 0) == 0  # not stored
+        assert w._bridge_credits == 1                       # 2 planks = 1 bridge
     finally:
         _restore(saved)
