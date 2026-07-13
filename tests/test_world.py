@@ -377,3 +377,79 @@ def test_refused_bridge_never_consumes_the_item():
         assert w.inventory.crafted['bridge'] == 1   # still not consumed
     finally:
         _restore(saved)
+
+
+# ── Auto-craft a bridge from planks on water-bump (spec 0072 D1, BL-28) ────────
+
+def test_auto_bridge_crafts_from_planks():
+    """Bumping water with 2 planks and no crafted bridge auto-crafts and
+    places the bridge in one action (no crafting menu), consuming the planks."""
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.inventory.add_material('planks', 2)     # 2 planks, no crafted bridge
+        assert not w.inventory.has_item('bridge')
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                      # bump W(15,8)
+        assert any(e[0] == 'bridge_built' for e in w.drain_events())
+        assert not w.blocked(15, 8)               # water now passable
+        assert w.inventory.materials['planks'] == 0   # both planks spent
+    finally:
+        _restore(saved)
+
+
+def test_auto_bridge_spends_planks_before_crafted():
+    """With both planks and a crafted bridge, raw planks are spent first
+    (mirroring quick_place_wall); the crafted bridge is untouched."""
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.inventory.crafted['bridge'] = 1
+        w.inventory.add_material('planks', 2)
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                      # bump W(15,8)
+        assert any(e[0] == 'bridge_built' for e in w.drain_events())
+        assert w.inventory.materials['planks'] == 0   # planks spent first
+        assert w.inventory.crafted['bridge'] == 1     # crafted untouched
+    finally:
+        _restore(saved)
+
+
+def test_auto_bridge_insufficient_planks_builds_nothing():
+    """One plank and no crafted bridge is not enough: no bridge, no plank
+    spent, and the water room stays un-bridged so it can be built later."""
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.inventory.add_material('planks', 1)     # one plank only
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                      # bump W(15,8) -> refused
+        w.key_released(KEY)
+        assert all(e[0] != 'bridge_built' for e in w.drain_events())
+        assert w.blocked(15, 8)                   # nothing built
+        assert w.inventory.materials['planks'] == 1   # plank not spent
+    finally:
+        _restore(saved)
+
+
+def test_auto_bridge_from_planks_respects_room_lock():
+    """The one-bridge-per-water-room lock still holds when the source is
+    planks: a second bump on the same stream builds nothing and spends no
+    further planks (guard order unchanged)."""
+    w, saved = _fixture(fx.water_level)
+    try:
+        w.inventory.add_material('planks', 4)     # enough for two bridges
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                      # bump W(15,8) -> builds
+        w.key_released(KEY)
+        assert any(e[0] == 'bridge_built' for e in w.drain_events())
+        assert w.inventory.materials['planks'] == 2
+
+        w.player.col, w.player.row = 14, 7
+        w.try_move(1, 0, KEY)                      # same room -> refused
+        w.key_released(KEY)
+        assert all(e[0] != 'bridge_built' for e in w.drain_events())
+        assert w.inventory.materials['planks'] == 2   # no further planks spent
+    finally:
+        _restore(saved)

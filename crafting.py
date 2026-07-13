@@ -185,3 +185,18 @@ class Inventory:
         if self.has_item(CRAFT_STONE_WALL):
             return self.use_item(CRAFT_STONE_WALL)
         return False
+
+    def can_quick_bridge(self):
+        """Enough planks (or a pre-crafted bridge) to build a bridge in one
+        action — the bridge analogue of can_quick_place_wall (spec 0072 D1)."""
+        return self.materials.get(MAT_PLANKS, 0) >= 2 or self.has_item(CRAFT_BRIDGE)
+
+    def quick_bridge(self):
+        """Auto-craft and consume a bridge: spend 2 raw planks first, falling
+        back to a pre-crafted bridge (mirroring quick_place_wall)."""
+        if self.materials.get(MAT_PLANKS, 0) >= 2:
+            self.materials[MAT_PLANKS] -= 2
+            return True
+        if self.has_item(CRAFT_BRIDGE):
+            return self.use_item(CRAFT_BRIDGE)
+        return False

@@ -28,7 +28,7 @@ from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import Room, find_exit
-from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE, KEY_NAMES
+from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE, KEY_NAMES, MAT_PLANKS
 from cells import BARRIER_BUMP, Barrier, _exit_tiles
 
 NUM_LEVELS  = TOTAL_LEVELS
@@ -556,7 +556,10 @@ class World:
         for pc, pr, _gid in self.room.plates:
             if abs(pc - col) + abs(pr - row) == 1:
                 return False
-        if not self.inventory.has_item(CRAFT_BRIDGE):
+        # A bridge is buildable if the player holds a crafted bridge OR enough
+        # planks to auto-craft one on the spot (spec 0072 D1) — the bridge
+        # analogue of the quick-place-wall path.
+        if not self.inventory.can_quick_bridge():
             return False
         # Check that the opposite side has open floor (not wall/water)
         pc, pr = self.player.col, self.player.row
@@ -564,7 +567,7 @@ class World:
         far_c, far_r = col + dc, row + dr
         if (0 < far_c < COLS - 1 and 0 < far_r < ROWS - 1
                 and not self.blocked(far_c, far_r)):
-            self.inventory.use_item(CRAFT_BRIDGE)
+            self.inventory.quick_bridge()
             self.cells.add_bridge((col, row))
             self._bridged_water_rooms.add(water_room)
             self._emit('bridge_built')
