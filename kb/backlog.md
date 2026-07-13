@@ -289,14 +289,15 @@ Changes:
    plank sprite). Today planks are placed only as individual `('planks',)`
    materials worth 1 each; this adds an explicit single vs. pack distinction
    with distinct sprites.
-3. Breaking down a wooden door yields 4 planks in one go — a full bridge's worth
-   — as a non-scavenging alternative to collecting loose planks. This ties
-   plank-sourcing to the existing breakable wooden wall/door mechanic
-   (`WALL_WOODEN` / `BREAKABLE` edges).
+3. Breaking down a wooden door (smashing a wooden entry) yields HALF a bridge's
+   worth of planks — 2 planks under the 4-plank scheme, NOT a full 4-plank
+   bridge (Daniel, 2026-07-14) — as a non-scavenging partial alternative to
+   collecting loose planks. This ties plank-sourcing to the existing breakable
+   wooden wall/door mechanic (`WALL_WOODEN` / `BREAKABLE` edges).
 4. The `add_water_room` algorithm (`levelgraph.py`) provisions, per water room,
    ANY valid combination of these sources whose total equals the equivalent of
    4 planks — e.g. 4 singles, 2 packs, 1 pack + 2 singles, or one wooden door
-   (=4) — chosen at random. All sources must remain reachable on the dry side
+   (=2) plus a pack of two — chosen at random. All sources must remain reachable on the dry side
    and may be distributed across grids (fungible), per spec 0029.
 
 Dependencies / interactions:
