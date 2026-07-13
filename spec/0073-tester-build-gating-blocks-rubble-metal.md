@@ -8,10 +8,12 @@ deliverables:
    placeable, its sprite, the HUD counter, the place-credit vocabulary, the
    events/sounds. The level's own **wall terrain** (`WALL_STONE` etc.) keeps its name.
    HUD counter labels also go plural for consistency: **BLOCKS** and **BRIDGES**.
-2. **Blocks are earned as credits, not crafted** — mining a breakable wall *or*
-   collecting rubble each banks half a block (2 → 1 block); SPACE spends a credit to
-   place one. The 3-rocks Block recipe is **dropped**; rubble no longer enters the
-   inventory (credit only — may change when the inventory is reactivated later).
+2. **Blocks *and bridges* are earned as credits, not crafted** — mining a breakable
+   wall or collecting rubble each banks half a **block** (2 → 1); collecting a pack of
+   planks banks half a **bridge** (2 → 1). SPACE places a block from a block credit;
+   bumping water places a bridge from a bridge credit. The 3-rocks Block recipe and the
+   planks-based Bridge crafting (spec 0072) are **dropped**; rubble and planks no longer
+   enter the inventory (credit only — may change when the inventory is reactivated).
 3. **More rubble** — sprinkle noticeably more rubble through generated levels, since
    there are few breakable walls to mine, so rubble is the main way to earn block
    credits.
@@ -28,9 +30,11 @@ metal economy is finished later (see BL-54, out of scope here).
 - [ ] **D1** — The user-built wall is **BLOCK** throughout (code + UI + sound +
   sprite); level wall terrain untouched; HUD labels read **BLOCKS** and **BRIDGES**;
   suite green (event/sound/label goldens re-recorded).
-- [ ] **D2** — Mining a breakable wall or collecting rubble each banks half a block
-  (2 → 1), via one shared path; SPACE places a block from credits in both Acts; the
-  3-rocks recipe is removed and rubble is credit-only (not stored in inventory).
+- [ ] **D2** — Block credits (mining a wall / collecting rubble, 2 → 1) and bridge
+  credits (collecting a pack of planks, 2 → 1) via symmetric half-credit paths; SPACE
+  places a block from a block credit, bumping water places a bridge from a bridge
+  credit; the 3-rocks Block recipe and planks-based Bridge crafting are removed; rubble
+  and planks are credit-only (not stored).
 - [ ] **D3** — Generated levels carry noticeably more rubble (block credits are
   earnable without relying on scarce breakable walls).
 - [ ] **D4** — With `ENABLE_METAL = False`, generated levels contain no scrap metal;
@@ -79,6 +83,14 @@ _place_wall()`. `_place_wall()` spends one `_place_credits` → `Barrier('placed
 `quick_place_wall()` (3 rocks). Materials picked up in `_collect_materials` →
 `inventory.add_material`.
 
+### Bridges today (spec 0072 — being reworked here)
+
+Bumping water auto-builds a bridge via `_try_auto_bridge`, which calls
+`Inventory.quick_bridge()` (2 planks from inventory, else a crafted `CRAFT_BRIDGE`).
+The HUD `BRIDGE` counter reads `crafted['bridge'] + planks//2` from the inventory,
+shown only on plank-bearing levels (`_level_has_planks`). D2 replaces this
+planks-in-inventory model with a **bridge credit** symmetric to blocks.
+
 ### Material distribution
 
 `levels.py` Act 2 feature sets set `material_types` (level 1 `[ROCKS, PLANKS]`, levels
@@ -101,7 +113,7 @@ Background untouched):
 | event `'wall_placed'` | `'block_placed'` |
 | `World._place_credits` | `_block_credits` |
 | `World._breaks_toward_credit` | `_block_halves` |
-| `BREAKS_PER_CREDIT = 2` | `HALVES_PER_BLOCK = 2` |
+| `BREAKS_PER_CREDIT = 2` | `HALVES_PER_CREDIT = 2` (shared by blocks & bridges) |
 | sprite `placed_wall`, icon `icon_stone_wall` | `placed_block`, `icon_block` |
 | sound `'place_wall'` / `sfx_place_wall` | `'place_block'` / `sfx_place_block` |
 | forge `enemy.wall_bump_power` | `block_bump_power` |
@@ -119,42 +131,63 @@ renamed but **removed** (see D2). Update `_WORLD_ATTRS`, the KB
 test referencing a renamed symbol/event/sound/label; event-trace and screenshot
 goldens are re-recorded (D6).
 
-## D2 — Blocks are earned as credits, not crafted (Q1)
+## D2 — Blocks and bridges are earned as credits, not crafted (Q1, Q4)
 
-**Earning.** Extract the credit-banking tail of `_break_wall` into a shared helper:
+Both resources follow one pattern: collecting the material (or mining a wall) banks a
+**half credit**; two halves make one credit; building spends a credit. Nothing goes
+through the inventory.
+
+**Earning — a shared half-credit path.** Generalise the credit-banking tail of
+`_break_wall` (two thin wrappers over one helper, or a small `_earn_half(halves,
+credits)`):
 
 ```python
-def _earn_block_half(self):
+def _earn_block_half(self):   # mined wall / rubble
     self._block_halves += 1
-    if self._block_halves >= HALVES_PER_BLOCK:      # 2
-        self._block_halves -= HALVES_PER_BLOCK
+    if self._block_halves >= HALVES_PER_CREDIT:     # 2
+        self._block_halves -= HALVES_PER_CREDIT
         self._block_credits += 1
         self._emit('credit_earned')
+
+def _earn_bridge_half(self):  # a pack of planks
+    ... same, on _bridge_halves / _bridge_credits ...
 ```
 
-- `_break_wall` calls it after `_emit('wall_broken')` — mining a breakable wall = one
-  half (unchanged behaviour).
-- `_collect_materials`: when the material is `MAT_ROCKS`, call `_earn_block_half()`
-  **instead of** `inventory.add_material` — one rubble = one half; still emit
-  `'collected'` for the pickup chirp. Rubble does **not** enter the inventory (Q1:
-  credit only for now; revisit when the inventory is reactivated).
+- **Blocks** — `_break_wall` banks a block half after `_emit('wall_broken')` (mining a
+  breakable wall, unchanged); `_collect_materials` banks a block half when the material
+  is `MAT_ROCKS`. Counters `_block_credits` / `_block_halves` (the renamed
+  `_place_credits` / `_breaks_toward_credit`).
+- **Bridges** — `_collect_materials` banks a bridge half when the material is
+  `MAT_PLANKS`. New counters `_bridge_credits` / `_bridge_halves`.
 
-So **2 rubble = 1 block** and **2 mined walls = 1 block**, mixed freely, shown by the
-HUD `BLOCKS` counter and its spec-0072 lower-half-block half indicator (`_block_halves
-> 0`).
+In both cases still `_emit('collected')` for the pickup chirp; the material does **not**
+enter the inventory (Q1/Q4). So **2 rubble = 1 block**, **2 mined walls = 1 block**, and
+**2 planks = 1 bridge**, mixed freely.
 
-**Placement.** Blocks are placed from credits in **both** Acts — drop the recipe path:
+**HUD.** `BLOCKS` shows `_block_credits`; `BRIDGES` shows `_bridge_credits` (still only
+on plank-bearing levels via `_level_has_planks`). Each uses the spec-0072 lower-half
+indicator, driven by `_block_halves > 0` / `_bridge_halves > 0`. Both bridge counters
+join `_WORLD_ATTRS`. This replaces spec 0072's `planks//2`-from-inventory computation
+(and drops the `CRAFT_BRIDGE` / `MAT_PLANKS` imports the HUD used).
 
-- Remove `RECIPES` entry `(CRAFT_BLOCK, {MAT_ROCKS: 3}, None)`, and the now-dead
+**Placement — credit-based, drop the recipes.**
+
+- **Block**: `place()` calls `_place_block()` unconditionally (spends one
+  `_block_credits`). Delete the `_act2_place` block branch (it handled only blocks, so
+  `_act2_place` goes away). Remove the `RECIPES` `CRAFT_BLOCK` entry and the dead
   `Inventory.can_quick_place_block` / `quick_place_block`.
-- `place()` calls `_place_block()` unconditionally (delete the `_act2_place` block
-  branch; `_act2_place` handled only blocks, so it goes away — bridges are placed by
-  bumping water, spec 0072, not via SPACE).
-- Verify no code indexes `RECIPES` by a now-shifted position for the bridge (bridge
-  crafting is material-direct via `quick_bridge`, but check `can_craft`/UI callers).
+- **Bridge**: `_try_auto_bridge` spends one `_bridge_credits` instead of
+  `quick_bridge()` — the gate becomes `if self._bridge_credits <= 0: return False`, and
+  on success `self._bridge_credits -= 1`. **All existing guards are unchanged**
+  (one-per-water-room lock, far-side-open, plate-adjacency). Remove the dead
+  `Inventory.can_quick_bridge` / `quick_bridge`, the `RECIPES` `CRAFT_BRIDGE` entry, and
+  the `crafted['bridge']` fallback.
+- After both removals `RECIPES` holds only the dormant advanced recipes (behind the
+  disabled menu, D5); verify nothing indexes `RECIPES` by a now-shifted position and
+  that the `CRAFT_BLOCK` / `CRAFT_BRIDGE` constants are no longer referenced.
 
 *(Note: the forge smashing a placed block routes through `_break_wall` and therefore
-also banks a half-credit — a pre-existing quirk, left as-is; out of scope.)*
+also banks a block half — a pre-existing quirk, left as-is; out of scope.)*
 
 ## D3 — More rubble
 
@@ -183,8 +216,9 @@ Add `ENABLE_INVENTORY_MENU = False` to `constants.py`. When `False`:
 
 - The TAB handler in `game.py` does not open the inventory/crafting overlay, and
   `_render_inventory` is not invoked (no crafting UI at all).
-- The internal `Inventory` object is untouched — planks still fuel auto-bridges, keys
-  still auto-open doors; only the **menu** is gone.
+- The internal `Inventory` object is untouched but now effectively tracks only **keys**
+  (rubble → block credits and planks → bridge credits bypass it, D2; metal is gated);
+  keys still auto-open doors. Only the **menu** is gone.
 
 This subsumes hiding the unfinished recipes/tools: with the menu off, Bell / Barricade
 / Portal Pair / Compass and Hammer / Chisel / Runestone are simply never shown. Their
@@ -200,10 +234,14 @@ pytest suite (event traces, goldens, world unit tests). The rename is broad:
    kept set; `poe test` passes. Event-trace goldens (`'wall_placed'→'block_placed'`)
    and HUD screenshot goldens (`WALLS→BLOCKS`, `BRIDGE→BRIDGES`) are re-recorded and
    reviewed.
-2. **Block credit** — a world unit test: collecting two rubble raises `_block_credits`
-   by 1 with a `'credit_earned'` emit and leaves `inventory.materials['rocks'] == 0`;
-   one rubble leaves a half (`_block_halves == 1`); a mined wall + a rubble = one
-   credit; SPACE then places a block and decrements the credit.
+2. **Block & bridge credits** — world unit tests: collecting two rubble raises
+   `_block_credits` by 1 with a `'credit_earned'` emit and leaves
+   `inventory.materials['rocks'] == 0`; one rubble leaves a half (`_block_halves == 1`);
+   a mined wall + a rubble = one credit; SPACE then places a block and decrements it.
+   Symmetrically, collecting two planks raises `_bridge_credits` by 1 (planks not
+   stored); bumping water spends one bridge credit and builds the bridge, with the
+   spec-0072 guards intact. The spec-0072 bridge tests
+   (`test_auto_bridge_*`) are reworked from the planks-in-inventory model to credits.
 3. **More rubble** — a generation test: a seed sweep yields materially more rubble per
    level than before the change (assert a per-level rubble floor).
 4. **Metal gate** — with `ENABLE_METAL = False`, no generated room lists a `metal`
@@ -215,7 +253,7 @@ pytest suite (event traces, goldens, world unit tests). The rename is broad:
    time) and there is *enough* rubble; SPACE places a block; no scrap metal appears;
    TAB opens nothing.
 
-## Resolved decisions (Q1–Q3, 2026-07-14)
+## Resolved decisions (Q1–Q4, 2026-07-14)
 
 - **Q1** — Rubble earns a half block **credit only** (not stored in inventory) for now;
   may change when the inventory is reactivated. The 3-rocks Block recipe is dropped;
@@ -223,11 +261,15 @@ pytest suite (event traces, goldens, world unit tests). The rename is broad:
 - **Q2** — The whole inventory/crafting menu is disabled by a boolean constant
   (`ENABLE_INVENTORY_MENU = False`), not merely filtered.
 - **Q3** — HUD labels are plural: **BLOCKS** and (for consistency) **BRIDGES**.
+- **Q4** — Planks are handled exactly like rubble: a pack of planks earns half a
+  **bridge** credit (2 → 1), planks are not stored in the inventory, and the
+  planks-based Bridge crafting from spec 0072 is dropped in favour of bridge credits.
 
 ## Out of scope
 
 - **BL-54** (metal-reinforced blocks vs the forge) — depends on metal being re-enabled.
-- **BL-18** (4-plank bridges / wooden-door = half a bridge) — separate spec.
+- **BL-18** (4-plank bridges / wooden-door = half a bridge) — separate spec; note it
+  will re-tune the plank↔bridge ratio, which this spec fixes at 2 planks = 1 bridge.
 - Re-enabling the advanced economy; designing the eventual rocks/metal/crystal recipes.
 - Changing `_break_wall` / `'wall_broken'` / the forge break mechanic (naming aside),
   including the forge-smashes-your-block-banks-a-half quirk.
@@ -237,9 +279,10 @@ pytest suite (event traces, goldens, world unit tests). The rename is broad:
 - [ ] **D1** — user-built wall renamed to BLOCK across code/UI/sound/sprite; terrain
   walls untouched; HUD reads BLOCKS/BRIDGES; suite green; goldens re-recorded.
   *(commit: ____)*
-- [ ] **D2** — shared `_earn_block_half` banks a half from mining *and* rubble
-  (2 → 1 block); block placement is credit-based in both Acts; 3-rocks recipe +
-  `quick_place_block` removed; rubble not stored; unit test green. *(commit: ____)*
+- [ ] **D2** — block half from mining *and* rubble, bridge half from planks (2 → 1
+  each); block placed by SPACE and bridge by water-bump, both from credits; 3-rocks
+  Block recipe + `quick_place_block` and planks-based Bridge crafting (`quick_bridge`,
+  `CRAFT_BRIDGE`) removed; rubble/planks not stored; unit tests green. *(commit: ____)*
 - [ ] **D3** — rubble counts raised; generation test asserts the higher floor; Daniel
   confirms there is enough rubble in play. *(commit: ____)*
 - [ ] **D4** — `ENABLE_METAL = False` removes scrap-metal drops (rubble/planks intact);
