@@ -499,7 +499,18 @@ in the inventory view.
 
 ---
 
-## BL-28 · P2 · Auto-craft a bridge when bumping water (no crafting-menu step)
+## BL-28 · FIXED · Auto-craft a bridge when bumping water (no crafting-menu step)
+
+Fixed by spec 0072 (`spec/0072-auto-craft-bridge-and-hud-counter.md`, all five
+deliverables D1–D5 ticked), confirmed in-game by Daniel 2026-07-13. Bumping
+water now auto-CRAFTS a bridge from planks and places it in one action, with no
+crafting-menu step (commit bc151ce), and a HUD BRIDGE counter was added to the
+left of the WALL counter (commit ac86c96), shown only when the level contains
+planks. Scope grew well beyond the original ask: spec 0072 also delivered an
+object-oriented HBox HUD redesign in a new `hud.py` (commit fbbbe45), with
+gap-separator bands, one unified HUD text colour, a dim SHIELD placeholder,
+length-preserving dash leaders, and drawn underscore / lower-half-block tail
+indicators. See the spec for the full record.
 
 Bridges are already auto-PLACED by bumping into a water tile if the player holds a
 bridge item (`game.py` `_try_auto_bridge`). Extend this so bumping water also
