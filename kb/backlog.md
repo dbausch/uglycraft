@@ -1300,3 +1300,26 @@ draw loop that renders cells.py fixtures vs. block/box sprites and ensure boxes
 come after fixtures.
 
 ---
+
+## BL-54 · P3 · Metal-reinforced blocks the forge enemy cannot destroy
+
+Collected metal scrap can reinforce a user-built BLOCK so the forge enemy cannot
+destroy it. Reinforcing is done right after placing the block, while the player
+is still standing on the block's tile, by pressing spacebar a second time (the
+first press places the block; the immediate second press, from the same tile,
+spends the metal to reinforce it). A reinforced block is immune to the forge
+enemy's wall-break behaviour.
+
+This feature — and metal being sprinkled into levels at all — is only available
+again once the inventory and metal are re-enabled later. It DEPENDS on BL-26's
+metal gating being lifted and on the BLOCK rename (BL-26), and it interacts with
+the forge enemy.
+
+**Fix hint:** the placement lives on the quick-place-block path in `world.py`
+(the same path that consumes the block credit and stands the player on the new
+tile); add a "reinforce the block I'm standing on" branch to the spacebar/bump
+handling that fires on a second press from the block's own tile and spends
+`MAT_METAL`. The immunity is enforced in the forge-enemy wall-break logic — skip
+destroying a block flagged as reinforced.
+
+---
