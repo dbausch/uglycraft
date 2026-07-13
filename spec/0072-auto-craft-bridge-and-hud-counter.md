@@ -25,25 +25,26 @@ readability tweak the user asked for while handling BL-28:
 
 ## Status checklist
 
-- [ ] **D1** — Bumping a water tile with no crafted bridge but ≥ 2 planks
+- [x] **D1** — Bumping a water tile with no crafted bridge but ≥ 2 planks
   auto-crafts a bridge from the planks and places it in the same action (no menu);
   all existing bridge guards (one-per-water-room, far-side-open, no plate-adjacent
   landing) still hold. Implemented via a new `Inventory.can_quick_bridge()` /
   `quick_bridge()` pair mirroring `can_quick_place_wall()` / `quick_place_wall()`.
-- [ ] **D2** — HUD shows a `BRIDGE N` counter immediately left of `WALLS`, present
+- [x] **D2** — HUD shows a `BRIDGE N` counter immediately left of `WALLS`, present
   only when the level contains planks (`World._level_has_planks`); a level with no
   planks omits it and the HBox redistributes the space. `N` = buildable bridges
-  (`planks // 2`, plus any crafted bridge); a trailing `.` marks an odd leftover
-  plank (half a bridge banked), mirroring WALLS. Never reflows during play.
-- [ ] **D3** — HUD redesigned as an OO HBox in a new `hud.py`: `HudElement` base
+  (`planks // 2`, plus any crafted bridge); a trailing `_` marks an even plank count
+  and a drawn lower-half block an odd one (half a bridge banked), mirroring WALLS (see
+  *Post-approval refinements*). Never reflows during play.
+- [x] **D3** — HUD redesigned as an OO HBox in a new `hud.py`: `HudElement` base
   (tight width), reusable `LabelValue`, `IconStrip` for the key strip, and an `HBox`
   that even-distributes leftover space across `n-1` gaps. Conditional elements are
   omitted from the list (no `None` sentinel, no `imgs.insert(<magic index>)`). HUD
   output is pixel-identical to before for levels without planks.
-- [ ] **D4** — Subtle gap separation between HUD elements (see *Post-approval
+- [x] **D4** — Subtle gap separation between HUD elements (see *Post-approval
   refinements*: shipped as a full-height brighter background band, not a line), never
   in the outer margins. A deliberate visual change — HUD goldens re-recorded here.
-- [ ] **D5** — Verification: headless assertions for the auto-craft path and the
+- [x] **D5** — Verification: headless assertions for the auto-craft path and the
   counter's per-level presence/width; `hud.py` HBox/element/separator unit tests;
   HUD screenshot goldens re-recorded (separators + planks-level BRIDGE counter) and
   reviewed; user confirmation in-game.
@@ -475,24 +476,26 @@ direction; the KB (`kb/uglycraft-display.md`) reflects the final state.
 
 ## Done when:
 
-- [ ] **D1** — `Inventory.can_quick_bridge()`/`quick_bridge()` added; water-bump
+- [x] **D1** — `Inventory.can_quick_bridge()`/`quick_bridge()` added; water-bump
   auto-crafts a bridge from 2 planks (menu-free), spending raw planks first and
   falling back to a crafted bridge (mirroring `quick_place_wall`); all bridge guards
-  intact; no plank spent on a rejected placement. *(commit: bc151ce)*
-- [ ] **D2** — `World._level_has_planks` computed at load and delegated; `BRIDGE N.`
-  counter (= `planks//2` buildable, `.` for an odd plank) renders left of WALLS only
-  on planks levels, omitted (space redistributed) otherwise; never reflows during
-  play. *(commit: ac86c96)*
-- [ ] **D3** — HUD redesigned as an OO HBox in `hud.py` (`HudElement`/`LabelValue`/
+  intact; no plank spent on a rejected placement. *(commit: bc151ce; confirmed in-game
+  2026-07-13)*
+- [x] **D2** — `World._level_has_planks` computed at load and delegated; `BRIDGE N`
+  counter (= `planks//2` buildable, `_` even / drawn lower-half block for an odd plank)
+  renders left of WALLS only on planks levels, omitted (space redistributed) otherwise;
+  never reflows during play. *(commit: ac86c96; tails refined post-approval; confirmed
+  in-game 2026-07-13)*
+- [x] **D3** — HUD redesigned as an OO HBox in `hud.py` (`HudElement`/`LabelValue`/
   `IconStrip`/`HBox`); `_render_hud` builds an element list + one `HBox.blit`; the
   `imgs.insert(<magic index>)` splice is gone; HUD output byte-identical for
   plankless/keyless levels (existing goldens pass unchanged **at this commit**);
-  `hud.py` unit tests pass. *(commit: fbbbe45)*
-- [ ] **D4** — `HBox` separates the `n-1` inter-element gaps (opt-in via `gap_color`,
+  `hud.py` unit tests pass. *(commit: fbbbe45; confirmed in-game 2026-07-13)*
+- [x] **D4** — `HBox` separates the `n-1` inter-element gaps (opt-in via `gap_color`,
   never in the outer margins); shipped as a full-height `HUD_GAP` band rather than a
   line (see *Post-approval refinements*); band unit tests pass; HUD goldens re-recorded
-  and reviewed. *(commits: 4c9adfc line → band replacement)*
-- [ ] **D5** — Auto-craft + counter-presence headless assertions, `hud.py` HBox/
+  and reviewed. *(commits: 4c9adfc line → band replacement; confirmed in-game 2026-07-13)*
+- [x] **D5** — Auto-craft + counter-presence headless assertions, `hud.py` HBox/
   element/band unit tests, and the guard tests all pass; HUD goldens re-recorded
   (bands + one-hue colours + planks-level BRIDGE counter) and reviewed; Daniel confirms
-  the behaviour in-game. *(commit: d732007)*
+  the behaviour in-game. *(commit: d732007; confirmed in-game 2026-07-13)*
