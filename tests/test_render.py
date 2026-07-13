@@ -69,17 +69,9 @@ def _keys_level(colours):
     return lvl
 
 
-def test_shot_inventory():
-    """Inventory/crafting screen over the showcase fixture.
-
-    Holds three keys so the golden covers the counter-free Keys section
-    (spec 0071 D1): keys are unique per colour, so no ×N is drawn.
-    """
-    with Harness(level_dict=_keys_level(('red', 'cyan', 'orange')), seed=42) as h:
-        for c in ('red', 'cyan', 'orange'):
-            h.game.inventory.add_key(c)
-        h.run(['wait:2', 'key:tab', 'wait:2'])
-        _shot('inventory', h)
+# NOTE: the inventory/crafting overlay is disabled in the tester build
+# (spec 0073 D5, ENABLE_INVENTORY_MENU=False), so there is no inventory
+# screenshot golden. See tests/test_tester_gating.py for the TAB-disabled test.
 
 
 def test_shot_hud_keys():

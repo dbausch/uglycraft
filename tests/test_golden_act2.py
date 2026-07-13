@@ -55,15 +55,11 @@ def test_water_bridge():
     advancing on pickup."""
     with Harness(level_dict=fx.water_level(), seed=42) as h:
         trace = h.run([
-            'hold:left:40',                  # collect both planks
-            'key:tab', 'wait:2',             # open inventory
-            'key:down', 'wait:2',            # cursor -> Bridge recipe
-            'key:return', 'wait:2',          # craft
-            'key:tab', 'wait:2',             # close inventory
-            'hold:right:100', 'wait:10'])    # bump water, cross, treasure
+            'hold:left:40',                  # collect both planks -> 1 bridge credit
+            'hold:right:100', 'wait:10'])    # bump water (auto-bridge), cross, treasure
     keys = _sound_keys(trace)
-    assert 'credit' in keys                  # craft success sound
-    assert 'place_block' in keys              # bridge built
+    assert 'credit' in keys                  # 2nd plank banks a bridge credit
+    assert 'place_block' in keys             # bridge built (place_block sound)
     assert 'entrance_open' in keys           # last treasure -> entrance opens
     assert_golden('act2_water', trace)
 

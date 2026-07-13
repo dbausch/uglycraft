@@ -357,7 +357,10 @@ class Game:
                 self.world.buy_shield()
             elif k == pygame.K_SPACE:
                 self.world.place()
-            elif k == pygame.K_TAB and self.crafting:
+            elif k == pygame.K_TAB and self.crafting and ENABLE_INVENTORY_MENU:
+                # Inventory/crafting menu is disabled for the tester build
+                # (spec 0073 D5); the INVENTORY state + _render_inventory stay
+                # dormant for when the economy is finished.
                 self.state = INVENTORY
                 self._inv_cursor = 0
                 self.sounds.pause_music()

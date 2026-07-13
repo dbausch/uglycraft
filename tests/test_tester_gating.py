@@ -3,9 +3,13 @@
 D4: no scrap metal in generated levels (ENABLE_METAL is False).
 D5: the inventory / crafting menu is fully disabled (ENABLE_INVENTORY_MENU).
 """
+import pygame
+
 import levels
 from levels import ACT2_FEATURE_SETS
 from crafting import MAT_METAL
+from tests import act2_fixtures as fx
+from tests.harness import Harness
 
 
 # ── D4: metal gate ────────────────────────────────────────────────────────────
@@ -43,3 +47,17 @@ def test_generated_levels_have_ample_rubble():
         rubble = sum(1 for room in d['rooms'].values()
                      for m in room.get('materials', []) if m[2] == 'rocks')
         assert rubble >= 6, f'level {lvl} had only {rubble} rubble'
+
+
+# ── D5: inventory / crafting menu disabled ────────────────────────────────────
+
+def test_tab_does_not_open_inventory_menu():
+    """With ENABLE_INVENTORY_MENU=False, pressing TAB while playing does not
+    enter the INVENTORY state (the overlay is never shown)."""
+    from game import PLAYING, INVENTORY
+    with Harness(level_dict=fx.showcase_level(), seed=42) as h:
+        h.run(['wait:2'])
+        assert h.game.state == PLAYING
+        h.run(['key:tab', 'wait:1'])
+        assert h.game.state == PLAYING          # TAB ignored
+        assert h.game.state != INVENTORY
