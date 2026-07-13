@@ -25,3 +25,21 @@ def test_generated_levels_drop_no_metal():
         for room in d['rooms'].values():
             assert all(m[2] != 'metal' for m in room.get('materials', [])), \
                 f'metal found in generated level {lvl}'
+
+
+# ── D3: more rubble ───────────────────────────────────────────────────────────
+
+def test_rubble_budget_boosted():
+    """Every feature set's rubble floor is raised (was 4–10 before D3)."""
+    assert all(fs['material_count'][0] >= 8 for fs in ACT2_FEATURE_SETS)
+
+
+def test_generated_levels_have_ample_rubble():
+    """Since blocks are earned from rubble (2 = 1) and breakable walls are
+    scarce, generated levels carry plenty of it."""
+    levels.set_game_seed(2024)
+    for lvl in (11, 15, 20):
+        d = levels.regenerate_level(lvl)
+        rubble = sum(1 for room in d['rooms'].values()
+                     for m in room.get('materials', []) if m[2] == 'rocks')
+        assert rubble >= 6, f'level {lvl} had only {rubble} rubble'

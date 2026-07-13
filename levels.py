@@ -202,6 +202,12 @@ from levellayout import build_level_dict, LayoutError
 from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
 
 
+# Multiplier on every feature set's material_count (spec 0073 D3). Blocks are
+# earned from rubble (2 rubble = 1 block); breakable walls are scarce, so the
+# level needs plenty of rubble. Playtest-tuned.
+RUBBLE_BUDGET_SCALE = 2.0
+
+
 def _act2_feature_sets():
     sets = [
         # Level 11: 1 grid — open + breakable only
@@ -344,6 +350,13 @@ def _act2_feature_sets():
         for fs in sets:
             fs['material_types'] = [m for m in fs['material_types']
                                     if m != MAT_METAL]
+    # More rubble (spec 0073 D3): blocks are earned from rubble (2 = 1 block)
+    # and there are few breakable walls to mine, so scale up the material budget
+    # (all of which is rubble once metal is gated). Multiplier is playtest-tuned.
+    for fs in sets:
+        lo, hi = fs['material_count']
+        fs['material_count'] = (round(lo * RUBBLE_BUDGET_SCALE),
+                                round(hi * RUBBLE_BUDGET_SCALE))
     return sets
 
 
