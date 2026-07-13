@@ -452,21 +452,21 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
 - [ ] **D1** — `Inventory.can_quick_bridge()`/`quick_bridge()` added; water-bump
   auto-crafts a bridge from 2 planks (menu-free), spending raw planks first and
   falling back to a crafted bridge (mirroring `quick_place_wall`); all bridge guards
-  intact; no plank spent on a rejected placement. *(commit: ____)*
+  intact; no plank spent on a rejected placement. *(commit: bc151ce)*
 - [ ] **D2** — `World._level_has_planks` computed at load and delegated; `BRIDGE N.`
   counter (= `planks//2` buildable, `.` for an odd plank) renders left of WALLS only
   on planks levels, omitted (space redistributed) otherwise; never reflows during
-  play. *(commit: ____)*
+  play. *(commit: ac86c96)*
 - [ ] **D3** — HUD redesigned as an OO HBox in `hud.py` (`HudElement`/`LabelValue`/
   `IconStrip`/`HBox`); `_render_hud` builds an element list + one `HBox.blit`; the
   `imgs.insert(<magic index>)` splice is gone; HUD output byte-identical for
   plankless/keyless levels (existing goldens pass unchanged **at this commit**);
-  `hud.py` unit tests pass. *(commit: ____)*
+  `hud.py` unit tests pass. *(commit: fbbbe45)*
 - [ ] **D4** — `HBox` draws a 1 px `HUD_SEP` line vertically centred in each of the
   `n-1` inter-element gaps (opt-in via `sep_color`, none in the outer margins, none
   in gaps narrower than `sep_min`); `HUD_SEP` added to `constants.py`; separator unit
-  tests pass; HUD goldens re-recorded and reviewed. *(commit: ____)*
+  tests pass; HUD goldens re-recorded and reviewed. *(commit: 4c9adfc)*
 - [ ] **D5** — Auto-craft + counter-presence headless assertions, `hud.py` HBox/
   element/separator unit tests, and the guard tests all pass; HUD goldens re-recorded
   (separators + planks-level BRIDGE counter) and reviewed; Daniel confirms the
-  behaviour in-game. *(commit: ____)*
+  behaviour in-game. *(commit: d732007)*
