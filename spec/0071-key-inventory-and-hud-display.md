@@ -8,7 +8,7 @@ looked wrong").
 
 ## Status checklist
 
-- [ ] **D1** — Inventory Keys section drops the `×N` counter; each held key is
+- [x] **D1** — Inventory Keys section drops the `×N` counter; each held key is
   shown as `[icon] Name` only (no count column, no leftover gap).
 - [ ] **D2** — Display-bug follow-up: confirm the key inventory now renders
   correctly (Daniel: the earlier "looked wrong" was most likely an artifact of a
@@ -191,8 +191,8 @@ re-record them and review the pixel diff intentionally.
 
 ## Done when:
 
-- [ ] **D1** — Inventory Keys section renders `[icon] Name` with no `×N` and no
-  leftover column gap; Materials counters unchanged. *(commit: ____)*
+- [x] **D1** — Inventory Keys section renders `[icon] Name` with no `×N` and no
+  leftover column gap; Materials counters unchanged. *(commit: 041e394)*
 - [ ] **D2** — `kb/findings.md` records the "key inventory looked wrong" report as
   resolved (artifact of an already-fixed defect; D1 removes the last cosmetic
   wart); key-rendering sanity checks pass. *(commit: ____)*
