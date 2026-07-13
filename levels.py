@@ -9,7 +9,7 @@ HARD uses all of them (1 enemy for levels 1-3, 2 for 4-6, 3 for 7-9).
 Act 2 levels (11+) are generated lazily from graph-based feature sets on first
 access via get_level(); see the Act 2 section below (spec 0028 / BL-11).
 """
-from constants import COLS, ROWS
+from constants import COLS, ROWS, ENABLE_METAL
 
 
 def _hwall(x1, x2, y):
@@ -203,7 +203,7 @@ from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
 
 
 def _act2_feature_sets():
-    return [
+    sets = [
         # Level 11: 1 grid — open + breakable only
         {
             'room_count': (2, 4),
@@ -337,6 +337,14 @@ def _act2_feature_sets():
             'grid_count': 10,
         },
     ]
+    # Tester-build gating (spec 0073): drop scrap-metal drops when disabled.
+    # add_materials splits material_count across the (non-plank) types, so with
+    # metal removed the whole budget becomes rubble — which feeds block credits.
+    if not ENABLE_METAL:
+        for fs in sets:
+            fs['material_types'] = [m for m in fs['material_types']
+                                    if m != MAT_METAL]
+    return sets
 
 
 _ACT1_COUNT = len(LEVELS)

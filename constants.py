@@ -56,6 +56,11 @@ WALL_BUMPS = {
 # it, so it survives the per-tick relatch and only start_level clears it.
 ENTRANCE_CHANNEL = '__entrance__'
 
+# ── Feature gating (spec 0073, BL-26): tester-build toggles ──────────────────
+# Flip these back to True when the inventory / metal economy is finished later.
+ENABLE_METAL          = False   # scrap-metal drops in generated levels
+ENABLE_INVENTORY_MENU = False   # the TAB inventory / crafting overlay
+
 # ── Act 2 constants ──────────────────────────────────────────────────────────
 ACT2_START_LEVEL = 11
 ACT2_BASE_MOVE_MS  = 80
