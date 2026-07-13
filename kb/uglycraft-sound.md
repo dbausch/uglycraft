@@ -51,7 +51,7 @@ Music occupies channel 0 exclusively; SFX use channels 1+.
 | `break` | Wall destroyed (3rd hit) |
 | `collect` | Treasure picked up |
 | `credit` | Wall-break credit earned |
-| `place_wall` | Player places a wall |
+| `place_block` | Player places a block |
 | `shield_buy` | Shield purchased (Enter) |
 | `shield_expire` | Shield timer reaches 0 |
 | `caught_shield` | Caught while shielded |

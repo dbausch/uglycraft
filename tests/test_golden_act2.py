@@ -63,7 +63,7 @@ def test_water_bridge():
             'hold:right:100', 'wait:10'])    # bump water, cross, treasure
     keys = _sound_keys(trace)
     assert 'credit' in keys                  # craft success sound
-    assert 'place_wall' in keys              # bridge built
+    assert 'place_block' in keys              # bridge built
     assert 'entrance_open' in keys           # last treasure -> entrance opens
     assert_golden('act2_water', trace)
 
@@ -111,9 +111,9 @@ def test_room_transition_persistence():
     assert_golden('act2_transition', trace)
 
 
-def test_forge_ogre_breaks_placed_wall():
+def test_forge_ogre_breaks_placed_block():
     """Seal the ogre pocket with a placed stone wall; the ogre breaks it
-    in 2 hits (wall_bump_power)."""
+    in 2 hits (block_bump_power)."""
     with Harness(level_dict=fx.forge_level(), seed=42) as h:
         h.game.inventory.add_material('rocks', 3)
         trace = h.run(['key:left', 'wait:2',     # step to (10,8)
@@ -121,7 +121,7 @@ def test_forge_ogre_breaks_placed_wall():
                        'hold:right:10',          # retreat
                        'wait:60'])               # ogre hits twice -> break
     keys = _sound_keys(trace)
-    assert 'place_wall' in keys
+    assert 'place_block' in keys
     assert 'break' in keys                   # ogre destroyed the wall
     assert not list(h.game.cells.barriers('placed'))
     assert_golden('act2_forge', trace)

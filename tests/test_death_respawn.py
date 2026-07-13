@@ -16,7 +16,7 @@ import world as world_mod
 from world import World
 from constants import COLS, ROWS
 from cells import Barrier
-from crafting import CRAFT_STONE_WALL
+from crafting import CRAFT_BLOCK
 from tests import act2_fixtures as fx
 
 KEY = 7
@@ -158,36 +158,36 @@ def test_anti_trap_sealed_home_relocates_into_reachable():
 
 # ── BL-51: no crafting on the respawn tile ────────────────────────────────────
 
-def test_no_wall_placed_on_respawn_tile_act1():
+def test_no_block_placed_on_respawn_tile_act1():
     w, orig = _world(_act1(player=(1, 7)))
     try:
-        w._place_credits = 1
+        w._block_credits = 1
         w.player.col, w.player.row = 1, 7             # standing on the respawn tile
         w.place()
         assert _kinds(w.drain_events()) == []         # nothing placed
         assert not w.blocked(1, 7)
-        assert w._place_credits == 1                  # credit not consumed
+        assert w._block_credits == 1                  # credit not consumed
 
         w.player.col, w.player.row = 3, 7             # control: elsewhere it works
         w.place()
-        assert 'wall_placed' in _kinds(w.drain_events())
+        assert 'block_placed' in _kinds(w.drain_events())
         assert w.blocked(3, 7)
     finally:
         _restore(orig)
 
 
-def test_no_wall_placed_on_respawn_tile_act2():
+def test_no_block_placed_on_respawn_tile_act2():
     level = fx._level({'main': fx._room(set(), tile_owner=fx._owner())},
                       player=(10, 8))
     w, orig = _world(level)
     try:
-        w.inventory.crafted[CRAFT_STONE_WALL] = 2
-        w.inventory.active_item = CRAFT_STONE_WALL
+        w.inventory.crafted[CRAFT_BLOCK] = 2
+        w.inventory.active_item = CRAFT_BLOCK
         w.player.col, w.player.row = 10, 8            # the respawn tile
         w.place()
         assert _kinds(w.drain_events()) == []
         assert not w.blocked(10, 8)
-        assert w.inventory.crafted[CRAFT_STONE_WALL] == 2   # item not consumed
+        assert w.inventory.crafted[CRAFT_BLOCK] == 2   # item not consumed
     finally:
         _restore(orig)
 

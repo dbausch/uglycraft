@@ -138,21 +138,21 @@ def _hud_labels(h):
 
 
 def test_hud_bridge_counter_present_on_planks_level():
-    """A level with planks exposes _level_has_planks and renders a BRIDGE
-    element immediately left of WALLS (spec 0072 D2)."""
+    """A level with planks exposes _level_has_planks and renders a BRIDGES
+    element immediately left of BLOCKS (spec 0072 D2)."""
     with Harness(level_dict=fx.water_level(), seed=42) as h:
         assert h.game._level_has_planks is True
         labels = _hud_labels(h)
-        assert 'BRIDGE' in labels
-        assert labels.index('BRIDGE') == labels.index('WALLS') - 1
+        assert 'BRIDGES' in labels
+        assert labels.index('BRIDGES') == labels.index('BLOCKS') - 1
 
 
 def test_hud_bridge_counter_absent_without_planks():
     """A plankless level (Act 1) sets _level_has_planks False and renders no
-    BRIDGE element, so the HBox redistributes the space (spec 0072 D2)."""
+    BRIDGES element, so the HBox redistributes the space (spec 0072 D2)."""
     with Harness(level=3, seed=1234) as h:
         assert h.game._level_has_planks is False
-        assert 'BRIDGE' not in _hud_labels(h)
+        assert 'BRIDGES' not in _hud_labels(h)
 
 
 def test_shot_hud_bridge():

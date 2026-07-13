@@ -238,14 +238,14 @@ def test_wooden_breaks_in_two_bumps():
         _restore(orig)
 
 
-def test_placed_wall_breaks_in_three_player_bumps():
+def test_placed_block_breaks_in_three_player_bumps():
     def make():
         level = fx._level({'main': fx._room({})}, player=(10, 8))
         level['crafting'] = False        # Act 1 credit placement mechanics
         return level
     w, orig = _world(make)
     try:
-        w._place_credits = 1
+        w._block_credits = 1
         w.player.col, w.player.row = (12, 8)   # off the respawn tile (spec 0067)
         w.place()                              # placed barrier under player
         w.drain_events()

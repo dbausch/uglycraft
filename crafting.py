@@ -43,7 +43,7 @@ TOOL_ICONS = {
 
 # ── Craftable item types ──────────────────────────────────────────────────────
 
-CRAFT_STONE_WALL   = 'stone_wall'
+CRAFT_BLOCK   = 'block'
 CRAFT_BRIDGE       = 'bridge'
 CRAFT_BELL         = 'bell'
 CRAFT_BARRICADE    = 'barricade'
@@ -51,7 +51,7 @@ CRAFT_PORTAL_PAIR  = 'portal_pair'
 CRAFT_COMPASS      = 'compass'
 
 CRAFT_NAMES = {
-    CRAFT_STONE_WALL:  'Stone Wall',
+    CRAFT_BLOCK:  'Block',
     CRAFT_BRIDGE:      'Bridge',
     CRAFT_BELL:        'Bell',
     CRAFT_BARRICADE:   'Barricade',
@@ -60,7 +60,7 @@ CRAFT_NAMES = {
 }
 
 CRAFT_ICONS = {
-    CRAFT_STONE_WALL:  'icon_stone_wall',
+    CRAFT_BLOCK:  'icon_block',
     CRAFT_BRIDGE:      'icon_bridge',
     CRAFT_BELL:        'icon_bell',
     CRAFT_BARRICADE:   'icon_barricade',
@@ -72,7 +72,7 @@ CRAFT_ICONS = {
 # Each recipe: (result, {material: count}, required_tool_or_None)
 
 RECIPES = [
-    (CRAFT_STONE_WALL,  {MAT_ROCKS: 3},                        None),
+    (CRAFT_BLOCK,  {MAT_ROCKS: 3},                        None),
     (CRAFT_BRIDGE,      {MAT_PLANKS: 2},                       None),
     (CRAFT_BELL,        {MAT_METAL: 3},                        TOOL_HAMMER),
     (CRAFT_BARRICADE,   {MAT_ROCKS: 2, MAT_PLANKS: 1},        TOOL_CHISEL),
@@ -125,7 +125,7 @@ class Inventory:
         self.tools = set()
         self.keys = {}  # {key_color: count}
         self.crafted = {}  # {craft_type: count}
-        self.active_item = CRAFT_STONE_WALL
+        self.active_item = CRAFT_BLOCK
 
     def add_material(self, mat_type, count=1):
         if mat_type in self.materials:
@@ -173,27 +173,27 @@ class Inventory:
             return True
         return False
 
-    def can_quick_place_wall(self):
+    def can_quick_place_block(self):
         """Check if we have enough rocks to auto-craft and place a stone wall."""
         return self.materials.get(MAT_ROCKS, 0) >= 3
 
-    def quick_place_wall(self):
+    def quick_place_block(self):
         """Auto-craft and consume a stone wall from rocks."""
-        if self.can_quick_place_wall():
+        if self.can_quick_place_block():
             self.materials[MAT_ROCKS] -= 3
             return True
-        if self.has_item(CRAFT_STONE_WALL):
-            return self.use_item(CRAFT_STONE_WALL)
+        if self.has_item(CRAFT_BLOCK):
+            return self.use_item(CRAFT_BLOCK)
         return False
 
     def can_quick_bridge(self):
         """Enough planks (or a pre-crafted bridge) to build a bridge in one
-        action — the bridge analogue of can_quick_place_wall (spec 0072 D1)."""
+        action — the bridge analogue of can_quick_place_block (spec 0072 D1)."""
         return self.materials.get(MAT_PLANKS, 0) >= 2 or self.has_item(CRAFT_BRIDGE)
 
     def quick_bridge(self):
         """Auto-craft and consume a bridge: spend 2 raw planks first, falling
-        back to a pre-crafted bridge (mirroring quick_place_wall)."""
+        back to a pre-crafted bridge (mirroring quick_place_block)."""
         if self.materials.get(MAT_PLANKS, 0) >= 2:
             self.materials[MAT_PLANKS] -= 2
             return True

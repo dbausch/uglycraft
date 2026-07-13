@@ -52,7 +52,7 @@ On `KEYDOWN`: registers `(now, now)` per key. Each update tick: movement fires i
 ## Wall Breaking / Placement System
 
 - `WALL_HITS_TO_BREAK = 3` bumps (by any direction key) destroys one inner wall
-- `BREAKS_PER_CREDIT = 2` walls destroyed earns 1 placement credit; counter (`_breaks_toward_credit`) carries over between levels
+- `HALVES_PER_CREDIT = 2` walls destroyed earns 1 placement credit; counter (`_block_halves`) carries over between levels
 - Wall state: bump damage lives on the wall's `Barrier.hits` (cells.py); a new level builds fresh barriers, so damage never carries over
 - Bump consumed: once a key bumps a wall, that key must be released before registering another bump. A successful move clears the consumed flag. Border cells can never be bumped.
 - Crack sprites: `crack1` at hit 1, `crack2` at hit 2, wall disappears at hit 3
@@ -138,15 +138,15 @@ change.
 **On level advance (`World.advance_level`, now triggered by walking out —
 spec 0066):**
 - `lives += 1`
-- `_place_credits += <count of 'placed' barriers in the current room>` — refund credits for remaining placed walls
+- `_block_credits += <count of 'placed' barriers in the current room>` — refund credits for remaining placed walls
 - `_bump_consumed.clear()`; barriers (and their damage) are rebuilt fresh for the new level
-- `_breaks_toward_credit` NOT reset (partial progress carries over)
+- `_block_halves` NOT reset (partial progress carries over)
 - Score carried over
 
 **On death (not game over):**
 - `score -= 500 (min 0)`, `lives -= 1`
 - Player repositioned to `player_start`; enemy BFS-respawned ≥ 8 tiles away
-- Level continues; walls (with their bump damage), `_place_credits`, and `item_no` all intact
+- Level continues; walls (with their bump damage), `_block_credits`, and `item_no` all intact
 
 ## Game State Machine
 

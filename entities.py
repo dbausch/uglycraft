@@ -135,7 +135,7 @@ class ForgeOgre(Enemy):
 
     def __init__(self, col, row):
         super().__init__(col, row)
-        self.wall_bump_power = 2  # breaks walls in 2 hits
+        self.block_bump_power = 2  # breaks walls in 2 hits
 
 
 class PatrolEnemy(Enemy):

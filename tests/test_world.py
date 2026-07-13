@@ -94,7 +94,7 @@ def test_bump_three_times_breaks_wall(act1):
         events += act1.drain_events()
     assert _kinds(events) == ['bumped', 'bumped', 'wall_broken']
     assert not act1.blocked(14, 7)
-    assert act1._breaks_toward_credit == 1
+    assert act1._block_halves == 1
 
     assert act1.try_move(*DIR_DOWN, KEY)     # walk through the gap
     assert (act1.player.col, act1.player.row) == (14, 7)
@@ -111,13 +111,13 @@ def test_bump_consumed_until_key_release(act1):
     assert act1.cells.barrier(14, 7).hits == 1
 
 
-def test_place_wall_costs_credit(act1):
-    act1._place_credits = 1
+def test_place_block_costs_credit(act1):
+    act1._block_credits = 1
     act1.player.col, act1.player.row = 14, 3   # off the respawn tile (spec 0067)
     c, r = act1.player.col, act1.player.row
     act1.place()
-    assert _kinds(act1.drain_events()) == ['wall_placed']
-    assert act1._place_credits == 0
+    assert _kinds(act1.drain_events()) == ['block_placed']
+    assert act1._block_credits == 0
     assert act1.blocked(c, r) and act1.cells.barrier(c, r).kind == 'placed'
 
     act1.place()                              # no credit left, on a wall
@@ -400,7 +400,7 @@ def test_auto_bridge_crafts_from_planks():
 
 def test_auto_bridge_spends_planks_before_crafted():
     """With both planks and a crafted bridge, raw planks are spent first
-    (mirroring quick_place_wall); the crafted bridge is untouched."""
+    (mirroring quick_place_block); the crafted bridge is untouched."""
     w, saved = _fixture(fx.water_level)
     try:
         w.inventory.crafted['bridge'] = 1

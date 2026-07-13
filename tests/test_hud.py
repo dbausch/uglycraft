@@ -55,11 +55,11 @@ def test_labelvalue_label_only_when_value_empty():
 def test_labelvalue_tail_block_adds_one_cell_and_paints_lower_half():
     f = _font()
     col = (255, 255, 255)
-    plain = LabelValue(f, "WALLS", " 0_", col)
-    block = LabelValue(f, "WALLS", " 0", col, tail_block=True)
+    plain = LabelValue(f, "BLOCKS", " 0_", col)
+    block = LabelValue(f, "BLOCKS", " 0", col, tail_block=True)
     adv = f.size('0')[0]
     # the block reserves one extra character cell of width
-    assert block.width == f.render(dash_fill("WALLS  0"), True, col).get_width() + adv
+    assert block.width == f.render(dash_fill("BLOCKS  0"), True, col).get_width() + adv
     # bottom row of the appended cell is painted, top row is not
     h = block.surface.get_height()
     bx = block.width - adv // 2

@@ -39,7 +39,7 @@ STARTING_LIVES  = 9
 SHIELD_COST_PTS    = 250
 SHIELD_DURATION_MS = 10_000  # shield lasts 10 seconds
 WALL_HITS_TO_BREAK = 3   # bumps required to destroy one inner wall
-BREAKS_PER_CREDIT  = 2   # walls to destroy to earn one placement credit
+HALVES_PER_CREDIT  = 2   # halves (a mined wall or a rubble/plank) per block/bridge credit
 
 # ── Wall types ───────────────────────────────────────────────────────────────
 WALL_STONE      = 'stone'       # breakable in 3 bumps (default, Act 1 + Act 2)

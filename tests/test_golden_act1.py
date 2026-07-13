@@ -51,7 +51,7 @@ def test_wall_break_and_place():
     keys = _sound_keys(trace)
     assert keys.count('break') == 2
     assert 'credit' in keys
-    assert 'place_wall' in keys
+    assert 'place_block' in keys
     assert_golden('act1_wallbreak_place', trace)
 
 

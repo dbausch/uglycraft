@@ -186,9 +186,9 @@ class Game:
         'bumped':          'bump',
         'wall_broken':     'break',
         'door_opened':     'break',
-        'bridge_built':    'place_wall',
+        'bridge_built':    'place_block',
         'credit_earned':   'credit',
-        'wall_placed':     'place_wall',
+        'block_placed':     'place_block',
         'collected':       'collect',
         'shield_bought':   'shield_buy',
         'shield_expired':  'shield_expire',
@@ -526,7 +526,7 @@ class Game:
                     if is_border(c, r):
                         self.surf.blit(sp['border_wall'], (x, y))
                     elif b is not None and b.kind == 'placed':
-                        self.surf.blit(sp['placed_wall'], (x, y))
+                        self.surf.blit(sp['placed_block'], (x, y))
                         if b.hits:
                             self.surf.blit(sp[f'crack{b.hits}'], (x, y))
                     else:
@@ -723,9 +723,9 @@ class Game:
         # same hue) rather than given a distinct colour.
         # WALLS: trailing "_" when the crushed-wall count is even (no half
         # credit banked), else a drawn lower-half block for half an earned
-        # credit (`_breaks_toward_credit > 0`, since BREAKS_PER_CREDIT == 2).
-        wall_color = HUD_TEXT if self._place_credits > 0 else HUD_DIM
-        walls_half = self._breaks_toward_credit > 0
+        # credit (`_block_halves > 0`, since HALVES_PER_CREDIT == 2).
+        wall_color = HUD_TEXT if self._block_credits > 0 else HUD_DIM
+        walls_half = self._block_halves > 0
 
         # Pad SEEK name to the longest treasure name so the slot never shifts.
         max_name = max(len(v) for v in TREASURE_NAMES.values())
@@ -776,11 +776,11 @@ class Game:
             bridge_half = bool(planks % 2)
             bridge_col = HUD_TEXT if buildable > 0 else HUD_DIM
             bridge_val = f"{buildable:>2}" if bridge_half else f"{buildable:>2}_"
-            elements.append(LabelValue(f, "BRIDGE", bridge_val, bridge_col,
+            elements.append(LabelValue(f, "BRIDGES", bridge_val, bridge_col,
                                        tail_block=bridge_half))
 
-        wall_val = f"{self._place_credits:>2}" if walls_half else f"{self._place_credits:>2}_"
-        elements.append(LabelValue(f, "WALLS", wall_val, wall_color,
+        wall_val = f"{self._block_credits:>2}" if walls_half else f"{self._block_credits:>2}_"
+        elements.append(LabelValue(f, "BLOCKS", wall_val, wall_color,
                                    tail_block=walls_half))
 
         HBox(LOGICAL_W, margin=10, gap_color=HUD_GAP).blit(
@@ -1065,7 +1065,7 @@ class Game:
         # Instructions — measure first, then centre the two-column block
         lines = [
             ("Arrow keys", "move  (bump a wall 3× to mine it)"),
-            ("Space",      "place wall  (costs 1 credit)"),
+            ("Space",      "place block  (costs 1 credit)"),
             ("Enter",      "buy shield  (250 pts, lasts 10 s)"),
             ("P",          "pause"),
         ]
@@ -1241,7 +1241,7 @@ _WORLD_ATTRS = (
     'move_ms', 'enemy_ms',
     'cells', 'blocked', 'channel', 'room',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
-    '_place_credits', '_breaks_toward_credit',
+    '_block_credits', '_block_halves',
     '_opened_doors', '_safe_tiles', '_level_key_colours', '_level_has_planks',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',

@@ -1095,7 +1095,7 @@ def _rotate_h(surf):
     return pygame.transform.rotate(surf, 90)
 
 
-def draw_placed_wall(size=TILE):
+def draw_placed_block(size=TILE):
     """Player-placed block — distinct from level walls"""
     s = _surf(size, alpha=False)
     s.fill((30, 30, 80))
@@ -1220,7 +1220,7 @@ def create_sprites():
         'wall':          draw_wall(),
         'wall_reinforced': draw_reinforced_wall(),
         'wall_wooden':   draw_wooden_wall(),
-        'placed_wall':   draw_placed_wall(),
+        'placed_block':   draw_placed_block(),
         'crack1':        draw_damage_cracks(1),
         'crack2':        draw_damage_cracks(2),
         'floor':         draw_floor(),
@@ -1250,7 +1250,7 @@ def create_sprites():
         'icon_planks':   _icon(draw_planks_pickup()),
         'icon_metal':    _icon(draw_metal_pickup()),
         'icon_crystal':  _icon(draw_crystal_pickup()),
-        'icon_stone_wall':  _icon(draw_placed_wall()),
+        'icon_block':  _icon(draw_placed_block()),
         'icon_bridge':      _icon(draw_craft_bridge_icon()),
         'icon_bell':        _icon(draw_craft_bell_icon()),
         'icon_barricade':   _icon(draw_craft_barricade_icon()),

@@ -10,7 +10,7 @@ byte-identical to the pre-split code (proven by the spec-0044 goldens).
 Event kinds (args in parentheses):
 
   moved, bumped, wall_broken, door_opened, bridge_built, credit_earned,
-  wall_placed, collected, shield_bought, shield_expired, caught,
+  block_placed, collected, shield_bought, shield_expired, caught,
   caught_shielded, item_relocated, boss_appeared      — sound triggers
   flash(ms)                                           — red damage flash
   level_advanced(n)                                   — level-up fanfare
@@ -28,7 +28,7 @@ from levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
 from entities import Player, Enemy, PatrolEnemy, ForgeOgre
 from rooms import Room, find_exit
-from crafting import Inventory, CRAFT_STONE_WALL, CRAFT_BRIDGE, KEY_NAMES, MAT_PLANKS
+from crafting import Inventory, CRAFT_BLOCK, CRAFT_BRIDGE, KEY_NAMES, MAT_PLANKS
 from cells import BARRIER_BUMP, Barrier, _exit_tiles
 
 NUM_LEVELS  = TOTAL_LEVELS
@@ -128,8 +128,8 @@ class World:
         self.move_ms      = BASE_MOVE_MS
         self.enemy_ms     = BASE_ENEMY_MS  # overridden to BOSS_MOVE_MS on level 10
         self.room = Room.placeholder()   # until the first room is entered
-        self._breaks_toward_credit    = 0    # leftover breaks toward next credit
-        self._place_credits = 0   # available wall placements
+        self._block_halves    = 0    # leftover breaks toward next credit
+        self._block_credits = 0   # available wall placements
         self._bump_consumed = set()  # direction keys that must be released before next bump
         self.inventory = Inventory()
         self.start_level(1)
@@ -259,10 +259,10 @@ class World:
     def _break_wall(self, col, row):
         self.cells.remove_barrier((col, row))
         self._emit('wall_broken')
-        self._breaks_toward_credit += 1
-        if self._breaks_toward_credit >= BREAKS_PER_CREDIT:
-            self._breaks_toward_credit -= BREAKS_PER_CREDIT
-            self._place_credits += 1
+        self._block_halves += 1
+        if self._block_halves >= HALVES_PER_CREDIT:
+            self._block_halves -= HALVES_PER_CREDIT
+            self._block_credits += 1
             self._emit('credit_earned')
 
     # ── Level setup ───────────────────────────────────────────────────────────
@@ -278,8 +278,8 @@ class World:
 
         # Refund one credit per placed wall being cleared (placed walls in
         # rooms other than the current one are not refunded — unchanged
-        # since the pre-0047 per-room _placed_walls had the same scope)
-        self._place_credits += sum(1 for _ in self.cells.barriers('placed'))
+        # since the pre-0047 per-room _placed_blocks had the same scope)
+        self._block_credits += sum(1 for _ in self.cells.barriers('placed'))
         self._bump_consumed.clear()
 
         self._rooms = {}         # visited rooms, by key (spec 0051)
@@ -663,7 +663,7 @@ class World:
         if self.crafting:
             self._act2_place()
         else:
-            self._place_wall()
+            self._place_block()
 
     def _is_respawn_tile(self, c, r):
         """The start room's player_start — where the player respawns on death
@@ -672,28 +672,28 @@ class World:
         return (self._current_room == self._level_data['start_room']
                 and (c, r) == tuple(self._level_data['player_start']))
 
-    def _place_wall(self):
+    def _place_block(self):
         c, r = self.player.col, self.player.row
-        if (self._place_credits > 0 and not self.blocked(c, r)
+        if (self._block_credits > 0 and not self.blocked(c, r)
                 and not self._is_respawn_tile(c, r)):
-            self._place_credits -= 1
+            self._block_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
-            self._emit('wall_placed')
+            self._emit('block_placed')
 
     def _act2_place(self):
         """SPACE in Act 2: place the active item."""
         c, r = self.player.col, self.player.row
         active = self.inventory.active_item
-        if active == CRAFT_STONE_WALL:
+        if active == CRAFT_BLOCK:
             if not self.blocked(c, r) and not self._is_respawn_tile(c, r):
-                if self.inventory.has_item(CRAFT_STONE_WALL):
-                    self.inventory.use_item(CRAFT_STONE_WALL)
-                elif self.inventory.can_quick_place_wall():
-                    self.inventory.quick_place_wall()
+                if self.inventory.has_item(CRAFT_BLOCK):
+                    self.inventory.use_item(CRAFT_BLOCK)
+                elif self.inventory.can_quick_place_block():
+                    self.inventory.quick_place_block()
                 else:
                     return
                 self.cells.set_barrier((c, r), Barrier('placed'))
-                self._emit('wall_placed')
+                self._emit('block_placed')
 
     def buy_shield(self):
         if not self.shield and self.score >= SHIELD_COST_PTS:
@@ -807,7 +807,7 @@ class World:
             b = self.cells.barrier(tc, tr)
             if b is not None and b.kind == 'placed':
                 hits = b.hits + 1
-                if hits >= enemy.wall_bump_power:
+                if hits >= enemy.block_bump_power:
                     self._break_wall(tc, tr)
                 else:
                     b.hits = hits

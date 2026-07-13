@@ -146,7 +146,7 @@ def _build_sfx(np) -> dict:
             buf[i*nd:(i+1)*nd] = _saturate(np, _fm(np, _hz(m), 2.756, 2.8, nd) * ev, 2.5)
         return _to_sound(np, buf)
 
-    def sfx_place_wall():
+    def sfx_place_block():
         n   = round(_RATE * 0.110)
         sig = _impact(np, rng, n, 0.50, 80.0, 0.40, noise_decay=30.0, tone_decay=5.5)
         return _to_sound(np, _saturate(np, sig, 5.5))
@@ -291,7 +291,7 @@ def _build_sfx(np) -> dict:
         'break':         sfx_break(),
         'collect':       sfx_collect(),
         'credit':        sfx_credit(),
-        'place_wall':    sfx_place_wall(),
+        'place_block':    sfx_place_block(),
         'shield_buy':    sfx_shield_buy(),
         'shield_expire': sfx_shield_expire(),
         'caught_shield': sfx_caught_shield(),
