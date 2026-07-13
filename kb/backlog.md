@@ -448,7 +448,7 @@ levels.
 
 ---
 
-## BL-26 · P2 · Gate unfinished crafting content behind constants (hide unused recipes/tools, disable rubble & scrap-metal drops)
+## BL-26 · P2 · Gate unfinished crafting content behind constants (hide unused recipes/tools, disable scrap-metal drops; rename user walls → BLOCKs)
 
 To present a clean "unfinished but nice" build for user testing, hide crafting
 content that has no gameplay yet. (1) Add constants to disable placing the
@@ -472,6 +472,29 @@ Crystal) feeds only unused recipes too — consider including it.
 **Note:** crafting a stone wall currently does not increment the wall counter, so
 it does not let the player place more walls (crafted stone walls and the
 placeable-wall counter are decoupled).
+
+**CLARIFICATIONS (Daniel, 2026-07-14).** The full spec is being written as
+`spec/0073` (or the next free number); these amend the scope above:
+
+1. **Rename user-built WALLs to BLOCKs throughout the game, including code.**
+   This covers the "WALLS" HUD counter, the `CRAFT_STONE_WALL` craftable, the
+   placed-wall sprite/colour, the place-credit vocabulary, and the related
+   events/sounds — everything referring to the *user-built* wall becomes
+   "block". This is ONLY the user-built walls: the level's own wall terrain
+   (`WALL_STONE` etc.) is NOT renamed.
+2. **Collecting rubble automatically earns HALF a BLOCK** (i.e. 2 rubble = 1
+   placeable block), reusing the existing half-credit "lower-half-block" HUD
+   indicator shipped in spec 0072.
+3. **Rubble stays — do NOT hide or remove it.** Rubble now feeds the
+   block-credit mechanic above, so it is intended content. Only METAL (scrap
+   metal, MAT_METAL) drops are hidden/disabled. This OVERRIDES the original
+   "disable rubble & scrap-metal drops" wording, which should now read
+   "disable scrap-metal (metal) drops only."
+
+The existing recipe/tool-hiding scope (Bell/Barricade/Portal Pair/Compass +
+Hammer/Chisel/Runestone) is unchanged, and the CAVEAT stands: MAT_ROCKS also
+feeds the Stone-Block path — which is now the intended path (via the half-block
+rubble credit above), no longer merely a used side effect to preserve.
 
 ---
 
