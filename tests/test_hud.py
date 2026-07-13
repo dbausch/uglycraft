@@ -7,7 +7,7 @@ pygame is initialised headlessly.
 import pygame
 
 from tests import harness  # noqa: F401  (side effect: headless pygame.init)
-from hud import HudElement, LabelValue, IconStrip, HBox
+from hud import HudElement, LabelValue, IconStrip, HBox, dash_fill
 
 
 def _font():
@@ -18,13 +18,27 @@ def _elt(w, h=20):
     return HudElement(pygame.Surface((w, h), pygame.SRCALPHA))
 
 
+# ── dash_fill (spec 0072) ─────────────────────────────────────────────────────
+
+def test_dash_fill_collapses_long_space_runs():
+    assert dash_fill("SCORE       0") == "SCORE -- 0"     # 7 spaces -> " -- "
+    assert dash_fill("LEVEL  1") == "LEVEL  1"            # exactly 2 -> unchanged
+    assert dash_fill("LEVEL 10") == "LEVEL 10"            # 1 space -> unchanged
+
+
+def test_dash_fill_trailing_space_becomes_dash():
+    # a trailing padding run collapses then the final space turns into a dash
+    assert dash_fill("SEEK: Coin      ") == "SEEK: Coin ---"
+    assert dash_fill("WALLS 3 ") == "WALLS 3-"            # lone trailing space
+
+
 # ── LabelValue ────────────────────────────────────────────────────────────────
 
-def test_labelvalue_width_matches_rendered_text():
+def test_labelvalue_applies_dash_fill():
     f = _font()
     col = (255, 255, 255)
-    lv = LabelValue(f, "SCORE", "  1234", col)
-    assert lv.width == f.render("SCORE   1234", True, col).get_width()
+    lv = LabelValue(f, "SCORE", "  1234", col)           # -> "SCORE -- 1234"
+    assert lv.width == f.render("SCORE -- 1234", True, col).get_width()
 
 
 def test_labelvalue_label_only_when_value_empty():
@@ -32,6 +46,21 @@ def test_labelvalue_label_only_when_value_empty():
     col = (255, 0, 255)
     lv = LabelValue(f, "BOSS", "", col)
     assert lv.width == f.render("BOSS", True, col).get_width()
+
+
+def test_labelvalue_tail_block_adds_one_cell_and_paints_lower_half():
+    f = _font()
+    col = (255, 255, 255)
+    plain = LabelValue(f, "WALLS", " 0_", col)
+    block = LabelValue(f, "WALLS", " 0", col, tail_block=True)
+    adv = f.size('0')[0]
+    # the block reserves one extra character cell of width
+    assert block.width == f.render(dash_fill("WALLS  0"), True, col).get_width() + adv
+    # bottom row of the appended cell is painted, top row is not
+    h = block.surface.get_height()
+    bx = block.width - adv // 2
+    assert block.surface.get_at((bx, h - 2))[:3] == col       # lower half filled
+    assert block.surface.get_at((bx, 1))[3] == 0              # upper half transparent
 
 
 # ── HBox even-gap layout ──────────────────────────────────────────────────────

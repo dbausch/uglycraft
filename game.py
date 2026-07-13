@@ -721,9 +721,11 @@ class Game:
         # One HUD text colour throughout (spec 0072): everything is HUD_TEXT;
         # inactive/empty counters are dimmed to HUD_DIM (a darker shade of the
         # same hue) rather than given a distinct colour.
-        # WALLS: fixed width with optional "." when half a credit has been mined.
+        # WALLS: trailing "_" when the crushed-wall count is even (no half
+        # credit banked), else a drawn lower-half block for half an earned
+        # credit (`_breaks_toward_credit > 0`, since BREAKS_PER_CREDIT == 2).
         wall_color = HUD_TEXT if self._place_credits > 0 else HUD_DIM
-        walls_dot = '.' if self._breaks_toward_credit > 0 else ' '
+        walls_half = self._breaks_toward_credit > 0
 
         # Pad SEEK name to the longest treasure name so the slot never shifts.
         max_name = max(len(v) for v in TREASURE_NAMES.values())
@@ -764,19 +766,22 @@ class Game:
         elements.append(LabelValue(f, "SHIELD", shield_val, shield_col))
 
         # BRIDGE: buildable bridges from carried planks (2 planks = 1 bridge),
-        # plus any pre-crafted bridge; a trailing "." marks one odd plank (half
-        # a bridge banked), mirroring WALLS. Shown only on plank-bearing levels
-        # (spec 0072 D2); omitted elsewhere and the HBox redistributes the space.
+        # plus any pre-crafted bridge; trailing "_" for an even plank count,
+        # else a drawn lower-half block for the odd plank (half a bridge banked),
+        # mirroring WALLS. Shown only on plank-bearing levels (spec 0072 D2);
+        # omitted elsewhere and the HBox redistributes the space.
         if self._level_has_planks:
             planks = self.inventory.materials.get(MAT_PLANKS, 0)
             buildable = self.inventory.crafted.get(CRAFT_BRIDGE, 0) + planks // 2
-            bridge_dot = '.' if planks % 2 else ' '
+            bridge_half = bool(planks % 2)
             bridge_col = HUD_TEXT if buildable > 0 else HUD_DIM
-            elements.append(LabelValue(f, "BRIDGE",
-                                       f"{buildable:>2}{bridge_dot}", bridge_col))
+            bridge_val = f"{buildable:>2}" if bridge_half else f"{buildable:>2}_"
+            elements.append(LabelValue(f, "BRIDGE", bridge_val, bridge_col,
+                                       tail_block=bridge_half))
 
-        elements.append(LabelValue(f, "WALLS",
-                                   f"{self._place_credits:>2}{walls_dot}", wall_color))
+        wall_val = f"{self._place_credits:>2}" if walls_half else f"{self._place_credits:>2}_"
+        elements.append(LabelValue(f, "WALLS", wall_val, wall_color,
+                                   tail_block=walls_half))
 
         HBox(LOGICAL_W, margin=10, gap_color=HUD_GAP).blit(
             self.surf, elements, hud_y, STATUS_H)

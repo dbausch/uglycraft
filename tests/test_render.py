@@ -125,9 +125,9 @@ def _hud_labels(h):
     captured = []
     orig = game_mod.LabelValue
 
-    def spy(font, label, value="", color=None):
+    def spy(font, label, value="", color=None, **kw):
         captured.append(label)
-        return orig(font, label, value, color)
+        return orig(font, label, value, color, **kw)
 
     game_mod.LabelValue = spy
     try:

@@ -11,9 +11,24 @@ Everything here is presentation (pygame) code, parallel to ``sprites.py``.
 key tracker; conditional elements are simply omitted from the element list
 handed to the box — there is no ``None`` sentinel and no magic index.
 """
+import re
+
 import pygame
 
 from constants import HUD_TEXT
+
+_SPACE_RUN = re.compile(r' {3,}')
+
+
+def dash_fill(s):
+    """Tidy a HUD string (spec 0072): collapse any run of >2 spaces to a
+    " -- " dash leader, then if the string still ends in a space turn that
+    trailing space into a dash too. Keeps label and right-justified value
+    visually linked and avoids wide blank gaps inside an element."""
+    s = _SPACE_RUN.sub(' -- ', s)
+    if s.endswith(' '):
+        s = s[:-1] + '-'
+    return s
 
 
 class HudElement:
@@ -38,14 +53,28 @@ class HudElement:
 class LabelValue(HudElement):
     """The dominant ``LABEL value`` element (single colour).
 
-    Renders ``f"{label} {value}"``, or just ``label`` when ``value`` is "".
-    Fixed-width value padding (fields that must not reflow) stays the caller's
-    responsibility via format strings, exactly as the old HUD did.
+    Renders ``f"{label} {value}"`` (tidied by :func:`dash_fill`), or just
+    ``label`` when ``value`` is "". Fixed-width value padding stays the caller's
+    responsibility via format strings.
+
+    ``tail_block`` appends a drawn **lower-half block** one character wide after
+    the text — the HUD font has no block-drawing glyph, so it is rendered as a
+    filled rectangle in the lower half of the line (spec 0072: half an earned
+    credit / half a bridge).
     """
 
-    def __init__(self, font, label, value="", color=HUD_TEXT):
-        text = f"{label} {value}" if value != "" else label
-        super().__init__(font.render(text, True, color))
+    def __init__(self, font, label, value="", color=HUD_TEXT, tail_block=False):
+        text = dash_fill(f"{label} {value}" if value != "" else label)
+        surf = font.render(text, True, color)
+        if tail_block:
+            adv = font.size('0')[0]
+            h = surf.get_height()
+            comp = pygame.Surface((surf.get_width() + adv, h), pygame.SRCALPHA)
+            comp.blit(surf, (0, 0))
+            pygame.draw.rect(comp, color,
+                             (surf.get_width() + 1, h // 2, adv - 2, h - h // 2))
+            surf = comp
+        super().__init__(surf)
 
 
 class IconStrip(HudElement):

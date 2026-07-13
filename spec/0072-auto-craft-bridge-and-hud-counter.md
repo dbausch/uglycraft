@@ -448,7 +448,7 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
 
 ## Post-approval refinements (2026-07-13)
 
-Three visual adjustments made after the initial implementation, each on Daniel's
+Visual adjustments made after the initial implementation, each on Daniel's
 direction; the KB (`kb/uglycraft-display.md`) reflects the final state.
 
 - **Dim SHIELD placeholder** *(commit `f0b3019`)* — the always-reserved SHIELD slot was
@@ -458,14 +458,19 @@ direction; the KB (`kb/uglycraft-display.md`) reflects the final state.
 - **One HUD text colour** *(commit `ce1f53b`)* — the HUD mixed seven text colours.
   Collapsed to a single hue: all text is `HUD_TEXT`, and inactive/empty counters
   (`SHIELD --`, `WALLS 0`, `BRIDGE 0`) use `HUD_DIM = (115,92,48)`, a darker shade of the
-  same hue. Key icons keep their colours. Partial WALLS/BRIDGE state is now shown by the
-  `.` dot alone.
-- **Gap band instead of line** *(commits `9d350cf`, tuned in a follow-up)* — the 1 px
-  line read as too noisy. Replaced with a full-HUD-height background band filling each
-  inter-element gap, `HUD_GAP = (18,18,26)` (`HUD_BG` ×1.1, 10 % brighter), inset
-  `gap_inset = 6` px from the flanking elements (like the old line), drawn behind the
-  elements and never in the outer margins. `HBox.gap_color`/`gap_inset` supersede the
-  line params.
+  same hue. Key icons keep their colours.
+- **Gap band instead of line** *(commits `9d350cf`, then tuned)* — the 1 px line read as
+  too noisy. Replaced with a full-HUD-height background band filling each inter-element
+  gap, `HUD_GAP = (24,24,36)` (`HUD_BG` ×1.5, 50 % brighter — 1.1× was invisible on the
+  near-black background), inset `gap_inset = 6` px from the flanking elements (like the
+  old line), drawn behind the elements and never in the outer margins.
+  `HBox.gap_color`/`gap_inset` supersede the line params.
+- **Dash leaders + drawn tail indicators** — `hud.dash_fill` tidies every HUD string:
+  a run of > 2 spaces collapses to a `" -- "` leader (`SCORE -- 0`) and a trailing space
+  becomes a `-` (`SEEK: Coin ---`), keeping right-justified values linked to their labels
+  and preserving reserved widths. The WALLS/BRIDGE trailing indicator is now `_` for an
+  even count (whole) and a **drawn** lower-half block for a half (`LabelValue(tail_block=
+  True)`) — the HUD font has no block glyph — replacing the earlier `.` dot.
 
 ## Done when:
 
