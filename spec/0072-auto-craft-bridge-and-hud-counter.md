@@ -40,10 +40,9 @@ readability tweak the user asked for while handling BL-28:
   that even-distributes leftover space across `n-1` gaps. Conditional elements are
   omitted from the list (no `None` sentinel, no `imgs.insert(<magic index>)`). HUD
   output is pixel-identical to before for levels without planks.
-- [ ] **D4** — Subtle gap separators: the HBox draws a 1 px, medium-brightness
-  horizontal line vertically centred in each of the `n-1` inter-element gaps (never
-  in the outer margins), so right-justified values read against their own label. A
-  deliberate visual change — existing HUD goldens are re-recorded here.
+- [ ] **D4** — Subtle gap separation between HUD elements (see *Post-approval
+  refinements*: shipped as a full-height brighter background band, not a line), never
+  in the outer margins. A deliberate visual change — HUD goldens re-recorded here.
 - [ ] **D5** — Verification: headless assertions for the auto-craft path and the
   counter's per-level presence/width; `hud.py` HBox/element/separator unit tests;
   HUD screenshot goldens re-recorded (separators + planks-level BRIDGE counter) and
@@ -443,9 +442,28 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
 - **HUD engineering** — object-oriented HBox in a new `hud.py`: `HudElement` reports
   its tight width, `HBox` distributes slack across the `n-1` gaps, `LabelValue` is the
   reusable `label:value` element. Confirmed by Daniel 2026-07-13.
-- **Gap separators** — a faint 1 px medium-brightness horizontal rule, vertically
-  centred in each inter-element gap, to anchor right-justified values to their labels.
-  Requested by Daniel 2026-07-13; geometry/params to confirm at spec review.
+- **Gap separators** — subtle separation between inter-element gaps to anchor
+  right-justified values to their labels. Requested by Daniel 2026-07-13. First shipped
+  as a 1 px line (commit `4c9adfc`); see *Post-approval refinements* for the final form.
+
+## Post-approval refinements (2026-07-13)
+
+Three visual adjustments made after the initial implementation, each on Daniel's
+direction; the KB (`kb/uglycraft-display.md`) reflects the final state.
+
+- **Dim SHIELD placeholder** *(commit `f0b3019`)* — the always-reserved SHIELD slot was
+  drawn invisibly (`HUD_BG`) when inactive; the gap separator bracketed it into a
+  conspicuous empty compartment. Now rendered as a dim `SHIELD --` placeholder (same
+  fixed width, still no reflow) so the slot is a real subtle label.
+- **One HUD text colour** *(commit `ce1f53b`)* — the HUD mixed seven text colours.
+  Collapsed to a single hue: all text is `HUD_TEXT`, and inactive/empty counters
+  (`SHIELD --`, `WALLS 0`, `BRIDGE 0`) use `HUD_DIM = (115,92,48)`, a darker shade of the
+  same hue. Key icons keep their colours. Partial WALLS/BRIDGE state is now shown by the
+  `.` dot alone.
+- **Gap band instead of line** *(commit `9d350cf`)* — the 1 px line read as too noisy.
+  Replaced with a full-HUD-height background band filling each inter-element gap,
+  `HUD_GAP = (41,41,49)` (≈ 10 % brighter than `HUD_BG`), drawn behind the elements and
+  never in the outer margins. `HBox.gap_color` supersedes the line params.
 
 ## Done when:
 
@@ -462,11 +480,11 @@ No general gameplay suite; use the headless `Harness` + screenshot goldens
   `imgs.insert(<magic index>)` splice is gone; HUD output byte-identical for
   plankless/keyless levels (existing goldens pass unchanged **at this commit**);
   `hud.py` unit tests pass. *(commit: fbbbe45)*
-- [ ] **D4** — `HBox` draws a 1 px `HUD_SEP` line vertically centred in each of the
-  `n-1` inter-element gaps (opt-in via `sep_color`, none in the outer margins, none
-  in gaps narrower than `sep_min`); `HUD_SEP` added to `constants.py`; separator unit
-  tests pass; HUD goldens re-recorded and reviewed. *(commit: 4c9adfc)*
+- [ ] **D4** — `HBox` separates the `n-1` inter-element gaps (opt-in via `gap_color`,
+  never in the outer margins); shipped as a full-height `HUD_GAP` band rather than a
+  line (see *Post-approval refinements*); band unit tests pass; HUD goldens re-recorded
+  and reviewed. *(commits: 4c9adfc line → band replacement)*
 - [ ] **D5** — Auto-craft + counter-presence headless assertions, `hud.py` HBox/
-  element/separator unit tests, and the guard tests all pass; HUD goldens re-recorded
-  (separators + planks-level BRIDGE counter) and reviewed; Daniel confirms the
-  behaviour in-game. *(commit: d732007)*
+  element/band unit tests, and the guard tests all pass; HUD goldens re-recorded
+  (bands + one-hue colours + planks-level BRIDGE counter) and reviewed; Daniel confirms
+  the behaviour in-game. *(commit: d732007)*

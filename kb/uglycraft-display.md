@@ -33,19 +33,21 @@ tracker is an `IconStrip`. **Conditional elements are simply omitted from the li
 (no `None` sentinel, no magic index) — this replaced the old `(text,colour)`-tuple
 list + `imgs.insert(4, strip)` splice. Element order:
 
+**One text colour throughout (spec 0072):** every HUD text element is `HUD_TEXT`; inactive/empty counters (`SHIELD --`, `WALLS 0`, `BRIDGE 0`) use `HUD_DIM = (115,92,48)`, a darker shade of the *same* hue, so active vs inactive still reads at a glance without a second colour. The seven old colours (`HUD_LIFE`/`GOLD`/`MAGENTA`/`RED`/`LTBLUE`/`LTGREEN`/`YELLOW`) are gone from the HUD; partial WALLS/BRIDGE state is conveyed by the `.` dot alone. Key **icons** keep their own colours (they are icons, not text).
+
 1. `SCORE NNNNNNN` (7-char right-padded score)
 2. `LEVEL  N` (2-char right-padded level)
-3. `LIVES  N` (red)
-4. `SEEK: name` (padded to longest treasure name) — or `LOOT c/t` (gold) in `preplaced` spawn mode
+3. `LIVES  N`
+4. `SEEK: name` (padded to longest treasure name) — or `LOOT c/t` in `preplaced` spawn mode
 5. **Key tracker** (spec 0071 `_key_strip_element` → `IconStrip`): one 20 px slot (`_KEY_SLOT=23`) per key colour **present in the current level** — `World._level_key_colours`, the union of `data['rooms'][*]['keys']` colours ordered by `KEY_NAMES`, exposed to `game.py` via `_WORLD_ATTRS` delegation. Each slot draws `icon_key_{colour}` **lit** when held and **ghosted** (~15 % opacity, `_KEY_GHOST_ALPHA=38` via `icon.fill((255,255,255,38), BLEND_RGBA_MULT)` on a copy — the icons carry per-pixel alpha, so `set_alpha` is ignored). The colour set is fixed for the level, so the strip width is constant and the HUD never reflows during play; it differs only between levels. Keys are consumed on door-open, so a used key reverts from lit to ghosted. **A level with no keys omits the strip entirely** (`_key_strip_element()` returns `None` → not added to the HBox), and the space is redistributed.
-6. `BOSS` (magenta) or `HARD` (red) or nothing (easy non-boss shows nothing)
-7. `SHIELD XX` (blue, active) or `SHIELD --` (dim GRAY placeholder, inactive) — 9 chars, always present so the layout never shifts when a shield is gained/lost. (Was rendered invisibly in `HUD_BG` before spec 0072 D4; the gap separators made a blank reserved slot look like an empty element, so it now shows a dim placeholder — chosen over merging/omitting the separator there.)
-8. **BRIDGE counter** (spec 0072 D2): shown **only when the level contains planks** (`World._level_has_planks`, computed at level load), immediately left of WALLS; omitted (space redistributed) on plankless levels. Value = buildable bridges (`planks // 2` plus any pre-crafted bridge); trailing `.` for one odd leftover plank (half a bridge banked). Colour parallels WALLS: LTGREEN if ≥ 1 buildable, YELLOW if only a half banked, else GRAY.
-9. `WALLS  N.` (dot if `_breaks_toward_credit > 0`; colour: LTGREEN if credits > 0, YELLOW if partial progress, GRAY otherwise)
+6. `BOSS` or `HARD` or nothing (easy non-boss shows nothing)
+7. `SHIELD XX` (active) or `SHIELD --` (dim `HUD_DIM` placeholder, inactive) — 9 chars, always present so the layout never shifts when a shield is gained/lost. (Was rendered invisibly in `HUD_BG` before spec 0072 D4; the gap band made a blank reserved slot look like an empty element, so it now shows a dim placeholder — chosen over merging/omitting the separator there.)
+8. **BRIDGE counter** (spec 0072 D2): shown **only when the level contains planks** (`World._level_has_planks`, computed at level load), immediately left of WALLS; omitted (space redistributed) on plankless levels. Value = buildable bridges (`planks // 2` plus any pre-crafted bridge); trailing `.` for one odd leftover plank (half a bridge banked). `HUD_TEXT` when ≥ 1 buildable, else `HUD_DIM`.
+9. `WALLS  N.` (dot if `_breaks_toward_credit > 0`; `HUD_TEXT` if credits > 0, else `HUD_DIM`)
 
 Each element is vertically centred by its own height (`cy = top + (STATUS_H - img.height)//2`), so the 20 px key strip and the shorter text share a common centre line. Keys are unique per colour (`levelgraph.py:441` distinct-colour pool), so neither the HUD nor the inventory shows a count next to a key.
 
-**Gap separators** (spec 0072 D4): the `HBox` draws a 1 px `HUD_SEP=(80,80,96)` line vertically centred (`cy = top + STATUS_H//2 = 526`) in each of the `n-1` inter-element gaps — inset `sep_inset=6` px from the flanking elements, skipped when the remaining span `< sep_min=4` px, and never in the outer `margin`. This subtly anchors each right-justified value to its own label. Opt-in via the `HBox(sep_color=...)` argument; the HUD passes `HUD_SEP`.
+**Gap bands** (spec 0072 D4): the `HBox` fills each of the `n-1` inter-element gaps with a full-HUD-height rectangle of `HUD_GAP = (41,41,49)` (≈ 10 % brighter than `HUD_BG`) — a subtle brighter column that separates elements without the visual noise of a line (the original 1 px line read as too busy). Bands are drawn behind the elements and never in the outer `margin`. Opt-in via the `HBox(gap_color=...)` argument; the HUD passes `HUD_GAP`.
 
 ## Enemy Sprite Selection
 
