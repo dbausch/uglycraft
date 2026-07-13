@@ -59,7 +59,8 @@ def test_hbox_blit_smoke():
 
 # ── HBox gap bands (spec 0072 D4) ─────────────────────────────────────────────
 
-GAP = (41, 41, 49)
+GAP = (18, 18, 26)
+INSET = 6
 
 
 def _band_columns(box, elements, row_h=28):
@@ -101,17 +102,25 @@ def test_hbox_band_does_not_paint_outer_margins():
     assert target.get_at((box.width - 3, 14))[:3] == (0, 0, 0)  # right margin: unpainted
 
 
-def test_hbox_band_stops_at_element_edges():
-    """The band spans exactly the gap between two elements — element edges and
-    beyond are not painted with GAP."""
+def test_hbox_band_is_inset_from_element_edges():
+    """The band is inset gap_inset px from each element: the strip right next to
+    an element edge stays background, and the band begins after the inset."""
     elems = [_elt(100), _elt(80)]
-    box = HBox(960, margin=10, gap_color=GAP)
+    box = HBox(960, margin=10, gap_color=GAP, gap_inset=INSET)
     target = pygame.Surface((box.width, 28))
     target.fill((0, 0, 0))
     box.blit(target, elems, 0, 28)
     xs = box.positions(elems)
     left_edge = round(xs[0] + elems[0].width)
     right_edge = round(xs[1])
-    assert target.get_at((left_edge - 2, 14))[:3] != GAP      # inside left element
-    assert target.get_at((left_edge + 1, 14))[:3] == GAP      # gap begins
-    assert target.get_at((right_edge + 1, 14))[:3] != GAP     # inside right element
+    assert target.get_at((left_edge + 1, 14))[:3] == (0, 0, 0)          # inset: blank
+    assert target.get_at((left_edge + INSET + 1, 14))[:3] == GAP        # band begun
+    assert target.get_at((right_edge - INSET - 1, 14))[:3] == GAP       # band still on
+    assert target.get_at((right_edge - 1, 14))[:3] == (0, 0, 0)         # inset: blank
+
+
+def test_hbox_band_skips_gap_too_narrow_for_inset():
+    """A gap narrower than 2*inset draws no band."""
+    elems = [_elt(468), _elt(468)]   # gap = 960-20-936 = 4 < 2*6 -> skipped
+    box = HBox(960, margin=10, gap_color=GAP, gap_inset=INSET)
+    assert _band_columns(box, elems) == [False]

@@ -460,10 +460,12 @@ direction; the KB (`kb/uglycraft-display.md`) reflects the final state.
   (`SHIELD --`, `WALLS 0`, `BRIDGE 0`) use `HUD_DIM = (115,92,48)`, a darker shade of the
   same hue. Key icons keep their colours. Partial WALLS/BRIDGE state is now shown by the
   `.` dot alone.
-- **Gap band instead of line** *(commit `9d350cf`)* — the 1 px line read as too noisy.
-  Replaced with a full-HUD-height background band filling each inter-element gap,
-  `HUD_GAP = (41,41,49)` (≈ 10 % brighter than `HUD_BG`), drawn behind the elements and
-  never in the outer margins. `HBox.gap_color` supersedes the line params.
+- **Gap band instead of line** *(commits `9d350cf`, tuned in a follow-up)* — the 1 px
+  line read as too noisy. Replaced with a full-HUD-height background band filling each
+  inter-element gap, `HUD_GAP = (18,18,26)` (`HUD_BG` ×1.1, 10 % brighter), inset
+  `gap_inset = 6` px from the flanking elements (like the old line), drawn behind the
+  elements and never in the outer margins. `HBox.gap_color`/`gap_inset` supersede the
+  line params.
 
 ## Done when:
 

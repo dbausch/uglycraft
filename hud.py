@@ -75,15 +75,18 @@ class HBox:
     ``blit`` places each element left-to-right starting at ``margin`` and spreads
     the leftover width evenly across the ``n-1`` inter-element gaps (the same
     even-spacing the old HUD computed).  When ``gap_color`` is given, each
-    inter-element gap is filled with a full-height rectangle of that colour — a
-    subtle brighter band that separates elements without the visual noise of a
-    line (spec 0072 D4).  The outer margins are never filled.
+    inter-element gap is filled with a full-height rectangle of that colour,
+    inset ``gap_inset`` px from the flanking elements — a subtle brighter band
+    that separates elements without the visual noise of a line (spec 0072 D4).
+    The outer margins are never filled, and a gap too narrow for the inset draws
+    nothing.
     """
 
-    def __init__(self, width, margin=10, gap_color=None):
+    def __init__(self, width, margin=10, gap_color=None, gap_inset=6):
         self.width = width
         self.margin = margin
         self.gap_color = gap_color
+        self.gap_inset = gap_inset
 
     def positions(self, elements):
         """Left-edge x offset of each element under even-gap layout.
@@ -108,8 +111,8 @@ class HBox:
         # Gap bands first (behind), then the elements on top.
         if self.gap_color is not None:
             for i in range(len(elements) - 1):
-                gx0 = round(xs[i] + elements[i].width)
-                gx1 = round(xs[i + 1])
+                gx0 = round(xs[i] + elements[i].width + self.gap_inset)
+                gx1 = round(xs[i + 1] - self.gap_inset)
                 if gx1 > gx0:
                     target.fill(self.gap_color, (gx0, top, gx1 - gx0, row_h))
         for e, x in zip(elements, xs):

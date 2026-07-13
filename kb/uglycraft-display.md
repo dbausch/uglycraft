@@ -24,10 +24,10 @@ functions, not a constant change.
 
 Single row at `y = ROWS * TILE = 512`, height `STATUS_H = 28 px`. Built as an
 **HBox** (`hud.py`, spec 0072): `_render_hud` constructs a list of `HudElement`s in
-display order and calls `HBox(LOGICAL_W, margin=10, sep_color=HUD_SEP).blit(...)`. Each
+display order and calls `HBox(LOGICAL_W, margin=10, gap_color=HUD_GAP).blit(...)`. Each
 element reports its tight width; the box spreads the leftover width evenly across the
-`n-1` inter-element gaps (`positions()` gives the left edges) and draws a subtle
-separator in each gap (see below). Most elements are `LabelValue(font, label, value,
+`n-1` inter-element gaps (`positions()` gives the left edges) and fills a subtle
+brighter band in each gap (see below). Most elements are `LabelValue(font, label, value,
 colour)` — rendered `f"{label} {value}"`, or label-only when `value == ""`; the key
 tracker is an `IconStrip`. **Conditional elements are simply omitted from the list**
 (no `None` sentinel, no magic index) — this replaced the old `(text,colour)`-tuple
@@ -47,7 +47,7 @@ list + `imgs.insert(4, strip)` splice. Element order:
 
 Each element is vertically centred by its own height (`cy = top + (STATUS_H - img.height)//2`), so the 20 px key strip and the shorter text share a common centre line. Keys are unique per colour (`levelgraph.py:441` distinct-colour pool), so neither the HUD nor the inventory shows a count next to a key.
 
-**Gap bands** (spec 0072 D4): the `HBox` fills each of the `n-1` inter-element gaps with a full-HUD-height rectangle of `HUD_GAP = (41,41,49)` (≈ 10 % brighter than `HUD_BG`) — a subtle brighter column that separates elements without the visual noise of a line (the original 1 px line read as too busy). Bands are drawn behind the elements and never in the outer `margin`. Opt-in via the `HBox(gap_color=...)` argument; the HUD passes `HUD_GAP`.
+**Gap bands** (spec 0072 D4): the `HBox` fills each of the `n-1` inter-element gaps with a full-HUD-height rectangle of `HUD_GAP = (18,18,26)` (`HUD_BG` ×1.1, 10 % brighter) — a subtle brighter column that separates elements without the visual noise of a line (the original 1 px line read as too busy). Each band is inset `gap_inset = 6` px from the flanking elements (like the old line), drawn behind the elements, and never in the outer `margin`; a gap too narrow for the inset draws nothing. Opt-in via the `HBox(gap_color=...)` argument; the HUD passes `HUD_GAP`.
 
 ## Enemy Sprite Selection
 
