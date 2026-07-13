@@ -10,13 +10,13 @@ looked wrong").
 
 - [x] **D1** — Inventory Keys section drops the `×N` counter; each held key is
   shown as `[icon] Name` only (no count column, no leftover gap).
-- [ ] **D2** — Display-bug follow-up: confirm the key inventory now renders
+- [x] **D2** — Display-bug follow-up: confirm the key inventory now renders
   correctly (Daniel: the earlier "looked wrong" was most likely an artifact of a
   separate, already-resolved defect); record the resolution in `kb/findings.md`.
 - [x] **D3** — HUD status line shows a per-level key tracker: one slot per key
   colour present in the level, lit when held and ghosted (~15 %) when not; no strip
   (space redistributed) when the level has no keys; never reflows during play.
-- [ ] **D4** — Verification: screenshot golden(s) for the inventory Keys section
+- [x] **D4** — Verification: screenshot golden(s) for the inventory Keys section
   and the HUD key strip; a headless assertion that a held key renders without a
   count; user confirmation in-game.
 
@@ -193,12 +193,12 @@ re-record them and review the pixel diff intentionally.
 
 - [x] **D1** — Inventory Keys section renders `[icon] Name` with no `×N` and no
   leftover column gap; Materials counters unchanged. *(commit: 041e394)*
-- [ ] **D2** — `kb/findings.md` records the "key inventory looked wrong" report as
+- [x] **D2** — `kb/findings.md` records the "key inventory looked wrong" report as
   resolved (artifact of an already-fixed defect; D1 removes the last cosmetic
-  wart); key-rendering sanity checks pass. *(commit: ____)*
+  wart); key-rendering sanity checks pass. *(commit: 041e394)*
 - [x] **D3** — HUD tracker shows one slot per key colour in the level (after LOOT),
   lit when held and ghosted (~15 %) when not; omitted with space redistributed when
   the level has no keys; never reflows during play. *(commit: 041e394, 6ef8709)*
-- [ ] **D4** — Inventory + HUD screenshot goldens re-recorded and reviewed; the two
+- [x] **D4** — Inventory + HUD screenshot goldens re-recorded and reviewed; the two
   headless strip assertions pass; Daniel confirms both views in-game. *(commit:
-  ____)*
+  041e394, 6ef8709)*
