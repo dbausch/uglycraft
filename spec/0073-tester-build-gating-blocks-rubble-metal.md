@@ -278,16 +278,16 @@ pytest suite (event traces, goldens, world unit tests). The rename is broad:
 
 - [ ] **D1** — user-built wall renamed to BLOCK across code/UI/sound/sprite; terrain
   walls untouched; HUD reads BLOCKS/BRIDGES; suite green; goldens re-recorded.
-  *(commit: ____)*
+  *(commit: f01b3a1)*
 - [ ] **D2** — block half from mining *and* rubble, bridge half from planks (2 → 1
   each); block placed by SPACE and bridge by water-bump, both from credits; 3-rocks
   Block recipe + `quick_place_block` and planks-based Bridge crafting (`quick_bridge`,
-  `CRAFT_BRIDGE`) removed; rubble/planks not stored; unit tests green. *(commit: ____)*
+  `CRAFT_BRIDGE`) removed; rubble/planks not stored; unit tests green. *(commit: c634c31)*
 - [ ] **D3** — rubble counts raised; generation test asserts the higher floor; Daniel
-  confirms there is enough rubble in play. *(commit: ____)*
+  confirms there is enough rubble in play. *(commit: 6d0b22d)*
 - [ ] **D4** — `ENABLE_METAL = False` removes scrap-metal drops (rubble/planks intact);
-  generation test green. *(commit: ____)*
+  generation test green. *(commit: ad6fb76)*
 - [ ] **D5** — `ENABLE_INVENTORY_MENU = False` fully disables the crafting/inventory
-  overlay (internal Inventory still works); headless test green. *(commit: ____)*
+  overlay (internal Inventory still works); headless test green. *(commit: d21a967)*
 - [ ] **D6** — tests updated/added and green, goldens re-recorded and reviewed, Daniel
   confirms the tester build in-game. *(commit: ____)*
