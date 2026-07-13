@@ -18,7 +18,8 @@ from world import World, ACT1_BOSS_LEVEL, is_border, _flame_tile_intensity
 from crafting import (RECIPES, CRAFT_NAMES, CRAFT_ICONS,
                       MATERIAL_NAMES, MATERIAL_ICONS,
                       TOOL_NAMES, TOOL_ICONS,
-                      KEY_NAMES, KEY_COLORS)
+                      KEY_NAMES, KEY_COLORS,
+                      CRAFT_BRIDGE, MAT_PLANKS)
 
 # Block-blast animation: 4 frames, one every _EXPLOSION_FRAME_MS (spec 0068).
 _EXPLOSION_FRAME_MS = 80
@@ -761,6 +762,24 @@ class Game:
             elements.append(LabelValue(f, "HARD", "", RED))
 
         elements.append(LabelValue(f, "SHIELD", shield_val, shield_col))
+
+        # BRIDGE: buildable bridges from carried planks (2 planks = 1 bridge),
+        # plus any pre-crafted bridge; a trailing "." marks one odd plank (half
+        # a bridge banked), mirroring WALLS. Shown only on plank-bearing levels
+        # (spec 0072 D2); omitted elsewhere and the HBox redistributes the space.
+        if self._level_has_planks:
+            planks = self.inventory.materials.get(MAT_PLANKS, 0)
+            buildable = self.inventory.crafted.get(CRAFT_BRIDGE, 0) + planks // 2
+            bridge_dot = '.' if planks % 2 else ' '
+            if buildable > 0:
+                bridge_col = LTGREEN
+            elif bridge_dot == '.':
+                bridge_col = YELLOW
+            else:
+                bridge_col = GRAY
+            elements.append(LabelValue(f, "BRIDGE",
+                                       f"{buildable:>2}{bridge_dot}", bridge_col))
+
         elements.append(LabelValue(f, "WALLS",
                                    f"{self._place_credits:>2}{walls_dot}", wall_color))
 
@@ -1222,7 +1241,7 @@ _WORLD_ATTRS = (
     'cells', 'blocked', 'channel', 'room',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_place_credits', '_breaks_toward_credit',
-    '_opened_doors', '_safe_tiles', '_level_key_colours',
+    '_opened_doors', '_safe_tiles', '_level_key_colours', '_level_has_planks',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',
 )

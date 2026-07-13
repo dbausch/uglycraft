@@ -117,6 +117,44 @@ def test_hud_key_strip_absent_without_keys():
         assert h.game._key_strip_element() is None
 
 
+# ── Spec 0072 D2: HUD BRIDGE counter (planks levels only) ─────────────────────
+
+def _hud_labels(h):
+    """The label:value texts rendered into the HUD element list this frame."""
+    import game as game_mod
+    captured = []
+    orig = game_mod.LabelValue
+
+    def spy(font, label, value="", color=None):
+        captured.append(label)
+        return orig(font, label, value, color)
+
+    game_mod.LabelValue = spy
+    try:
+        h.game._render_hud()
+    finally:
+        game_mod.LabelValue = orig
+    return captured
+
+
+def test_hud_bridge_counter_present_on_planks_level():
+    """A level with planks exposes _level_has_planks and renders a BRIDGE
+    element immediately left of WALLS (spec 0072 D2)."""
+    with Harness(level_dict=fx.water_level(), seed=42) as h:
+        assert h.game._level_has_planks is True
+        labels = _hud_labels(h)
+        assert 'BRIDGE' in labels
+        assert labels.index('BRIDGE') == labels.index('WALLS') - 1
+
+
+def test_hud_bridge_counter_absent_without_planks():
+    """A plankless level (Act 1) sets _level_has_planks False and renders no
+    BRIDGE element, so the HBox redistributes the space (spec 0072 D2)."""
+    with Harness(level=3, seed=1234) as h:
+        assert h.game._level_has_planks is False
+        assert 'BRIDGE' not in _hud_labels(h)
+
+
 # ── Spec 0056 (BL-12): border-exit sprite selection ──────────────────────────
 # Pure helper: (record, orient, open_channels, opened_doors) -> sprite key or
 # None.  Stairs are reserved for inter-floor travel — a same-floor border exit

@@ -302,6 +302,14 @@ class World:
                    for rdata in data['rooms'].values()
                    for k in rdata.get('keys', []))
         ]
+        # Whether this level contains planks anywhere (spec 0072 D2): the HUD
+        # BRIDGE counter is shown only on plank-bearing levels. Fixed per level,
+        # so the counter's presence and width are constant during play.
+        self._level_has_planks = any(
+            m[2] == MAT_PLANKS
+            for rdata in data['rooms'].values()
+            for m in rdata.get('materials', [])
+        )
         self._channels = set()   # latched high channel names (spec 0050)
         self.treasure_pos = None
         self._opened_doors = set()
