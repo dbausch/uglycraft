@@ -9,6 +9,7 @@ import sys
 import random
 import pygame
 from constants import *
+from hud import LabelValue, IconStrip, HBox
 from sprites import create_sprites, draw_flame_at
 from entities import PatrolEnemy, ForgeOgre
 from hiscore import load_scores, save_score, qualifies
@@ -687,38 +688,34 @@ class Game:
     _KEY_SLOT = 23   # icon + 3px pad
     _KEY_GHOST_ALPHA = 38   # ~15% opacity for a colour not currently held
 
-    def _hud_key_strip(self):
-        """HUD key strip: one slot per key colour present in this level.
+    def _key_strip_element(self):
+        """The HUD key tracker as an IconStrip element, or None when the level
+        has no keys (spec 0071 D3, spec 0072 D3).
 
-        The level's key colours (`_level_key_colours`, ordered by KEY_NAMES)
-        each get a fixed 20px slot, lit when the key is held and ghosted
-        (~15% opacity) when not — a collect-tracker. The colour set is
-        constant for the level, so the strip never reflows during play; it
-        only differs between levels. Returns None when the level has no keys,
-        so the strip is dropped and its HUD space redistributed (spec 0071 D3,
-        refined).
+        One fixed-width slot per key colour present in the level (ordered by
+        KEY_NAMES), lit when the key is held and ghosted (~15%) when not — a
+        collect-tracker. The colour set is constant for the level, so the strip
+        never reflows during play; it only differs between levels. Returns None
+        for a keyless level, so the element is simply omitted from the HBox and
+        its space redistributed.
         """
         colours = self._level_key_colours
         if not colours:
             return None
         sp = self.sprites
-        strip = pygame.Surface((self._KEY_SLOT * len(colours), self._KEY_ICON),
-                               pygame.SRCALPHA)
-        for i, key_color in enumerate(colours):
+        icons = []
+        for key_color in colours:
             skey = f'icon_key_{key_color}'
             if skey not in sp:
                 continue
-            icon = sp[skey]
-            if self.inventory.keys.get(key_color, 0) <= 0:
-                icon = icon.copy()
-                icon.fill((255, 255, 255, self._KEY_GHOST_ALPHA),
-                          special_flags=pygame.BLEND_RGBA_MULT)
-            strip.blit(icon, (i * self._KEY_SLOT, 0))
-        return strip
+            icons.append((sp[skey], self.inventory.keys.get(key_color, 0) > 0))
+        return IconStrip(icons, self._KEY_SLOT, self._KEY_ICON,
+                         self._KEY_GHOST_ALPHA)
 
     def _render_hud(self):
         hud_y = ROWS * TILE
         pygame.draw.rect(self.surf, HUD_BG, (0, hud_y, LOGICAL_W, STATUS_H))
+        f = self.font_hud
 
         if self._place_credits > 0:
             wall_color = LTGREEN
@@ -726,56 +723,48 @@ class Game:
             wall_color = YELLOW
         else:
             wall_color = GRAY
+        # WALLS: fixed width with optional "." when half a credit has been mined.
+        walls_dot = '.' if self._breaks_toward_credit > 0 else ' '
 
         # Pad SEEK name to the longest treasure name so the slot never shifts.
         max_name = max(len(v) for v in TREASURE_NAMES.values())
         item_name = TREASURE_NAMES.get(self.treasure_item_no, "")
 
-        # SHIELD: always present; invisible (HUD_BG) when inactive so layout never shifts.
-        # Fixed width "SHIELD XX" — right-aligned 2-digit number, no unit suffix.
+        # SHIELD: always present; invisible (HUD_BG) when inactive so layout
+        # never shifts. Fixed width "SHIELD XX" — right-aligned 2-digit seconds.
         if self.shield:
-            shield_txt = f"SHIELD {max(1, (self._shield_timer + 999) // 1000):>2}"
+            shield_val = f"{max(1, (self._shield_timer + 999) // 1000):>2}"
             shield_col = LTBLUE
         else:
-            shield_txt = "SHIELD   "   # same 9-char width, rendered invisible
+            shield_val = "  "          # same width, rendered invisible
             shield_col = HUD_BG
 
-        # WALLS: fixed width with optional "." when half a credit has been mined.
-        walls_dot = '.' if self._breaks_toward_credit > 0 else ' '
-
-        elems = [
-            (f"SCORE {self.score:>7}",              HUD_TEXT),
-            (f"LEVEL {self.level:>2}",               HUD_TEXT),
-            (f"LIVES {self.lives:>2}",               HUD_LIFE),
+        # HUD elements in display order; conditional ones are simply not added.
+        elements = [
+            LabelValue(f, "SCORE", f"{self.score:>7}", HUD_TEXT),
+            LabelValue(f, "LEVEL", f"{self.level:>2}", HUD_TEXT),
+            LabelValue(f, "LIVES", f"{self.lives:>2}", HUD_LIFE),
         ]
         if self.spawn_mode == 'preplaced':
-            elems.append((f"LOOT {self._loot_collected:>2}/{self._loot_total}", GOLD))
+            elements.append(LabelValue(f, "LOOT",
+                                       f"{self._loot_collected:>2}/{self._loot_total}", GOLD))
         else:
-            elems.append((f"SEEK: {item_name:<{max_name}}", HUD_TEXT))
-        if self.level == ACT1_BOSS_LEVEL:
-            elems.append(("BOSS", MAGENTA))
-        elif self.difficulty == HARD:
-            elems.append(("HARD", RED))
-        elems.append((shield_txt, shield_col))
-        elems.append((f"WALLS {self._place_credits:>2}{walls_dot}", wall_color))
+            elements.append(LabelValue(f, "SEEK:", f"{item_name:<{max_name}}", HUD_TEXT))
 
-        imgs = [self.font_hud.render(txt, True, col) for txt, col in elems]
-        # Key strip goes right after the SEEK/LOOT element (index 3), before the
-        # BOSS/HARD/SHIELD/WALLS status cluster (spec 0071 D3). Its width is
-        # fixed for the level, so it never shifts as keys are gained/used; a
-        # level with no keys omits it and the space is redistributed.
-        strip = self._hud_key_strip()
+        strip = self._key_strip_element()       # keys, after SEEK/LOOT (0071)
         if strip is not None:
-            imgs.insert(4, strip)
+            elements.append(strip)
 
-        total_w = sum(img.get_width() for img in imgs)
-        margin = 10
-        gap = (LOGICAL_W - 2 * margin - total_w) / max(len(imgs) - 1, 1)
-        x = float(margin)
-        for img in imgs:
-            cy = hud_y + (STATUS_H - img.get_height()) // 2
-            self.surf.blit(img, (round(x), cy))
-            x += img.get_width() + gap
+        if self.level == ACT1_BOSS_LEVEL:
+            elements.append(LabelValue(f, "BOSS", "", MAGENTA))
+        elif self.difficulty == HARD:
+            elements.append(LabelValue(f, "HARD", "", RED))
+
+        elements.append(LabelValue(f, "SHIELD", shield_val, shield_col))
+        elements.append(LabelValue(f, "WALLS",
+                                   f"{self._place_credits:>2}{walls_dot}", wall_color))
+
+        HBox(LOGICAL_W, margin=10).blit(self.surf, elements, hud_y, STATUS_H)
 
     # ── Overlays ─────────────────────────────────────────────────────────────
 

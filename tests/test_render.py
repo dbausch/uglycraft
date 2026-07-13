@@ -101,12 +101,12 @@ def test_hud_key_strip_per_level_fixed_width():
     with Harness(level_dict=_keys_level(('red', 'green', 'purple')), seed=1234) as h:
         expect = Game._KEY_SLOT * 3
         assert h.game._level_key_colours == ['red', 'green', 'purple']
-        assert h.game._hud_key_strip().get_width() == expect      # 0 held
+        assert h.game._key_strip_element().width == expect        # 0 held
         h.game.inventory.add_key('green')
-        assert h.game._hud_key_strip().get_width() == expect      # 1 held
+        assert h.game._key_strip_element().width == expect        # 1 held
         for c in ('red', 'purple'):
             h.game.inventory.add_key(c)
-        assert h.game._hud_key_strip().get_width() == expect      # all held
+        assert h.game._key_strip_element().width == expect        # all held
 
 
 def test_hud_key_strip_absent_without_keys():
@@ -114,7 +114,7 @@ def test_hud_key_strip_absent_without_keys():
     redistributed (spec 0071 D3, refined). Act 1 levels have no keys."""
     with Harness(level=3, seed=1234) as h:
         assert h.game._level_key_colours == []
-        assert h.game._hud_key_strip() is None
+        assert h.game._key_strip_element() is None
 
 
 # ── Spec 0056 (BL-12): border-exit sprite selection ──────────────────────────
