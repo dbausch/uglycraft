@@ -1246,7 +1246,7 @@ rejected silently without consuming the credit/item.
 
 ---
 
-## BL-52 · P2 · A single shared "disallowed action" SFX, played whenever a deliberate action is refused
+## BL-52 · FIXED · A single shared "disallowed action" SFX, played whenever a deliberate action is refused
 
 Today when the player attempts a deliberate action that the rules refuse, the
 game is silent — there is no audio feedback that the action was disallowed. Add
