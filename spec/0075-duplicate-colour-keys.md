@@ -19,22 +19,24 @@ with ≤7 locked doors.
   colours are capped (a would-be 29th locked door) the offending edge is created
   as an **open** passage instead (no lock, no key). Hard limit: **28** locked
   doors per level. *(8c5aec6)*
-- [ ] **D2** — HUD key strip draws, per colour present in the level, a **stack
+- [x] **D2** — HUD key strip draws, per colour present in the level, a **stack
   of `total` key icons** (total = doors of that colour in the level), overlaid
   down-right at `index*2` px, with the `held` front ones drawn as normal keys
   and the rest as opaque ghost keys. Same per-colour slot pitch as today (no
-  horizontal growth, no reflow during play). *(ab8bd52 — code+tests done,
-  awaiting in-game acceptance)*
+  horizontal growth, no reflow during play). Each stack is centred on the
+  single-icon position and nudged 1px up. *(ab8bd52, 2251efa centre, a688deb
+  1px-up; user-accepted in-game 2026-07-14)*
 - [x] **D3** — `kb/requirements.md` R-K1/R-K2 and `kb/findings.md` updated:
   per-colour `#keys == #locked doors` still holds, but a colour may now
   legitimately have **1–4** keys/doors (not unique). Spec 0071's "keys are
   unique" note corrected.
-- [ ] **D4** — Verification: statistical sweep asserts `≤4` keys per colour and
+- [x] **D4** — Verification: statistical sweep asserts `≤4` keys per colour and
   `≤28` locked doors across many generated levels (detector validated on a
   forced `>28`-door feature set: pre-fix yields 5+/colour, post-fix caps at 4 +
   opened overflow, no orphan keys); HUD render smoke test; affected Act 2 goldens
   re-recorded; user confirmation in-game. *(tests/test_dup_colour.py +
-  tests/test_render.py green, goldens re-recorded; awaiting in-game acceptance)*
+  tests/test_render.py green, full suite 883 pass, goldens re-recorded;
+  user-accepted in-game 2026-07-14)*
 
 ## Background — confirmed facts (self-contained; do not re-derive)
 
@@ -215,13 +217,13 @@ for index in range(total):            # total = doors of this colour in level
 - [x] **D1** `_next_color()` enforces `MAX_KEYS_PER_COLOUR = 4`, returns `None`
   when all colours are capped, and both call sites downgrade to an open passage;
   no level exceeds 28 locked doors or 4 keys of any colour. *(8c5aec6)*
-- [ ] **D2** HUD draws the per-colour key stack via the exact loop (opaque 15%
-  ghosts, 1 px rim, `index*2` down-right offset, held-in-front), at the current
-  slot pitch, no reflow; strip omitted when the level has no keys. *(ab8bd52;
-  awaiting user in-game acceptance)*
+- [x] **D2** HUD draws the per-colour key stack via the exact loop (opaque 15%
+  ghosts, 1 px rim, `index*2` down-right offset, held-in-front), centred on the
+  icon and nudged 1px up, at the current slot pitch, no reflow; strip omitted
+  when the level has no keys. *(ab8bd52, 2251efa, a688deb; user-accepted
+  2026-07-14)*
 - [x] **D3** R-K1/R-K2 / findings / display KB and the spec 0071 errata updated.
   *(this commit)*
-- [ ] **D4** Detector-validated sweep test green (≤4/colour, ≤28 doors, no orphan
+- [x] **D4** Detector-validated sweep test green (≤4/colour, ≤28 doors, no orphan
   keys on the forced overflow case); HUD render smoke green; affected goldens
-  re-recorded; full suite green. *(tests green; awaiting user in-game acceptance
-  to close)*
+  re-recorded; full suite green (883 pass). *(user-accepted in-game 2026-07-14)*

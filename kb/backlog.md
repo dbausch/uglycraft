@@ -1368,17 +1368,26 @@ start tile or nearest open tile).
 
 ---
 
-## BL-56 · P2 · Sweep: are there levels with duplicate-colour keys and/or doors?
+## BL-56 · FIXED · Sweep: are there levels with duplicate-colour keys and/or doors?
 
-The tester was presented with levels containing multiple keys of the same colour.
-It is unknown whether any level also has multiple doors of the same colour.
+Fixed by spec 0075 (`spec/0075-duplicate-colour-keys.md`, all four deliverables
+D1–D4 ticked), user-accepted in-game 2026-07-14. Sweep
+(`scratchpad/sweep_dup_colour.py`, 300 levels): **46 % of levels have
+duplicate-colour keys**, and doors duplicate in lockstep (R-K1: `#keys ==
+#doors` per colour). Per-colour counts: 62 % ×1, 31 % ×2, 6.7 % ×3, 0.2 % ×4;
+**max 4** — because the colour pool cycles all 7 before refilling, so counts are
+`ceil(T/7)` and `T` never exceeded 24. Decision (Daniel): live with it, but
+(D1, 8c5aec6) cap each colour at `MAX_KEYS_PER_COLOUR = 4` in `_next_color`
+(overflow → open passage, hard limit 28 doors/level — see R-K2), and (D2,
+ab8bd52/2251efa/a688deb) make it legible in the HUD via a stack of overlaid key
+icons per colour (opaque 15 % ghosts, 1 px rim, held-in-front, centred, 1px up).
+Docs (D3, 2d6176b): R-K2, `kb/findings.md`, display KB, spec 0071 errata. Tests:
+`tests/test_dup_colour.py` (detector-validated on a forced >28-door grid) +
+`tests/test_render.py`; full suite 883 pass.
 
-**Fix hint:** this is an investigation/sweep task. Run a statistical sweep over
-generated levels (see the feedback on statistical sweeps) to count, per level,
-keys-per-colour and doors-per-colour. Report whether duplicate-colour keys and/or
-duplicate-colour doors occur, and how often. Level generation is in
-`levelgraph.py` / `levellayout.py`; keys/doors/crafting in `crafting.py`. Decide
-from the results whether this is a bug to fix or acceptable.
+**Follow-ups still open:** BL-57 (build block on door/gate tile) and BL-58
+(build block on border passage) were reported alongside this but are separate
+topics, untouched here.
 
 ---
 
