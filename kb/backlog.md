@@ -1431,3 +1431,28 @@ the border-wall sprite selection are the relevant areas (`levellayout.py` wall
 derivation, `sprites.py`, `game.py` rendering).
 
 ---
+
+## BL-59 · P3 · Generation-bound Hypothesis property tests flake with `DeadlineExceeded` under parallel `poe test` load
+
+Generation-bound Hypothesis property tests flake with `DeadlineExceeded` under
+parallel `poe test` (`-n auto`) load. Observed this session across two full-suite
+runs: the failing set VARIED run-to-run (run 1:
+`test_layout.py::test_invariant_l_all_edges_realised[vertical]`, `[double_t]`;
+run 2: `test_invariant_l_all_edges_realised[z]`, `[l]`,
+`test_invariant_l_all_feature_sets[fs2]`, `[fs4]`,
+`test_placement_rules.py::test_flame_room_never_has_water_edge`,
+`test_flames_always_placed_when_requested`) — all `DeadlineExceeded` (211–621ms
+vs the default 200ms Hypothesis deadline), never assertion failures, and every one
+passes green when run serially in isolation. Root cause: these tests generate
+levels (CPU-bound) inside a 200ms per-example deadline while competing for cores
+under xdist, so the deadline breaches non-deterministically; the suite wall time
+swings with load (7:14 → 10:56 observed). Not a correctness issue.
+
+**Fix hint:** set `@settings(deadline=None)` (or a generous fixed deadline, e.g.
+2000ms) on the generation-bound property tests in `tests/test_layout.py` and
+`tests/test_placement_rules.py`, mirroring
+`tests/test_border_continuity.py::test_border_barrier_records_on_both_sides`,
+which already uses `deadline=None` for exactly this reason. Grep the two files for
+`@settings(` and audit which property tests build levels/graphs.
+
+---
