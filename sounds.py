@@ -285,6 +285,15 @@ def _build_sfx(np) -> dict:
         sig = _impact(np, rng, n, 0.70, 55.0, 0.50, noise_decay=10.0, tone_decay=3.5)
         return _to_sound(np, _saturate(np, sig, 6.0))
 
+    def sfx_denied():
+        # Shared "action denied" beep (spec 0074, "wrongbeep"): a flat low
+        # square wave rasped by a fast 32 Hz square tremolo.
+        n    = round(_RATE * 0.18)
+        t    = np.arange(n, dtype=np.float32) / _RATE
+        trem = 1.0 + 0.5 * np.sign(np.sin(2 * np.pi * 32.0 * t))
+        sig  = _sq(np, 147.0, n, 0.4) * trem * _env(np, n, 0.003, 0.02, 0.85, 0.06)
+        return _to_sound(np, _saturate(np, sig, 2.5))
+
     return {
         'move':          sfx_move(),
         'bump':          sfx_bump(),
@@ -303,6 +312,7 @@ def _build_sfx(np) -> dict:
         'entrance_open': sfx_entrance_open(),
         'block_fuse':    sfx_block_fuse(),
         'block_explode': sfx_block_explode(),
+        'denied':        sfx_denied(),
     }
 
 

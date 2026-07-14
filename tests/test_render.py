@@ -193,6 +193,22 @@ def test_border_sprite_locked_opened():
                               set(), opened) == 'door_red_h'
 
 
+# ── Spec 0074: shared "action denied" SFX wiring ─────────────────────────────
+
+def test_action_denied_maps_to_denied_sound():
+    from game import Game
+    assert Game._EVENT_SOUNDS['action_denied'] == 'denied'
+
+
+def test_denied_sfx_is_built():
+    """The SoundManager builds the 'denied' SFX (or degrades silently with no
+    audio, in which case the whole sfx dict is empty)."""
+    from sounds import SoundManager
+    sm = SoundManager()
+    if sm._ok:
+        assert 'denied' in sm._sfx
+
+
 def test_border_sprite_gated_tracks_channel():
     from game import border_exit_sprite
     rec = ('gated', 'border_gate_0', None)

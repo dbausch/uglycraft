@@ -199,6 +199,7 @@ class Game:
         'entrance_opened': 'entrance_open',
         'block_fuse_lit':  'block_fuse',
         'block_exploded':  'block_explode',
+        'action_denied':   'denied',
     }
 
     def _pump_world(self):

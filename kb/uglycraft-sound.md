@@ -60,3 +60,4 @@ Music occupies channel 0 exclusively; SFX use channels 1+.
 | `game_over` | Game over |
 | `boss_appear` | Level 10 start |
 | `item_hit` | Boss walks over a non-Crown treasure |
+| `denied` | Refused deliberate action — shared "action denied" beep (spec 0074): keyless door, refused bridge, refused block placement, refused shield buy. One per key press; silent on inert-barrier navigation and plain wall mining. |
