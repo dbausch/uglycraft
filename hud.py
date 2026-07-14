@@ -142,9 +142,13 @@ class KeyStackStrip(HudElement):
         max_span = offset * (max(totals) - 1)
         pad = (max_span + 1) // 2           # keeps the widest stack from clipping
         surf_w = 2 * pad + (len(stacks) - 1) * slot_w + iw
-        surf_h = ih + 2 * pad
+        content_h = ih + 2 * pad
+        # +2px of bottom margin nudges the whole strip 1px up once the HBox
+        # vertically centres it in the row — the keys sit a touch above the text
+        # baseline instead of dead-centre.
+        surf_h = content_h + 2
         surface = pygame.Surface((surf_w, surf_h), pygame.SRCALPHA)
-        cy = surf_h // 2
+        cy = content_h // 2
         for i, s in enumerate(stacks):
             # centre each stack on where a single icon would sit in its slot,
             # so growing the stack stays centred instead of drifting down-right
