@@ -102,6 +102,46 @@ class IconStrip(HudElement):
         super().__init__(surface)
 
 
+def _compose_key_stack(lit, ghost, total, held, offset=2):
+    """Overlay `total` key icons down-right at `index*offset` px (spec 0075).
+
+    Loop index 0..total-1: draw a ghost key while ``total - held > index``
+    (the back keys), else a normal key.  Higher indices are drawn last, so the
+    `held` keys land on top, in front (bottom-right); un-held ghosts recede
+    up-left behind, barely visible.  Icons carry their own rim/alpha.
+    """
+    iw, ih = lit.get_size()
+    span = offset * (total - 1)
+    surf = pygame.Surface((iw + span, ih + span), pygame.SRCALPHA)
+    for index in range(total):
+        icon = ghost if (total - held) > index else lit
+        surf.blit(icon, (index * offset, index * offset))
+    return surf
+
+
+class KeyStackStrip(HudElement):
+    """The HUD key tracker: one stacked-key slot per colour present in a level.
+
+    ``entries`` is a list of ``(lit_icon, ghost_icon, total, held)`` — ``total``
+    keys of that colour exist in the level, ``held`` are in hand.  Each stack is
+    left-aligned at its slot (pitch ``slot_w``, matching :class:`IconStrip`) with
+    its back key at the slot's top-left, so the back keys align in a row while
+    fans extend down-right.  The strip width is the current per-colour pitch plus
+    the widest stack's overhang (a stack of up to 4 keys is a few px wider than a
+    single slot); it stays constant during play (``total`` is fixed per level).
+    """
+
+    def __init__(self, entries, slot_w, offset=2):
+        stacks = [_compose_key_stack(l, g, t, h, offset) for (l, g, t, h) in entries]
+        surf_w = max((i * slot_w + s.get_width() for i, s in enumerate(stacks)),
+                     default=0)
+        surf_h = max((s.get_height() for s in stacks), default=0)
+        surface = pygame.Surface((surf_w, surf_h), pygame.SRCALPHA)
+        for i, s in enumerate(stacks):
+            surface.blit(s, (i * slot_w, 0))
+        super().__init__(surface)
+
+
 class HBox:
     """Lay elements out horizontally, distributing slack across the gaps.
 

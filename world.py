@@ -328,6 +328,14 @@ class World:
                    for rdata in data['rooms'].values()
                    for k in rdata.get('keys', []))
         ]
+        # How many keys of each colour the level contains (spec 0075): a colour
+        # may have 1-4 keys/doors, so the HUD draws a stack of that many icons,
+        # lit up to the number held.  Fixed per level -> the strip never reflows.
+        self._level_key_counts = {c: 0 for c in self._level_key_colours}
+        for rdata in data['rooms'].values():
+            for k in rdata.get('keys', []):
+                if k[2] in self._level_key_counts:
+                    self._level_key_counts[k[2]] += 1
         # Whether this level contains planks anywhere (spec 0072 D2): the HUD
         # BRIDGE counter is shown only on plank-bearing levels. Fixed per level,
         # so the counter's presence and width are constant during play.

@@ -9,7 +9,7 @@ import sys
 import random
 import pygame
 from constants import *
-from hud import LabelValue, IconStrip, HBox
+from hud import LabelValue, KeyStackStrip, HBox
 from sprites import create_sprites, draw_flame_at
 from entities import PatrolEnemy, ForgeOgre
 from hiscore import load_scores, save_score, qualifies
@@ -693,28 +693,32 @@ class Game:
     _KEY_GHOST_ALPHA = 38   # ~15% opacity for a colour not currently held
 
     def _key_strip_element(self):
-        """The HUD key tracker as an IconStrip element, or None when the level
-        has no keys (spec 0071 D3, spec 0072 D3).
+        """The HUD key tracker as a KeyStackStrip, or None when the level has no
+        keys (spec 0071 D3, spec 0072 D3, spec 0075).
 
         One fixed-width slot per key colour present in the level (ordered by
-        KEY_NAMES), lit when the key is held and ghosted (~15%) when not — a
-        collect-tracker. The colour set is constant for the level, so the strip
-        never reflows during play; it only differs between levels. Returns None
-        for a keyless level, so the element is simply omitted from the HBox and
-        its space redistributed.
+        KEY_NAMES). Each slot draws a stack of that colour's total keys (a colour
+        may have 1-4 since spec 0075), with the held ones lit in front and the
+        rest ghosted behind — a collect-tracker. Totals are constant for the
+        level, so the strip never reflows during play. Returns None for a keyless
+        level, so the element is simply omitted from the HBox.
         """
         colours = self._level_key_colours
         if not colours:
             return None
         sp = self.sprites
-        icons = []
+        entries = []
         for key_color in colours:
-            skey = f'icon_key_{key_color}'
-            if skey not in sp:
+            lit = sp.get(f'key_lit_{key_color}')
+            ghost = sp.get(f'key_ghost_{key_color}')
+            if lit is None or ghost is None:
                 continue
-            icons.append((sp[skey], self.inventory.keys.get(key_color, 0) > 0))
-        return IconStrip(icons, self._KEY_SLOT, self._KEY_ICON,
-                         self._KEY_GHOST_ALPHA)
+            total = self._level_key_counts.get(key_color, 1)
+            held = min(self.inventory.keys.get(key_color, 0), total)
+            entries.append((lit, ghost, total, held))
+        if not entries:
+            return None
+        return KeyStackStrip(entries, self._KEY_SLOT)
 
     def _render_hud(self):
         hud_y = ROWS * TILE
@@ -1242,7 +1246,8 @@ _WORLD_ATTRS = (
     'cells', 'blocked', 'channel', 'room',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_block_credits', '_block_halves', '_bridge_credits', '_bridge_halves',
-    '_opened_doors', '_safe_tiles', '_level_key_colours', '_level_has_planks',
+    '_opened_doors', '_safe_tiles', '_level_key_colours', '_level_key_counts',
+    '_level_has_planks',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',
 )

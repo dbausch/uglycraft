@@ -777,6 +777,47 @@ def draw_key_pickup(color, size=TILE):
     return s
 
 
+# ── HUD key-stack icons (spec 0075) ───────────────────────────────────────────
+# The HUD key tracker draws a stack of overlaid key icons per colour (1-4),
+# lit for held keys and ghosted for the rest.  Each icon carries a 1px dark rim
+# so overlapping same-colour keys stay countable; a ghost key is the key colour
+# blended 15 % over the HUD background, opaque (full alpha) so it occludes
+# cleanly under the lit keys in front.
+
+_KEY_RIM = (12, 10, 8)
+_KEY_GHOST_MIX = 0.15
+
+
+def _outline_icon(body):
+    """Return `body` with a 1px dark rim (surface grows by 2px each dimension)."""
+    w, h = body.get_size()
+    mask = pygame.mask.from_surface(body)
+    sil = mask.to_surface(setcolor=(*_KEY_RIM, 255), unsetcolor=(0, 0, 0, 0))
+    out = pygame.Surface((w + 2, h + 2), pygame.SRCALPHA)
+    for ox in (-1, 0, 1):
+        for oy in (-1, 0, 1):
+            out.blit(sil, (1 + ox, 1 + oy))
+    out.blit(body, (1, 1))
+    return out
+
+
+def draw_key_icon_lit(color, icon_size=20):
+    """Rimmed key icon at full colour, for a held key in the HUD stack."""
+    return _outline_icon(_icon(draw_key_pickup(color), icon_size))
+
+
+def draw_key_icon_ghost(color, icon_size=20):
+    """Rimmed opaque ghost key: 15 % key-colour over HUD_BG, full alpha."""
+    key = _icon(draw_key_pickup(color), icon_size)
+    mask = pygame.mask.from_surface(key)
+    sil = mask.to_surface(setcolor=(*HUD_BG, 255), unsetcolor=(0, 0, 0, 0))
+    faint = key.copy()
+    faint.fill((255, 255, 255, int(255 * _KEY_GHOST_MIX)), None,
+               pygame.BLEND_RGBA_MULT)
+    sil.blit(faint, (0, 0))
+    return _outline_icon(sil)
+
+
 def draw_locked_door(color, size=TILE):
     """Wall tile: locked door with coloured indicator."""
     s = _surf(size, alpha=False)
@@ -1279,6 +1320,8 @@ def create_sprites():
         'gate_open_v':    draw_gate_open(),
         'gate_open_h':    _rotate_h(draw_gate_open()),
         **{f'icon_key_{name}': _icon(draw_key_pickup(rgb)) for name, rgb in KEY_COLORS.items()},
+        **{f'key_lit_{name}': draw_key_icon_lit(rgb) for name, rgb in KEY_COLORS.items()},
+        **{f'key_ghost_{name}': draw_key_icon_ghost(rgb) for name, rgb in KEY_COLORS.items()},
         'icon_hammer':      _icon(draw_tool_hammer_icon()),
         'icon_chisel':      _icon(draw_tool_chisel_icon()),
         'icon_runestone':   _icon(draw_tool_runestone_icon()),

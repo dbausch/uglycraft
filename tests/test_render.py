@@ -91,14 +91,30 @@ def test_hud_key_strip_per_level_fixed_width():
     that width is constant no matter how many are held — no reflow during play
     (spec 0071 D3, refined)."""
     with Harness(level_dict=_keys_level(('red', 'green', 'purple')), seed=1234) as h:
-        expect = Game._KEY_SLOT * 3
         assert h.game._level_key_colours == ['red', 'green', 'purple']
-        assert h.game._key_strip_element().width == expect        # 0 held
+        w0 = h.game._key_strip_element().width                     # 0 held
+        # ~one slot per colour (stacked icons since spec 0075 may overhang a slot)
+        assert abs(w0 - Game._KEY_SLOT * 3) <= Game._KEY_SLOT
         h.game.inventory.add_key('green')
-        assert h.game._key_strip_element().width == expect        # 1 held
+        assert h.game._key_strip_element().width == w0            # 1 held — no reflow
         for c in ('red', 'purple'):
             h.game.inventory.add_key(c)
-        assert h.game._key_strip_element().width == expect        # all held
+        assert h.game._key_strip_element().width == w0            # all held — no reflow
+
+
+def test_hud_key_stack_duplicate_colour():
+    """A colour with >1 key in the level draws a stack of that many icons; the
+    strip still renders and does not reflow as keys are collected (spec 0075)."""
+    lvl = _keys_level(('red', 'red', 'green'))   # red x2, green x1
+    with Harness(level_dict=lvl, seed=1234) as h:
+        assert h.game._level_key_colours == ['red', 'green']
+        assert h.game._level_key_counts == {'red': 2, 'green': 1}
+        w0 = h.game._key_strip_element().width
+        h.game.inventory.add_key('red')                 # 1 of 2 red held
+        assert h.game._key_strip_element().width == w0  # no reflow
+        h.game.inventory.add_key('red')                 # both red held
+        assert h.game._key_strip_element().width == w0
+        h.game.render()                                 # must not raise
 
 
 def test_hud_key_strip_absent_without_keys():
