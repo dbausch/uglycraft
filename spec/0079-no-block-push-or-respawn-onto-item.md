@@ -19,18 +19,18 @@ item layer.
 
 ## Status checklist
 
-- [ ] **I1** — `_try_push_block` refuses the push when the target tile
+- [x] **I1** — `_try_push_block` refuses the push when the target tile
   `(nc, nr)` carries a collectable (`self.cells.items(nc, nr)` non-empty),
   returning `False` so the existing failed-push path (`_register_bump`) runs —
   identical to how a push into a wall already fails (no move, a bump).
-- [ ] **I2** — `_block_respawn_tile` excludes item-bearing tiles from its
+- [x] **I2** — `_block_respawn_tile` excludes item-bearing tiles from its
   candidate pool: a tile with `self.cells.items(tile)` non-empty is never chosen
   for an explosion respawn (added to the same filter that already drops blocked
   tiles, the player, and — as the primary path — plate tiles).
-- [ ] **I3** — No generator, `levellayout`, or puzzle-validation change: the
+- [x] **I3** — No generator, `levellayout`, or puzzle-validation change: the
   constraint only ever *removes* a target that has a strictly-better
   collect-then-push alternative, so every existing solution survives.
-- [ ] **I4** — Verification: pygame-free `tests/test_world.py` (or
+- [x] **I4** — Verification: pygame-free `tests/test_world.py` (or
   `tests/test_exploding_blocks.py`) cases — a block cannot be pushed onto an item
   tile (push refused, block stays, a `'bumped'` is *not* emitted / a bump is), and
   a detonated block never respawns onto an item tile.
@@ -187,14 +187,14 @@ tile, so it does not hard-code the seeded draw.
 
 ## Done when:
 
-- [ ] **I1** — `_try_push_block` refuses a push onto an item-bearing tile,
-  falling through to the existing bump path. (pending)
-- [ ] **I2** — `_block_respawn_tile` never selects an item-bearing tile; the
-  spec-0076 fallbacks are otherwise unchanged. (pending)
-- [ ] **I3** — no generator/levellayout/puzzle-validation change; goldens
-  byte-identical. (pending)
-- [ ] **I4** — the two verification cases (push-refused + collect-then-push
+- [x] **I1** — `_try_push_block` refuses a push onto an item-bearing tile,
+  falling through to the existing bump path. (a481076)
+- [x] **I2** — `_block_respawn_tile` never selects an item-bearing tile; the
+  spec-0076 fallbacks are otherwise unchanged. (a481076)
+- [x] **I3** — no generator/levellayout/puzzle-validation change; goldens
+  byte-identical. (a481076 — full suite 893 passed)
+- [x] **I4** — the two verification cases (push-refused + collect-then-push
   succeeds; respawn never on an item tile) pass; the full suite stays green.
-  (pending)
+  (a481076)
 - [ ] **I5** — Daniel confirms in-game: a block won't slide onto a pickup, an
   exploded block never lands on one, and collect-then-push still works. (pending)
