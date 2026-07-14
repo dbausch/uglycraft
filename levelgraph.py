@@ -8,6 +8,11 @@ import random
 from enum import Enum, auto
 from crafting import KEY_COLORS
 
+# BL-56 / spec 0075: at most this many locked doors (and thus keys) of any one
+# colour per level.  With 7 colours this hard-caps a level at 28 locked doors;
+# a would-be extra locked edge is created as an open passage instead.
+MAX_KEYS_PER_COLOUR = 4
+
 
 # ── Node sizes ────────────────────────────────────────────────────────────────
 
@@ -438,16 +443,26 @@ class LevelGraph:
         room_min, room_max = feature_set.get('room_count', (4, 6))
         room_count  = max(rng.randint(room_min, room_max), len(required))
 
-        # Shuffled color pool — ensures every locked door uses a distinct color.
+        # Shuffled color pool — cycles (refilled when exhausted) and spreads
+        # colours evenly.  Each colour is capped at MAX_KEYS_PER_COLOUR locked
+        # doors per level (spec 0075); once all colours are capped, _next_color
+        # returns None and the caller makes an open passage instead.
         all_colors = list(KEY_COLORS.keys())
         rng.shuffle(all_colors)
         color_pool = list(all_colors)  # cycling: refilled when exhausted
+        color_counts = {c: 0 for c in all_colors}
 
         def _next_color():
-            if not color_pool:
-                color_pool.extend(all_colors)
-                rng.shuffle(color_pool)
-            return color_pool.pop()
+            if all(color_counts[c] >= MAX_KEYS_PER_COLOUR for c in all_colors):
+                return None
+            while True:
+                if not color_pool:
+                    color_pool.extend(all_colors)
+                    rng.shuffle(color_pool)
+                c = color_pool.pop()
+                if color_counts[c] < MAX_KEYS_PER_COLOUR:
+                    color_counts[c] += 1
+                    return c
 
         gate_counter  = [0]
         border_counter = [0]
@@ -459,7 +474,11 @@ class LevelGraph:
             elif et == EdgeType.BREAKABLE:
                 b.add_breakable_room(rng.choice(['stone', 'wooden']), size=size)
             elif et == EdgeType.LOCKED:
-                b.add_locked_room(_next_color(), size=size)
+                colour = _next_color()
+                if colour is None:        # all colours capped — open instead
+                    b.add_open_room(size=size)
+                else:
+                    b.add_locked_room(colour, size=size)
             elif et == EdgeType.GATED:
                 b.add_gated_room(f'gate_{gate_counter[0]}', size=size)
                 gate_counter[0] += 1
@@ -475,7 +494,10 @@ class LevelGraph:
                 barrier_options.append('gated')
             barrier = rng.choice(barrier_options)
             if barrier == 'locked':
-                return {'barrier': 'locked', 'key_colour': _next_color()}
+                colour = _next_color()
+                if colour is not None:
+                    return {'barrier': 'locked', 'key_colour': colour}
+                # all colours capped — fall through to an open border
             elif barrier == 'gated':
                 gid = f'border_gate_{border_counter[0]}'
                 border_counter[0] += 1
