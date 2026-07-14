@@ -1426,7 +1426,16 @@ in `world.py` / `cells.py`.
 
 ---
 
-## BL-58 · P2 · Building a block on a border passage tile draws it with the border-wall sprite
+## BL-58 · FIXED · Building a block on a border passage tile draws it with the border-wall sprite
+
+Fixed by spec 0078 (`spec/0078-no-block-on-border-passage.md`) via approach (a),
+disallow placement — implementation commit `0211448`, user-accepted in-game
+2026-07-15 (spec 0078 B5). A new `_is_border_passage_tile` predicate (a bare
+positional `is_border` test) was added to `_place_block`'s (world.py) refusal
+chain, so a block can no longer be placed on a punched border passage tile; the
+refusal reuses the spec-0074 'action_denied' feedback and spends no credit. No
+rendering change was needed — the border-wall sprite symptom is now unreachable
+for placed blocks. Full test suite green (893 passed).
 
 When the tester built a moveable block on the passage tile of the border, the
 border wall sprite was used to draw the block. Unclear how to handle this because
