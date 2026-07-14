@@ -174,8 +174,8 @@ def _expected_record(edge, gname_a, pos, rooms):
     barrier = edge.params.get('barrier', 'open')
     es = edge.params['exit_side']
     if barrier == 'locked' and edge.params['key_colour'] in surviving_keys:
-        return ('locked', edge.params['key_colour'],
-                (gname_a, _BORDER_TILE[es](pos)))
+        # Spec 0077: the record carries the door's channel (door_id), not home.
+        return ('locked', edge.params['key_colour'], edge.params['door_id'])
     if barrier == 'gated' and edge.params['gate_id'] in surviving_gates:
         return ('gated', edge.params['gate_id'], None)
     return ('open', None, None)
@@ -211,15 +211,17 @@ def test_border_barrier_records_on_both_sides(fs, seed):
                 f"records differ across {ga}({es})->{gb}({en}): "
                 f"{rec_a} != {rec_b}")
             assert rec_a == _expected_record(e, ga, pos, rooms)
-            kind, param, home = rec_a
+            kind, param, extra = rec_a
             bt = _BORDER_TILE[es](pos)
             doors_at_bt = [d for d in rooms[ga].get('locked_doors', [])
                            if (d[0], d[1]) == bt]
             gates_at_bt = [g for g in rooms[ga].get('gates', [])
                            if (g[0], g[1]) == bt]
             if kind == 'locked':
-                assert doors_at_bt == [(*bt, param)]
-                assert home == (ga, bt)
+                # Spec 0077: param = colour, extra = the door's channel (door_id),
+                # shared by the record and the one real door barrier in room_a.
+                assert doors_at_bt == [(*bt, param, extra)]
+                assert extra == e.params['door_id']
             elif kind == 'gated':
                 assert gates_at_bt == [(*bt, param)]
             else:

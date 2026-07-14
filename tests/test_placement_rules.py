@@ -185,7 +185,7 @@ def test_plates_never_on_landing_tiles(seed):
     for room in level['rooms'].values():
         owners = room.get('tile_owner', {})
         walls = room['walls']
-        openable = {(c, r) for c, r, _ in room.get('locked_doors', [])}
+        openable = {(c, r) for c, r, *_ in room.get('locked_doors', [])}
         openable |= {(c, r) for c, r, _ in room.get('gates', [])}
         water = {tuple(t) for t in room.get('water_tiles', [])}
 
@@ -226,7 +226,7 @@ def test_blocks_never_start_on_landing_tiles(seed):
     for room in level['rooms'].values():
         owners = room.get('tile_owner', {})
         walls = room['walls']
-        openable = {(c, r) for c, r, _ in room.get('locked_doors', [])}
+        openable = {(c, r) for c, r, *_ in room.get('locked_doors', [])}
         openable |= {(c, r) for c, r, _ in room.get('gates', [])}
         water = {tuple(t) for t in room.get('water_tiles', [])}
 

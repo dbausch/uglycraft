@@ -163,9 +163,86 @@ def test_door_opens_with_key_through_query():
         w.player.col, w.player.row = 14, 8
         w.try_move(1, 0, KEY)                          # bump -> auto-open
         assert _kinds(w.drain_events()) == ['door_opened']
-        assert w.cells.barrier(15, 8) is None
+        door = w.cells.barrier(15, 8)                  # barrier persists (spec 0077)
+        assert door is not None and door.kind == 'door'
+        assert w.channel(door.channel)                 # opened by latching its channel
         assert not w.blocked(15, 8)
         assert not w.inventory.has_key('red')
+    finally:
+        _restore(saved)
+
+
+# ── Spec 0077: doors are channel-latched barriers; no block on a door/gate ────
+
+def test_place_block_refused_on_open_gate():
+    """A 'placed' block must not overwrite an open gate barrier (BL-57)."""
+    w, saved = _fixture(fx.gate_level)
+    try:
+        w._channels.add('g1')                          # latch the gate open
+        assert not w.blocked(15, 8)                    # passable now
+        w.drain_events()
+        w._block_credits = 1
+        w.player.col, w.player.row = 15, 8
+        w.place()
+        assert _kinds(w.drain_events()) == ['action_denied']
+        assert w._block_credits == 1                   # no credit spent
+        assert w.cells.barrier(15, 8).kind == 'gate'   # gate not destroyed
+    finally:
+        _restore(saved)
+
+
+def test_place_block_refused_on_opened_door():
+    """A 'placed' block must not hide under an opened door (BL-57)."""
+    w, saved = _fixture(fx.door_level)
+    try:
+        w.inventory.add_key('red')
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                           # bump -> auto-open
+        door = w.cells.barrier(15, 8)
+        assert door is not None and door.kind == 'door'  # barrier persists
+        assert w.channel(door.channel)                 # latched open
+        assert not w.blocked(15, 8)                     # passable
+        w.drain_events()
+        w._block_credits = 1
+        w.player.col, w.player.row = 15, 8
+        w.place()
+        assert _kinds(w.drain_events()) == ['action_denied']
+        assert w._block_credits == 1
+        assert w.cells.barrier(15, 8).kind == 'door'   # still a door, no 'placed'
+    finally:
+        _restore(saved)
+
+
+def test_place_block_on_bare_floor_still_succeeds():
+    """The door/gate refusal must not block ordinary placement (false-positive
+    guard on the spec-0077 predicate)."""
+    w, saved = _fixture(fx.door_level)
+    try:
+        w.drain_events()
+        w._block_credits = 1
+        w.player.col, w.player.row = 22, 8             # bare floor (right room)
+        w.place()
+        assert _kinds(w.drain_events()) == ['block_placed']
+        assert w.cells.barrier(22, 8).kind == 'placed'
+    finally:
+        _restore(saved)
+
+
+def test_door_channel_persists_across_death_resets_on_level_start():
+    """An opened door rides `_channels`: it persists across death (spec 0067)
+    and re-closes on level (re)start (spec 0077)."""
+    w, saved = _fixture(fx.door_level)
+    try:
+        w.inventory.add_key('red')
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                           # open
+        chan = w.cells.barrier(15, 8).channel
+        assert chan in w._channels
+        w.lives = 3
+        w._lose_life()                                  # death respawn (spec 0067)
+        assert chan in w._channels                      # door stays open
+        w.start_level(w.level)                          # level restart
+        assert chan not in w._channels                  # re-closed
     finally:
         _restore(saved)
 

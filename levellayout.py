@@ -1665,7 +1665,7 @@ def validate_push_puzzles(room_data, tile_owner, require_plates=True):
         # puzzle behind a locked door.
         if anchors is None:
             aug = set(passable)
-            aug |= {(c, r) for c, r, _x in room_data.get('locked_doors', [])}
+            aug |= {(c, r) for c, r, *_ in room_data.get('locked_doors', [])}
             aug |= {(c, r) for c, r, _x in room_data.get('gates', [])}
             aug |= {tuple(t) for t in room_data.get('water_tiles', [])}
             aug |= {pos for pos, wt in walls.items()
@@ -2314,7 +2314,7 @@ def _room_entry_tile(rd, tiles):
     sorted tile order — deterministic (spec 0054)."""
     to = rd['tile_owner']
     walls = rd['walls']
-    doors = {(c, r) for c, r, _x in rd.get('locked_doors', [])}
+    doors = {(c, r) for c, r, *_ in rd.get('locked_doors', [])}
     gates = {(c, r) for c, r, _x in rd.get('gates', [])}
     water = {tuple(t) for t in rd.get('water_tiles', [])}
     for t in sorted(tiles):
@@ -3036,7 +3036,7 @@ def _build_level_dict(graph, rng=None, strategies=None, grid_count=1,
                 raise LayoutError(
                     f"locked door {colour!r} has no key anywhere in the "
                     f"graph — K1 regression")
-            all_locked_doors.append((*conn, colour))
+            all_locked_doors.append((*conn, colour, edge.params['door_id']))
         elif edge.edge_type == EdgeType.GATED:
             gate_id = edge.params['gate_id']
             if defer_gate_elision or gate_id in placed_gate_ids:
@@ -3454,10 +3454,13 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         record = ('open', None, None)
         if barrier == 'locked' and edge.params['key_colour'] in surviving_key_colours:
             colour = edge.params['key_colour']
+            door_id = edge.params['door_id']
             doors = room_a.get('locked_doors', [])
-            doors.append((*barrier_tile, colour))
+            doors.append((*barrier_tile, colour, door_id))
             room_a['locked_doors'] = doors
-            record = ('locked', colour, (gname_a, barrier_tile))
+            # Spec 0077: the record carries the door's channel so both border
+            # sides derive open/closed from the global channel set (no home).
+            record = ('locked', colour, door_id)
         elif barrier == 'gated' and edge.params['gate_id'] in surviving_gate_ids:
             gate_id = edge.params['gate_id']
             gates = room_a.get('gates', [])
@@ -3469,8 +3472,9 @@ def _build_super_grid(graph, rng, strategies, progress=None):
         # Spec 0056 (BL-12): mirror the barrier type onto BOTH room dicts as
         # render metadata (like exits — never a cells entry: a real mirror
         # Barrier on the entry tile would block the return transition).
-        # The locked record's home names the room and tile of the one real
-        # door entity, so the renderer can match _opened_doors entries.
+        # Spec 0077: the locked record carries the door's channel (door_id), so
+        # both sides render open/closed from the global channel set — the one
+        # real door barrier lives only in room_a's cells.
         for room, ek in ((room_a, exit_key_a), (room_b, exit_key_b)):
             bb = room.get('border_barriers', {})
             bb[ek] = record

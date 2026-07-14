@@ -466,6 +466,8 @@ class LevelGraph:
 
         gate_counter  = [0]
         border_counter = [0]
+        door_counter = [0]          # spec 0077: unique door channel (door_id)
+        border_door_counter = [0]
 
         def _add_room(et):
             size = rng.choice(node_sizes)
@@ -478,7 +480,9 @@ class LevelGraph:
                 if colour is None:        # all colours capped — open instead
                     b.add_open_room(size=size)
                 else:
-                    b.add_locked_room(colour, size=size)
+                    b.add_locked_room(colour, size=size,
+                                      door_id=f'door_{door_counter[0]}')
+                    door_counter[0] += 1
             elif et == EdgeType.GATED:
                 b.add_gated_room(f'gate_{gate_counter[0]}', size=size)
                 gate_counter[0] += 1
@@ -496,7 +500,10 @@ class LevelGraph:
             if barrier == 'locked':
                 colour = _next_color()
                 if colour is not None:
-                    return {'barrier': 'locked', 'key_colour': colour}
+                    did = f'border_door_{border_door_counter[0]}'
+                    border_door_counter[0] += 1
+                    return {'barrier': 'locked', 'key_colour': colour,
+                            'door_id': did}
                 # all colours capped — fall through to an open border
             elif barrier == 'gated':
                 gid = f'border_gate_{border_counter[0]}'
@@ -674,13 +681,16 @@ class LevelGraphBuilder:
         return self._add_node_and_edge(size, EdgeType.BREAKABLE, parent,
                                        wall_type=wall_type)
 
-    def add_locked_room(self, colour, size=None, parent=None) -> str:
-        """Add room behind LOCKED edge. Places key in an already-reachable room."""
+    def add_locked_room(self, colour, door_id=None, size=None, parent=None) -> str:
+        """Add room behind LOCKED edge. Places key in an already-reachable room.
+
+        door_id is the door's channel (spec 0077), minted by the caller like a
+        gate_id and carried in the edge params to the runtime barrier."""
         size = size or self._rng.choice([NodeSize.ROOM, NodeSize.HALL])
         name = self._new_name()
         self._graph.add_node(name, size)
         self._graph.add_edge(parent or self._current_corridor, name,
-                             EdgeType.LOCKED, key_colour=colour)
+                             EdgeType.LOCKED, key_colour=colour, door_id=door_id)
         # Key goes in a non-corridor reachable room, or corridor as last resort
         key_room = self._pick(self._room_candidates())
         self._graph.nodes[key_room].keys.append((colour,))
@@ -736,7 +746,8 @@ class LevelGraphBuilder:
     # ── Multi-grid ────────────────────────────────────────────────────────
 
     def start_next_grid(self, super_col, super_row, exit_side='right',
-                        source=None, barrier=None, key_colour=None, gate_id=None):
+                        source=None, barrier=None, key_colour=None, gate_id=None,
+                        door_id=None):
         """Add the next corridor node and a BORDER edge.
 
         super_col, super_row: position on the super-grid for the new corridor.
@@ -757,7 +768,8 @@ class LevelGraphBuilder:
         entry_side = _OPPOSITE[exit_side]
         params = {'exit_side': exit_side, 'entry_side': entry_side}
         if barrier == 'locked' and key_colour:
-            params.update(barrier='locked', key_colour=key_colour)
+            params.update(barrier='locked', key_colour=key_colour,
+                          door_id=door_id)
             key_room = self._pick(list(self._reachable))
             self._graph.nodes[key_room].keys.append((key_colour,))
         elif barrier == 'gated' and gate_id:

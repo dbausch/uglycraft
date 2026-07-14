@@ -12,7 +12,7 @@ Barrier opening policies mirror the generator's EdgeType semantics:
     stone                 breaks after 3 bumps      (hits state)
     wooden                breaks after 2 bumps
     placed                player-installed; forge ogre breaks in 2
-    door(colour)          opens by key match on bump
+    door(colour,channel)  opens on a key-match bump by latching its channel
     gate(channel)         blocks iff its channel is low
 
 Passability is NOT answered here: World.blocked(c, r) folds barrier,
@@ -135,7 +135,11 @@ class Barrier:
     hits: int = 0               # bump damage (breakable kinds)
 
     def blocks(self, channels=frozenset()):
-        if self.kind == 'gate':
+        # A channelled barrier (gate or door) is open iff its channel is
+        # latched high; every other barrier always blocks.  Spec 0077 unifies
+        # doors with gates — a door is a gate opened by a key bump, its
+        # door_id the channel latched on open.
+        if self.channel is not None:
             return self.channel not in channels
         return True
 
@@ -304,8 +308,14 @@ def _parse_walls(cells, room_data):
 
 
 def _parse_doors(cells, room_data):
-    for dc, dr, colour in room_data.get('locked_doors', []):
-        cells.set_barrier((dc, dr), Barrier('door', colour=colour))
+    for dc, dr, colour, *rest in room_data.get('locked_doors', []):
+        # The door's channel is the generator-minted door_id when present,
+        # else a position-derived id for single-room hand-authored data (whose
+        # tiles are unique, so it cannot collide).  Spec 0077: opening the door
+        # latches this channel high; blocks() then derives passability from it.
+        channel = rest[0] if (rest and rest[0] is not None) else f'door_{dc}_{dr}'
+        cells.set_barrier((dc, dr),
+                          Barrier('door', colour=colour, channel=channel))
 
 
 def _parse_gates(cells, room_data):

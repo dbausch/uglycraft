@@ -323,9 +323,19 @@ Player-installed ignition/electrical wiring is therefore not a new
 mechanism: laying wire extends a net; the spark switch drives it; the
 nozzle on the same net fires. Both net styles coexist because receivers
 only ever ask `world.channel(name)`.
-Key → door is the degenerate case that needs **no** channel: the link is
-attribute *matching* (door.colour vs key in inventory), resolved at
-interaction time. Not everything needs wiring.
+Key → door is the degenerate case whose *trigger* needs **no** channel: the
+link is attribute *matching* (door.colour vs key in inventory), resolved at
+interaction time. Not everything needs wiring. But the door's *open state* is
+a latched boolean, and **spec 0077** stores it exactly where gate state lives —
+a directly-latched channel (the door's `door_id`, minted at graph generation by
+counters parallel to `gate_id`). A door is now `Barrier('door', colour, channel)`
+whose `blocks()` shares the gate's one line (`channel not in channels`); opening
+`_channels.add(door_id)` (like the entrance gate, no plate emitter). This deleted
+`_opened_doors` — the last parallel positional side-table — so passability,
+cross-room border render (`channel in open_channels`), and the death-persist /
+level-reset lifecycle all derive from the single channel set. The BL-57 refusal
+("no block on a door/gate tile") then collapses to one `barrier.kind in
+('door','gate')` lookup. → `spec/0077-no-block-on-door-or-gate.md`.
 
 ### R3 — Fields (emissions across cells)
 

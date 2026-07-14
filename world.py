@@ -344,9 +344,9 @@ class World:
             for rdata in data['rooms'].values()
             for m in rdata.get('materials', [])
         )
-        self._channels = set()   # latched high channel names (spec 0050)
+        self._channels = set()   # latched high channel names (spec 0050); doors
+                                 # ride this too since spec 0077 (their door_id)
         self.treasure_pos = None
-        self._opened_doors = set()
         # Water rooms already made accessible by a bridge.  One bridge per
         # water room (spec 0029 W2): once a room is reachable, no further
         # bridge to it can be built.  Replaces the old per-grid bridge cap.
@@ -572,16 +572,22 @@ class World:
                 self._emit('block_fuse_lit', b.col, b.row)
 
     def _try_auto_open_door(self, col, row):
-        """Open a locked door at (col, row) if the player has the key."""
+        """Open a locked door at (col, row) if the player has the key.
+
+        Spec 0077: a door is a gate opened by a key bump.  Opening latches its
+        channel (the door_id) high — the barrier stays, and its blocks()
+        derives passability from the channel, exactly like a gate.  The latch
+        rides `_channels`, so an opened door persists across death (spec 0067)
+        and re-closes on level (re)start, mirroring the level entrance."""
         barrier = self.cells.barrier(col, row)
         if barrier is None or barrier.kind != 'door':
             return False
+        if self.channel(barrier.channel):
+            return False                        # already open (defensive)
         if not self.inventory.has_key(barrier.colour):
             return False
         self.inventory.use_key(barrier.colour)
-        self.cells.remove_barrier((col, row))
-        self._opened_doors.add(
-            (self._current_room, col, row, barrier.colour))
+        self._channels.add(barrier.channel)
         self._emit('door_opened')
         return True
 
@@ -712,15 +718,25 @@ class World:
         return (self._current_room == self._level_data['start_room']
                 and (c, r) == tuple(self._level_data['player_start']))
 
+    def _is_door_or_gate_tile(self, c, r):
+        """A door or gate fixture lives on (c, r) — open or closed.  Building a
+        'placed' block here would hide the block under the later-drawn fixture,
+        or overwrite (destroy) the gate (spec 0077 / BL-57), so placement is
+        refused.  Doors are barriers again since spec 0077, so one authoritative
+        lookup covers the open gate, the entrance gate, and the opened door."""
+        b = self.cells.barrier(c, r)
+        return b is not None and b.kind in ('door', 'gate')
+
     def _place_block(self):
         c, r = self.player.col, self.player.row
         if (self._block_credits > 0 and not self.blocked(c, r)
-                and not self._is_respawn_tile(c, r)):
+                and not self._is_respawn_tile(c, r)
+                and not self._is_door_or_gate_tile(c, r)):
             self._block_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
             self._emit('block_placed')
         else:
-            self._emit('action_denied')   # no credit / blocked / respawn tile
+            self._emit('action_denied')   # no credit / blocked / respawn / door-gate
 
     def buy_shield(self):
         if not self.shield and self.score >= SHIELD_COST_PTS:

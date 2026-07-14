@@ -64,24 +64,26 @@ def overlay_box_width(title_w, sub_w):
     return min(want, LOGICAL_W - 40)
 
 
-def border_exit_sprite(record, orient, open_channels, opened_doors):
+def border_exit_sprite(record, orient, open_channels):
     """Sprite key for a grid-border exit tile, or None to draw nothing.
 
-    record is the room's border_barriers entry (kind, param, home) written
-    at stitch time (spec 0056), mirroring the source barrier's appearance —
-    including live state — onto both sides of the border.  Open borders get
-    no sprite: the gap in the border wall is the marker, and the staircase
-    sprite is reserved for floor-to-floor travel.
+    record is the room's border_barriers entry written at stitch time
+    (spec 0056), mirroring the source barrier's appearance — including live
+    state — onto both sides of the border.  A 'locked' record is
+    (kind, colour, door_channel) and a 'gated' record is (kind, gate_channel,
+    None); both derive open/closed from the global channel set (spec 0077), so
+    the entry side tracks the one real barrier without a positional lookup.
+    Open borders get no sprite: the gap in the border wall is the marker, and
+    the staircase sprite is reserved for floor-to-floor travel.
     """
     if record is None:
         return None
-    kind, param, home = record
-    if kind == 'locked':
-        home_room, (hc, hr) = home
-        if (home_room, hc, hr, param) in opened_doors:
+    kind, param, extra = record
+    if kind == 'locked':                        # param = colour, extra = channel
+        if extra in open_channels:
             return f'door_open_{orient}'
         return f'door_{param}_{orient}'
-    if kind == 'gated':
+    if kind == 'gated':                         # param = channel
         state = 'open' if param in open_channels else 'closed'
         return f'gate_{state}_{orient}'
     return None
@@ -552,7 +554,6 @@ class Game:
         # Every level is a one-or-more-room multiroom level (spec 0046):
         # the room collections below always exist and are simply empty on
         # Act 1, so none of these blocks needs an act gate any more.
-        rk = self._current_room
 
         # Level entrance sprite at the start-grid entry border tile — open
         # once all awards are collected (spec 0066), else the closed door.
@@ -574,8 +575,7 @@ class Game:
             else:                  sc, sr = pos, 0
             skey = border_exit_sprite(border_recs.get(exit_key),
                                       self._door_orient(sc, sr),
-                                      self.world._channels,
-                                      self._opened_doors)
+                                      self.world._channels)
             if skey is not None:
                 self.surf.blit(sp[skey], (sc * TILE, sr * TILE))
 
@@ -645,14 +645,10 @@ class Game:
                               intensity, connected, nozzle_sides=nozzle)
         for (dc, dr), door in self.cells.barriers('door'):
             o = self._door_orient(dc, dr)
-            dkey = f'door_{door.colour}_{o}'
+            dkey = f'door_open_{o}' if self.channel(door.channel) \
+                else f'door_{door.colour}_{o}'
             if dkey in sp:
                 self.surf.blit(sp[dkey], (dc * TILE, dr * TILE))
-        for ok, dc, dr, _color in self._opened_doors:
-            if ok != rk:
-                continue
-            o = self._door_orient(dc, dr)
-            self.surf.blit(sp[f'door_open_{o}'], (dc * TILE, dr * TILE))
         self._blit_items('key', sp)
         self._blit_items('material', sp)
 
@@ -1246,7 +1242,7 @@ _WORLD_ATTRS = (
     'cells', 'blocked', 'channel', 'room',
     'spawn_mode', 'crafting', '_current_room', '_current_room_data',
     '_block_credits', '_block_halves', '_bridge_credits', '_bridge_halves',
-    '_opened_doors', '_safe_tiles', '_level_key_colours', '_level_key_counts',
+    '_safe_tiles', '_level_key_colours', '_level_key_counts',
     '_level_has_planks',
     '_flame_jets', '_flame_timer', '_loot_total', '_loot_collected',
     '_transition_timer', '_final_score', '_final_level',
