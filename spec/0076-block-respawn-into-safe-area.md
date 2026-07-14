@@ -3,9 +3,13 @@
 ## Status
 
 - [x] `_block_respawn_tile` no longer prefers the block's **home/start** tile.
-      A detonated block respawns on a **random free tile inside the room's safe
-      area** (`room.safe_tile_set`), so it can never reappear on an unsafe tile
-      (a37fe3a)
+      A detonated block respawns on a **random free tile inside the safe area of
+      its own room**, so it can never reappear on an unsafe tile (a37fe3a)
+- [x] Candidates are confined to the block's **own room** (`safe_tile_set` ∩
+      `_room_floor(b)`, same `tile_owner`): a `Room` spans a whole grid whose
+      `safe_tile_set` unions every plate, so an unconfined draw could teleport
+      the block into a different, disconnected room and strand the puzzle — the
+      reported cross-room bug
 - [x] "Free" = not `blocked` (walls, unbridged water, another block) **and** not
       the player's tile — the block never materialises on the player or another
       block (enemies never share a push-puzzle room, R-P9) (a37fe3a)
@@ -57,13 +61,19 @@ random free tile within the safe area**, no longer preferring or returning to it
 home tile. The chosen tile must be free (not blocked, not the player's tile) and
 inside `room.safe_tile_set`.
 
-- **Which safe area?** The room's union `safe_tile_set` (= `World._safe_tiles`) —
-  the same set that `_light_doomed_fuses` uses to decide doom. This keeps
-  respawn and doom detection on one definition: a block is safe iff it is in the
-  union, so respawning into the union guarantees the block is *not* immediately
-  doomed. (Blocks are not paired to individual plates in the model — spec 0068
-  §"Room invariant" / levellayout.py — so "its own plate's safe tiles" is not
-  available anyway.)
+- **Which safe area?** The safe tiles of the block's **own room**, i.e.
+  `safe_tile_set` intersected with the block's own room floor
+  (`World._room_floor(b)`, same `tile_owner`). A `Room` object spans a whole
+  grid of several disconnected rooms, and `safe_tile_set` (= `World._safe_tiles`)
+  unions **every** plate across them; drawing from the raw union lets a block
+  teleport into an unrelated, disconnected room and strand its puzzle — the
+  reported cross-room bug (Daniel). Confining the draw to the block's own room
+  floor keeps it where it belongs. This still respects doom detection: a block
+  is confined to its own room floor when pushed (`_try_push_block`), so its
+  own-room safe tiles are exactly the tiles from which its puzzle stays solvable.
+  (Blocks are not paired to individual plates — spec 0068 §"Room invariant" —
+  but each plate's `safe_tiles` lie entirely within its own room floor, so the
+  own-room intersection picks out just the block's own plate's safe tiles.)
 - **The plate tile is a last resort, not a normal target (Daniel).** A block
   landing on its plate solves the puzzle, so we don't want an explosion to hand
   that out casually. Exclude every plate tile from the primary candidate set;
@@ -94,15 +104,16 @@ def _detonate_block(self, b):
     b.fuse = None
 
 def _block_respawn_tile(self, b):
-    """A random free tile inside the room's safe area, avoiding plate tiles
-    unless nothing else is free (spec 0076 / BL-55).  Free = not blocked
-    (walls / water / another block) and not the player's tile.  Falls back to
-    the block's current tile only if the safe area has no free tile at all
-    (degenerate; never happens with one block per puzzle room)."""
+    """A random free tile inside the safe area of the block's OWN room, avoiding
+    plate tiles unless nothing else is free (spec 0076 / BL-55).  Free = not
+    blocked (walls / water / another block) and not the player's tile.  Falls
+    back to the block's current tile only if its room's safe area has no free
+    tile at all (degenerate; never happens with one block per puzzle room)."""
     player = (self.player.col, self.player.row)
+    own_room = self._room_floor(b.col, b.row)       # same tile_owner as the block
     plates = {pos for pos, _ in self.room.cells.fixtures_of_kind('plate')}
     free = [t for t in self._safe_tiles
-            if not self.blocked(*t) and t != player]
+            if t in own_room and not self.blocked(*t) and t != player]
     non_plate = sorted(t for t in free if t not in plates)
     if non_plate:
         return random.choice(non_plate)             # normal path
@@ -111,10 +122,12 @@ def _block_respawn_tile(self, b):
     return (b.col, b.row)                            # doomed-but-inert fallback
 ```
 
-Note `self.blocked(*t)` treats the *currently detonating* block `b` as blocked at
-its present (unsafe) tile — that tile is outside the safe area, so it is not a
-candidate anyway; no self-exclusion special-case is needed. Other blocks on safe
-tiles are correctly excluded. Plate positions come from
+`own_room = self._room_floor(b.col, b.row)` is the set of floor tiles sharing the
+block's `tile_owner`; intersecting the grid-wide `safe_tile_set` with it keeps the
+respawn inside the block's own room (the cross-room fix). `self.blocked(*t)`
+treats the *currently detonating* block `b` as blocked at its present (unsafe)
+tile — outside the safe set anyway, so no self-exclusion special-case is needed.
+Other blocks on safe tiles are correctly excluded. Plate positions come from
 `room.cells.fixtures_of_kind('plate')` (the same source as `plate.safe_tiles`).
 
 `self._safe_tiles` is `room.safe_tile_set` (spec 0068), the union of every
@@ -173,6 +186,12 @@ Update / add in `tests/test_exploding_blocks.py`:
   (place a second block there, or stand the player on it) so the only free safe
   tile is the plate; detonate and assert the block lands **on the plate** —
   proving the plate is used when, and only when, nothing else is free.
+- **`test_respawn_stays_in_the_blocks_own_room` (new):** a grid (one `Room`)
+  holding two walled-apart puzzle rooms A and B; `safe_tile_set` spans both.
+  Detonate a block in room A (with A's lone non-plate safe tile occupied so a
+  raw-union draw would pick a room-B tile); assert the block respawns inside
+  room A and never in room B. Red before the cross-room fix (respawned to a
+  room-B tile), green after.
 
 The existing `random.seed(seed)` in `_world` makes `random.choice` deterministic
 per test, but the first three assertions check the *invariant* (inside safe area,
@@ -188,17 +207,18 @@ free, not plate), not a specific tile, so they don't hard-code the seeded draw.
 
 ## Done when:
 
-- [x] `_block_respawn_tile` returns a random free **non-plate** tile inside
-      `room.safe_tile_set` (sorted candidates → `random.choice`), never
-      preferring home, never an unsafe tile; a plate tile is used only when no
+- [x] `_block_respawn_tile` returns a random free **non-plate** tile inside the
+      safe area of the block's **own room** (`safe_tile_set` ∩ `_room_floor(b)`;
+      sorted candidates → `random.choice`), never preferring home, never an
+      unsafe tile, never a different room; a plate tile is used only when no
       non-plate safe tile is free; degenerate fallback keeps the block put
-      (a37fe3a)
+      (a37fe3a, cross-room fix pending commit)
 - [x] "Free" excludes blocked tiles and the player's tile; the block never lands
       on the player or another block (a37fe3a)
 - [x] `test_detonate_deducts_500_and_respawns` updated to assert the safe-area /
-      non-plate invariant; three new tests cover home-free, home-blocked (the
-      reported bug), and plate-only-as-last-resort — red before, green after
-      (a37fe3a)
+      non-plate invariant; four new tests cover home-free, home-blocked (the
+      reported bug), plate-only-as-last-resort, and the cross-room case — red
+      before, green after (a37fe3a + cross-room fix)
 - [x] `poe test` exits 0; no golden affected (886 passed) (a37fe3a)
 - [ ] User confirms in-game: an exploded block always reappears on a tinted
       (safe) tile, including when the player stands on its start tile (manual
