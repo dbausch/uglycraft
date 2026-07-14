@@ -156,6 +156,21 @@ also outside it). On death, blocks are **not** reset — `_reset_blocks` was
 deleted; dying preserves solved-puzzle progress (the spec 0067 player+enemy
 reset stays; gates recompute via the plate latch).
 
+**A block never comes to rest on a collectable-item tile (spec 0079 / BL-60).**
+Two runtime paths could put one there and both now refuse it via a single extra
+term, `not self.cells.items(...)`, on the query that gates them: the **push**
+guard in `World._try_push_block` (a push onto an item tile returns `False`, so
+the caller's inert `_register_bump` runs — no move, exactly like a push into a
+wall) and the **respawn** `free` comprehension in `World._block_respawn_tile` (an
+item tile never enters the candidate pool; the plate-last-resort and
+doomed-but-inert fallbacks are otherwise unchanged). The rule is **strictly
+permissive**: it only ever removes a target for which *collect-then-push* reaches
+the same tile, so no push-puzzle becomes unsolvable and **no generator /
+`levellayout` / puzzle-validation change is needed** — the shipped goldens stay
+byte-identical. `self.cells` is the current room's cells and a block always lives
+in the current room, so `self.cells.items(...)` is the right query for both
+paths. → see `spec/0079-no-block-push-or-respawn-onto-item.md`.
+
 ### The safe set is player-reachability-bound — a hard-won invariant
 
 `plate.safe_tiles` = the block positions from which the block can be pushed to

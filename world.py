@@ -551,8 +551,13 @@ class World:
         nc, nr = bc + dcol, br + drow
         # Confined to the block's own room floor (spec 0068): a block may be
         # pushed anywhere in its room — including out of the safe area, which
-        # ignites it — but never off the room's floor.
-        if not self.blocked(nc, nr) and (nc, nr) in self._room_floor(bc, br):
+        # ignites it — but never off the room's floor.  Additionally refused
+        # onto a tile that holds a collectable (spec 0079 / BL-60): a block on a
+        # pickup is an unintuitive, overlapping-sprite state.  Collect the item
+        # first and the tile is free, so every push-puzzle solution survives.
+        if (not self.blocked(nc, nr)
+                and (nc, nr) in self._room_floor(bc, br)
+                and not self.cells.items(nc, nr)):
             block.col, block.row = nc, nr
             self._emit('bumped')
             self._light_doomed_fuses()
@@ -842,15 +847,17 @@ class World:
         the candidates are intersected with the block's own room floor
         (`_room_floor`, same `tile_owner`) — a respawn must never cross into a
         different, disconnected room.  Free = not blocked (walls / water /
-        another block) and not the player's tile; enemies never share a
-        push-puzzle room (R-P9).  The detonating block sits on an unsafe tile of
+        another block), not the player's tile, and carries no collectable
+        (spec 0079 / BL-60 — a block must never land on a pickup); enemies never
+        share a push-puzzle room (R-P9).  The detonating block sits on an unsafe tile of
         its own room, so it excludes itself.  Falls back to its current tile
         only if its room's safe area has no free tile at all (degenerate)."""
         player = (self.player.col, self.player.row)
         own_room = self._room_floor(b.col, b.row)
         plates = {pos for pos, _ in self.room.cells.fixtures_of_kind('plate')}
         free = [t for t in self._safe_tiles
-                if t in own_room and not self.blocked(*t) and t != player]
+                if t in own_room and not self.blocked(*t) and t != player
+                and not self.cells.items(*t)]     # never respawn onto a pickup (spec 0079)
         non_plate = sorted(t for t in free if t not in plates)
         if non_plate:
             return random.choice(non_plate)            # normal path

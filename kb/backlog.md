@@ -1465,7 +1465,7 @@ which already uses `deadline=None` for exactly this reason. Grep the two files f
 
 ---
 
-## BL-60 · P2 · Push block must not be pushed onto (or respawn onto) a collectable-item tile
+## BL-60 · DONE · Push block must not be pushed onto (or respawn onto) a collectable-item tile
 
 A push block must not be pushable onto a tile that holds a collectable item
 (rubble, metal, keys, award/treasure items, materials/planks — anything in the
@@ -1496,5 +1496,15 @@ there — so no puzzle re-validation is needed.
 - Verification: add pygame-free `tests/test_world.py` cases — a block cannot be
   pushed onto an item tile (push refused, block stays), and a detonated block
   never respawns onto an item tile.
+
+**Resolution:** Done by spec 0079 (commit a481076), user-accepted 2026-07-15.
+A single extra `not self.cells.items(...)` term now gates both runtime paths:
+`World._try_push_block` (a push onto an item tile returns False → the caller's
+inert `_register_bump` runs, no move) and the `free` comprehension in
+`World._block_respawn_tile` (item tiles never enter the explosion-respawn pool).
+Strictly permissive — collect-then-push reaches the same tile — so no
+generator/levellayout/puzzle-validation change and goldens byte-identical;
+full suite 893 passed. Tests: tests/test_exploding_blocks.py (push-refused +
+collect-then-push; respawn never on an item tile). → spec/0079-no-block-push-or-respawn-onto-item.md
 
 ---

@@ -408,3 +408,93 @@ def test_reset_blocks_method_removed():
         assert not hasattr(w, '_reset_blocks')
     finally:
         _restore(orig)
+
+
+# ── Spec 0079: no block push (or respawn) onto a collectable-item tile (BL-60) ─
+
+def _item_push_level():
+    """`_puzzle_level` geometry (plate (2,2), block (3,2)) with a collectable
+    material seeded at (4,2) — directly in the push path when the player at
+    (2,2) presses right.  (4,2) is a *safe* tile (spec 0068), so the push, once
+    the item is gone, never ignites a fuse; the refusal is purely the BL-60
+    item guard, not the safe-area rule."""
+    owner = {(c, r): 'puzzle' for c in range(2, 6) for r in range(2, 5)}
+    main = _room(_ring(2, 5, 2, 4), tile_owner=owner,
+                 pressure_plates=[(2, 2, 'g1')],
+                 pushable_blocks=[(3, 2)],
+                 materials=[(4, 2, 'planks')])
+    return {'rooms': {'main': main}, 'start_room': 'main',
+            'player_start': (5, 4)}
+
+
+def _item_respawn_level():
+    """`_puzzle_level` geometry (plate (2,2)) with a collectable on EVERY
+    non-plate safe tile — {(2,3),(3,2),(3,3),(4,2),(4,3)}.  With the BL-60
+    guard every one is excluded from the respawn pool, so a detonation falls
+    back to the plate (2,2), the only item-free safe tile.  The block home
+    (3,4) is an *unsafe but pushable* tile, so `_verify_blocks` is satisfied
+    and no block sits on an item at init."""
+    owner = {(c, r): 'puzzle' for c in range(2, 6) for r in range(2, 5)}
+    items = [(2, 3, 'planks'), (3, 2, 'planks'), (3, 3, 'planks'),
+             (4, 2, 'planks'), (4, 3, 'planks')]
+    main = _room(_ring(2, 5, 2, 4), tile_owner=owner,
+                 pressure_plates=[(2, 2, 'g1')],
+                 pushable_blocks=[(3, 4)],
+                 materials=items)
+    return {'rooms': {'main': main}, 'start_room': 'main',
+            'player_start': (5, 4)}
+
+
+def test_push_onto_item_tile_refused_then_collect_then_push_succeeds():
+    """A push must not slide a block onto a collectable (I1): the block stays
+    put and no 'bumped' fires (the refused push falls through to the inert
+    bump path, exactly like a push into a wall).  Collecting the item frees the
+    tile, after which the very same push succeeds — proving the refusal is
+    item-specific and every collect-then-push solution survives."""
+    w, orig = _world(_item_push_level)
+    try:
+        w.player.col, w.player.row = (2, 2)            # west of the block
+        assert w.room.block_positions() == [(3, 2)]
+        assert w.cells.items(4, 2)                     # item sits in the push path
+        w.drain_events()
+
+        assert not _push(w, 1, 0)                      # push right → refused
+        assert w.room.block_positions() == [(3, 2)]    # block did NOT move
+        assert (w.player.col, w.player.row) == (2, 2)  # player did NOT step
+        assert 'bumped' not in _kinds(w.drain_events())
+
+        # Collect the item (free the tile), then the identical push works.
+        for item in list(w.cells.items(4, 2)):
+            w.cells.remove_item((4, 2), item)
+        assert not w.cells.items(4, 2)
+        w.drain_events()
+
+        assert _push(w, 1, 0)                           # now the push succeeds
+        assert w.room.block_positions() == [(4, 2)]     # block moved onto freed tile
+        assert w.room.blocks[0].fuse is None            # (4,2) is safe → no fuse
+    finally:
+        _restore(orig)
+
+
+def test_detonated_block_never_respawns_onto_item_tile():
+    """A detonated block must never reappear on a collectable (I2).  With both
+    non-plate safe tiles carrying items, the only item-free respawn target is
+    the plate; the spec-0076 invariants (inside the safe area, not the player)
+    still hold, and the respawn tile's item layer is empty."""
+    w, orig = _world(_item_respawn_level)
+    try:
+        b = w.room.blocks[0]
+        b.col, b.row = (5, 2)                          # an unsafe tile it detonates on
+        w.player.col, w.player.row = (5, 4)            # off the safe area
+        assert w.room.safe_tile_set == {(2, 2), (2, 3), (3, 2),
+                                        (3, 3), (4, 2), (4, 3)}
+        assert w.cells.items(3, 2) and w.cells.items(4, 2)
+
+        w._detonate_block(b)
+        pos = (b.col, b.row)
+        assert not w.cells.items(*pos)                 # never onto an item (BL-60)
+        assert pos in w.room.safe_tile_set             # spec-0076 invariant
+        assert pos != (w.player.col, w.player.row)     # never on the player
+        assert pos == (2, 2)                           # the lone item-free safe tile
+    finally:
+        _restore(orig)
