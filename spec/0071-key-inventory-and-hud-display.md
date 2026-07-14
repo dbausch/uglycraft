@@ -35,6 +35,12 @@ re-derive):
   colour, so `count` is always `1`. The `×N` counter therefore carries no
   information. (Only 7 colours exist; a level needing >7 locked doors is a
   separate generator constraint, out of scope here.)
+
+  > **ERRATA (spec 0075 / BL-56):** this uniqueness only holds for levels with
+  > ≤7 locked doors. The pool cycles, so a level with >7 locked doors repeats
+  > colours (a colour can have up to 4 keys/doors — capped by
+  > `MAX_KEYS_PER_COLOUR`). The HUD key tracker now draws a **stack** of that
+  > many icons per colour (spec 0075 D2); see `kb/requirements.md` R-K2.
 - **Keys are consumed on use.** `world.py:518` (`_try_auto_open_door`) calls
   `inventory.use_key(colour)` when the player bumps a matching locked door, so the
   key's count drops to 0 and it vanishes from the inventory list. This is a

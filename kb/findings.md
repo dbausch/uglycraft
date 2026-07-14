@@ -176,3 +176,19 @@ non-obvious facts (each cost a wrong attempt):
 → see `spec/0068-exploding-wedged-blocks.md` (Geometry section has computed
 diagrams incl. the wall-opening case). Enemies never share a push-puzzle room
 (R-P9, `kb/requirements.md`), so an exploded block's respawn need not avoid them.
+
+## Duplicate-colour keys are by-design (spec 0075 / BL-56)
+
+A tester saw levels with multiple keys of the same colour. This is expected, not
+a bug: `_next_color` (`levelgraph.py`) draws from a 7-colour pool that empties
+all 7 before refilling, so a level's `T` locked doors are spread **evenly** —
+each colour gets `floor(T/7)`–`ceil(T/7)` doors, and (R-K1) that many keys. Any
+key of colour X opens any door of colour X and is consumed on use, so it stays
+solvable. Sweep (`scratchpad/sweep_dup_colour.py`, 300 levels): 46 % of levels
+have a duplicate colour; per-colour counts 62 % ×1, 31 % ×2, 6.7 % ×3, 0.2 % ×4;
+**max ever 4** because `ceil(T/7) ≤ 4` for `T ≤ 28` and the largest observed `T`
+was 24. Decision (Daniel, 2026-07-14): live with it, but hard-cap 4 per colour
+(`MAX_KEYS_PER_COLOUR`; overflow → open passage, hard limit 28 doors) and make it
+legible in the HUD via a stack of overlaid key icons (spec 0075 D2 → see
+`kb/uglycraft-display.md` "Key tracker", `kb/requirements.md` R-K2). The old
+"keys are unique" assumption (spec 0071) was only ever true for `T ≤ 7`.

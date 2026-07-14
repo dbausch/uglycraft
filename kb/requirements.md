@@ -132,6 +132,18 @@ the door and orphaning the spilled key — see R-P3 exception.  Tests:
 `tests/test_key_placement.py` R-K1 section; sweep:
 `scratchpad/sweep_orphan_keys.py`.
 
+**R-K2** Colour multiplicity (spec 0075 / BL-56): keys are **not** unique per
+colour.  Because the colour pool cycles through all 7 colours before refilling,
+a level's `T` locked doors are spread evenly, so each colour has
+`floor(T/7)`–`ceil(T/7)` doors (and, by R-K1, that many keys).  `_next_color`
+(`levelgraph.py`) caps each colour at `MAX_KEYS_PER_COLOUR = 4`; when all 7 are
+capped it returns `None` and the caller creates an **open** passage instead — a
+hard limit of **28 locked doors per level** (never observed pre-cap: the largest
+natural `T` in a 300-level sweep was 24).  A colour therefore legitimately holds
+**1–4** keys/doors; any key of colour X opens any door of colour X (fungible,
+consumed on use).  The HUD draws a stack of `total` key icons per colour, lit up
+to the number held (spec 0075 D2).  Tests: `tests/test_dup_colour.py`.
+
 **R-P11** Push puzzles are anchored to the player's real entry (spec
 0063 / BL-45): every puzzle is solvable by a player who reaches the
 grid through the corridor, traversing openable barriers (doors, gates,
