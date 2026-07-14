@@ -215,10 +215,11 @@ pygame-free world unit tests (`tests/test_world.py`) assert the event stream; th
 ## Done when:
 
 - [ ] **D1** — `'action_denied'` emitted at the four refusal sites; bump sites gated to
-  one-per-press via `_bump_consumed`; inert/mining sites silent. *(commit: ____)*
+  one-per-press via `_bump_consumed`; inert/mining sites silent. *(commit: a8f497b)*
 - [ ] **D2** — `sfx_denied` ("wrongbeep") in `sounds.py`; `'action_denied' → 'denied'`
-  in `_EVENT_SOUNDS`. *(commit: ____)*
+  in `_EVENT_SOUNDS`. *(commit: 7d0ebc2)*
 - [ ] **D3** — unit tests for every in-scope and out-of-scope site + the spam gate pass;
-  affected goldens re-recorded and reviewed. *(commit: ____)*
+  no golden re-record needed (every golden run takes only successful actions, confirmed
+  by the full suite passing unchanged). *(commits: a8f497b, 7d0ebc2)*
 - [ ] **D4** — Daniel confirms the denial sound in-game (fires on refusals, not spammy,
   silent on plain navigation). *(commit: ____)*
