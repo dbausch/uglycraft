@@ -1405,7 +1405,15 @@ topics, untouched here.
 
 ---
 
-## BL-57 · P2 · Allow blocks to be built on top of a door or gate tile (block becomes invisible)
+## BL-57 · FIXED · Allow blocks to be built on top of a door or gate tile (block becomes invisible)
+
+Fixed by spec 0077 (`spec/0077-no-block-on-door-or-gate.md`), implementation
+commit `dd250d7`, user-confirmed in-game 2026-07-14. A door is now a
+channel-latched barrier (opened doors stay in the cell model, `_opened_doors`
+deleted), so `_place_block` (world.py) refuses on any tile whose
+`barrier.kind in ('door', 'gate')` — a block can no longer be built hidden under
+a door/gate fixture or on top of an open gate. The shared 'action denied' SFX
+(spec 0074 / BL-52) plays on the refusal.
 
 It was possible to build a moveable block on a tile that already holds a gate or
 door. The door/gate is drawn later, so the block is hidden underneath it.
