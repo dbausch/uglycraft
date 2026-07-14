@@ -8,10 +8,13 @@
 - [ ] "Free" = not `blocked` (walls, unbridged water, another block) **and** not
       the player's tile — the block never materialises on the player or another
       block (enemies never share a push-puzzle room, R-P9)
+- [ ] **Plate tiles excluded from the normal candidate set**: a respawn never
+      solves the puzzle for free. A plate tile is used **only as a last resort**
+      when no non-plate safe tile is free (a very small room)
 - [ ] Degenerate fallback (should never fire in a one-block puzzle): if **no**
-      safe tile is free, keep the block where it is rather than force it onto an
-      unsafe tile — it stays put and re-explodes on the next push, never landing
-      somewhere doomed
+      safe tile is free at all, keep the block where it is rather than force it
+      onto an unsafe tile — it stays put and re-explodes on the next push, never
+      landing somewhere doomed
 - [ ] `spec 0068` test `test_detonate_deducts_500_and_respawns` updated: assert
       the respawn tile is inside `room.safe_tile_set`, free, and not the player's
       tile (no longer literally `(3, 2)`)
@@ -60,10 +63,12 @@ inside `room.safe_tile_set`.
   doomed. (Blocks are not paired to individual plates in the model — spec 0068
   §"Room invariant" / levellayout.py — so "its own plate's safe tiles" is not
   available anyway.)
-- **The plate tile is eligible.** It is inside the safe area, and a block landing
-  on it simply solves that puzzle. This is harmless (the fuse already cost the
-  player 500 points and 5 s, and the tile is one of several chosen at random —
-  not an exploit) and keeps the rule "the whole safe area" literal.
+- **The plate tile is a last resort, not a normal target (Daniel).** A block
+  landing on its plate solves the puzzle, so we don't want an explosion to hand
+  that out casually. Exclude every plate tile from the primary candidate set;
+  fall back to including plate tiles only when no *non-plate* safe tile is free —
+  which can happen in a very small room where the plate is the only free safe
+  tile.
 - **Randomness source.** Reuse the module-level `random` already used for
   treasure/enemy respawn (world.py:648, 923); pick with `random.choice` over the
   **sorted** candidate list so set-iteration order never feeds the draw
@@ -88,23 +93,28 @@ def _detonate_block(self, b):
     b.fuse = None
 
 def _block_respawn_tile(self, b):
-    """A random free tile inside the room's safe area (spec 0076 / BL-55).
-    Free = not blocked (walls / water / another block) and not the player's
-    tile.  Falls back to the block's current tile only if the safe area has no
-    free tile (degenerate; never happens with one block per puzzle room)."""
+    """A random free tile inside the room's safe area, avoiding plate tiles
+    unless nothing else is free (spec 0076 / BL-55).  Free = not blocked
+    (walls / water / another block) and not the player's tile.  Falls back to
+    the block's current tile only if the safe area has no free tile at all
+    (degenerate; never happens with one block per puzzle room)."""
     player = (self.player.col, self.player.row)
-    candidates = sorted(
-        t for t in self._safe_tiles
-        if not self.blocked(*t) and t != player)
-    if candidates:
-        return random.choice(candidates)
+    plates = {pos for pos, _ in self.room.cells.fixtures_of_kind('plate')}
+    free = [t for t in self._safe_tiles
+            if not self.blocked(*t) and t != player]
+    non_plate = sorted(t for t in free if t not in plates)
+    if non_plate:
+        return random.choice(non_plate)             # normal path
+    if free:
+        return random.choice(sorted(free))          # tiny room: plate last resort
     return (b.col, b.row)                            # doomed-but-inert fallback
 ```
 
 Note `self.blocked(*t)` treats the *currently detonating* block `b` as blocked at
 its present (unsafe) tile — that tile is outside the safe area, so it is not a
 candidate anyway; no self-exclusion special-case is needed. Other blocks on safe
-tiles are correctly excluded.
+tiles are correctly excluded. Plate positions come from
+`room.cells.fixtures_of_kind('plate')` (the same source as `plate.safe_tiles`).
 
 `self._safe_tiles` is `room.safe_tile_set` (spec 0068), the union of every
 plate's `safe_tiles`. For a non-puzzle room it is empty, but a block only exists
@@ -132,12 +142,15 @@ the unsafe far column (5,2) and fused; the player stands on the block's home
 
 - **Old behaviour:** home (3,2) is occupied by `P`, so the BFS floods from (3,2)
   to the nearest open tile — which can be an **`x`** tile → block respawns unsafe.
-- **New behaviour:** candidates = safe ∧ free ∧ not `P`
-  = `{(2,2), (4,2), (2,3), (3,3), (4,3)}` — every one an `S`/`T` tile. A random
-  pick always lands the block back inside the safe area. ✔
+- **New behaviour:** non-plate candidates = safe ∧ free ∧ not `P` ∧ not a plate
+  = `{(4,2), (2,3), (3,3), (4,3)}` — every one an `S` tile (the plate `T` at
+  (2,2) is excluded). A random pick always lands the block on a safe, non-plate
+  tile. ✔ The plate `(2,2)` would only be chosen if those four were all
+  occupied — impossible in this fixture, but the last-resort path for a room so
+  small that the plate is the only free safe tile.
 
-(When home *is* free, home is just one of the candidates, no longer preferred —
-the block may land on any free safe tile.)
+(When home *is* free, home is just one of the non-plate candidates, no longer
+preferred — the block may land on any free non-plate safe tile.)
 
 ## Tests (world-level, pygame-free)
 
@@ -145,18 +158,24 @@ Update / add in `tests/test_exploding_blocks.py`:
 
 - **`test_detonate_deducts_500_and_respawns` (update):** keep the −500 / event
   assertions; replace `block_positions() == [(3, 2)]` with: the single block
-  position is `in w.room.safe_tile_set`, `not w.blocked(*pos)`, and
-  `!= (player.col, player.row)`.
+  position is `in w.room.safe_tile_set`, `not w.blocked(*pos)`,
+  `!= (player.col, player.row)`, and **not the plate tile** `(2, 2)`.
 - **`test_respawn_lands_in_safe_area_home_free` (new):** player parked off the
-  safe area; detonate; assert respawn tile ∈ safe area and free. (Home free —
-  proves home isn't special and unsafe tiles are never chosen.)
+  safe area; detonate; assert respawn tile ∈ safe area, free, and **not the
+  plate**. (Home free — proves home isn't special and unsafe/plate tiles are
+  never chosen on the normal path.)
 - **`test_respawn_avoids_unsafe_when_home_blocked` (new):** player on the block's
   home tile (3,2) (the reported bug); detonate; assert respawn tile ∈ safe area,
-  free, and ≠ player — i.e. never an `x` tile.
+  free, ≠ player, and ≠ the plate — i.e. never an `x` tile and not a free win.
+- **`test_respawn_uses_plate_only_as_last_resort` (new):** a minimal fixture
+  whose safe area is just the plate `T` plus one `S` tile; occupy the lone `S`
+  (place a second block there, or stand the player on it) so the only free safe
+  tile is the plate; detonate and assert the block lands **on the plate** —
+  proving the plate is used when, and only when, nothing else is free.
 
 The existing `random.seed(seed)` in `_world` makes `random.choice` deterministic
-per test, but the assertions check the *invariant* (inside safe area, free), not
-a specific tile, so they don't hard-code the seeded draw.
+per test, but the first three assertions check the *invariant* (inside safe area,
+free, not plate), not a specific tile, so they don't hard-code the seeded draw.
 
 ## Manual verification
 
@@ -168,14 +187,15 @@ a specific tile, so they don't hard-code the seeded draw.
 
 ## Done when:
 
-- [ ] `_block_respawn_tile` returns a random free tile inside `room.safe_tile_set`
-      (sorted candidates → `random.choice`), never preferring home, never an
-      unsafe tile; degenerate fallback keeps the block on its current tile
+- [ ] `_block_respawn_tile` returns a random free **non-plate** tile inside
+      `room.safe_tile_set` (sorted candidates → `random.choice`), never
+      preferring home, never an unsafe tile; a plate tile is used only when no
+      non-plate safe tile is free; degenerate fallback keeps the block put
 - [ ] "Free" excludes blocked tiles and the player's tile; the block never lands
       on the player or another block
-- [ ] `test_detonate_deducts_500_and_respawns` updated to assert the safe-area
-      invariant; two new tests cover home-free and home-blocked (the reported
-      bug), red before the change and green after
+- [ ] `test_detonate_deducts_500_and_respawns` updated to assert the safe-area /
+      non-plate invariant; three new tests cover home-free, home-blocked (the
+      reported bug), and plate-only-as-last-resort — red before, green after
 - [ ] `poe test` exits 0; any affected golden re-recorded and reviewed
 - [ ] User confirms in-game: an exploded block always reappears on a tinted
       (safe) tile, including when the player stands on its start tile (manual
