@@ -27,22 +27,22 @@ metal economy is finished later (see BL-54, out of scope here).
 
 ## Status checklist
 
-- [ ] **D1** — The user-built wall is **BLOCK** throughout (code + UI + sound +
+- [x] **D1** — The user-built wall is **BLOCK** throughout (code + UI + sound +
   sprite); level wall terrain untouched; HUD labels read **BLOCKS** and **BRIDGES**;
   suite green (event/sound/label goldens re-recorded).
-- [ ] **D2** — Block credits (mining a wall / collecting rubble, 2 → 1) and bridge
+- [x] **D2** — Block credits (mining a wall / collecting rubble, 2 → 1) and bridge
   credits (collecting a pack of planks, 2 → 1) via symmetric half-credit paths; SPACE
   places a block from a block credit, bumping water places a bridge from a bridge
   credit; the 3-rocks Block recipe and planks-based Bridge crafting are removed; rubble
   and planks are credit-only (not stored).
-- [ ] **D3** — Generated levels carry noticeably more rubble (block credits are
+- [x] **D3** — Generated levels carry noticeably more rubble (block credits are
   earnable without relying on scarce breakable walls).
-- [ ] **D4** — With `ENABLE_METAL = False`, generated levels contain no scrap metal;
+- [x] **D4** — With `ENABLE_METAL = False`, generated levels contain no scrap metal;
   rubble and planks are unaffected.
-- [ ] **D5** — With `ENABLE_INVENTORY_MENU = False`, the inventory / crafting overlay
+- [x] **D5** — With `ENABLE_INVENTORY_MENU = False`, the inventory / crafting overlay
   is completely disabled (TAB does nothing, nothing rendered); the internal `Inventory`
   (planks for auto-bridges, keys) still works.
-- [ ] **D6** — Verification: updated/added tests pass, goldens re-recorded and
+- [x] **D6** — Verification: updated/added tests pass, goldens re-recorded and
   reviewed, and Daniel confirms the tester build in-game.
 
 ## Background — confirmed facts
@@ -276,18 +276,22 @@ pytest suite (event traces, goldens, world unit tests). The rename is broad:
 
 ## Done when:
 
-- [ ] **D1** — user-built wall renamed to BLOCK across code/UI/sound/sprite; terrain
+- [x] **D1** — user-built wall renamed to BLOCK across code/UI/sound/sprite; terrain
   walls untouched; HUD reads BLOCKS/BRIDGES; suite green; goldens re-recorded.
-  *(commit: f01b3a1)*
-- [ ] **D2** — block half from mining *and* rubble, bridge half from planks (2 → 1
+  *(commit: f01b3a1; confirmed in-game 2026-07-14)*
+- [x] **D2** — block half from mining *and* rubble, bridge half from planks (2 → 1
   each); block placed by SPACE and bridge by water-bump, both from credits; 3-rocks
   Block recipe + `quick_place_block` and planks-based Bridge crafting (`quick_bridge`,
-  `CRAFT_BRIDGE`) removed; rubble/planks not stored; unit tests green. *(commit: c634c31)*
-- [ ] **D3** — rubble counts raised; generation test asserts the higher floor; Daniel
-  confirms there is enough rubble in play. *(commit: 6d0b22d)*
-- [ ] **D4** — `ENABLE_METAL = False` removes scrap-metal drops (rubble/planks intact);
-  generation test green. *(commit: ad6fb76)*
-- [ ] **D5** — `ENABLE_INVENTORY_MENU = False` fully disables the crafting/inventory
-  overlay (internal Inventory still works); headless test green. *(commit: d21a967)*
-- [ ] **D6** — tests updated/added and green, goldens re-recorded and reviewed, Daniel
-  confirms the tester build in-game. *(commit: ____)*
+  `CRAFT_BRIDGE`) removed; rubble/planks not stored; unit tests green. *(commit: c634c31;
+  confirmed in-game 2026-07-14)*
+- [x] **D3** — rubble counts raised; generation test asserts the higher floor; Daniel
+  confirms there is enough rubble in play. *(commit: 6d0b22d; confirmed in-game
+  2026-07-14)*
+- [x] **D4** — `ENABLE_METAL = False` removes scrap-metal drops (rubble/planks intact);
+  generation test green. *(commit: ad6fb76; confirmed in-game 2026-07-14)*
+- [x] **D5** — `ENABLE_INVENTORY_MENU = False` fully disables the crafting/inventory
+  overlay (internal Inventory still works); headless test green. *(commit: d21a967;
+  confirmed in-game 2026-07-14)*
+- [x] **D6** — tests updated/added and green (full suite 853), goldens re-recorded and
+  reviewed, Daniel confirms the tester build in-game. *(commit: d21a967; confirmed
+  in-game 2026-07-14)*
