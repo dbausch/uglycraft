@@ -25,44 +25,44 @@ structure, derive state by query*); channels are §5 R2 / spec 0050.
 
 ## Status checklist
 
-- [ ] **D1** — Every LOCKED edge carries a unique `door_id` in its params, minted
+- [x] **D1** — Every LOCKED edge carries a unique `door_id` in its params, minted
   at graph generation by counters parallel to the gate counters (`door_counter`
   for interior via `add_locked_room`, `border_door_counter` for borders via
   `_barrier_kw`). Prefixes `door_` / `border_door_` are disjoint from `gate_` /
   `border_gate_` / `ENTRANCE_CHANNEL`.
-- [ ] **D2** — `levellayout.py` carries the `door_id` as data: both door-creation
+- [x] **D2** — `levellayout.py` carries the `door_id` as data: both door-creation
   sites append `(*tile, colour, door_id)`; the border render record becomes
   `('locked', colour, door_id)` (dropping the positional `home`); the three
   `(c, r, colour)` 3-tuple unpack sites are widened to `(c, r, *_)`.
-- [ ] **D3** — `_parse_doors` sets `Barrier('door', colour=colour, channel=door_id)`
+- [x] **D3** — `_parse_doors` sets `Barrier('door', colour=colour, channel=door_id)`
   (falling back to a position-derived channel for single-room hand-authored data);
   `Barrier.blocks()` unifies to `if self.channel is not None: return self.channel
   not in channels`.
-- [ ] **D4** — `_try_auto_open_door` opens by `self._channels.add(barrier.channel)`
+- [x] **D4** — `_try_auto_open_door` opens by `self._channels.add(barrier.channel)`
   (the barrier stays); `self._opened_doors` is deleted (world init, the open path,
   the `_WORLD_ATTRS` delegation). No `door_opened(room, pos)` helper is needed —
   the channel set is the global truth.
-- [ ] **D5** — Rendering reads the channel, not the set: the door overlay loop
+- [x] **D5** — Rendering reads the channel, not the set: the door overlay loop
   draws `door_open_{o}` iff `self.channel(door.channel)` else `door_{colour}_{o}`;
   the separate `_opened_doors` render loop is deleted; `border_exit_sprite` drops
   its `opened_doors` parameter and renders its `'locked'` arm open iff
   `channel in open_channels` (structurally identical to its `'gated'` arm).
-- [ ] **D6** — `_place_block` refuses on any door/gate tile via one predicate
+- [x] **D6** — `_place_block` refuses on any door/gate tile via one predicate
   `b = cells.barrier(c, r); b is not None and b.kind in ('door', 'gate')` — the
   open gate, the entrance gate, and the opened door are all present as barriers —
   emitting `'action_denied'` and spending no credit. The open-gate-destruction bug
   is fixed by the same guard (the gate barrier is no longer overwritten).
-- [ ] **D7** — All other placement/door/gate behaviour is unchanged: credit gate,
+- [x] **D7** — All other placement/door/gate behaviour is unchanged: credit gate,
   `blocked(c, r)` gate, respawn-tile gate, bare-floor placement, opened-door
   passability, cross-room border-door rendering, door persistence across death
   (spec 0067), and door re-closing on level (re)start.
-- [ ] **D8** — Verification: pygame-free `tests/test_world.py` asserts the refusal
+- [x] **D8** — Verification: pygame-free `tests/test_world.py` asserts the refusal
   at an open-gate tile and an opened-door tile, bare-floor success, and the door
   channel lifecycle (latched on open, persists across death, cleared on level
   start); `tests/test_render.py`'s `border_exit_sprite` cases are ported to the
   channel model; generator determinism + goldens stay green (goldens byte-identical
   — no run places a block on a door/gate; the door-open sprite is pixel-identical).
-- [ ] **D9** — Daniel confirms in-game (no block on an open door/gate; denial sound
+- [x] **D9** — Daniel confirms in-game (no block on an open door/gate; denial sound
   fires; nothing hidden; gate not destroyed; border doors render open both sides).
 
 ## Background — confirmed facts
@@ -368,23 +368,27 @@ no golden run places a block on a door/gate, so **no re-record**.
 
 ## Done when:
 
-- [ ] **D1** — every LOCKED edge has a unique `door_id` in params, minted by the
-  new graph-gen counters; namespaces disjoint from gates/entrance.
-- [ ] **D2** — `levellayout.py` stores the `door_id` in the door tuple and the
-  border `'locked'` record; the 3-tuple unpack sites are widened.
-- [ ] **D3** — a door barrier carries its channel; `Barrier.blocks()` is one branch
-  for every channelled barrier; opened-door passability is byte-identical.
-- [ ] **D4** — `_try_auto_open_door` latches the channel and keeps the barrier;
+- [x] **D1** — every LOCKED edge has a unique `door_id` in params, minted by the
+  new graph-gen counters; namespaces disjoint from gates/entrance. (`dd250d7`)
+- [x] **D2** — `levellayout.py` stores the `door_id` in the door tuple and the
+  border `'locked'` record; the 3-tuple unpack sites are widened. (`dd250d7`)
+- [x] **D3** — a door barrier carries its channel; `Barrier.blocks()` is one branch
+  for every channelled barrier; opened-door passability is byte-identical. (`dd250d7`)
+- [x] **D4** — `_try_auto_open_door` latches the channel and keeps the barrier;
   `self._opened_doors` is gone from world init, the open path, and `_WORLD_ATTRS`.
-- [ ] **D5** — the open-door render folds into the `cells.barriers('door')` loop,
+  (`dd250d7`)
+- [x] **D5** — the open-door render folds into the `cells.barriers('door')` loop,
   the `_opened_doors` render loop is deleted, and `border_exit_sprite` renders both
-  barrier arms from `open_channels`; rendered pixels are unchanged.
-- [ ] **D6** — `_place_block` refuses on any door/gate tile via the single
+  barrier arms from `open_channels`; rendered pixels are unchanged. (`dd250d7`)
+- [x] **D6** — `_place_block` refuses on any door/gate tile via the single
   predicate, emitting `'action_denied'` and spending no credit; the open gate is no
-  longer destroyed.
-- [ ] **D7** — every pre-existing placement/door/gate behaviour (D7 list) is
-  unchanged.
-- [ ] **D8** — the four `test_world.py` cases and the ported `test_render.py` cases
+  longer destroyed. (`dd250d7`)
+- [x] **D7** — every pre-existing placement/door/gate behaviour (D7 list) is
+  unchanged. (`dd250d7`)
+- [x] **D8** — the four `test_world.py` cases and the ported `test_render.py` cases
   pass; generator determinism + goldens stay green (byte-identical, no re-record).
-- [ ] **D9** — Daniel confirms in-game (no block on an open door/gate; denial sound
+  (`dd250d7`; the only reds are pre-existing load-sensitive Hypothesis
+  `DeadlineExceeded` flakes — run-varying set, all green in isolation — filed BL-59.)
+- [x] **D9** — Daniel confirms in-game (no block on an open door/gate; denial sound
   fires; nothing hidden; gate not destroyed; border doors render open both sides).
+  (user-confirmed 2026-07-14)
