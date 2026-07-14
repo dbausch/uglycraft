@@ -163,7 +163,7 @@ def test_no_block_placed_on_respawn_tile_act1():
         w._block_credits = 1
         w.player.col, w.player.row = 1, 7             # standing on the respawn tile
         w.place()
-        assert _kinds(w.drain_events()) == []         # nothing placed
+        assert _kinds(w.drain_events()) == ['action_denied']   # refused (spec 0074)
         assert not w.blocked(1, 7)
         assert w._block_credits == 1                  # credit not consumed
 
@@ -183,7 +183,7 @@ def test_no_block_placed_on_respawn_tile_act2():
         w._block_credits = 2
         w.player.col, w.player.row = 10, 8            # the respawn tile
         w.place()
-        assert _kinds(w.drain_events()) == []
+        assert _kinds(w.drain_events()) == ['action_denied']   # refused (spec 0074)
         assert not w.blocked(10, 8)
         assert w._block_credits == 2                  # credit not consumed
     finally:

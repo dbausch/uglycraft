@@ -270,12 +270,15 @@ def test_gate_bump_is_inert():
         _restore(orig)
 
 
-def test_keyless_door_bump_is_inert():
+def test_keyless_door_bump_is_denied():
+    """Bumping a locked door without the key leaves it shut and now fires the
+    shared 'action_denied' SFX event (spec 0074) — the attempt is a refused
+    deliberate action, not silent navigation."""
     w, orig = _world(fx.door_level)
     try:
         w.player.col, w.player.row = (14, 8)
         w.try_move(1, 0, KEY)
-        assert w.drain_events() == []
+        assert _kinds(w.drain_events()) == ['action_denied']
         assert w.blocked(15, 8)
     finally:
         _restore(orig)

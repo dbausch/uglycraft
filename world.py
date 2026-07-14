@@ -11,7 +11,8 @@ Event kinds (args in parentheses):
 
   moved, bumped, wall_broken, door_opened, bridge_built, credit_earned,
   block_placed, collected, shield_bought, shield_expired, caught,
-  caught_shielded, item_relocated, boss_appeared      — sound triggers
+  caught_shielded, item_relocated, boss_appeared,
+  action_denied                                       — sound triggers
   flash(ms)                                           — red damage flash
   level_advanced(n)                                   — level-up fanfare
   level_started(n)                                    — input/timer reset + music
@@ -242,16 +243,24 @@ class World:
             return  # key not released since last hit — ignore
         barrier = self.cells.barrier(col, row)
         if barrier is None:
-            # No fixture: unbridged water (a bridge attempt) or a pushable
-            # block (inert; the push already failed before we got here).
-            self._try_auto_bridge(col, row)
+            # No fixture: unbridged water (a deliberate bridge attempt) or a
+            # pushable block (inert; the push already failed before we got
+            # here — normal navigation, no denial).  A refused bridge attempt
+            # is a denied deliberate action (spec 0074); the key is consumed so
+            # a held direction fires the denial only once per press, like walls.
+            if self.cells.is_water(col, row):
+                self._bump_consumed.add(key)
+                if not self._try_auto_bridge(col, row):
+                    self._emit('action_denied')
             return
         action = BARRIER_BUMP[barrier.kind]
-        if action == 'key':
-            self._try_auto_open_door(col, row)
+        if action == 'key':                         # a locked door
+            self._bump_consumed.add(key)
+            if not self._try_auto_open_door(col, row):
+                self._emit('action_denied')
             return
         if action is None:
-            return  # border / reinforced / gate: inert
+            return  # border / reinforced / gate: inert navigation, no denial
         # breakable: `action` is the hits threshold
         self._bump_consumed.add(key)
         hits = barrier.hits + 1
@@ -702,6 +711,8 @@ class World:
             self._block_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
             self._emit('block_placed')
+        else:
+            self._emit('action_denied')   # no credit / blocked / respawn tile
 
     def buy_shield(self):
         if not self.shield and self.score >= SHIELD_COST_PTS:
@@ -709,6 +720,8 @@ class World:
             self._shield_timer = SHIELD_DURATION_MS
             self.score -= SHIELD_COST_PTS
             self._emit('shield_bought')
+        else:
+            self._emit('action_denied')   # already shielded / too few points
 
     # ── Level transitions ─────────────────────────────────────────────────────
 

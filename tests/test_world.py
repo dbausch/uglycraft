@@ -121,13 +121,14 @@ def test_place_block_costs_credit(act1):
     assert act1.blocked(c, r) and act1.cells.barrier(c, r).kind == 'placed'
 
     act1.place()                              # no credit left, on a wall
-    assert act1.drain_events() == []
+    assert _kinds(act1.drain_events()) == ['action_denied']   # spec 0074
 
 
 def test_buy_shield_needs_score(act1):
     act1.score = 100
     act1.buy_shield()
-    assert act1.drain_events() == [] and not act1.shield
+    assert _kinds(act1.drain_events()) == ['action_denied']    # spec 0074
+    assert not act1.shield
 
     act1.score = 300
     act1.buy_shield()
@@ -496,5 +497,133 @@ def test_collect_planks_earns_bridge_credit_not_inventory():
             w._collect_materials()
         assert w.inventory.materials.get('planks', 0) == 0  # not stored
         assert w._bridge_credits == 1                       # 2 planks = 1 bridge
+    finally:
+        _restore(saved)
+
+
+# ── Shared "action denied" SFX (spec 0074) ────────────────────────────────────
+
+def test_denied_locked_door_without_key():
+    """Bumping a locked door with no matching key emits 'action_denied'."""
+    w, saved = _fixture(fx.door_level)
+    try:
+        w.drain_events()
+        assert not w.inventory.has_key('red')
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                          # bump the locked door
+        assert _kinds(w.drain_events()) == ['action_denied']
+        assert w.blocked(15, 8)                        # still shut
+    finally:
+        _restore(saved)
+
+
+def test_denied_bridge_without_credit():
+    """Bumping water with no bridge credit emits 'action_denied'."""
+    w, saved = _fixture(fx.water_level)
+    try:
+        w._bridge_credits = 0
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                          # bump the stream
+        assert _kinds(w.drain_events()) == ['action_denied']
+        assert w.blocked(15, 8)                        # nothing built
+    finally:
+        _restore(saved)
+
+
+def test_denied_place_block_on_blocked_tile(act1):
+    """SPACE with a credit but on a wall tile is refused with 'action_denied'."""
+    act1._block_credits = 1
+    act1.player.col, act1.player.row = 14, 7        # a stone wall tile (blocked)
+    assert act1.blocked(14, 7)
+    act1.place()
+    assert _kinds(act1.drain_events()) == ['action_denied']
+    assert act1._block_credits == 1                 # credit not spent
+
+
+def test_denied_buy_shield_when_already_shielded(act1):
+    """RETURN while already shielded (enough score) is refused."""
+    act1.score = 600
+    act1.buy_shield()
+    assert _kinds(act1.drain_events()) == ['shield_bought']
+    act1.buy_shield()                               # second buy while shielded
+    assert _kinds(act1.drain_events()) == ['action_denied']
+
+
+def test_no_denial_bumping_inert_gate():
+    """A closed gate is inert navigation — bumping it emits nothing."""
+    w, saved = _fixture(fx.gate_level)
+    try:
+        w._channels.clear()                            # gate closed
+        w.drain_events()
+        assert w.blocked(15, 8) and w.cells.barrier(15, 8).kind == 'gate'
+        w.player.col, w.player.row = 14, 8
+        w.try_move(1, 0, KEY)                          # bump the closed gate
+        assert 'action_denied' not in _kinds(w.drain_events())
+    finally:
+        _restore(saved)
+
+
+def test_no_denial_bumping_inert_block():
+    """Bumping a pushable block that cannot move (cornered against the border)
+    is normal navigation, not a denial: the push fails upstream, the bump path
+    sees a non-water empty tile and stays silent."""
+    w, saved = _fixture(fx.gate_level)
+    try:
+        block = w.room.blocks[0]
+        block.col, block.row = 1, 8                    # up against the border
+        w.player.col, w.player.row = 2, 8
+        w.drain_events()
+        w.try_move(-1, 0, KEY)                         # push into the border
+        assert (block.col, block.row) == (1, 8)        # did not move
+        assert 'action_denied' not in _kinds(w.drain_events())
+    finally:
+        _restore(saved)
+
+
+def test_no_denial_mining_a_wall(act1):
+    """Mining a breakable wall emits 'bumped'/'wall_broken', never a denial."""
+    for _ in range(5):
+        act1.try_move(*DIR_DOWN, KEY)              # reach (14,6), wall at (14,7)
+    act1.drain_events()
+    events = []
+    for _ in range(3):
+        act1.try_move(*DIR_DOWN, KEY)
+        act1.key_released(KEY)
+        events += act1.drain_events()
+    assert _kinds(events) == ['bumped', 'bumped', 'wall_broken']
+    assert 'action_denied' not in _kinds(events)
+
+
+def test_denied_spam_gate_one_per_press():
+    """Holding a direction key into a locked door fires exactly one
+    'action_denied' until release; re-press fires it again."""
+    w, saved = _fixture(fx.door_level)
+    try:
+        w.drain_events()
+        w.player.col, w.player.row = 14, 8
+        events = []
+        for _ in range(5):                            # five held ticks
+            w.try_move(1, 0, KEY)
+            events += w.drain_events()
+        assert _kinds(events) == ['action_denied']    # exactly one
+        w.key_released(KEY)
+        w.try_move(1, 0, KEY)                          # re-press
+        assert _kinds(w.drain_events()) == ['action_denied']
+    finally:
+        _restore(saved)
+
+
+def test_successful_actions_emit_no_denial():
+    """A successful door-open emits only its own event, never a denial."""
+    w, saved = _fixture(fx.door_level)
+    try:
+        w.inventory.add_key('red')
+        w.player.col, w.player.row = 14, 8
+        w.drain_events()
+        w.try_move(1, 0, KEY)                          # bump -> opens
+        kinds = _kinds(w.drain_events())
+        assert 'door_opened' in kinds
+        assert 'action_denied' not in kinds
     finally:
         _restore(saved)
