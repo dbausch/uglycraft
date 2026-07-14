@@ -30,10 +30,10 @@
       respawn tile is inside the safe area (the old nearest-open BFS could pick
       an unsafe neighbour — this is the reported bug); red before, green after
       (a37fe3a)
-- [x] `poe test` exits 0; no golden affected (886 passed) (a37fe3a)
-- [ ] Manual check: push a block out of the safe area, let it explode with the
+- [x] `poe test` exits 0; no golden affected (887 passed) (a37fe3a, 5c0fb09)
+- [x] Manual check: push a block out of the safe area, let it explode with the
       player standing on the block's start tile → it reappears on a tinted (safe)
-      tile, never on a plain/unsafe tile (user acceptance)
+      tile, never on a plain/unsafe tile (user-accepted in-game 2026-07-14)
 
 ## Problem
 
@@ -219,7 +219,7 @@ free, not plate), not a specific tile, so they don't hard-code the seeded draw.
       non-plate invariant; four new tests cover home-free, home-blocked (the
       reported bug), plate-only-as-last-resort, and the cross-room case — red
       before, green after (a37fe3a + cross-room fix)
-- [x] `poe test` exits 0; no golden affected (886 passed) (a37fe3a)
-- [ ] User confirms in-game: an exploded block always reappears on a tinted
-      (safe) tile, including when the player stands on its start tile (manual
-      acceptance)
+- [x] `poe test` exits 0; no golden affected (887 passed) (a37fe3a, 5c0fb09)
+- [x] User confirms in-game: an exploded block always reappears on a tinted
+      (safe) tile, including when the player stands on its start tile
+      (user-accepted 2026-07-14)

@@ -1352,7 +1352,21 @@ destroying a block flagged as reinforced.
 
 ---
 
-## BL-55 · P2 · Exploded block respawns onto an unsafe tile
+## BL-55 · FIXED · Exploded block respawns onto an unsafe tile
+
+Fixed by spec 0076 (`spec/0076-block-respawn-into-safe-area.md`, all deliverables
+ticked), user-accepted in-game 2026-07-14. `_block_respawn_tile` (world.py) now
+picks a random free **non-plate** tile inside the safe area of the block's **own
+room** (`safe_tile_set & _room_floor(b)`, sorted candidates → `random.choice`),
+never preferring home; a plate tile is used only as a last resort (a very small
+room) and the block stays put if its room's safe area is fully occupied. Two
+defects were fixed: (1) the old nearest-open BFS could flood past the safe area
+onto an unsafe tile — commit a37fe3a; (2) drawing from the grid-wide
+`Room.safe_tile_set` union could teleport the block into a different,
+disconnected room and strand its puzzle (found during acceptance) — commit
+5c0fb09, confined to the block's own `tile_owner` room floor. Tests in
+`tests/test_exploding_blocks.py` (home-free, home-blocked, plate-last-resort,
+cross-room), full suite 887 passed.
 
 When a moveable block explodes and would respawn at the player's location, the
 fallback picks an adjacent alternative tile, but the fallback algorithm does not
