@@ -1351,3 +1351,60 @@ handling that fires on a second press from the block's own tile and spends
 destroying a block flagged as reinforced.
 
 ---
+
+## BL-55 · P2 · Exploded block respawns onto an unsafe tile
+
+When a moveable block explodes and would respawn at the player's location, the
+fallback picks an adjacent alternative tile, but the fallback algorithm does not
+check whether that alternative tile is inside the safe area. (Reported by a
+tester.)
+
+**Fix hint:** change the respawn algorithm so that whenever a block explodes it
+respawns to a *completely random free tile within the safe area* — it should no
+longer prefer/return to its original home tile at all. Ensure the chosen tile is
+free and inside the safe area. Look in `world.py` for the block-respawn logic
+(the explode/respawn path from spec 0068 / BL-37, which currently respawns at the
+start tile or nearest open tile).
+
+---
+
+## BL-56 · P2 · Sweep: are there levels with duplicate-colour keys and/or doors?
+
+The tester was presented with levels containing multiple keys of the same colour.
+It is unknown whether any level also has multiple doors of the same colour.
+
+**Fix hint:** this is an investigation/sweep task. Run a statistical sweep over
+generated levels (see the feedback on statistical sweeps) to count, per level,
+keys-per-colour and doors-per-colour. Report whether duplicate-colour keys and/or
+duplicate-colour doors occur, and how often. Level generation is in
+`levelgraph.py` / `levellayout.py`; keys/doors/crafting in `crafting.py`. Decide
+from the results whether this is a bug to fix or acceptable.
+
+---
+
+## BL-57 · P2 · Allow blocks to be built on top of a door or gate tile (block becomes invisible)
+
+It was possible to build a moveable block on a tile that already holds a gate or
+door. The door/gate is drawn later, so the block is hidden underneath it.
+(Reported by a tester.)
+
+**Fix hint:** disallow building a block on any door or gate tile; play the shared
+'action denied' SFX (see spec 0074 / BL-52) when the build is rejected. Look at
+the build/crafting-place logic in `game.py` and the passability/fixture queries
+in `world.py` / `cells.py`.
+
+---
+
+## BL-58 · P2 · Building a block on a border passage tile draws it with the border-wall sprite
+
+When the tester built a moveable block on the passage tile of the border, the
+border wall sprite was used to draw the block. Unclear how to handle this because
+that tile is mirrored to the opposite side of the grid.
+
+**Fix hint:** open design question — the handling approach is UNDECIDED. Decide
+whether to (a) disallow building on border passage tiles, or (b) handle the
+mirroring so the block draws correctly on both sides. Border/passage mirroring and
+the border-wall sprite selection are the relevant areas (`levellayout.py` wall
+derivation, `sprites.py`, `game.py` rendering).
+
+---
