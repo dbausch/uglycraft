@@ -52,6 +52,17 @@ predate the spec-first workflow; their reference documentation is the linked
   placement credit (carries across levels), crack sprites, credit refund for
   surviving placed walls on level advance. No spec (Space placement rework
   touched in [0001](../spec/0001-shield-rework.md)).
+  - *Placement-refusal chain* (`world.py` `_place_block`): a block is refused —
+    emitting `'action_denied'` ([0074](../spec/0074-action-denied-sfx.md)), no
+    credit spent — on a blocked tile, the respawn/`player_start` tile
+    (`_is_respawn_tile`, [0067](../spec/0067-death-respawn-reset.md)), a door or
+    gate tile (`_is_door_or_gate_tile`,
+    [0077](../spec/0077-no-block-on-door-or-gate.md), BL-57), and a **border
+    passage tile** (`_is_border_passage_tile` = bare `is_border`,
+    [0078](../spec/0078-no-block-on-border-passage.md), BL-58). The border case
+    needs no render change: a placed block can no longer reach a border tile, so
+    the `is_border`-before-`'placed'` order in `_render_field` is dead for placed
+    blocks.
 - **2.4 Scoring, lives, death** — per-item points, flat 500 death penalty,
   9 starting lives, +1 per level, final score `score * max(1, lives)`. No
   spec; `kb/uglycraft-mechanics.md` + `kb/findings.md` (Pascal differences).

@@ -17,22 +17,24 @@ identity/structure, derive state by query*).
 
 ## Status checklist
 
-- [ ] **B1** — `_place_block` refuses when the player stands on a **border tile**
+- [x] **B1** — `_place_block` refuses when the player stands on a **border tile**
   (a passable border tile is always a punched passage/exit or the entrance gate),
   via a new `_is_border_passage_tile(c, r)` predicate that returns
   `is_border(c, r)`. The refusal emits `'action_denied'` and spends no credit —
-  no new event or sound.
-- [ ] **B2** — No rendering change is made. Because a placed block can no longer
+  no new event or sound. (`0211448`)
+- [x] **B2** — No rendering change is made. Because a placed block can no longer
   land on a border tile, the `_render_field` priority that draws `border_wall`
   before `placed_block` (game.py:531–534) can never be reached for a placed
   block, so the reported border-wall-sprite bug is fixed **by prevention**.
-- [ ] **B3** — All other placement behaviour is unchanged: the credit gate, the
+  (`0211448`)
+- [x] **B3** — All other placement behaviour is unchanged: the credit gate, the
   `blocked(c, r)` gate, the respawn-tile gate (spec 0067), the door/gate gate
-  (spec 0077), and successful placement on any interior floor tile.
-- [ ] **B4** — Verification: pygame-free `tests/test_world.py` asserts the
+  (spec 0077), and successful placement on any interior floor tile. (`0211448`)
+- [x] **B4** — Verification: pygame-free `tests/test_world.py` asserts the
   refusal while standing on a border passage tile (emits exactly
   `['action_denied']`, no credit spent, no `'placed'` barrier written) and that
   interior-floor placement still succeeds (guards against an over-broad refusal).
+  (`0211448`; full suite 893 passed)
 - [ ] **B5** — Daniel confirms in-game: standing on a border passage and pressing
   SPACE produces the denial sound and **no** block (nothing drawn as a border
   wall); building on ordinary interior floor still works.
@@ -211,14 +213,14 @@ places a block on a border tile**, so nothing re-records.
 
 ## Done when:
 
-- [ ] **B1** — `_place_block` refuses on a border tile via
+- [x] **B1** — `_place_block` refuses on a border tile via
   `_is_border_passage_tile`, emitting `'action_denied'` and spending no credit.
-  (pending)
-- [ ] **B2** — no rendering change; the border-wall-sprite symptom is unreachable
-  for placed blocks. (pending)
-- [ ] **B3** — every pre-existing placement behaviour (B3 list) is unchanged.
-  (pending)
-- [ ] **B4** — the two `test_world.py` cases pass; generator determinism +
-  goldens stay green (no re-record). (pending)
+  (`0211448`)
+- [x] **B2** — no rendering change; the border-wall-sprite symptom is unreachable
+  for placed blocks. (`0211448`)
+- [x] **B3** — every pre-existing placement behaviour (B3 list) is unchanged.
+  (`0211448`)
+- [x] **B4** — the two `test_world.py` cases pass; generator determinism +
+  goldens stay green (no re-record). (`0211448`; full suite 893 passed)
 - [ ] **B5** — Daniel confirms in-game: denial sound fires, no block appears, and
   interior building still works. (pending)
