@@ -34,7 +34,7 @@ item layer.
   `tests/test_exploding_blocks.py`) cases — a block cannot be pushed onto an item
   tile (push refused, block stays, a `'bumped'` is *not* emitted / a bump is), and
   a detonated block never respawns onto an item tile.
-- [ ] **I5** — Daniel confirms in-game: a block will not slide onto a pickup, and
+- [x] **I5** — Daniel confirms in-game: a block will not slide onto a pickup, and
   an exploded block never lands on one; collecting the item first then pushing
   still works.
 
@@ -196,5 +196,6 @@ tile, so it does not hard-code the seeded draw.
 - [x] **I4** — the two verification cases (push-refused + collect-then-push
   succeeds; respawn never on an item tile) pass; the full suite stays green.
   (a481076)
-- [ ] **I5** — Daniel confirms in-game: a block won't slide onto a pickup, an
-  exploded block never lands on one, and collect-then-push still works. (pending)
+- [x] **I5** — Daniel confirms in-game: a block won't slide onto a pickup, an
+  exploded block never lands on one, and collect-then-push still works.
+  (user-accepted 2026-07-15)
