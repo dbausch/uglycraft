@@ -449,7 +449,24 @@ levels.
 
 ---
 
-## BL-26 · P2 · Gate unfinished crafting content behind constants (hide unused recipes/tools, disable scrap-metal drops; rename user walls → BLOCKs)
+## BL-26 · FIXED · Gate unfinished crafting content behind constants (hide unused recipes/tools, disable scrap-metal drops; rename user walls → BLOCKs)
+
+Fixed by spec 0073 (`spec/0073-tester-build-gating-blocks-rubble-metal.md`, all
+six deliverables D1–D6 ticked), confirmed in-game by Daniel 2026-07-14. The
+user-built wall was renamed to BLOCK throughout, including code, with plural HUD
+labels BLOCKS/BRIDGES (commit f01b3a1, D1). Blocks and bridges are now earned as
+half-credits (mining a wall or collecting rubble = half a block; a pack of planks
+= half a bridge; two halves make one), and the block/bridge recipes plus the
+crafting-menu placement path were dropped — rubble and planks are credit-only
+(commit c634c31, D2). Scrap-metal drops are gated off by `ENABLE_METAL=False`
+(commit ad6fb76, D4); rubble was instead sprinkled more generously via
+`RUBBLE_BUDGET_SCALE=2.0` (~9–24 per level, commit 6d0b22d, D3); and the
+inventory/crafting overlay is disabled by `ENABLE_INVENTORY_MENU=False` (commit
+d21a967, D5).
+
+`ENABLE_METAL` and `ENABLE_INVENTORY_MENU` (both in `constants.py`) are the
+flip-back-on gating constants for the metal and inventory content. The metal
+reinforce feature (BL-54) depends on metal being re-enabled.
 
 To present a clean "unfinished but nice" build for user testing, hide crafting
 content that has no gameplay yet. (1) Add constants to disable placing the
