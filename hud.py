@@ -124,21 +124,32 @@ class KeyStackStrip(HudElement):
 
     ``entries`` is a list of ``(lit_icon, ghost_icon, total, held)`` — ``total``
     keys of that colour exist in the level, ``held`` are in hand.  Each stack is
-    left-aligned at its slot (pitch ``slot_w``, matching :class:`IconStrip`) with
-    its back key at the slot's top-left, so the back keys align in a row while
-    fans extend down-right.  The strip width is the current per-colour pitch plus
-    the widest stack's overhang (a stack of up to 4 keys is a few px wider than a
-    single slot); it stays constant during play (``total`` is fixed per level).
+    **centred** (both axes) on where a single icon would sit in its slot (pitch
+    ``slot_w``, matching :class:`IconStrip`), so growing the stack stays centred
+    on the icon rather than drifting down-right.  The strip width is the current
+    per-colour pitch plus the widest stack's overhang (a stack of up to 4 keys is
+    a few px wider than a single slot), split evenly as side padding; it stays
+    constant during play (``total`` is fixed per level).
     """
 
     def __init__(self, entries, slot_w, offset=2):
         stacks = [_compose_key_stack(l, g, t, h, offset) for (l, g, t, h) in entries]
-        surf_w = max((i * slot_w + s.get_width() for i, s in enumerate(stacks)),
-                     default=0)
-        surf_h = max((s.get_height() for s in stacks), default=0)
+        if not stacks:
+            super().__init__(pygame.Surface((0, 0), pygame.SRCALPHA))
+            return
+        iw, ih = entries[0][0].get_size()   # single-icon size (all icons equal)
+        totals = [t for (_l, _g, t, _h) in entries]
+        max_span = offset * (max(totals) - 1)
+        pad = (max_span + 1) // 2           # keeps the widest stack from clipping
+        surf_w = 2 * pad + (len(stacks) - 1) * slot_w + iw
+        surf_h = ih + 2 * pad
         surface = pygame.Surface((surf_w, surf_h), pygame.SRCALPHA)
+        cy = surf_h // 2
         for i, s in enumerate(stacks):
-            surface.blit(s, (i * slot_w, 0))
+            # centre each stack on where a single icon would sit in its slot,
+            # so growing the stack stays centred instead of drifting down-right
+            cx = pad + i * slot_w + iw // 2
+            surface.blit(s, (cx - s.get_width() // 2, cy - s.get_height() // 2))
         super().__init__(surface)
 
 
