@@ -2,30 +2,31 @@
 
 ## Status
 
-- [ ] `_block_respawn_tile` no longer prefers the block's **home/start** tile.
+- [x] `_block_respawn_tile` no longer prefers the block's **home/start** tile.
       A detonated block respawns on a **random free tile inside the room's safe
       area** (`room.safe_tile_set`), so it can never reappear on an unsafe tile
-- [ ] "Free" = not `blocked` (walls, unbridged water, another block) **and** not
+      (a37fe3a)
+- [x] "Free" = not `blocked` (walls, unbridged water, another block) **and** not
       the player's tile — the block never materialises on the player or another
-      block (enemies never share a push-puzzle room, R-P9)
-- [ ] **Plate tiles excluded from the normal candidate set**: a respawn never
+      block (enemies never share a push-puzzle room, R-P9) (a37fe3a)
+- [x] **Plate tiles excluded from the normal candidate set**: a respawn never
       solves the puzzle for free. A plate tile is used **only as a last resort**
-      when no non-plate safe tile is free (a very small room)
-- [ ] Degenerate fallback (should never fire in a one-block puzzle): if **no**
+      when no non-plate safe tile is free (a very small room) (a37fe3a)
+- [x] Degenerate fallback (should never fire in a one-block puzzle): if **no**
       safe tile is free at all, keep the block where it is rather than force it
       onto an unsafe tile — it stays put and re-explodes on the next push, never
-      landing somewhere doomed
-- [ ] `spec 0068` test `test_detonate_deducts_500_and_respawns` updated: assert
+      landing somewhere doomed (a37fe3a)
+- [x] `spec 0068` test `test_detonate_deducts_500_and_respawns` updated: assert
       the respawn tile is inside `room.safe_tile_set`, free, and not the player's
-      tile (no longer literally `(3, 2)`)
-- [ ] New world test: with the **home tile free**, detonate repeatedly and
+      tile (no longer literally `(3, 2)`) (a37fe3a)
+- [x] New world test: with the **home tile free**, detonate repeatedly and
       assert the block still lands only on safe/free tiles (proves home is no
-      longer special-cased and unsafe tiles are never chosen)
-- [ ] New world test: **home tile occupied by the player**, detonate; assert the
+      longer special-cased and unsafe tiles are never chosen) (a37fe3a)
+- [x] New world test: **home tile occupied by the player**, detonate; assert the
       respawn tile is inside the safe area (the old nearest-open BFS could pick
-      an unsafe neighbour — this is the reported bug)
-- [ ] `poe test` exits 0; any affected golden deliberately re-recorded and the
-      diff reviewed
+      an unsafe neighbour — this is the reported bug); red before, green after
+      (a37fe3a)
+- [x] `poe test` exits 0; no golden affected (886 passed) (a37fe3a)
 - [ ] Manual check: push a block out of the safe area, let it explode with the
       player standing on the block's start tile → it reappears on a tinted (safe)
       tile, never on a plain/unsafe tile (user acceptance)
@@ -187,16 +188,18 @@ free, not plate), not a specific tile, so they don't hard-code the seeded draw.
 
 ## Done when:
 
-- [ ] `_block_respawn_tile` returns a random free **non-plate** tile inside
+- [x] `_block_respawn_tile` returns a random free **non-plate** tile inside
       `room.safe_tile_set` (sorted candidates → `random.choice`), never
       preferring home, never an unsafe tile; a plate tile is used only when no
       non-plate safe tile is free; degenerate fallback keeps the block put
-- [ ] "Free" excludes blocked tiles and the player's tile; the block never lands
-      on the player or another block
-- [ ] `test_detonate_deducts_500_and_respawns` updated to assert the safe-area /
+      (a37fe3a)
+- [x] "Free" excludes blocked tiles and the player's tile; the block never lands
+      on the player or another block (a37fe3a)
+- [x] `test_detonate_deducts_500_and_respawns` updated to assert the safe-area /
       non-plate invariant; three new tests cover home-free, home-blocked (the
       reported bug), and plate-only-as-last-resort — red before, green after
-- [ ] `poe test` exits 0; any affected golden re-recorded and reviewed
+      (a37fe3a)
+- [x] `poe test` exits 0; no golden affected (886 passed) (a37fe3a)
 - [ ] User confirms in-game: an exploded block always reappears on a tinted
       (safe) tile, including when the player stands on its start tile (manual
       acceptance)
