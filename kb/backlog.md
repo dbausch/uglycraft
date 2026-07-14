@@ -1464,3 +1464,37 @@ which already uses `deadline=None` for exactly this reason. Grep the two files f
 `@settings(` and audit which property tests build levels/graphs.
 
 ---
+
+## BL-60 · P2 · Push block must not be pushed onto (or respawn onto) a collectable-item tile
+
+A push block must not be pushable onto a tile that holds a collectable item
+(rubble, metal, keys, award/treasure items, materials/planks — anything in the
+cell item layer). Likewise, after a wedged block explodes it must not respawn
+onto such a tile. Rationale: it removes an unintuitive interaction and a weird
+overlapping-sprite display situation (block drawn on top of a pickup). It does
+NOT affect the safe-area mechanic or push-puzzle solvability in any way, because
+the player can simply collect the item first, after which the block can be pushed
+there — so no puzzle re-validation is needed.
+
+**Fix hint:**
+- Runtime, `world.py`. In `_try_push_block(bc, br, dcol, drow)` the target tile
+  is `(nc, nr) = (bc+dcol, br+drow)`; today it is accepted when
+  `not self.blocked(nc, nr) and (nc, nr) in self._room_floor(bc, br)`. Add a
+  guard that refuses the push when the target tile carries a collectable, i.e.
+  when `self.cells.items(nc, nr)` is non-empty (the item layer holds
+  `Item(kind, payload)` for kind in treasure/material/key — see `cells.py`
+  `RoomCells.items` / `items_of_kind`). A refused push should behave like the
+  existing failed-push path (no move; it currently falls through to
+  `_register_bump`), matching how a block push into a wall already fails.
+- Explosion respawn: `_detonate_block` calls `_block_respawn_tile(b)` (spec 0076,
+  respawn into the safe area). Exclude item-bearing tiles from that respawn
+  candidate pool the same way — filter out any tile with `self.cells.items(tile)`
+  non-empty when choosing the respawn position.
+- No generator/levellayout change and no push-puzzle re-validation are required
+  (the constraint is strictly permissive of existing solutions — collect-then-push
+  always remains available).
+- Verification: add pygame-free `tests/test_world.py` cases — a block cannot be
+  pushed onto an item tile (push refused, block stays), and a detonated block
+  never respawns onto an item tile.
+
+---
