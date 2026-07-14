@@ -35,9 +35,10 @@ identity/structure, derive state by query*).
   `['action_denied']`, no credit spent, no `'placed'` barrier written) and that
   interior-floor placement still succeeds (guards against an over-broad refusal).
   (`0211448`; full suite 893 passed)
-- [ ] **B5** — Daniel confirms in-game: standing on a border passage and pressing
+- [x] **B5** — Daniel confirms in-game: standing on a border passage and pressing
   SPACE produces the denial sound and **no** block (nothing drawn as a border
-  wall); building on ordinary interior floor still works.
+  wall); building on ordinary interior floor still works. (user-accepted
+  2026-07-15)
 
 ## Background — confirmed facts
 
@@ -222,5 +223,5 @@ places a block on a border tile**, so nothing re-records.
   (`0211448`)
 - [x] **B4** — the two `test_world.py` cases pass; generator determinism +
   goldens stay green (no re-record). (`0211448`; full suite 893 passed)
-- [ ] **B5** — Daniel confirms in-game: denial sound fires, no block appears, and
-  interior building still works. (pending)
+- [x] **B5** — Daniel confirms in-game: denial sound fires, no block appears, and
+  interior building still works. (user-accepted 2026-07-15)
