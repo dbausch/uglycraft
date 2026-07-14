@@ -149,6 +149,26 @@ def _strip_level():
             'player_start': (2, 4)}
 
 
+def _two_puzzle_level():
+    """One grid (one Room) holding TWO separate puzzle rooms, walled apart:
+    zone A is a 1-wide strip (col 2, rows 2-4; plate (2,2), block (2,3);
+    safe = {(2,2), (2,3)}) and zone B is a 4x3 box (cols 5-8, rows 2-4;
+    plate corner (5,2), block (6,2)).  A block detonating in zone A must
+    respawn within zone A, never in zone B's safe area (spec 0076 cross-room
+    fix)."""
+    walls = _ring(2, 8, 2, 4)
+    for r in range(2, 5):
+        walls[(3, r)] = WALL_REINFORCED        # divider isolating the strip
+        walls[(4, r)] = WALL_REINFORCED
+    owner = {(2, r): 'A' for r in range(2, 5)}
+    owner.update({(c, r): 'B' for c in range(5, 9) for r in range(2, 5)})
+    main = _room(walls, tile_owner=owner,
+                 pressure_plates=[(2, 2, 'gA'), (5, 2, 'gB')],
+                 pushable_blocks=[(2, 3), (6, 2)])
+    return {'rooms': {'main': main}, 'start_room': 'main',
+            'player_start': (7, 4)}
+
+
 def _plate(w):
     (_pos, f), = w.room.cells.fixtures_of_kind('plate')
     return f
@@ -316,6 +336,26 @@ def test_respawn_avoids_unsafe_when_home_blocked():
         assert pos in safe                          # never an unsafe tile
         assert pos != (4, 2)                        # not the player
         assert pos != (2, 2)                        # not the plate
+    finally:
+        _restore(orig)
+
+
+def test_respawn_stays_in_the_blocks_own_room():
+    """The grid's safe area spans both puzzle rooms, but a detonating block
+    must respawn only within its OWN room — never in the other room's safe
+    area (the reported cross-room bug)."""
+    w, orig = _world(_two_puzzle_level)
+    try:
+        a, _b = w.room.blocks
+        zone_a_safe = {(2, 2), (2, 3)}
+        zone_b_safe = {(5, 2), (6, 2), (7, 2), (5, 3), (6, 3), (7, 3)}
+        assert w.room.safe_tile_set == zone_a_safe | zone_b_safe   # union spans both
+        a.col, a.row = (2, 4)                       # zone A's unsafe tile, fused
+        w.player.col, w.player.row = (2, 3)         # occupy A's lone non-plate safe tile
+        w._detonate_block(a)
+        pos = (a.col, a.row)
+        assert pos in zone_a_safe                   # its own room
+        assert pos not in zone_b_safe               # never the other room
     finally:
         _restore(orig)
 

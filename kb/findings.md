@@ -133,11 +133,16 @@ Probably died with spec 0029's replacement of the old per-grid bridge cap.
 
 A push-block that is pushed out of its plate's **safe area** lights a 5 s
 red-glow fuse, then explodes (−500 pts, `BLOCK_EXPLOSION_PENALTY`) and respawns
-on a **random free tile inside `Room.safe_tile_set`** (spec 0076 / BL-55 —
-was: start tile, else nearest open tile by BFS). Plate tiles are excluded from
-the normal candidate set (a respawn never solves the puzzle for free) and used
-only as a last resort when no non-plate safe tile is free (a very small room);
-if the whole safe area is occupied the block stays put. The old BFS could flood
+on a **random free tile inside the safe area of the block's OWN room** (spec
+0076 / BL-55 — was: start tile, else nearest open tile by BFS). Note a `Room`
+object spans a whole grid of several disconnected rooms, and `safe_tile_set`
+unions **every** plate across them, so the candidates are intersected with the
+block's own room floor (`World._room_floor`, same `tile_owner`) — otherwise a
+block can teleport into an unrelated room and strand its puzzle (the reported
+cross-room respawn bug). Plate tiles are excluded from the normal candidate set
+(a respawn never solves the puzzle for free) and used only as a last resort when
+no non-plate safe tile is free (a very small room); if its room's safe area is
+fully occupied the block stays put. The old BFS could flood
 past the safe area and drop the block on an **unsafe** tile — where it sat
 doomed-but-inert (fuses ignite only on a push) — most often when the player
 stood on the block's home tile at detonation; that was the BL-55 bug.

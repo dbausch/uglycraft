@@ -808,16 +808,21 @@ class World:
         b.fuse = None
 
     def _block_respawn_tile(self, b):
-        """A random free tile inside the room's safe area, avoiding plate tiles
-        unless nothing else is free (spec 0076 / BL-55).  Free = not blocked
-        (walls / water / another block) and not the player's tile; enemies never
-        share a push-puzzle room (R-P9).  The detonating block sits on an unsafe
-        tile, so it excludes itself.  Falls back to its current tile only if the
-        safe area has no free tile at all (degenerate; never with one block)."""
+        """A random free tile inside the safe area of the block's OWN room,
+        avoiding plate tiles unless nothing else is free (spec 0076 / BL-55).
+        The grid's `safe_tile_set` unions every plate across all its rooms, so
+        the candidates are intersected with the block's own room floor
+        (`_room_floor`, same `tile_owner`) — a respawn must never cross into a
+        different, disconnected room.  Free = not blocked (walls / water /
+        another block) and not the player's tile; enemies never share a
+        push-puzzle room (R-P9).  The detonating block sits on an unsafe tile of
+        its own room, so it excludes itself.  Falls back to its current tile
+        only if its room's safe area has no free tile at all (degenerate)."""
         player = (self.player.col, self.player.row)
+        own_room = self._room_floor(b.col, b.row)
         plates = {pos for pos, _ in self.room.cells.fixtures_of_kind('plate')}
         free = [t for t in self._safe_tiles
-                if not self.blocked(*t) and t != player]
+                if t in own_room and not self.blocked(*t) and t != player]
         non_plate = sorted(t for t in free if t not in plates)
         if non_plate:
             return random.choice(non_plate)            # normal path
