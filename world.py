@@ -727,16 +727,28 @@ class World:
         b = self.cells.barrier(c, r)
         return b is not None and b.kind in ('door', 'gate')
 
+    def _is_border_passage_tile(self, c, r):
+        """A punched border tile — an open passage/exit to the neighbouring grid.
+        A block placed here is drawn with the border-wall sprite (is_border wins
+        in _render_field) and would re-seal a room passage — deliberately not a
+        feature (spec 0078 / BL-58, mirrored across the shared border).  A
+        non-passage border tile is a wall and already fails `not blocked`, and
+        the level entrance is a gate already refused by `_is_door_or_gate_tile`,
+        so the bare positional `is_border` test is exact for a passable player
+        tile."""
+        return is_border(c, r)
+
     def _place_block(self):
         c, r = self.player.col, self.player.row
         if (self._block_credits > 0 and not self.blocked(c, r)
                 and not self._is_respawn_tile(c, r)
-                and not self._is_door_or_gate_tile(c, r)):
+                and not self._is_door_or_gate_tile(c, r)
+                and not self._is_border_passage_tile(c, r)):
             self._block_credits -= 1
             self.cells.set_barrier((c, r), Barrier('placed'))
             self._emit('block_placed')
         else:
-            self._emit('action_denied')   # no credit / blocked / respawn / door-gate
+            self._emit('action_denied')   # no credit/blocked/respawn/door-gate/border
 
     def buy_shield(self):
         if not self.shield and self.score >= SHIELD_COST_PTS:

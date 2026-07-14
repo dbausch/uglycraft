@@ -228,6 +228,40 @@ def test_place_block_on_bare_floor_still_succeeds():
         _restore(saved)
 
 
+# ── Spec 0078: no block placement on a border passage tile (BL-58) ────────────
+
+def test_place_block_refused_on_border_passage():
+    """A block on a punched border passage tile draws as a border wall and would
+    re-seal a room passage, so placement is refused (BL-58)."""
+    w, saved = _fixture(fx.transition_level)
+    try:
+        assert not w.blocked(29, 8)                    # 'right_8' exit is a passage
+        w.drain_events()
+        w._block_credits = 1
+        w.player.col, w.player.row = 29, 8             # stand on the passage tile
+        w.place()
+        assert _kinds(w.drain_events()) == ['action_denied']
+        assert w._block_credits == 1                   # no credit spent
+        assert w.cells.barrier(29, 8) is None          # no 'placed' written
+    finally:
+        _restore(saved)
+
+
+def test_place_block_on_interior_floor_of_bordered_grid_succeeds():
+    """The border refusal must not block ordinary placement (false-positive
+    guard on the spec-0078 predicate)."""
+    w, saved = _fixture(fx.transition_level)
+    try:
+        w.drain_events()
+        w._block_credits = 1
+        w.player.col, w.player.row = 10, 8             # interior floor, not a border
+        w.place()
+        assert _kinds(w.drain_events()) == ['block_placed']
+        assert w.cells.barrier(10, 8).kind == 'placed'
+    finally:
+        _restore(saved)
+
+
 def test_door_channel_persists_across_death_resets_on_level_start():
     """An opened door rides `_channels`: it persists across death (spec 0067)
     and re-closes on level (re)start (spec 0077)."""
