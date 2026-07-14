@@ -122,6 +122,33 @@ def _deadend_pocket_level():
             'player_start': (5, 3)}
 
 
+def _edge_block_level():
+    """`_puzzle_level` geometry (plate corner (2,2)) but the block starts at
+    (4,2) — an S tile one BFS step from the unsafe far column.  Exposes the
+    BL-55 bug: the old nearest-open BFS, when home is occupied, returns the
+    unsafe (5,2)."""
+    owner = {(c, r): 'puzzle' for c in range(2, 6) for r in range(2, 5)}
+    main = _room(_ring(2, 5, 2, 4), tile_owner=owner,
+                 pressure_plates=[(2, 2, 'g1')],
+                 pushable_blocks=[(4, 2)])
+    return {'rooms': {'main': main}, 'start_room': 'main',
+            'player_start': (5, 4)}
+
+
+def _strip_level():
+    """A 1-wide vertical strip (col 2, rows 2-4), plate at the top (2,2),
+    block start (2,3).  The safe area is exactly {(2,2) plate, (2,3)}: the
+    block at (2,3) can be pushed up to the plate (player stands at (2,4)), but
+    (2,4) is unsafe (no stand tile below it).  Forces the plate-only-last-resort
+    respawn path (spec 0076)."""
+    owner = {(2, r): 'puzzle' for r in range(2, 5)}
+    main = _room(_ring(2, 2, 2, 4), tile_owner=owner,
+                 pressure_plates=[(2, 2, 'g1')],
+                 pushable_blocks=[(2, 3)])
+    return {'rooms': {'main': main}, 'start_room': 'main',
+            'player_start': (2, 4)}
+
+
 def _plate(w):
     (_pos, f), = w.room.cells.fixtures_of_kind('plate')
     return f
@@ -246,8 +273,64 @@ def test_detonate_deducts_500_and_respawns():
             kinds += _kinds(w.drain_events())
         assert 'block_exploded' in kinds
         assert w.score == 500                      # 1000 - 500
-        assert w.room.block_positions() == [(3, 2)]   # back at start
+        (pos,) = w.room.block_positions()
+        player = (w.player.col, w.player.row)
+        assert pos in w.room.safe_tile_set         # inside the safe area (BL-55)
+        assert pos != (2, 2)                        # never the plate (normal path)
+        assert pos != player                        # never on the player
         assert w.room.blocks[0].fuse is None
+    finally:
+        _restore(orig)
+
+
+def test_respawn_lands_in_safe_area_home_free():
+    """Home tile is free, player parked off the safe area: the block still
+    respawns on a free non-plate safe tile (home is no longer special)."""
+    w, orig = _world(_puzzle_level)
+    try:
+        b = w.room.blocks[0]
+        b.col, b.row = (5, 2)                       # a fused unsafe tile
+        w.player.col, w.player.row = (5, 4)         # off the safe area
+        safe = w.room.safe_tile_set
+        w._detonate_block(b)
+        pos = (b.col, b.row)
+        assert pos in safe
+        assert pos != (2, 2)                        # not the plate
+        assert pos != (5, 4)                        # not the player
+    finally:
+        _restore(orig)
+
+
+def test_respawn_avoids_unsafe_when_home_blocked():
+    """The reported BL-55 bug: player standing on the block's home tile.  The
+    old nearest-open BFS would return the unsafe (5,2); the fix keeps the
+    respawn inside the safe area."""
+    w, orig = _world(_edge_block_level)
+    try:
+        b = w.room.blocks[0]
+        b.col, b.row = (5, 3)                       # a fused unsafe tile
+        w.player.col, w.player.row = (4, 2)         # on the block's home tile
+        safe = w.room.safe_tile_set
+        w._detonate_block(b)
+        pos = (b.col, b.row)
+        assert pos in safe                          # never an unsafe tile
+        assert pos != (4, 2)                        # not the player
+        assert pos != (2, 2)                        # not the plate
+    finally:
+        _restore(orig)
+
+
+def test_respawn_uses_plate_only_as_last_resort():
+    """When the only free safe tile is the plate (a very small room), the block
+    respawns onto the plate — otherwise plate tiles are excluded."""
+    w, orig = _world(_strip_level)
+    try:
+        b = w.room.blocks[0]
+        assert w.room.safe_tile_set == {(2, 2), (2, 3)}
+        b.col, b.row = (2, 4)                        # pushed onto the lone unsafe tile
+        w.player.col, w.player.row = (2, 3)          # occupy the only non-plate safe tile
+        w._detonate_block(b)
+        assert (b.col, b.row) == (2, 2)              # plate — the only free safe tile
     finally:
         _restore(orig)
 

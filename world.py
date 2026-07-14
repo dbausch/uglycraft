@@ -800,34 +800,30 @@ class World:
 
     def _detonate_block(self, b):
         """Explode a doomed block (spec 0068): deduct the penalty, emit the
-        blast, and respawn it at its start (or the nearest open tile)."""
-        home = self.room.blocks_initial[self.room.blocks.index(b)]
+        blast, and respawn it on a random free tile inside the safe area
+        (spec 0076)."""
         self.score = max(0, self.score - BLOCK_EXPLOSION_PENALTY)
         self._emit('block_exploded', b.col, b.row)
-        b.col, b.row = self._block_respawn_tile(home)
+        b.col, b.row = self._block_respawn_tile(b)
         b.fuse = None
 
-    def _block_respawn_tile(self, home):
-        """`home` if it is open and clear of the player, else the nearest open
-        non-player tile (spec 0068).  Blocks count as blocked, so it never
-        lands on another block; enemies never share a push-puzzle room (R-P9)."""
+    def _block_respawn_tile(self, b):
+        """A random free tile inside the room's safe area, avoiding plate tiles
+        unless nothing else is free (spec 0076 / BL-55).  Free = not blocked
+        (walls / water / another block) and not the player's tile; enemies never
+        share a push-puzzle room (R-P9).  The detonating block sits on an unsafe
+        tile, so it excludes itself.  Falls back to its current tile only if the
+        safe area has no free tile at all (degenerate; never with one block)."""
         player = (self.player.col, self.player.row)
-        if not self.blocked(*home) and home != player:
-            return home
-        seen = {home}
-        q = deque([home])
-        while q:
-            c, r = q.popleft()
-            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nb = (c + dc, r + dr)
-                if nb in seen:
-                    continue
-                seen.add(nb)
-                if not self.blocked(*nb):
-                    if nb != player:
-                        return nb
-                    q.append(nb)          # walkable but the player is on it
-        return home
+        plates = {pos for pos, _ in self.room.cells.fixtures_of_kind('plate')}
+        free = [t for t in self._safe_tiles
+                if not self.blocked(*t) and t != player]
+        non_plate = sorted(t for t in free if t not in plates)
+        if non_plate:
+            return random.choice(non_plate)            # normal path
+        if free:
+            return random.choice(sorted(free))         # tiny room: plate last resort
+        return (b.col, b.row)                           # doomed-but-inert fallback
 
     def _forge_ogre_attack(self, enemy):
         """Forge ogre damages an adjacent player-placed wall (2 hits to break)."""

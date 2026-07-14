@@ -133,7 +133,15 @@ Probably died with spec 0029's replacement of the old per-grid bridge cap.
 
 A push-block that is pushed out of its plate's **safe area** lights a 5 s
 red-glow fuse, then explodes (−500 pts, `BLOCK_EXPLOSION_PENALTY`) and respawns
-at its start (or nearest open tile). Detection is a static membership check:
+on a **random free tile inside `Room.safe_tile_set`** (spec 0076 / BL-55 —
+was: start tile, else nearest open tile by BFS). Plate tiles are excluded from
+the normal candidate set (a respawn never solves the puzzle for free) and used
+only as a last resort when no non-plate safe tile is free (a very small room);
+if the whole safe area is occupied the block stays put. The old BFS could flood
+past the safe area and drop the block on an **unsafe** tile — where it sat
+doomed-but-inert (fuses ignite only on a push) — most often when the player
+stood on the block's home tile at detonation; that was the BL-55 bug.
+Detection is a static membership check:
 `(block tile) ∉ Room.safe_tile_set → ignite` in `World._light_doomed_fuses`,
 run after every successful push. Blocks are confined to their room floor
 (`World._room_floor`), may be pushed onto unsafe tiles (the old dead-square push
@@ -174,7 +182,8 @@ non-obvious facts (each cost a wrong attempt):
   the room safe**.
 
 → see `spec/0068-exploding-wedged-blocks.md` (Geometry section has computed
-diagrams incl. the wall-opening case). Enemies never share a push-puzzle room
+diagrams incl. the wall-opening case) and `spec/0076-block-respawn-into-safe-area.md`
+(random-safe-tile respawn). Enemies never share a push-puzzle room
 (R-P9, `kb/requirements.md`), so an exploded block's respawn need not avoid them.
 
 ## Duplicate-colour keys are by-design (spec 0075 / BL-56)
