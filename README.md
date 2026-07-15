@@ -140,9 +140,9 @@ Or directly:
 Requires [butler](https://itch.io/docs/butler/) and a one-time `butler login`.
 
 ```bash
-poe deploy                 # push all four channels
+poe deploy                 # push all live channels (Linux, Windows, original Linux) + AUR
 poe deploy-original-linux  # push FPC Linux port only
-poe deploy-original-dos    # push original DOS exe only
+poe deploy-original-dos    # push original DOS exe (frozen — never redeployed)
 ```
 
 `poe deploy` reads the version from the latest git tag automatically.
@@ -196,10 +196,10 @@ poe setup-windows          # one-time: install Python + deps into Wine
 poe build-windows          # build dist/windows-64/uglycraft.exe
 poe build-original         # build original/UGLI_2 with FPC
 poe clean                  # remove all build artifacts
-poe deploy                 # push all four itch.io channels
-poe deploy-uglycraft       # push Linux and Windows only
+poe deploy                 # push all live channels (Linux, Windows, original Linux) + AUR
+poe deploy-uglycraft       # push UGLYCRAFT Linux and Windows only
 poe deploy-original-linux  # push FPC Linux port only
-poe deploy-original-dos    # push original DOS exe only
+poe deploy-original-dos    # push original DOS exe (frozen — never redeployed)
 ```
 
 ---

@@ -15,16 +15,21 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 | `poe build-windows` | Build `dist/windows-64/uglycraft.exe` + license notices (~25 MB) via Wine |
 | `poe build-original` | Generate `git_sha.inc`, fetch UOS source (curl), and build `original/UGLI_2` with FPC |
 | `poe clean` | Remove all build artifacts (`dist/`, `build/`, compiled Pascal output) |
-| `poe deploy` | Push all four itch.io channels with current git tag as version |
-| `poe deploy-uglycraft` | Push Linux and Windows channels only |
+| `poe deploy` | Push the three **live** itch.io channels (UGLYCRAFT Linux + Windows, original Linux) and the AUR release, with current git tag as version. Excludes `original-dos` — see note below |
+| `poe deploy-uglycraft` | Push the UGLYCRAFT Linux and Windows channels only |
 | `poe deploy-original-linux` | Push `dist/original-linux` to itch.io |
-| `poe deploy-original-dos` | Push `dist/original-dos` to itch.io |
+| `poe deploy-original-dos` | Push `dist/original-dos` to itch.io (manual only; see note) |
 | `poe deploy-aur` | Copy release PKGBUILD + .SRCINFO to `../uglycraft-aur`, commit and push |
 | `poe deploy-aur-git` | Copy git PKGBUILD + .SRCINFO to `../uglycraft-git-aur`, commit and push |
 
 Build and deploy are separate steps — deploy tasks only call butler, never build.
 Windows build requires Wine installed via the system package manager; `poe setup-windows` handles the rest.
 Version is read from the latest git tag automatically.
+
+The **`original-dos` channel is frozen forever** — the original DOS executable
+can never be rebuilt, so it is deliberately left out of the `poe deploy` bundle
+and will not be redeployed. The `poe deploy-original-dos` task still exists for
+the record, but there is no reason to run it again.
 
 ### Arch packaging
 
