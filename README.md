@@ -2,7 +2,7 @@
 
 A Python/pygame spiritual remake of **UGLI** (1996), a DOS treasure-hunt game originally written in Turbo Pascal 7.
 
-Collect nine treasures across ten progressively harder levels while being hunted by an ever-closing enemy. Outsmart it by placing walls, buying a shield, or simply staying one step ahead.
+Collect treasure across **twenty levels in two acts**: ten hand-crafted arcade stages where an ever-closing enemy hunts you, then ten randomly generated vaults packed with crafting, locked doors, and puzzles. Outsmart your pursuers by building walls, bridging water, buying a shield, or simply staying one step ahead.
 
 **Download compiled binaries (Linux, Windows, and the original DOS game) at [dbausch.itch.io/uglycraft](https://dbausch.itch.io/uglycraft).**
 
@@ -12,14 +12,28 @@ Collect nine treasures across ten progressively harder levels while being hunted
 
 ## Features
 
-- Ten hand-crafted levels with increasingly complex wall layouts
-- Level 10: a boss enemy with BFS pathfinding and its own locked vault
+**Act 1 — ten hand-crafted arcade levels**
+
+- Increasingly complex wall layouts; a boss with its own locked vault on level 10
 - Three ogre enemy types that escalate in appearance across level groups
-- Interactive wall placement — block the enemy's path on the fly
+- Mine walls and place your own to block the enemy's path
 - Instant shield purchase — absorbs one hit, no shop screen
+
+**Act 2 — ten randomly generated vaults (levels 11–20)**
+
+- A fresh layout every run — rooms, treasure, puzzles and enemies are generated on the fly
+- Collect materials and craft: build stone walls, lay bridges across water
+- Seven colours of keys and locked doors guarding the good loot
+- Push-block puzzles: shove blocks onto pressure plates to open gates
+- New hazards to time and dodge: deep water and rhythmic flame jets
+- New enemies: patrolling guards and a wall-smashing forge ogre
+
+**Throughout**
+
+- Grab the last treasure, then escape through the exit door to clear a level
 - Procedural sound effects and music — no external audio files
-- High-score table persisted to disk
 - All sprites drawn procedurally — no external image files
+- High-score table persisted to disk
 - Fixed 960×540 logical resolution, integer-scaled to fit any display; F11 toggles fullscreen
 
 ---
@@ -109,13 +123,13 @@ Output: `original/UGLI_2`. Requires a terminal of at least 80×25 characters. Te
 
 ```bash
 poe run
-poe run-level 5          # start at a specific level
+poe run --level 5        # start at a specific level
 ```
 
 Or directly:
 
 ```bash
-.venv/bin/python main.py --level N        # start at level N (1–10)
+.venv/bin/python main.py --level N        # start at level N (1–20)
 .venv/bin/python main.py --easy/--hard    # set difficulty (default: easy)
 ```
 
@@ -140,7 +154,8 @@ poe deploy-original-dos    # push original DOS exe only
 | Key | Action |
 |---|---|
 | Arrow keys | Move; bump a wall 3× to mine it |
-| Space | Place wall on current tile (costs 1 credit) |
+| Space | Place a block on the current tile (costs 1 credit) |
+| Tab | Open inventory / crafting (Act 2) |
 | Enter | Buy shield instantly (250 pts, lasts 10 s) |
 | P | Pause / unpause |
 | Escape | Quit to menu |
@@ -175,8 +190,7 @@ Being caught without a shield costs 500 points and one life.
 
 ```bash
 poe install                # create venv and install dependencies
-poe run                    # run the game
-poe run-level N            # run starting at level N
+poe run                    # run the game (e.g. poe run --level 5)
 poe build-linux            # build dist/linux-64/uglycraft
 poe setup-windows          # one-time: install Python + deps into Wine
 poe build-windows          # build dist/windows-64/uglycraft.exe
@@ -193,14 +207,22 @@ poe deploy-original-dos    # push original DOS exe only
 ## Project structure
 
 ```
-main.py        Entry point, display scaling, event loop
-game.py        State machine, game logic, rendering
-constants.py   Resolution, tile size, colours, timing
-sprites.py     All sprites drawn procedurally (no image files)
-levels.py      Ten level definitions (wall patterns + enemy starts)
-entities.py    Player and Enemy classes (BFS pathfinding for boss)
-sounds.py      SoundManager — 14 SFX + 12 music tracks, all procedural
-hiscore.py     Top-10 score persistence (uglycraft.hsc)
+main.py         Entry point, display scaling, event loop
+game.py         Menus, input, rendering, crafting UI (presentation only)
+world.py        Core gameplay rules and state (no pygame)
+cells.py        Per-tile terrain, barriers, and items
+rooms.py        Live room objects and exit detection
+constants.py    Resolution, tile size, colours, timing
+sprites.py      All sprites drawn procedurally (no image files)
+hud.py          HUD layout primitives
+levels.py       Act 1 level definitions + Act 2 generated levels
+levelgraph.py   Act 2 level graph model, generation, validation
+levellayout.py  Act 2 graph → grid layout + Sokoban solver
+leveldump.py    ASCII export of a level (--dump-level)
+entities.py     Player and enemy classes (chase, patrol, forge ogre)
+crafting.py     Materials, tools, keys, recipes, inventory
+sounds.py       SoundManager — procedural SFX + music
+hiscore.py      Top-10 score persistence (uglycraft.hsc)
 ```
 
 ---
