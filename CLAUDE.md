@@ -176,7 +176,7 @@ confirmation. Never infer acceptance from tooling output alone.
 
 ### 6 — Maintain living documents
 
-After every substantive commit to `original/`:
+After every substantive commit to `original/` (Pascal work):
 
 | Document | What to update |
 |---|---|
@@ -184,11 +184,21 @@ After every substantive commit to `original/`:
 | `original/CLAUDE.md` | Update if data structures, procedures, file layout, or `uses` clause changed |
 | Spec checklist | Mark items `- [x]` only after the user confirms the behaviour works |
 
+After every substantive commit to UGLYCRAFT (Python work):
+
+| Document | What to update |
+|---|---|
+| `CHANGELOG.md` (root) | Add player-facing entries to `[Unreleased]` — the UGLYCRAFT changelog, written for a general audience (not the Pascal port's `original/CHANGELOG.md`) |
+| `CLAUDE.md` (this file) | Update the **Architecture** table (file count + roles) if a Python module was added/removed/repurposed, and the **Knowledge base** table if a `kb/` file was added/removed |
+| `kb/feature-inventory.md` | Record new/changed features and their spec links |
+| Spec checklist | Mark items `- [x]` only after the user confirms the behaviour works |
+
 After a release (new git tag + `poe deploy`):
 
 | Document | What to update |
 |---|---|
 | `CLAUDE.md` (this file) | Bump **Current version** |
+| `CHANGELOG.md` (root) | Close `[Unreleased]` into a versioned section |
 | `original/CHANGELOG.md` | Close `[Unreleased]` into a versioned section |
 
 ## Licensing
@@ -219,7 +229,8 @@ Use them when working on a topic that needs deeper background.
 | `kb/feature-inventory.md` | Hierarchical map of all implemented aspects with spec links and test-coverage status |
 | `kb/world-model-review.md` | SE review of the runtime world model: pain points + staged refactoring plan (World extraction, tile map, dispatch) |
 | `kb/uglycraft-mechanics.md` | Scoring, lives, shield, speed formula, state machine, boss behaviour |
-| `kb/uglycraft-levels.md` | Wall layouts and enemy start positions for all 10 levels |
+| `kb/uglycraft-levels.md` | Wall layouts and enemy start positions for the 10 hand-authored Act 1 levels |
+| `kb/uglycraft-layouts.md` | Act 2 layout-strategy reference: grid/diagram notation, the corridor/zone strategies, worked examples |
 | `kb/uglycraft-display.md` | Integer scaling, HUD layout, sprite construction notes |
 | `kb/uglycraft-sound.md` | Sound generation, music keys, trigger map, fallback behaviour |
 | `kb/findings.md` | Bugs, quirks, and key differences between Pascal original and Python remake |
@@ -251,15 +262,15 @@ Or directly: `.venv/bin/python main.py --level N --easy/--hard`
 
 In debug mode (`--level`) the high-score entry screen is suppressed.
 
-## Architecture (15 Python files)
+## Architecture (16 Python files)
 
 | File | Role |
 |---|---|
 | `constants.py` | Logical resolution, tile size, colours, timing, wall types |
 | `hud.py` | HUD layout primitives: `HudElement`/`LabelValue`/`IconStrip` + an `HBox` that distributes slack across the `n-1` gaps and draws subtle gap separators (spec 0072) |
 | `sprites.py` | All sprites drawn procedurally via `pygame.draw` — no image files |
-| `levels.py` | Act 1 levels (hand-authored) + Act 2 levels (graph-generated at import) |
-| `entities.py` | `Player`, `Enemy`, `PatrolEnemy` — tile-grid movement, BFS pathfinding, room confinement |
+| `levels.py` | Act 1 levels (hand-authored) + Act 2 levels (graph-generated lazily per level on demand, spec 0028) |
+| `entities.py` | `Player`, `Enemy`, `PatrolEnemy`, `ForgeOgre` (breaks placed walls) — tile-grid movement, BFS pathfinding, room confinement |
 | `hiscore.py` | Top-10 score persistence to `uglycraft.hsc` |
 | `sounds.py` | `SoundManager` — 14 procedural SFX + 12 music tracks |
 | `cells.py` | Layered cell model: terrain (floor/water) + Barrier/Bridge fixtures per cell, one parser from room data (spec 0047) |
@@ -269,4 +280,5 @@ In debug mode (`--level`) the high-score entry screen is suppressed.
 | `crafting.py` | Materials, tools, keys, recipes, `Inventory` class |
 | `rooms.py` | Live `Room` objects (persist by identity, spec 0051), exit detection |
 | `levelgraph.py` | Graph model (`Node`, `Edge`, `LevelGraph`), generation, playability validation |
-| `levellayout.py` | Layout algorithm: graph → 30×16 grid, wall derivation, Sokoban solver |
+| `levellayout.py` | Layout algorithm: graph → one or more 30×16 grids, wall derivation, Sokoban solver |
+| `leveldump.py` | Pygame-free ASCII export of a loaded level (`--dump-level`) via the real `start_level` path; single- and multi-grid canvases (specs 0064/0065) |
