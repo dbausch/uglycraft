@@ -1517,3 +1517,150 @@ full suite 893 passed. Tests: tests/test_exploding_blocks.py (push-refused +
 collect-then-push; respawn never on an item tile). → spec/0079-no-block-push-or-respawn-onto-item.md
 
 ---
+
+## BL-61 · P1 · uglycraft package installs only 8 of 16 Python modules (game crashes on launch)
+
+`packaging/PKGBUILD:47-48` and `packaging/PKGBUILD-git:51-52` install a hardcoded
+list of 8 modules (main, game, constants, sprites, levels, entities, hiscore,
+sounds). The game is now 16 modules; the wrapper runs
+`python /usr/share/uglycraft/main.py`, which crashes at `game.py:12`
+(`from hud import …`) before the window opens. Missing runtime modules: hud,
+world, crafting, cells, rooms, levelgraph, levellayout (plus leveldump, lazily
+imported at main.py:71 for --dump-level). The list went stale after the
+world/hud/crafting split (specs 0045–0047, 0072). The `ugli` (Pascal) half is
+unaffected. This is a release blocker — the published uglycraft is unrunnable.
+→ kb/arch-packaging.md
+
+**Fix hint:** replace the explicit list in both PKGBUILDs with a glob.
+`git ls-files '*.py' | grep -v /` is exactly the 16 game files (repo root has no
+other .py; tests/ is a subdir), so from inside the source dir:
+`install -m644 *.py "$pkgdir/usr/share/uglycraft/"`. Future-proof and picks up
+leveldump too.
+
+---
+
+## BL-62 · P2 · Redundant `provides=($pkgname)` in package_uglycraft and package_ugli
+
+Arch guideline: "Do not add $pkgname to provides, as it is always implicitly
+provided." Violated in package_uglycraft (`provides=('uglycraft')`, PKGBUILD:41)
+and package_ugli (`provides=('ugli')`, :77). Note: the `provides` in the -git
+packages (PKGBUILD-git:45,81) are CORRECT and must stay — there $pkgname is
+uglycraft-git/ugli-git, so providing the non-git name satisfies deps and pairs
+with conflicts. → kb/arch-packaging.md
+
+**Fix hint:** delete the two redundant `provides` lines from the release
+PKGBUILD only; leave the -git PKGBUILD untouched. Regenerate .SRCINFO afterwards
+(see BL-66).
+
+---
+
+## BL-63 · P2 · Release tarball uses SKIP instead of a real checksum
+
+Arch guideline requires integrity variables to hold correct values (updpkgsums);
+CLAUDE.md § Arch packaging also says to run updpkgsums at release time, but
+PKGBUILD:15-19 is still all-SKIP. At minimum the versioned `v$pkgver.tar.gz`
+(source index 0) must carry a real sha256. The git PKGBUILD legitimately keeps
+SKIP (VCS clone). The other four SKIPs are forced by the moving-branch sources —
+see BL-65. → kb/arch-packaging.md
+
+**Fix hint:** `updpkgsums packaging/PKGBUILD` after BL-65 pins the external
+sources; if BL-65 is deferred, at least set a real sha256 for the release
+tarball (index 0) and keep SKIP only for the branch-tip sources.
+
+---
+
+## BL-64 · P2 · uglycraft ships the OFL-1.1 font but declares only GPL-3.0-only
+
+`license` is set once at pkgbase level (GPL-3.0-only) and never overridden, but
+package_uglycraft installs fonts/ShareTechMono-Regular.ttf and
+OFL-1.1-ShareTechMono.txt (PKGBUILD:50,68). The license field must list all
+licenses of distributed content. `ugli` ships no font (GPL-only correct there).
+pygame/numpy are runtime deps, not bundled, so their licenses do not belong here.
+→ kb/arch-packaging.md
+
+**Fix hint:** override per split package —
+`license=('GPL-3.0-only' 'OFL-1.1')` inside package_uglycraft (and
+package_uglycraft-git). Regenerate .SRCINFO (BL-66).
+
+---
+
+## BL-65 · P3 · Non-reproducible moving-branch external sources
+
+uos.pas/uos_flat.pas/uos_portaudio.pas are pulled from `…/uos/main/…` and
+ANSI-87.conf from `…/kitty-themes/master/…` (PKGBUILD:11-14, PKGBUILD-git:10-13).
+Unversioned branch tips make the build non-reproducible and are the reason four
+sha256sums are pinned to SKIP. Reproducibility is an explicit Arch goal.
+→ kb/arch-packaging.md
+
+**Fix hint:** pin each URL to a specific commit hash / tag and give it a real
+sha256 (updpkgsums). Apply to both PKGBUILD and PKGBUILD-git.
+
+---
+
+## BL-66 · P3 · .SRCINFO is hand-copied, never regenerated (drift risk)
+
+deploy-aur/deploy-aur-git (pyproject.toml:187-) `cp` a static
+.SRCINFO/.SRCINFO-git. It matches now for the release (makepkg --printsrcinfo
+diff = MATCH) but any PKGBUILD edit silently drifts it — .SRCINFO-git already
+shows a stale pkgver (1.4.r0.gf95b776 vs the PKGBUILD's 1.4.r20.g21ad119). Every
+provides/license fix above must be re-flowed into .SRCINFO. → kb/arch-packaging.md
+
+**Fix hint:** in the deploy tasks, regenerate rather than copy:
+`cd packaging && makepkg --printsrcinfo > .SRCINFO` (and `> .SRCINFO-git` from
+PKGBUILD-git). Keep the committed .SRCINFO files in sync in the same commit as
+any PKGBUILD change.
+
+---
+
+## BL-67 · P3 · arch=('x86_64') on the pure-Python uglycraft split package
+
+`arch` is overridable per split package. `uglycraft` is architecture-independent
+(pure Python) and could set `arch=('any')` so it installs on aarch64 etc.;
+`ugli` (compiled FPC binary) correctly stays x86_64. The pkgbase-level array must
+still include every arch the split members need. → kb/arch-packaging.md
+
+**Fix hint:** add `arch=('any')` inside package_uglycraft (and
+package_uglycraft-git); leave pkgbase arch and package_ugli as x86_64. Confirm
+the resulting `uglycraft-…-any.pkg.tar.zst` still installs alongside the x86_64
+`ugli`.
+
+---
+
+## BL-68 · P3 · Compiled UGLI_2 binary installed under /usr/share
+
+UGLI_2 (an ELF executable) is installed to /usr/share/ugli/UGLI_2 (PKGBUILD:82,
+PKGBUILD-git:86). /usr/share is for architecture-independent data; a private,
+wrapper-invoked binary is more idiomatic in /usr/lib/ugli/. namcap warns ("ELF
+file in /usr/share"). Harmless but non-canonical. → kb/arch-packaging.md
+
+**Fix hint:** install the binary to /usr/lib/ugli/UGLI_2 and update the `UGLI=`
+path at the top of packaging/ugli.sh to match; update both PKGBUILDs. Data files
+(ANSI-87.conf, translations) can stay in /usr/share/ugli.
+
+---
+
+## BL-69 · P3 · Installed Python modules are not byte-compiled
+
+The loose .py files land in root-owned /usr/share/uglycraft; at first run Python
+tries to write __pycache__ there, fails silently, and recompiles every launch.
+Proper Python packaging precompiles bytecode. Minor; commonly skipped for
+loose-script games. → kb/arch-packaging.md
+
+**Fix hint:** after installing the modules, run
+`python -m compileall "$pkgdir/usr/share/uglycraft"` in package_uglycraft (and
+the -git variant); consider `--invalidation-mode=unchecked-hash` for
+reproducibility.
+
+---
+
+## BL-70 · P3 · Stale pyproject.toml [project] metadata
+
+Not an AUR file but packaging metadata — `[project]` says `version = "1.0"` and
+`description = "…UGLI (1993)…"` (pyproject.toml:1-4), vs the real v1.5 / 1996.
+Independent of the AUR fixes. → kb/arch-packaging.md
+
+**Fix hint:** bump version to the current release and fix the year in the
+description (1993 → 1996) to match README/CLAUDE.md. Low priority; verify nothing
+reads [project].version at runtime first.
+
+---
