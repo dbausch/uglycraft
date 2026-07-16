@@ -242,6 +242,7 @@ Use them when working on a topic that needs deeper background.
 | `kb/requirements.md` | Formal numbered invariants for the level generator (load for any levelgraph/levellayout session) |
 | `kb/architecture.md` | Level generator pipeline, data structures, layout strategies, target architecture |
 | `kb/backlog.md` | Prioritised bug and improvement backlog (IDs BL-01…) |
+| `kb/arch-packaging.md` | Arch/AUR packaging compliance audit: findings vs the guidelines, verified-correct list, first-push operational steps |
 
 `original/kb/` covers the Pascal source — see `original/CLAUDE.md`.
 
