@@ -1518,7 +1518,15 @@ collect-then-push; respawn never on an item tile). → spec/0079-no-block-push-o
 
 ---
 
-## BL-61 · P1 · uglycraft package installs only 8 of 16 Python modules (game crashes on launch)
+## BL-61 · FIXED · uglycraft package installs only 8 of 16 Python modules (game crashes on launch)
+
+Fixed in 8c70f7b (spec/0080-uglycraft-source-package.md), confirmed by Daniel
+2026-07-18 (spec 0080 D7, AUR package test). package_uglycraft() no longer
+installs an explicit module list at all — it now installs the whole
+`src/uglycraft` package into site-packages as one unit (PKGBUILD:46 comment:
+"Install the whole package into site-packages as one unit ... so the install
+list can never go stale again (BL-61)"), so the stale-list bug is structurally
+impossible. Original bug description follows for history.
 
 `packaging/PKGBUILD:47-48` and `packaging/PKGBUILD-git:51-52` install a hardcoded
 list of 8 modules (main, game, constants, sprites, levels, entities, hiscore,
@@ -1639,7 +1647,14 @@ path at the top of packaging/ugli.sh to match; update both PKGBUILDs. Data files
 
 ---
 
-## BL-69 · P3 · Installed Python modules are not byte-compiled
+## BL-69 · FIXED · Installed Python modules are not byte-compiled
+
+Fixed as part of spec 0080 (DEC-2, spec/0080-uglycraft-source-package.md:79:
+"byte-compiles, folding in BL-69"): package_uglycraft() now runs
+`python -m compileall -q -d "$_site/uglycraft" "$pkgdir$_site/uglycraft"`
+(packaging/PKGBUILD:52, packaging/PKGBUILD-git:56). The `-d` flag (reproducible
+embedded paths) was a later refinement from BL-71 Part B. Original bug
+description follows for history.
 
 The loose .py files land in root-owned /usr/share/uglycraft; at first run Python
 tries to write __pycache__ there, fails silently, and recompiles every launch.
@@ -1653,7 +1668,13 @@ reproducibility.
 
 ---
 
-## BL-70 · P3 · Stale pyproject.toml [project] metadata
+## BL-70 · FIXED · Stale pyproject.toml [project] metadata
+
+Fixed as part of spec 0080 (DEC-3, spec/0080-uglycraft-source-package.md:84-85:
+"also fix BL-70?"). `pyproject.toml [project]` now reads `version = "1.5"` and
+`description = "A remake of UGLI (1996), a DOS maze-chase game"` — both the
+version and the year (1993 → 1996) corrected. Original bug description follows
+for history.
 
 Not an AUR file but packaging metadata — `[project]` says `version = "1.0"` and
 `description = "…UGLI (1993)…"` (pyproject.toml:1-4), vs the real v1.5 / 1996.
