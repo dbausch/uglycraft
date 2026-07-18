@@ -22,14 +22,14 @@ packages is the accepted `lacks PIE` warning (spec 0095).
 
 ## Status checklist
 
-- [ ] **D1** — `depends=('hicolor-icon-theme')` becomes
+- [x] **D1** — `depends=('hicolor-icon-theme')` becomes
   `depends=('bash' 'glibc' 'hicolor-icon-theme')` in `package_ugli()`
   (`packaging/PKGBUILD:79`), `package_ugli-git()` (`PKGBUILD-git:84`), and
-  `package_ugli-dev()` (`PKGBUILD-dev:91`).
-- [ ] **D2** — the `uglycraft*` split packages are untouched: their wrapper
+  `package_ugli-dev()` (`PKGBUILD-dev:91`). (3c6e459)
+- [x] **D2** — the `uglycraft*` split packages are untouched: their wrapper
   needs are covered transitively via `python` (namcap is already silent on
-  the built `uglycraft-dev` package).
-- [ ] **D3** — split-makedeps interaction checked (the spec 0093 D6 lesson:
+  the built `uglycraft-dev` package). (3c6e459)
+- [x] **D3** — split-makedeps interaction checked (the spec 0093 D6 lesson:
   a subpackage `depends` entry must be reachable from the pkgbase
   `makedepends` closure or namcap's `SplitPkgMakedepsRule` fires). Run
   `namcap` on all PKGBUILDs after the D1 edit; **if** it demands `bash`/
@@ -37,11 +37,14 @@ packages is the accepted `lacks PIE` warning (spec 0095).
   pkgbase-level `makedepends` of all three PKGBUILDs (same pattern as
   commit 8f3c117); if it stays silent (both are plausibly covered through
   the existing makedepends' own dependency trees), no makedepends change —
-  record which way it went here.
-- [ ] **D4** — `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit,
+  record which way it went here. **Outcome: silent.** `namcap PKGBUILD`,
+  `namcap PKGBUILD-git`, and `namcap PKGBUILD-dev` all produced zero output
+  after the D1 edit — `SplitPkgMakedepsRule` did not fire, so no
+  `makedepends` change was made. (3c6e459)
+- [x] **D4** — `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit,
   showing the new `depends = bash` / `depends = glibc` lines under the
-  `ugli`/`ugli-git` sections.
-- [ ] **D5** — verified: `namcap` on both PKGBUILDs stays clean (no new
+  `ugli`/`ugli-git` sections. (3c6e459)
+- [x] **D5** — verified: `namcap` on both PKGBUILDs stays clean (no new
   finding); `poe package-dev` builds; `namcap` on the fresh `ugli-dev`
   package shows **only** the accepted `lacks PIE` line (both
   implicit-dependency notes gone); the fresh `uglycraft-dev` package stays
@@ -67,10 +70,16 @@ packages is the accepted `lacks PIE` warning (spec 0095).
 
 ## Done when:
 
-- [ ] **D1** — three `depends` arrays extended with `bash` and `glibc`.
-- [ ] **D2** — `uglycraft*` packages untouched.
-- [ ] **D3** — split-makedeps interaction checked; outcome recorded (and
-  pkgbase `makedepends` extended only if namcap demanded it).
-- [ ] **D4** — both `.SRCINFO` files regenerated in the same commit.
-- [ ] **D5** — namcap: PKGBUILDs clean; fresh `ugli-dev` package shows only
-  the accepted PIE line; fresh `uglycraft-dev` stays silent.
+- [x] **D1** — three `depends` arrays extended with `bash` and `glibc`.
+  (3c6e459)
+- [x] **D2** — `uglycraft*` packages untouched. (3c6e459)
+- [x] **D3** — split-makedeps interaction checked; outcome recorded (and
+  pkgbase `makedepends` extended only if namcap demanded it). Outcome:
+  namcap stayed silent on all three PKGBUILDs; no `makedepends` change
+  made. (3c6e459)
+- [x] **D4** — both `.SRCINFO` files regenerated in the same commit.
+  (3c6e459)
+- [x] **D5** — namcap: PKGBUILDs clean; fresh `ugli-dev` package shows only
+  the accepted PIE line; fresh `uglycraft-dev` stays silent. Verified on
+  package build `1.5.r751.g3c6e459`; `.PKGINFO` confirms `depend = bash`,
+  `depend = glibc`, `depend = hicolor-icon-theme`.
