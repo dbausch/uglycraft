@@ -65,6 +65,11 @@ cd uglycraft
 poe install
 ```
 
+`poe install` creates `.venv` and does an editable install
+(`pip install -e ".[dev]"`), so `uglycraft` is importable from any
+interpreter that uses the venv. For a manual setup without poe:
+`virtualenv .venv && .venv/bin/pip install -e ".[dev]"`.
+
 ---
 
 ## Building
@@ -206,12 +211,13 @@ poe deploy-original-dos    # push original DOS exe (frozen — never redeployed)
 
 ## Project structure
 
-All game modules live in the `uglycraft/` package (run it with
-`python -m uglycraft`). A thin `run_game.py` at the repo root is the
+All game modules live in the `src/uglycraft/` package (run it with
+`python -m uglycraft`; installed editable via `poe install` /
+`pip install -e .`). A thin `run_game.py` at the repo root is the
 PyInstaller entry point.
 
 ```
-uglycraft/      the game package (fonts/ and translations/ live inside it)
+src/uglycraft/  the game package (fonts/ and translations/ live inside it)
 main.py         Entry point, display scaling, event loop
 game.py         Menus, input, rendering, crafting UI (presentation only)
 world.py        Core gameplay rules and state (no pygame)

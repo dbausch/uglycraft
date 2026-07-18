@@ -48,6 +48,23 @@ reproducibility / polish.
 > launches — correct font, history/story screen renders, no
 > `ModuleNotFoundError`. **BL-61 closed.** The audit below records the original
 > defect. (D9 user acceptance still owes the dev-run and Linux-build legs.)
+>
+> **Frozen-build follow-on, fixed by spec 0082.** Verifying 0080 D9's Linux-build
+> leg turned up a second, unrelated bug: `poe build-linux`'s `--collect-data
+> uglycraft` silently collected **zero** files (`WARNING: collect_data_files -
+> skipping data collection for module 'uglycraft' as it is not a package`), and
+> the frozen binary crashed with `FileNotFoundError` on the bundled font. Root
+> cause: `collect_data_files` calls `importlib.util.find_spec('uglycraft')` in
+> the `pyinstaller` process itself, whose `sys.path` is the venv only — and
+> `uglycraft` was never an *installed* package, just a directory the repo-root
+> cwd happened to make importable. Spec 0082 fixes this at the root: `uglycraft`
+> moved to `src/uglycraft/` (PyPA `src/` layout) and `poe install` now does `pip
+> install -e ".[dev]"`, so the package sits on the venv's own `sys.path` and
+> `find_spec` succeeds unconditionally — no `PYTHONPATH`, no cwd assumption. The
+> `src/` layout also removes the old flat-layout shadow trap (the repo-root copy
+> was importable even un-installed, which is what hid this for as long as it
+> did). PKGBUILD/`PKGBUILD-git` source path updated to `cp -r src/uglycraft`
+> (D5); the **installed** site-packages layout is byte-for-byte unchanged.
 
 `packaging/PKGBUILD:47-48` and `PKGBUILD-git:51-52` install a **hardcoded list of
 8 modules**:
@@ -76,7 +93,7 @@ stale, because there is no list:
 ```bash
 _site=$(python -c "import site; print(site.getsitepackages()[0])")
 install -d "$pkgdir$_site"
-cp -r uglycraft "$pkgdir$_site/"
+cp -r src/uglycraft "$pkgdir$_site/"   # src/ layout since spec 0082
 python -m compileall -q "$pkgdir$_site/uglycraft"   # folds in BL-69
 ```
 
