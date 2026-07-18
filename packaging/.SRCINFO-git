@@ -9,6 +9,7 @@ pkgbase = uglycraft-git
 	makedepends = python
 	makedepends = python-numpy
 	makedepends = python-pygame
+	makedepends = hicolor-icon-theme
 	source = uglycraft-git::git+https://github.com/dbausch/uglycraft.git
 	source = uos.pas::https://raw.githubusercontent.com/fredvs/uos/ffd165382aeae1cc1bf80673d5c02497c06f4efa/src/uos.pas
 	source = uos_flat.pas::https://raw.githubusercontent.com/fredvs/uos/ffd165382aeae1cc1bf80673d5c02497c06f4efa/src/uos_flat.pas
