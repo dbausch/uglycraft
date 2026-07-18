@@ -51,6 +51,13 @@ layout can trap you. Under the hood the game was largely rebuilt to make all of
 this possible and to run smoothly — but as a player you should just find it
 solid and dependable.
 
+### For Arch Linux users
+
+- The AUR packages (`uglycraft` / `uglycraft-git`) are now built and installed
+  with Python's standard packaging tools. Same game, cleaner install: the
+  launcher is a proper entry point instead of a shell wrapper, and the package
+  is visible to Python's own tooling.
+
 ### What to expect
 
 Roughly twice the game. The familiar chase-and-grab arcade action of Act 1 is

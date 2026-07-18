@@ -110,6 +110,28 @@ used a flat `install -m644 *.py …` glob; the package restructure was chosen
 instead — it fixes the root cause and follows the standard Python layout. See
 spec 0080, decision 2026-07-16.)
 
+> **Superseded — spec 0094 (2026-07-18).** The manual `cp -r` + `compileall`
+> block above was replaced by the Arch-idiomatic PEP 517 flow (*Python package
+> guidelines § Installation methods*): `build()` runs `python -m build --wheel
+> --no-isolation` (after `rm -rf dist` against stale wheels), and
+> `package_uglycraft*()` installs with `python -m installer
+> --destdir="$pkgdir" dist/*.whl`. This removed the `_site` site-packages
+> detection (BL-71 Part A's fragile surface), the `compileall -d` workaround
+> (BL-71 Part B), and the hand-written `/usr/bin/uglycraft` bash wrapper —
+> the entry point is now generated from `[project.scripts]` (shebang
+> `/usr/bin/python`, so the namcap "depends on bash" note vanished). The
+> package additionally gains `.dist-info` metadata and `.opt-1.pyc` bytecode
+> (installer compiles optimization levels 0+1, matching official Arch Python
+> packages). **Asset-staleness guard shifted:** the wheel carries only what
+> `[tool.setuptools.package-data]` globs match (`fonts/*.ttf`,
+> `translations/*.txt`) — a new asset *extension* needs a glob update or it
+> silently drops out of the wheel (same risk class as PyInstaller's
+> `--collect-data`). The `.dist-info` version claims the static
+> `pyproject.toml` version (1.5) even in `-git`/`-dev` builds — VCS pkgvers
+> are not valid PEP 440; cosmetic, accepted. makedepends gained
+> `python-build`, `python-installer`, `python-setuptools`.
+> → see spec/0094-pkgbuild-wheel-flow.md
+
 ### P2 — redundant `provides=($pkgname)` (BL-62)
 
 > **RESOLVED — spec 0085, confirmed 2026-07-18.** Commit 96a60f2 deleted both
@@ -356,9 +378,10 @@ generalize to any future namcap-driven PKGBUILD fix, not just this pass):
   (spec 0088 — D4's real-terminal-launch leg remains user-acceptance-pending),
   ~~BL-69~~ ✓ closed (spec 0080), ~~BL-70~~ ✓ closed (spec 0080).
 - **Every finding from this audit is now resolved or superseded**, leaving
-  only: spec 0088 D4's real-terminal-launch check (user acceptance); BL-71
-  Part A (poe-executor fragility — applied to the two deploy-aur tasks by
-  spec 0084, but still a standing rule for any *future* poe task that shells
-  out to `makepkg`); and, of the three namcap-sourced follow-on items
-  (BL-72–BL-74, `kb/backlog.md`), only **BL-74** (RELRO/PIE hardening) still
-  open — ~~BL-72~~ ✓ closed (spec 0092) and ~~BL-73~~ ✓ closed (spec 0093).
+  only: spec 0088 D4's real-terminal-launch check (user acceptance); and, of
+  the three namcap-sourced follow-on items (BL-72–BL-74, `kb/backlog.md`),
+  only **BL-74** (RELRO/PIE hardening) still open — ~~BL-72~~ ✓ closed
+  (spec 0092) and ~~BL-73~~ ✓ closed (spec 0093). ~~BL-71~~ ✓ closed
+  (spec 0094 removed the `_site` detection from all PKGBUILDs via the PEP 517
+  wheel flow; `executor = "simple"` on makepkg-running poe tasks remains as
+  defence-in-depth, since PKGBUILDs still invoke the `python` found on PATH).

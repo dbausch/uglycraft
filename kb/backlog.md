@@ -1831,6 +1831,21 @@ source-path display, not functionality.
 **Fix hint (Part A):** always pair any future `poe` task that shells out to
 `makepkg` with `executor = "simple"` in its `pyproject.toml` definition.
 
+> **RESOLVED — Part A, 2026-07-18 (spec 0094). BL-71 fully closed.** The
+> `_site` detection was removed from all three PKGBUILDs at the root by
+> switching `package_uglycraft*()` to the Arch-idiomatic PEP 517 flow:
+> `python -m build --wheel --no-isolation` in `build()`, `python -m installer
+> --destdir="$pkgdir" dist/*.whl` in `package()`. There is no site-packages
+> computation left to mis-resolve; `installer` also byte-compiles with
+> correct runtime paths, superseding Part B's `compileall -d` workaround, and
+> generates `/usr/bin/uglycraft` from `[project.scripts]`, replacing the bash
+> wrapper. The `executor = "simple"` rule for makepkg-running poe tasks
+> **remains in force** as defence-in-depth (the PKGBUILDs still invoke
+> whatever `python` PATH resolves to). Verified via `poe package-dev`: clean
+> makepkg run, file list identical to the old flow plus `.dist-info` +
+> `.opt-1.pyc`, namcap clean, `.pyc`s embed only runtime paths.
+> → see spec/0094-pkgbuild-wheel-flow.md, kb/arch-packaging.md
+
 ---
 
 ## BL-72 · FIXED · uglycraft-git split package missing makedepends for python/pygame/numpy (namcap)
