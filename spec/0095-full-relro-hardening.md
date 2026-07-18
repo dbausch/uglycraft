@@ -13,25 +13,27 @@ the flags live in `build()` function bodies; regenerate-and-diff to confirm).
 
 ## Status checklist
 
-- [ ] **D1** — `-k-z -krelro -k-z -know` added to the `fpc -Fuuos UGLI_2.pp`
+- [x] **D1** — `-k-z -krelro -k-z -know` added to the `fpc -Fuuos UGLI_2.pp`
   invocation in `build()` of all three PKGBUILDs (`packaging/PKGBUILD:46`,
-  `PKGBUILD-git:50`, `PKGBUILD-dev:57`).
-- [ ] **D2** — the same flags added to the four `fpc` invocations in
+  `PKGBUILD-git:50`, `PKGBUILD-dev:57`). (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D2** — the same flags added to the four `fpc` invocations in
   `pyproject.toml` (`build-original`:146, `test-original`:153,
   `build-replay`-style task:158, bench task:163), so dev, test, and packaged
-  builds all link identically.
-- [ ] **D3** — verified on the built binary: `readelf -lW` shows a
+  builds all link identically. (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D3** — verified on the built binary: `readelf -lW` shows a
   `GNU_RELRO` segment **and** `readelf -dW` shows `BIND_NOW` / `FLAGS_1: NOW`
   (= FULL RELRO); `poe test-original` still passes (exit 0, all tests) with
   the hardened link; the packaged binary still prints its `--help` from an
-  extracted `ugli-dev` package.
-- [ ] **D4** — namcap on the built `ugli-dev` package no longer emits the
+  extracted `ugli-dev` package. (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D4** — namcap on the built `ugli-dev` package no longer emits the
   `lacks FULL RELRO` warning; the `lacks PIE` warning **remains and is
   accepted** (see Background — not fixable with the system FPC).
-- [ ] **D5** — `.SRCINFO`/`.SRCINFO-git` regenerated and diffed: no change
-  (function-body-only edit).
+  (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D5** — `.SRCINFO`/`.SRCINFO-git` regenerated and diffed: no change
+  (function-body-only edit). (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
 - [ ] **D6** — launch check: the game starts and plays normally with the
-  hardened binary (user acceptance).
+  hardened binary (user acceptance) — awaits user confirmation, not yet
+  requested/performed.
 
 ## Background — confirmed facts
 
@@ -129,11 +131,16 @@ Nothing else changes — no source edits, no new tasks.
 
 ## Done when:
 
-- [ ] **D1** — flags present in all three PKGBUILDs' `build()`.
-- [ ] **D2** — flags present in the four `pyproject.toml` fpc invocations.
-- [ ] **D3** — readelf shows FULL RELRO on both the dev-built and packaged
-  binary; tests pass; extracted packaged binary prints `--help`.
-- [ ] **D4** — namcap: FULL-RELRO warning gone, PIE warning documented as
-  accepted.
-- [ ] **D5** — `.SRCINFO` regeneration shows no diff.
-- [ ] **D6** — launch check confirmed by the user.
+- [x] **D1** — flags present in all three PKGBUILDs' `build()`.
+  (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D2** — flags present in the four `pyproject.toml` fpc invocations.
+  (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D3** — readelf shows FULL RELRO on both the dev-built and packaged
+  binary; tests pass (159/159); extracted packaged binary prints `--help`.
+  (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D4** — namcap: FULL-RELRO warning gone, PIE warning documented as
+  accepted. (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [x] **D5** — `.SRCINFO` regeneration shows no diff.
+  (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
+- [ ] **D6** — launch check confirmed by the user. Awaits user acceptance —
+  not yet requested/performed.
