@@ -5,7 +5,6 @@ constructs it, forwards input to its methods, and maps its drained event
 stream back onto sounds, music, the damage flash, and menu-state changes.
 """
 import os
-import sys
 import random
 import pygame
 from uglycraft.constants import *
@@ -116,7 +115,7 @@ class Game:
     # ── Font setup ────────────────────────────────────────────────────────────
 
     def _init_fonts(self):
-        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        base = os.path.dirname(os.path.abspath(__file__))
         ttf  = os.path.join(base, 'fonts', 'ShareTechMono-Regular.ttf')
         self.font_big   = pygame.font.Font(ttf, 36)
         self.font_med   = pygame.font.Font(ttf, 22)
@@ -1121,7 +1120,7 @@ class Game:
     # ── Story screen ─────────────────────────────────────────────────────────
 
     def _load_history_text(self):
-        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        base = os.path.dirname(os.path.abspath(__file__))
         path = os.path.join(base, 'translations', 'history_en.txt')
         try:
             with open(path, 'r', encoding='utf-8') as f:
