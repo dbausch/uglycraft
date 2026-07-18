@@ -6,7 +6,7 @@
 
 pkgbase=uglycraft-dev
 pkgname=('uglycraft-dev' 'ugli-dev')
-pkgver=1.5.r675.gde0cd83
+pkgver=1.5.r724.g40c7147
 pkgrel=1
 arch=('x86_64')
 url='https://github.com/dbausch/uglycraft'
