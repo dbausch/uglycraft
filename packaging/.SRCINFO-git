@@ -19,6 +19,8 @@ pkgbase = uglycraft-git
 
 pkgname = uglycraft-git
 	pkgdesc = Treasure-collecting arcade game inspired by UGLI (1996) (git version)
+	license = GPL-3.0-only
+	license = OFL-1.1
 	depends = python
 	depends = python-pygame
 	depends = python-numpy
