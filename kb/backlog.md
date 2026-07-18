@@ -2028,3 +2028,32 @@ whole-program dead-code analysis in test mode. Low priority — cosmetic
 warning, not a correctness bug, and does not affect `poe build-original`.
 
 ---
+
+## BL-77 · P3 · Two remaining benign namcap warnings on the PKGBUILDs
+
+After specs 0092/0093 resolved BL-72/BL-73 (split makedepends,
+hicolor-icon-theme), `namcap` still emits two benign warnings on the
+PKGBUILDs, which should be addressed before/at the first AUR push:
+
+1. **`W: Missing Maintainer tag`** on both `packaging/PKGBUILD` and
+   `packaging/PKGBUILD-git` (and `packaging/PKGBUILD-dev` for consistency,
+   even though it is local-only and never pushed to an AUR sibling repo).
+   AUR convention is a `# Maintainer: Name <email>` comment on line 1 of
+   the PKGBUILD; namcap checks for it.
+2. **`PKGBUILD (ugli) W: Description should not contain the package
+   name.`** — the `ugli` split package's `pkgdesc` starts with/contains
+   "UGLI". Arch guideline: `pkgdesc` should not include the package name
+   redundantly. Reword the `pkgdesc` so it describes the game without
+   leading with the package name.
+
+**Fix hint:** one small commit touching the three PKGBUILDs, plus
+`.SRCINFO`/`.SRCINFO-git` regeneration via the spec 0084 mechanism since
+`pkgdesc` is metadata that's mirrored into `.SRCINFO` — the `# Maintainer:`
+comment does **not** appear in `.SRCINFO` (only `pkgdesc`/`pkgver`/etc. are
+mirrored), so that half of the fix only touches the PKGBUILD files
+themselves. Verify with `namcap` on both `packaging/PKGBUILD` and
+`packaging/PKGBUILD-git` afterwards — expected: zero warnings. Reference:
+these two warnings are the only namcap output left on the PKGBUILDs after
+specs 0092/0093 (see `kb/arch-packaging.md` operational notes).
+
+---
