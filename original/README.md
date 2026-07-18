@@ -12,11 +12,12 @@ significant code quality work.  See `CHANGELOG.md` for the full record.
 
 ```bash
 # from the repo root
-poe build-original   # fetches UOS audio sources, then: cd original && fpc -Fuuos UGLI_2.pp
+poe build-original   # fetches the pinned UOS audio sources, then compiles UGLI_2.pp with FPC
 ./original/UGLI_2
 ```
 
-Or simply `poe run-original` to build and launch in a terminal window.
+Or simply `poe run-original` to build and launch in a terminal window. The
+test suite builds and runs with `poe test-original` (see §15).
 
 FPC 3.2.2 (current Arch Linux package) is what this was developed against.
 
@@ -194,9 +195,13 @@ on Linux.  A `UOSSound.pp` unit wraps the
 `Sound(Hz)` / `NoSound` / `Ton(Hz, Ms)` interface as Turbo Pascal's CRT, plus
 named effect procedures (`SoundBump`, `SoundPickup`, `SoundCaught`,
 `SoundGameOver`, `SoundWon`).  Listed last in `uses` so it shadows the empty
-CRT sound stubs on Linux.  UOS source is fetched from GitHub at build time;
+CRT sound stubs on Linux.  UOS source is fetched from GitHub at build time,
+pinned to a fixed upstream commit for reproducibility;
 `libportaudio.so.2` is required at runtime and falls back to silence if
-unavailable.
+unavailable.  The fetched third-party units carry a scoped
+warning-suppression directive block prepended after download, so FPC's
+build log stays clean without hiding diagnostics for the project's own
+code.
 
 ### 13. Gameplay and code improvements (2.1+)
 
@@ -268,7 +273,22 @@ translated text.  `YesKey` and `NoKey` are then built from the `sYesChar` and
 - `de.po` — German translation (fill `msgstr` values, then `msgfmt` to compile)
 - `de.mo` — compiled German translation; shipped alongside the binary by
   `poe deploy-original-linux`
+- `history_en.txt` / `history_de.txt` — the "History of UGLI" story text
+  (F2 screen, version 2.6): body text lives in these external files, loaded
+  at runtime per detected language, while the labels remain resourcestrings
 
 To add a new language: copy `UGLI_2.pot` to `<lang>.po`, fill in the
 `msgstr` values, compile with `msgfmt <lang>.po -o <lang>.mo`, copy the `.mo`
-file to the `translations/` directory next to the binary.
+file to the `translations/` directory next to the binary (and optionally add
+a `history_<lang>.txt`; the history screen falls back to a translated
+placeholder without one).
+
+### 15. Test suite
+
+`UGLI_2_Test.pp` is an fpcunit suite (currently 159 tests) covering string
+and UTF-8 helpers, the off-screen buffer and `BufFlush` output, level
+layouts, drawing, game logic, enemy movement, dialogs, dumps, and the CLI.
+It includes the same `UGLI_2_Core.inc` as the game, runs headless (TTY
+output redirected to temp files), and is the gate for all changes to this
+directory: `poe test-original` builds and runs it, exiting non-zero on any
+failure.
