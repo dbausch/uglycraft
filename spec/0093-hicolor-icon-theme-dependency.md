@@ -14,19 +14,19 @@ BL-72–BL-74). → Backlog: BL-73.
 
 ## Status checklist
 
-- [ ] **D1** — `hicolor-icon-theme` added to `depends` of
+- [x] **D1** — `hicolor-icon-theme` added to `depends` of
   `package_uglycraft()` and `package_ugli()` in `packaging/PKGBUILD`.
-- [ ] **D2** — same addition to `package_uglycraft-git()` and
+- [x] **D2** — same addition to `package_uglycraft-git()` and
   `package_ugli-git()` in `packaging/PKGBUILD-git`.
-- [ ] **D3** — same addition to `package_uglycraft-dev()` and
+- [x] **D3** — same addition to `package_uglycraft-dev()` and
   `package_ugli-dev()` in `packaging/PKGBUILD-dev`, for consistency (never
   deployed, but should not drift from the other two).
-- [ ] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084
+- [x] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084
   mechanism) to reflect the new `depends` entries.
-- [ ] **D5** — verified: `namcap` run against the built packages (via `poe
+- [x] **D5** — verified: `namcap` run against the built packages (via `poe
   package-dev`) no longer emits the `hicolor-icon-theme` finding; `poe
   package-dev` still builds successfully.
-- [ ] **D6** — `hicolor-icon-theme` also added to pkgbase-level `makedepends`
+- [x] **D6** — `hicolor-icon-theme` also added to pkgbase-level `makedepends`
   in all three PKGBUILDs — required by namcap's `SplitPkgMakedepsRule` (see
   spec 0092): a subpackage `depends` entry must be covered by the pkgbase
   `makedepends` closure; discovered during implementation when the D1–D3
@@ -138,16 +138,26 @@ overrides.
 
 ## Done when:
 
-- [ ] **D1–D3** — `hicolor-icon-theme` present in `depends` of all eight
+- [x] **D1–D3** — `hicolor-icon-theme` present in `depends` of all eight
   `package_*()` functions across the three PKGBUILDs (release, `-git`,
-  `-dev`); no other fields touched.
-- [ ] **D4** — `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit,
-  showing the new `depends = hicolor-icon-theme` lines.
-- [ ] **D5** — a `poe package-dev` build followed by namcap against the
+  `-dev`); no other fields touched. Implemented in `c0d7973`.
+- [x] **D4** — `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit,
+  showing the new `depends = hicolor-icon-theme` lines. `c0d7973`.
+- [x] **D5** — a `poe package-dev` build followed by namcap against the
   built `uglycraft-dev`/`ugli-dev` packages shows no `hicolor-icon-theme`
-  finding.
-- [ ] **D6** — pkgbase-level `makedepends` in all three PKGBUILDs includes
+  finding. Verified against `uglycraft-dev`/`ugli-dev`
+  1.5.r713.gc0d7973-1: `.PKGINFO` for both packages lists `depend =
+  hicolor-icon-theme`, and namcap on the built `.pkg.tar.zst` files shows
+  no `hicolor-icon-theme` finding (only benign `bash`/glibc
+  implicitly-satisfied notes and the pre-existing RELRO/PIE warnings,
+  BL-74, out of scope).
+- [x] **D6** — pkgbase-level `makedepends` in all three PKGBUILDs includes
   `hicolor-icon-theme` (alongside the entries spec 0092 added); `.SRCINFO`/
   `.SRCINFO-git` regenerated to show the new pkgbase-level `makedepends =
   hicolor-icon-theme` line; `namcap packaging/PKGBUILD` and `namcap
   packaging/PKGBUILD-git` run clean of all split-makedeps findings.
+  Spec amendment in `ad56f62`, fix implemented in `8f3c117`. Re-verified:
+  `namcap packaging/PKGBUILD` → only `Missing Maintainer tag`; `namcap
+  packaging/PKGBUILD-git` → only `Missing Maintainer tag`; both fully clean
+  of every split-makedeps finding. `makepkg --printsrcinfo` diffed against
+  the committed `.SRCINFO`/`.SRCINFO-git` with no differences.
