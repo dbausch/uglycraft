@@ -1664,3 +1664,51 @@ description (1993 → 1996) to match README/CLAUDE.md. Low priority; verify noth
 reads [project].version at runtime first.
 
 ---
+
+## BL-71 · P3 · PKGBUILD `_site` detection is poe-executor-fragile, plus cosmetic `$pkgdir`-embedded .pyc paths
+
+Found while implementing spec 0083 (`packaging/PKGBUILD-dev`, a local-only AUR
+packaging variant with a new `poe package-dev` task).
+
+**Part A — poe's "auto" executor can redirect `_site` into the project's own
+venv.** All three PKGBUILDs' `package_uglycraft*()` functions share:
+`_site=$(python -c "import site; print(site.getsitepackages()[0])")`. When
+`makepkg` is invoked through a `poe` task, poethepoet's default `"auto"`
+executor detects the project's `.venv/` and prepends `.venv/bin` to `PATH` for
+the task's subprocess (poethepoet's `executor/virtualenv.py` +
+`executor/base.py` `resolve_implementation`, which tries poetry/uv/virtualenv
+executors before falling back to `"simple"`). That makes `_site` resolve to
+`/path/to/uglycraft/.venv/lib/python3.14/site-packages` instead of the
+system Python's site-packages, so a package built under such a task would
+silently try to install into the venv path rather than the real system
+location. spec 0083's `poe package-dev` task was fixed by adding
+`executor = "simple"` to its `pyproject.toml` definition (pins it to poe's
+no-op executor, no venv injection). `PKGBUILD` and `PKGBUILD-git` are NOT
+affected today — poe only copies `PKGBUILD`+`.SRCINFO` to the AUR sibling repos
+and pushes; the actual `makepkg` build always runs on an AUR builder's or
+user's own machine, outside this project's poe environment — but the same
+`_site` detection logic is present verbatim in all three PKGBUILDs, so any
+future `poe`-based makepkg task for the release/git variants would hit the
+identical bug unless it also sets `executor = "simple"`.
+
+**Part B — compileall bakes the fakeroot staging path into .pyc metadata
+(cosmetic, pre-existing, not introduced by spec 0083).** makepkg's own
+"packaging issues" checker prints `WARNING: Package contains reference to
+$pkgdir` for every compiled `.pyc` under
+`usr/lib/python3.14/site-packages/uglycraft/__pycache__/` in all three
+PKGBUILDs' `package_uglycraft*()` functions, because
+`python -m compileall -q "$pkgdir$_site/uglycraft"` embeds the fakeroot staging
+path (which contains the literal `$pkgdir` prefix) as each .pyc's source-file
+metadata, instead of the final runtime path. Only affects traceback
+source-path display, not functionality.
+
+**Fix hint (Part A):** always pair any future `poe` task that shells out to
+`makepkg` with `executor = "simple"` in its `pyproject.toml` definition.
+
+**Fix hint (Part B):** use compileall's `-s <strip-path> -p <prefix>` options
+(available since Python 3.9) in all three PKGBUILDs' `package_uglycraft*()`
+functions: `python -m compileall -q -s "$pkgdir$_site" -p "$_site"
+"$pkgdir$_site/uglycraft"` (or equivalent), so the embedded .pyc source paths
+match the real installed location rather than the build-time staging path.
+
+---
