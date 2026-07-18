@@ -7,6 +7,17 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Hardened the linked binary to FULL RELRO: `-k-z -krelro -k-z -know` added
+  after `-Fuuos` on all seven `fpc` invocations (three PKGBUILDs' `build()`
+  plus the four `pyproject.toml` original-build tasks), so dev, test, and
+  packaged builds link identically. Eagerly binds and then seals the GOT at
+  startup (`GNU_RELRO` segment + `BIND_NOW`/`FLAGS_1: NOW`), closing the
+  namcap "lacks FULL RELRO" warning. PIE remains out of reach — Arch's FPC
+  3.2.2 RTL startup object is not PIC-compiled — and is documented as
+  accepted in spec 0095 (BL-74).
+
 ### Fixed
 
 - Silenced the three FPC 5061 "read but nowhere assigned" warnings that
