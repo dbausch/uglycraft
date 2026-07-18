@@ -11,21 +11,31 @@ aarch64 etc., while the compiled-FPC `ugli` packages correctly stay `x86_64`.
 
 ## Status checklist
 
-- [ ] **D1** — `arch=('any')` added inside `package_uglycraft()`
+- [x] **D1** — `arch=('any')` added inside `package_uglycraft()`
   (`packaging/PKGBUILD`), `package_uglycraft-git()` (`PKGBUILD-git`), and
-  `package_uglycraft-dev()` (`PKGBUILD-dev`).
-- [ ] **D2** — pkgbase-level `arch=('x86_64')` stays in all three (the pkgbase
+  `package_uglycraft-dev()` (`PKGBUILD-dev`). — c7b4e7a
+- [x] **D2** — pkgbase-level `arch=('x86_64')` stays in all three (the pkgbase
   array must cover every arch any split member needs; `ugli*` are compiled
-  x86_64 ELF binaries).
-- [ ] **D3** — `ugli` / `ugli-git` / `ugli-dev` split packages unchanged
-  (implicit x86_64 from pkgbase).
-- [ ] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084) in the
+  x86_64 ELF binaries). — c7b4e7a; confirmed by diff (pkgbase-level `arch=`
+  lines untouched in all three files).
+- [x] **D3** — `ugli` / `ugli-git` / `ugli-dev` split packages unchanged
+  (implicit x86_64 from pkgbase). — c7b4e7a; confirmed by diff and by the
+  built `ugli-dev` package's `.PKGINFO` showing `arch = x86_64`.
+- [x] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084) in the
   same commit; the `pkgname = uglycraft`(`-git`) sections show `arch = any`.
-- [ ] **D5** — verified: `poe package-dev` produces
+  — c7b4e7a; `makepkg --printsrcinfo` diffs for both PKGBUILDs showed exactly
+  one added `arch = any` line each, nothing else.
+- [x] **D5** — verified: `poe package-dev` produces
   `uglycraft-dev-…-any.pkg.tar.zst` alongside the x86_64 `ugli-dev` package;
   both build from one `makepkg` run; the extracted `any` package still runs the
   headless `--dump-level` check. namcap raises no arch-related warning on the
-  `uglycraft` package.
+  `uglycraft` package. — build produced
+  `uglycraft-dev-1.5.r690.gc7b4e7a-1-any.pkg.tar.zst` (`.PKGINFO`: `arch =
+  any`) and `ugli-dev-1.5.r690.gc7b4e7a-1-x86_64.pkg.tar.zst` from the same
+  `makepkg -p PKGBUILD-dev -f` run; extracting the `any` package and running
+  `SDL_VIDEODRIVER=dummy PYTHONPATH=<site-packages> python3 -m uglycraft
+  --dump-level 1 --seed 42` produced a correct ASCII level dump. namcap not
+  installed on this machine, so the namcap half is unverified.
 
 ## Background — confirmed facts
 
@@ -44,9 +54,11 @@ aarch64 etc., while the compiled-FPC `ugli` packages correctly stay `x86_64`.
 
 ## Done when:
 
-- [ ] **D1–D3** — override present in the three `package_uglycraft*()`
-  functions; pkgbase arrays and `ugli*` packages untouched.
-- [ ] **D4** — both `.SRCINFO` files regenerated in the same commit.
+- [x] **D1–D3** — override present in the three `package_uglycraft*()`
+  functions; pkgbase arrays and `ugli*` packages untouched. — c7b4e7a
+- [x] **D4** — both `.SRCINFO` files regenerated in the same commit. — c7b4e7a
 - [ ] **D5** — one `poe package-dev` run yields an `any` uglycraft-dev package
   and an x86_64 ugli-dev package; headless run from the extracted `any`
-  package passes; namcap clean on this point.
+  package passes; namcap clean on this point. — package build, arch check, and
+  headless `--dump-level` run all confirmed; namcap not installed on this
+  machine, so only the namcap half is unverified.
