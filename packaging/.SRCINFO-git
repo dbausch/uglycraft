@@ -28,11 +28,13 @@ pkgname = uglycraft-git
 	depends = python
 	depends = python-pygame
 	depends = python-numpy
+	depends = hicolor-icon-theme
 	provides = uglycraft
 	conflicts = uglycraft
 
 pkgname = ugli-git
 	pkgdesc = UGLI 2 (1996) — text-mode treasure game (Linux/FPC port) (git version)
+	depends = hicolor-icon-theme
 	optdepends = portaudio: sound support via UOS/PortAudio
 	optdepends = kitty: terminal launcher with ANSI-87 colour theme
 	optdepends = ttf-liberation: Liberation Mono font for kitty launcher

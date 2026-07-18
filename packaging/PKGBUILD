@@ -41,7 +41,7 @@ package_uglycraft() {
   pkgdesc='Treasure-collecting arcade game inspired by UGLI (1996)'
   arch=('any')
   license=('GPL-3.0-only' 'OFL-1.1')
-  depends=('python' 'python-pygame' 'python-numpy')
+  depends=('python' 'python-pygame' 'python-numpy' 'hicolor-icon-theme')
   conflicts=('uglycraft-git')
 
   cd "$pkgbase-$pkgver"
@@ -72,6 +72,7 @@ WRAPPER
 
 package_ugli() {
   pkgdesc='UGLI 2 (1996) — text-mode treasure game (Linux/FPC port)'
+  depends=('hicolor-icon-theme')
   optdepends=('portaudio: sound support via UOS/PortAudio'
               'kitty: terminal launcher with ANSI-87 colour theme'
               'ttf-liberation: Liberation Mono font for kitty launcher')
