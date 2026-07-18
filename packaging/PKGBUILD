@@ -49,7 +49,7 @@ package_uglycraft() {
   _site=$(python -c "import site; print(site.getsitepackages()[0])")
   install -d "$pkgdir$_site"
   cp -r src/uglycraft "$pkgdir$_site/"
-  python -m compileall -q "$pkgdir$_site/uglycraft"
+  python -m compileall -q -d "$_site/uglycraft" "$pkgdir$_site/uglycraft"
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/uglycraft" <<'WRAPPER'
 #!/bin/bash
