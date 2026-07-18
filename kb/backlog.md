@@ -1896,3 +1896,48 @@ then re-run `poe test-original`/`poe build-original` to confirm `UGLI_2`
 still runs correctly with hardening enabled.
 
 ---
+
+## BL-75 · P2 · Unpatched FPC warnings/notes from the fetched UOS sources clutter build output
+
+`poe build-original` (and, transitively, the `build()` step of all three
+PKGBUILDs) compiles the fetched `uos.pas`/`uos_flat.pas`/`uos_portaudio.pas`
+as-is, and FPC emits a batch of warnings and notes against them on every
+build. Confirmed by running `fpc -Fuuos uos/uos.pas` directly against the
+already-fetched `original/uos/` tree (FPC 3.2.2): 5 warnings, 18 notes,
+including —
+
+```
+uos.pas(2239,67) Warning: function result variable of a managed type does not seem to be initialized
+uos.pas(10640,38) Warning: Local variable "BufferplugFL" of a managed type does not seem to be initialized
+uos.pas(11754,20) Warning: Implicit string type conversion with potential data loss from "UnicodeString" to "UTF8String"
+uos.pas(12148,43) Warning: Implicit string type conversion with potential data loss from "UnicodeString" to "UTF8String"
+uos.pas(12149,44) Warning: Implicit string type conversion with potential data loss from "UnicodeString" to "UTF8String"
+uos.pas(4505,3) Note: Local variable "chan" not used
+uos.pas(4505,9) Note: Local variable "sr" not used
+uos.pas(6174,3) Note: Call to subroutine "...FillLookupTable(...)" marked as inline is not inlined
+uos.pas(7811,6) Note: Local variable "x2" not used
+uos.pas(7812,3) Note: Local variable "PipeBufferSize" not used
+uos.pas(10256,3) Note: Local variable "err" not used
+uos.pas(10594,11) Note: Local variable "err" is assigned but never used
+```
+
+(full list is longer; the above is representative of each distinct
+category). These are all in third-party code, not in `UGLI_2.pp`/
+`UOSSound.pp`, and drown out any warning/note FPC might emit for the
+project's own Pascal sources in the same build log.
+
+**Fix hint:** the UOS sources are pinned to a fixed commit since spec 0089
+(`_uos_commit=ffd165382aeae1cc1bf80673d5c02497c06f4efa`), so a local patch
+applied after fetch (in `build()`, right after the `curl`/extract step, in
+all three PKGBUILDs) would be stable and reproducible against that exact
+source snapshot. Alternatives: per-unit FPC warning suppression — e.g.
+`{$WARN ... OFF}`/`{$NOTE ... OFF}` directive blocks wrapped around just the
+flagged constructs (would require patching the units anyway to insert the
+directives), or scoping a warning-filter flag (FPC has no unit-scoped
+`-Sew`/`-vw-` equivalent, so this would likely mean compiling `uos*.pas` in
+a separate invocation with relaxed `-v` flags and linking the resulting
+`.o`/`.ppu` in). Do **not** blanket-silence warnings/notes for the project's
+own Pascal code (`UGLI_2.pp`, `UOSSound.pp`, etc.) — scope any suppression
+strictly to the three UOS units.
+
+---
