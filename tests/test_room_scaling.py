@@ -14,8 +14,8 @@ import random
 
 import pytest
 
-import levels
-from levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft import levels
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
 
 FS = levels.ACT2_FEATURE_SETS          # indices 0..9 = levels 11..20
 
@@ -80,7 +80,7 @@ def test_required_sides_always_coverable(idx):
     side mismatch is structurally impossible (spec 0060).  Non-start
     grids continue their parent's corridor band, so arm strategies
     (z/s/l) leave their pool (R-T5): only the start grid may turn."""
-    from levelgraph import coverable_sides
+    from uglycraft.levelgraph import coverable_sides
     fs = FS[idx]
     for seed in range(10):
         g = LevelGraph.generate(fs, random.Random(seed))

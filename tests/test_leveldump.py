@@ -5,8 +5,8 @@ be handed to the player — via the real World.start_level path.
 """
 import pytest
 
-from constants import COLS, ROWS, EASY, HARD
-from leveldump import dump_level
+from uglycraft.constants import COLS, ROWS, EASY, HARD
+from uglycraft.leveldump import dump_level
 
 SEED = 1234
 
@@ -114,7 +114,7 @@ def _super_positions(data):
 
 
 def _act2_level_dict():
-    import levels
+    from uglycraft import levels
     levels.set_game_seed(ACT2_SEED)
     return levels.get_level(ACT2_LEVEL)
 

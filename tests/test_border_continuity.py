@@ -9,8 +9,8 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict, LayoutError
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import build_level_dict, LayoutError
 from tests.test_key_placement import FS_CROWDED_LOCKED
 from tests.test_water_challenge import FS_CROWDED_WATER
 
@@ -248,7 +248,7 @@ def test_degraded_border_records_open():
     """A locked border whose key did not survive placement degrades to an
     open passage: record ('open', None, None) on both sides, no phantom
     door entity — the player never sees a door they needed no key for."""
-    from levelgraph import LevelGraphBuilder
+    from uglycraft.levelgraph import LevelGraphBuilder
     for attempt in range(60):
         b = LevelGraphBuilder(random.Random(7 + attempt))
         b.add_open_room()

@@ -15,9 +15,9 @@ import random
 
 import pytest
 
-import levels
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict, LayoutError
+from uglycraft import levels
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import build_level_dict, LayoutError
 
 FS = levels.ACT2_FEATURE_SETS
 _FLAME_FS = [i for i, fs in enumerate(FS) if fs.get('has_flames')]

@@ -1,6 +1,6 @@
 """Player and Enemy entities (tile-grid based)."""
 import random
-from constants import TILE, ROWS, COLS
+from uglycraft.constants import TILE, ROWS, COLS
 
 
 class Entity:

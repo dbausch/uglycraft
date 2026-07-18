@@ -14,7 +14,7 @@ import hashlib
 import json
 import sys
 
-import levels
+from uglycraft import levels
 
 
 def canonical(obj):

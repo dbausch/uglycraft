@@ -12,10 +12,10 @@ import random
 
 import pytest
 
-import levels
-from crafting import KEY_COLORS
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict, LayoutError
+from uglycraft import levels
+from uglycraft.crafting import KEY_COLORS
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import build_level_dict, LayoutError
 
 CAP = 4
 MAX_DOORS = CAP * len(KEY_COLORS)   # 28

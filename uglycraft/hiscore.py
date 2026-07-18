@@ -1,6 +1,6 @@
 """High-score persistence — plain-text file, top-10 entries."""
 import os
-from constants import SAVE_FILE
+from uglycraft.constants import SAVE_FILE
 
 MAX_ENTRIES = 10
 

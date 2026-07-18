@@ -11,10 +11,10 @@ import random
 
 import pytest
 
-import levellayout
-from constants import COLS, ROWS
-from levelgraph import LevelGraph
-from levellayout import LayoutError, build_level_dict
+from uglycraft import levellayout
+from uglycraft.constants import COLS, ROWS
+from uglycraft.levelgraph import LevelGraph
+from uglycraft.levellayout import LayoutError, build_level_dict
 from tests.conftest import FS_ALL
 
 
@@ -30,7 +30,7 @@ def test_render_rooms_canvas():
     positions plus a failed grid: blocks land at the right canvas
     offsets, the failed grid's index line carries '<-- FAILED', and a
     !-bordered placeholder with FAILED centred sits at its position."""
-    from leveldump import render_rooms
+    from uglycraft.leveldump import render_rooms
     rooms = {'grid_a': _bare_room(), 'grid_1': _bare_room()}
     positions = {'grid_a': (2, 1), 'grid_1': (1, 1), 'grid_2': (1, 2)}
     msg = "no strategy placed grid 'room_7'"
@@ -66,7 +66,7 @@ def test_render_rooms_canvas():
 
 def test_render_rooms_no_failed():
     """failed=None renders index + canvas with no FAILED annotations."""
-    from leveldump import render_rooms
+    from uglycraft.leveldump import render_rooms
     out = render_rooms({'grid_a': _bare_room()}, {'grid_a': (0, 0)})
     assert 'FAILED' not in out
     assert out.startswith('grid_a @ (0, 0)')
@@ -102,7 +102,7 @@ def test_no_spam_on_multi_grid_build(tmp_path, monkeypatch):
     candidate failures inside _build_grid never log — the log stays empty
     when the build succeeds first try, and otherwise contains exactly one
     whole-attempt entry per escaping LayoutError."""
-    import levels as _levels
+    from uglycraft import levels as _levels
     path = _redirect(tmp_path, monkeypatch)
     fs = _levels.ACT2_FEATURE_SETS[2]
     base = random.Random(777)

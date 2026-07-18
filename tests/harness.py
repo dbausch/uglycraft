@@ -17,10 +17,10 @@ import pygame
 if not pygame.get_init():
     pygame.init()
 
-import levels
-import world as world_mod
-from constants import LOGICAL_W, LOGICAL_H
-from game import Game, PLAYING
+from uglycraft import levels
+from uglycraft import world as world_mod
+from uglycraft.constants import LOGICAL_W, LOGICAL_H
+from uglycraft.game import Game, PLAYING
 
 DT = 33            # ms per tick (~30 FPS)
 CLOCK_START = 1000  # arbitrary nonzero epoch for game.now()

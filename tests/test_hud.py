@@ -7,7 +7,7 @@ pygame is initialised headlessly.
 import pygame
 
 from tests import harness  # noqa: F401  (side effect: headless pygame.init)
-from hud import HudElement, LabelValue, IconStrip, HBox, dash_fill
+from uglycraft.hud import HudElement, LabelValue, IconStrip, HBox, dash_fill
 
 
 def _font():

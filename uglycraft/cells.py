@@ -25,7 +25,7 @@ from enum import Enum, auto
 
 from collections import deque
 
-from constants import (COLS, ROWS, ENTRANCE_CHANNEL, WALL_BUMPS,
+from uglycraft.constants import (COLS, ROWS, ENTRANCE_CHANNEL, WALL_BUMPS,
                        WALL_HITS_TO_BREAK, WALL_STONE, WALL_WOODEN)
 
 

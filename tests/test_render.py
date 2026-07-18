@@ -6,7 +6,7 @@ freetype/SDL versions). Re-record with UGLYCRAFT_REGOLD=1 after any
 intentional visual change; drop or reduce these if they cost more than
 they catch.
 """
-from game import Game
+from uglycraft.game import Game
 from tests import act2_fixtures as fx
 from tests.harness import Harness, assert_golden, screen_hash
 
@@ -129,7 +129,7 @@ def test_hud_key_strip_absent_without_keys():
 
 def _hud_labels(h):
     """The label:value texts rendered into the HUD element list this frame."""
-    import game as game_mod
+    from uglycraft import game as game_mod
     captured = []
     orig = game_mod.LabelValue
 
@@ -180,14 +180,14 @@ def test_shot_hud_bridge():
 # never maps to 'staircase'; open borders draw nothing (bare floor gap).
 
 def test_border_sprite_open_draws_nothing():
-    from game import border_exit_sprite
+    from uglycraft.game import border_exit_sprite
     for o in ('h', 'v'):
         assert border_exit_sprite(None, o, set()) is None
         assert border_exit_sprite(('open', None, None), o, set()) is None
 
 
 def test_border_sprite_locked_closed():
-    from game import border_exit_sprite
+    from uglycraft.game import border_exit_sprite
     assert border_exit_sprite(('locked', 'red', 'border_door_0'), 'h',
                               set()) == 'door_red_h'
     assert border_exit_sprite(('locked', 'blue', 'border_door_1'), 'v',
@@ -195,7 +195,7 @@ def test_border_sprite_locked_closed():
 
 
 def test_border_sprite_locked_opened():
-    from game import border_exit_sprite
+    from uglycraft.game import border_exit_sprite
     opened = {'border_door_0'}                 # the door's channel is latched high
     assert border_exit_sprite(('locked', 'red', 'border_door_0'), 'h',
                               opened) == 'door_open_h'
@@ -209,21 +209,21 @@ def test_border_sprite_locked_opened():
 # ── Spec 0074: shared "action denied" SFX wiring ─────────────────────────────
 
 def test_action_denied_maps_to_denied_sound():
-    from game import Game
+    from uglycraft.game import Game
     assert Game._EVENT_SOUNDS['action_denied'] == 'denied'
 
 
 def test_denied_sfx_is_built():
     """The SoundManager builds the 'denied' SFX (or degrades silently with no
     audio, in which case the whole sfx dict is empty)."""
-    from sounds import SoundManager
+    from uglycraft.sounds import SoundManager
     sm = SoundManager()
     if sm._ok:
         assert 'denied' in sm._sfx
 
 
 def test_border_sprite_gated_tracks_channel():
-    from game import border_exit_sprite
+    from uglycraft.game import border_exit_sprite
     rec = ('gated', 'border_gate_0', None)
     assert border_exit_sprite(rec, 'h', set()) == 'gate_closed_h'
     assert border_exit_sprite(rec, 'v', {'border_gate_0'}) == 'gate_open_v'

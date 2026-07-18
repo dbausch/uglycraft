@@ -1,5 +1,5 @@
 """Self-tests for the characterization harness (spec 0044 H2-H4)."""
-import levels
+from uglycraft import levels
 from tests.harness import Harness
 
 WALK = ['hold:right:12', 'hold:down:10', 'hold:left:20', 'hold:up:8',

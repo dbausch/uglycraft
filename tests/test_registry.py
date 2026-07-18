@@ -8,8 +8,8 @@ import random
 
 import pytest
 
-import world as world_mod
-from world import World
+from uglycraft import world as world_mod
+from uglycraft.world import World
 from tests import act2_fixtures as fx
 
 DT = 33
@@ -41,7 +41,7 @@ def test_content_parsers_cover_all_cell_content_keys():
     (pushable_blocks, enemy_starts, patrol_enemies) and room metadata
     (tile_owner, dead_squares, exits) are deliberately NOT here — they
     belong to Room.from_data / border handling."""
-    from cells import CONTENT_PARSERS
+    from uglycraft.cells import CONTENT_PARSERS
     assert [key for key, _ in CONTENT_PARSERS] == [
         'walls', 'locked_doors', 'gates', 'water_tiles',
         'treasures', 'materials', 'keys',
@@ -50,7 +50,7 @@ def test_content_parsers_cover_all_cell_content_keys():
 
 
 def test_build_room_cells_parses_every_kind():
-    from cells import build_room_cells
+    from uglycraft.cells import build_room_cells
     cells = build_room_cells(_all_kinds_room())
     assert cells.barrier(11, 8).kind == 'stone'
     assert cells.barrier(12, 8).kind == 'door'
@@ -70,7 +70,7 @@ def test_build_room_cells_parses_every_kind():
 # ── G2: fixture layer + Room compat views ─────────────────────────────────────
 
 def test_room_plates_and_flame_jets_are_views_over_cells():
-    from rooms import Room
+    from uglycraft.rooms import Room
     room = Room.from_data('g1', _all_kinds_room(), 'easy')
     assert room.plates == [(4, 8, 'gx')]
     (jet,) = room.flame_jets
@@ -84,8 +84,8 @@ def test_room_plates_and_flame_jets_are_views_over_cells():
 # ── G3: blocks are occupants with identity ────────────────────────────────────
 
 def test_blocks_are_objects_with_identity():
-    from rooms import Room
-    from entities import Block
+    from uglycraft.rooms import Room
+    from uglycraft.entities import Block
     data = fx._room({}, pushable_blocks=[(6, 8), (9, 9)])
     room = Room.from_data('g1', data, 'easy')
     assert all(isinstance(b, Block) for b in room.blocks)

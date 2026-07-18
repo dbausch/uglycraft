@@ -9,9 +9,9 @@ import random
 
 import pytest
 
-import world as world_mod
-from world import World
-from constants import WALL_WOODEN
+from uglycraft import world as world_mod
+from uglycraft.world import World
+from uglycraft.constants import WALL_WOODEN
 from tests import act2_fixtures as fx
 
 DT = 33
@@ -56,7 +56,7 @@ def _room_dict():
 # ── Room.from_data (red until R1) ─────────────────────────────────────────────
 
 def test_from_data_populates_fields():
-    from rooms import Room
+    from uglycraft.rooms import Room
     data = _room_dict()
     room = Room.from_data('g1', data, 'easy')
     assert room.key == 'g1'
@@ -70,8 +70,8 @@ def test_from_data_populates_fields():
 
 
 def test_from_data_enemy_selection_by_difficulty():
-    from rooms import Room
-    from entities import ForgeOgre, PatrolEnemy
+    from uglycraft.rooms import Room
+    from uglycraft.entities import ForgeOgre, PatrolEnemy
     easy = Room.from_data('g1', _room_dict(), 'easy')
     # EASY: all specials + one regular chaser + one patrol
     kinds = [type(e).__name__ for e in easy.enemies]
@@ -113,7 +113,7 @@ def test_rooms_persist_by_identity():
 
 
 def test_roomstate_is_gone():
-    import rooms
+    from uglycraft import rooms
     assert not hasattr(rooms, 'RoomState')
     w, orig = _world(_two_grids)
     try:

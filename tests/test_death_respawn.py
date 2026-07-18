@@ -12,10 +12,10 @@ import random
 
 import pytest
 
-import world as world_mod
-from world import World
-from constants import COLS, ROWS
-from cells import Barrier
+from uglycraft import world as world_mod
+from uglycraft.world import World
+from uglycraft.constants import COLS, ROWS
+from uglycraft.cells import Barrier
 from tests import act2_fixtures as fx
 
 KEY = 7

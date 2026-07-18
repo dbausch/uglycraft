@@ -11,10 +11,10 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import (build_level_dict, LayoutError,
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import (build_level_dict, LayoutError,
                          _toilet_size, _carve_corner)
-from levels import ACT2_FEATURE_SETS
+from uglycraft.levels import ACT2_FEATURE_SETS
 
 
 FS_CLOSETS = {
@@ -80,7 +80,7 @@ def test_closets_not_counted_in_strategy_selection(monkeypatch):
     """Closets are carved from their parent and occupy no zone, so they must not
     count toward room-count strategy selection — otherwise a grid picks a layout
     with more zones than it has regular rooms, leaving unoccupied zones."""
-    import levellayout as L
+    from uglycraft import levellayout as L
     overzoned = []
     orig = L.build_level_dict
 

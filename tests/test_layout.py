@@ -38,8 +38,8 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import (
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import (
     layout_graph, derive_walls, validate_layout, PlacedNode, build_level_dict,
     MIN_C, MAX_C, MIN_R, MAX_R,
 )
@@ -86,7 +86,7 @@ class TestLayoutFaithfulness:
         """derive_walls() must raise ValueError when an edge has no shared
         boundary tile. Current code silently skips it — this test will FAIL
         until the silent `continue` is promoted to a raise."""
-        from levelgraph import LevelGraph as G2, EdgeType, NodeSize
+        from uglycraft.levelgraph import LevelGraph as G2, EdgeType, NodeSize
         graph = G2()
         graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
         graph.add_node('room_0',   NodeSize.ROOM)
@@ -101,15 +101,15 @@ class TestLayoutFaithfulness:
             derive_walls(graph, placed)
 
     def test_t_strategy_available(self):
-        from levellayout import STRATEGIES
+        from uglycraft.levellayout import STRATEGIES
         assert 't' in STRATEGIES
 
     def test_double_t_strategy_available(self):
-        from levellayout import STRATEGIES
+        from uglycraft.levellayout import STRATEGIES
         assert 'double_t' in STRATEGIES
 
     def test_z_strategy_available(self):
-        from levellayout import STRATEGIES
+        from uglycraft.levellayout import STRATEGIES
         assert 'z' in STRATEGIES
 
 
@@ -210,43 +210,43 @@ def test_z_corridor_not_full_width_arm(seed):
 
 class TestStrategyMaxZones:
     def test_constant_exists(self):
-        from levellayout import _STRATEGY_MAX_ZONES
+        from uglycraft.levellayout import _STRATEGY_MAX_ZONES
         assert isinstance(_STRATEGY_MAX_ZONES, dict)
 
     def test_simple_strategies_have_max_2(self):
-        from levellayout import _STRATEGY_MAX_ZONES
+        from uglycraft.levellayout import _STRATEGY_MAX_ZONES
         for s in ['horizontal', 'vertical', 'off_centre']:
             assert _STRATEGY_MAX_ZONES[s] == 2, f"{s} should have max_zones=2"
 
     def test_t_has_max_3(self):
-        from levellayout import _STRATEGY_MAX_ZONES
+        from uglycraft.levellayout import _STRATEGY_MAX_ZONES
         assert _STRATEGY_MAX_ZONES['t'] == 3
 
     def test_heavy_strategies_have_max_4(self):
-        from levellayout import _STRATEGY_MAX_ZONES
+        from uglycraft.levellayout import _STRATEGY_MAX_ZONES
         for s in ['double_t', 'z', 'l']:
             assert _STRATEGY_MAX_ZONES[s] == 4, f"{s} should have max_zones=4"
 
     def test_all_strategies_covered(self):
-        from levellayout import _STRATEGY_MAX_ZONES, STRATEGIES
+        from uglycraft.levellayout import _STRATEGY_MAX_ZONES, STRATEGIES
         for s in STRATEGIES:
             assert s in _STRATEGY_MAX_ZONES, f"{s} missing from _STRATEGY_MAX_ZONES"
 
     def test_full_border_max_zones_is_1(self):
-        from levellayout import _STRATEGY_MAX_ZONES
+        from uglycraft.levellayout import _STRATEGY_MAX_ZONES
         assert _STRATEGY_MAX_ZONES.get('full_border') == 1
 
 
 class TestPickStrategyRoomCount:
     def test_n_rooms_2_never_picks_4zone(self):
-        from levellayout import _pick_strategy, _STRATEGY_MAX_ZONES, STRATEGIES
+        from uglycraft.levellayout import _pick_strategy, _STRATEGY_MAX_ZONES, STRATEGIES
         for seed in range(200):
             result = _pick_strategy(frozenset(), STRATEGIES, random.Random(seed), n_rooms=2)
             assert _STRATEGY_MAX_ZONES.get(result, 2) <= 2, \
                 f"seed={seed}: picked {result!r} (max_zones={_STRATEGY_MAX_ZONES.get(result)}) for n_rooms=2"
 
     def test_n_rooms_3_allows_t_not_4zone(self):
-        from levellayout import _pick_strategy, _STRATEGY_MAX_ZONES, STRATEGIES
+        from uglycraft.levellayout import _pick_strategy, _STRATEGY_MAX_ZONES, STRATEGIES
         results = {_pick_strategy(frozenset(), STRATEGIES, random.Random(s), n_rooms=3)
                    for s in range(200)}
         assert 't' in results, "t (max_zones=3) should be chosen with n_rooms=3"
@@ -255,7 +255,7 @@ class TestPickStrategyRoomCount:
                 f"picked {r!r} (max_zones={_STRATEGY_MAX_ZONES.get(r)}) for n_rooms=3"
 
     def test_n_rooms_4_allows_heavy_strategies(self):
-        from levellayout import _pick_strategy, STRATEGIES
+        from uglycraft.levellayout import _pick_strategy, STRATEGIES
         results = {_pick_strategy(frozenset(), STRATEGIES, random.Random(s), n_rooms=4)
                    for s in range(200)}
         assert 'double_t' in results or 'z' in results or 'l' in results, \
@@ -264,13 +264,13 @@ class TestPickStrategyRoomCount:
     def test_pick_strategy_single_available_is_filtered(self):
         """_pick_strategy has no len(available)==1 guard — room-count filter
         always runs, falling back to full_border when filtered is empty."""
-        from levellayout import _pick_strategy
+        from uglycraft.levellayout import _pick_strategy
         result = _pick_strategy(frozenset(), ['double_t'], random.Random(0), n_rooms=2)
         assert result == 'full_border'
 
     def test_n_rooms_1_no_exit_uses_full_border(self):
         """Strict filter: no strategy has max_zones ≤ 1 except full_border."""
-        from levellayout import _pick_strategy, STRATEGIES
+        from uglycraft.levellayout import _pick_strategy, STRATEGIES
         for seed in range(50):
             result = _pick_strategy(frozenset(), STRATEGIES, random.Random(seed), n_rooms=1)
             assert result == 'full_border', \
@@ -278,7 +278,7 @@ class TestPickStrategyRoomCount:
 
     def test_n_rooms_1_tb_exit_uses_full_border(self):
         """1-room grid with tb exit: vertical is ineligible (max_zones=2 > 1)."""
-        from levellayout import _pick_strategy, STRATEGIES
+        from uglycraft.levellayout import _pick_strategy, STRATEGIES
         for seed in range(50):
             result = _pick_strategy(frozenset({'top'}), STRATEGIES,
                                     random.Random(seed), n_rooms=1)
@@ -287,7 +287,7 @@ class TestPickStrategyRoomCount:
 
     def test_n_rooms_2_can_use_vertical(self):
         """Strict filter still allows 2-zone strategies for n_rooms=2."""
-        from levellayout import _pick_strategy, STRATEGIES
+        from uglycraft.levellayout import _pick_strategy, STRATEGIES
         results = {_pick_strategy(frozenset({'top'}), STRATEGIES,
                                   random.Random(s), n_rooms=2)
                    for s in range(100)}
@@ -335,7 +335,7 @@ class TestFullBorderFallback:
 
     def test_perpendicular_exits_small_room_count_uses_full_border(self):
         """exits={'left','bottom'}, heavy-only pool, 1 room → full_border."""
-        from levellayout import _pick_strategy
+        from uglycraft.levellayout import _pick_strategy
         heavy_pool = ['double_t', 'z', 'l']
         for seed in range(30):
             result = _pick_strategy(frozenset({'left', 'bottom'}), heavy_pool,
@@ -345,7 +345,7 @@ class TestFullBorderFallback:
 
     def test_three_exits_small_room_count_uses_full_border(self):
         """exits={'left','right','top'}, heavy-only pool, 1 room → full_border."""
-        from levellayout import _pick_strategy
+        from uglycraft.levellayout import _pick_strategy
         heavy_pool = ['double_t', 'z', 'l']
         for seed in range(30):
             result = _pick_strategy(frozenset({'left', 'right', 'top'}), heavy_pool,
@@ -383,7 +383,7 @@ class TestFullBorderFallback:
 def test_layout_graph_2room_no_heavy_strategy(seed):
     """With 2 regular rooms and the full strategy pool, layout_graph must not
     pick a strategy with max_zones > 2 (which would leave empty wall zones)."""
-    from levellayout import _STRATEGY_MAX_ZONES, STRATEGIES
+    from uglycraft.levellayout import _STRATEGY_MAX_ZONES, STRATEGIES
     graph = LevelGraph()
     graph.add_node('corridor', NodeSize.CORRIDOR, is_start=True)
     graph.add_node('r0', NodeSize.ROOM)
@@ -418,7 +418,7 @@ class TestPackBandCapacity:
 
     def test_pack_band_width5_fits_two_rooms(self):
         """band_w=5 must fit 2 rooms: 2 + 1-gap + 2 = 5."""
-        from levellayout import _pack_band
+        from uglycraft.levellayout import _pack_band
         placed = {}
         _pack_band(placed, ['a', 'b'], random.Random(0),
                    band_col=1, band_row=1, band_w=5, band_h=2)
@@ -430,7 +430,7 @@ class TestPackBandCapacity:
 
     def test_pack_band_width4_one_room_uses_full_width(self):
         """band_w=4, n=2: n_max=1; the single placed room fills the zone."""
-        from levellayout import _pack_band
+        from uglycraft.levellayout import _pack_band
         placed = {}
         _pack_band(placed, ['a', 'b'], random.Random(0),
                    band_col=1, band_row=1, band_w=4, band_h=2)
@@ -440,7 +440,7 @@ class TestPackBandCapacity:
 
     def test_pack_band_vertical_height5_fits_two_rooms(self):
         """band_h=5 must fit 2 rooms: 2 + 1-gap + 2 = 5."""
-        from levellayout import _pack_band_vertical
+        from uglycraft.levellayout import _pack_band_vertical
         placed = {}
         _pack_band_vertical(placed, ['a', 'b'], random.Random(0),
                             band_col=1, band_row=1, band_w=3, band_h=5)
@@ -452,7 +452,7 @@ class TestPackBandCapacity:
 
     def test_pack_band_vertical_height4_one_room_uses_full_height(self):
         """band_h=4, n=2: n_max=1; the single placed room fills the zone."""
-        from levellayout import _pack_band_vertical
+        from uglycraft.levellayout import _pack_band_vertical
         placed = {}
         _pack_band_vertical(placed, ['a', 'b'], random.Random(0),
                             band_col=1, band_row=1, band_w=3, band_h=4)
@@ -467,27 +467,27 @@ class TestNextRoomTiles:
     """Unit tests for _next_room_tiles (tile count for the next room in a zone)."""
 
     def test_pack_band_first_room(self):
-        from levellayout import _next_room_tiles, _pack_band
+        from uglycraft.levellayout import _next_room_tiles, _pack_band
         # zw=3, zh=10, k=0: base=(3-0)//(0+1)=3 → 3*10=30
         assert _next_room_tiles(3, 10, _pack_band, 0) == 30
 
     def test_pack_band_zone_full(self):
-        from levellayout import _next_room_tiles, _pack_band
+        from uglycraft.levellayout import _next_room_tiles, _pack_band
         # zw=3, zh=10, k=1: base=(3-1)//(1+1)=1 < 2 → 0
         assert _next_room_tiles(3, 10, _pack_band, 1) == 0
 
     def test_pack_band_wide_zone_second_room(self):
-        from levellayout import _next_room_tiles, _pack_band
+        from uglycraft.levellayout import _next_room_tiles, _pack_band
         # zw=7, zh=5, k=1: base=(7-1)//(1+1)=3 → 3*5=15
         assert _next_room_tiles(7, 5, _pack_band, 1) == 15
 
     def test_pack_band_vertical_first_room(self):
-        from levellayout import _next_room_tiles, _pack_band_vertical
+        from uglycraft.levellayout import _next_room_tiles, _pack_band_vertical
         # zw=6, zh=4, k=0: base=(4-0)//(0+1)=4 → 6*4=24
         assert _next_room_tiles(6, 4, _pack_band_vertical, 0) == 24
 
     def test_pack_band_vertical_zone_full(self):
-        from levellayout import _next_room_tiles, _pack_band_vertical
+        from uglycraft.levellayout import _next_room_tiles, _pack_band_vertical
         # zw=6, zh=4, k=1: base=(4-1)//(1+1)=1 < 2 → 0
         assert _next_room_tiles(6, 4, _pack_band_vertical, 1) == 0
 
@@ -496,7 +496,7 @@ class TestGreedyZoneAssignment:
     """Integration tests for greedy distribution in _layout_corridor."""
 
     def _call_corridor(self, room_names, col_frac=0.2, rng_seed=0):
-        from levellayout import _layout_corridor
+        from uglycraft.levellayout import _layout_corridor
         rng = random.Random(rng_seed)
         # col_frac=0.2 → c_stem=5, stem_w=3:
         #   near Zone A (w=3, cap=1), near Zone B (w=20, cap=7),
@@ -517,7 +517,7 @@ class TestGreedyZoneAssignment:
 
     def test_layout_error_when_capacity_exceeded(self):
         """LayoutError raised when rooms outnumber total zone capacity."""
-        from levellayout import LayoutError
+        from uglycraft.levellayout import LayoutError
         # Zone caps sum to 17; 18 rooms must overflow.
         room_names = [f'r{i}' for i in range(18)]
         with pytest.raises(LayoutError):

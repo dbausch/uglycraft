@@ -5,9 +5,9 @@ D5: the inventory / crafting menu is fully disabled (ENABLE_INVENTORY_MENU).
 """
 import pygame
 
-import levels
-from levels import ACT2_FEATURE_SETS
-from crafting import MAT_METAL
+from uglycraft import levels
+from uglycraft.levels import ACT2_FEATURE_SETS
+from uglycraft.crafting import MAT_METAL
 from tests import act2_fixtures as fx
 from tests.harness import Harness
 
@@ -54,7 +54,7 @@ def test_generated_levels_have_ample_rubble():
 def test_tab_does_not_open_inventory_menu():
     """With ENABLE_INVENTORY_MENU=False, pressing TAB while playing does not
     enter the INVENTORY state (the overlay is never shown)."""
-    from game import PLAYING, INVENTORY
+    from uglycraft.game import PLAYING, INVENTORY
     with Harness(level_dict=fx.showcase_level(), seed=42) as h:
         h.run(['wait:2'])
         assert h.game.state == PLAYING

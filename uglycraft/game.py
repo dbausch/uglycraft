@@ -8,14 +8,14 @@ import os
 import sys
 import random
 import pygame
-from constants import *
-from hud import LabelValue, KeyStackStrip, HBox
-from sprites import create_sprites, draw_flame_at
-from entities import PatrolEnemy, ForgeOgre
-from hiscore import load_scores, save_score, qualifies
-from sounds import SoundManager
-from world import World, ACT1_BOSS_LEVEL, is_border, _flame_tile_intensity
-from crafting import (RECIPES, CRAFT_NAMES, CRAFT_ICONS,
+from uglycraft.constants import *
+from uglycraft.hud import LabelValue, KeyStackStrip, HBox
+from uglycraft.sprites import create_sprites, draw_flame_at
+from uglycraft.entities import PatrolEnemy, ForgeOgre
+from uglycraft.hiscore import load_scores, save_score, qualifies
+from uglycraft.sounds import SoundManager
+from uglycraft.world import World, ACT1_BOSS_LEVEL, is_border, _flame_tile_intensity
+from uglycraft.crafting import (RECIPES, CRAFT_NAMES, CRAFT_ICONS,
                       MATERIAL_NAMES, MATERIAL_ICONS,
                       TOOL_NAMES, TOOL_ICONS,
                       KEY_NAMES, KEY_COLORS)

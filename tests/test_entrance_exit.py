@@ -21,8 +21,8 @@ import random
 
 import pytest
 
-from world import World
-from constants import COLS, ROWS
+from uglycraft.world import World
+from uglycraft.constants import COLS, ROWS
 
 KEY = 42                      # opaque bump-consumption key id
 ENTRANCE_CHANNEL = '__entrance__'   # must equal world.ENTRANCE_CHANNEL

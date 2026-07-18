@@ -1,7 +1,7 @@
 """Live Room objects and exit detection for multi-room levels."""
-from constants import COLS, ROWS, HARD
-from cells import build_room_cells
-from entities import Block, Enemy, ForgeOgre, PatrolEnemy
+from uglycraft.constants import COLS, ROWS, HARD
+from uglycraft.cells import build_room_cells
+from uglycraft.entities import Block, Enemy, ForgeOgre, PatrolEnemy
 
 
 class Room:
@@ -97,7 +97,7 @@ class Room:
     @classmethod
     def placeholder(cls):
         """Empty room so World is queryable before the first level loads."""
-        from cells import RoomCells
+        from uglycraft.cells import RoomCells
         return cls(None, {}, RoomCells(), [], [])
 
 

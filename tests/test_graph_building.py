@@ -43,7 +43,7 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, LevelGraphBuilder, EdgeType, NodeSize
+from uglycraft.levelgraph import LevelGraph, LevelGraphBuilder, EdgeType, NodeSize
 from tests.conftest import ALL_FEATURE_SETS, FS_LOCKED, FS_GATED, FS_WATER, FS_ALL
 
 

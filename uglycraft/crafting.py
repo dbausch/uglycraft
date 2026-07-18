@@ -1,5 +1,5 @@
 """Materials, tools, recipes, and inventory for Act 2 crafting."""
-from constants import WALL_STONE
+from uglycraft.constants import WALL_STONE
 
 
 # ── Material types ────────────────────────────────────────────────────────────

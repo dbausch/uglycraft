@@ -24,13 +24,13 @@ key ids passed to try_move()/key_released() are opaque ints.
 """
 import random
 from collections import deque
-from constants import *
-from levels import (TOTAL_LEVELS, get_level, new_game_levels,
+from uglycraft.constants import *
+from uglycraft.levels import (TOTAL_LEVELS, get_level, new_game_levels,
                     regenerate_level)
-from entities import Player, Enemy, PatrolEnemy, ForgeOgre
-from rooms import Room, find_exit
-from crafting import Inventory, KEY_NAMES, MAT_ROCKS, MAT_PLANKS
-from cells import BARRIER_BUMP, Barrier, _exit_tiles
+from uglycraft.entities import Player, Enemy, PatrolEnemy, ForgeOgre
+from uglycraft.rooms import Room, find_exit
+from uglycraft.crafting import Inventory, KEY_NAMES, MAT_ROCKS, MAT_PLANKS
+from uglycraft.cells import BARRIER_BUMP, Barrier, _exit_tiles
 
 NUM_LEVELS  = TOTAL_LEVELS
 ACT1_BOSS_LEVEL = 10

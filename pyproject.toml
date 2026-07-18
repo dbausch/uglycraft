@@ -21,7 +21,7 @@ cmd  = ".venv/bin/python -m pytest tests/ -n auto"
 
 [tool.poe.tasks.run]
 help = "Run the game (e.g. poe run --level 5)"
-cmd  = ".venv/bin/python main.py"
+cmd  = ".venv/bin/python -m uglycraft"
 
 [tool.poe.tasks.docs-install]
 help  = "One-time: create .venv-docs and install MkDocs Material (local docs dev aid)"
@@ -78,9 +78,9 @@ cmd   = "dosbox original/UGLI_2.EXE -exit"
 help  = "Build standalone Linux distributable (dist/linux-64/)"
 shell = """
   .venv/bin/pyinstaller --onefile --noconsole --name uglycraft \
-    --add-data "fonts/ShareTechMono-Regular.ttf:fonts" \
-    --add-data "translations/history_en.txt:translations" \
-    --distpath dist/linux-64 main.py
+    --add-data "uglycraft/fonts/ShareTechMono-Regular.ttf:fonts" \
+    --add-data "uglycraft/translations/history_en.txt:translations" \
+    --distpath dist/linux-64 run_game.py
   cp -r LICENSES dist/linux-64/
 """
 
@@ -101,8 +101,8 @@ shell = """
   WINEDEBUG=-all wine \
     ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
     -m PyInstaller --onefile --noconsole --name uglycraft \
-    --add-data "fonts/ShareTechMono-Regular.ttf;fonts" \
-    --add-data "translations/history_en.txt;translations" main.py
+    --add-data "uglycraft/fonts/ShareTechMono-Regular.ttf;fonts" \
+    --add-data "uglycraft/translations/history_en.txt;translations" run_game.py
   mkdir -p dist/windows-64
   mv dist/uglycraft.exe dist/windows-64/
   cp -r LICENSES dist/windows-64/

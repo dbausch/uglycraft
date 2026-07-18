@@ -1,7 +1,7 @@
 """Shared fixtures and feature-set constants for the level-gen test suite."""
 import random
 import pytest
-from levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
 
 
 # ── Canonical feature sets used across test files ─────────────────────────────
@@ -95,7 +95,7 @@ def _layout_log_to_tmp(tmp_path_factory):
     directory.  Session-scoped: a function-scoped autouse fixture would
     trip hypothesis's function_scoped_fixture health check on every
     @given test."""
-    import levellayout
+    from uglycraft import levellayout
     old = getattr(levellayout, 'LAYOUT_LOG_PATH', None)
     levellayout.LAYOUT_LOG_PATH = str(
         tmp_path_factory.mktemp('layout-log') / 'uglycraft-layout.log')

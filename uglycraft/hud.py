@@ -15,7 +15,7 @@ import re
 
 import pygame
 
-from constants import HUD_TEXT
+from uglycraft.constants import HUD_TEXT
 
 _SPACE_RUN = re.compile(r' {3,}')
 

@@ -19,11 +19,11 @@ import random
 
 import pytest
 
-import world as world_mod
-import constants
-from world import World
-from entities import Block
-from constants import WALL_REINFORCED
+from uglycraft import world as world_mod
+from uglycraft import constants
+from uglycraft.world import World
+from uglycraft.entities import Block
+from uglycraft.constants import WALL_REINFORCED
 
 KEY = 7
 DT = 33

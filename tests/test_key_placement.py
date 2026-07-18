@@ -11,9 +11,9 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-import levels as _levels
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict
+from uglycraft import levels as _levels
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import build_level_dict
 from tests.conftest import FS_LOCKED, FS_ALL
 
 
@@ -60,7 +60,7 @@ def _build(fs, seed):
     """Build with the standard fresh-rng retry (mirrors _generate_act2).
     Since spec 0065 a dropped locked room aborts the attempt loudly, so a
     retry-less build would fail on seeds production simply retries."""
-    from levellayout import LayoutError
+    from uglycraft.levellayout import LayoutError
     base = random.Random(seed)
     for _ in range(60):
         rng = random.Random(base.randint(0, 2 ** 31))
@@ -133,7 +133,7 @@ def test_graph_keys_reachable(fs, seed):
 
 import collections
 
-from levellayout import LayoutError
+from uglycraft.levellayout import LayoutError
 
 COLS, ROWS = 30, 16
 
@@ -192,7 +192,7 @@ def test_pinned_L13_orphan_keys():
     """Level-13 build seed 7 had 6 keys but only 2 doors pre-fix (spec 0061
     diagnosis, 2026-07-11): 4 interior doors elided because their keys sat
     on other grids."""
-    import levels as _levels
+    from uglycraft import levels as _levels
     _g, lv = _build_retry(_levels.ACT2_FEATURE_SETS[2], 7)
     keys, doors = _colour_counts(lv)
     assert keys == doors, f"keys={dict(keys)} doors={dict(doors)}"
@@ -202,7 +202,7 @@ def test_missing_key_raises_loudly():
     """A LOCKED edge whose colour has no key anywhere in the graph must
     abort the build (LayoutError → fresh-seed retry), never silently
     degrade the door to an open passage."""
-    from levelgraph import LevelGraphBuilder
+    from uglycraft.levelgraph import LevelGraphBuilder
     b = LevelGraphBuilder(random.Random(3))
     b.add_open_room()
     b.add_locked_room('red')

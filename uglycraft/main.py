@@ -17,9 +17,9 @@ Debug flags (skip menus and highscore):
 import sys
 import argparse
 import pygame
-from constants import LOGICAL_W, LOGICAL_H, FPS, MAX_DT_MS, TITLE, EASY, HARD
-from levels import TOTAL_LEVELS
-from game import Game, PLAYING, QUIT_GAME
+from uglycraft.constants import LOGICAL_W, LOGICAL_H, FPS, MAX_DT_MS, TITLE, EASY, HARD
+from uglycraft.levels import TOTAL_LEVELS
+from uglycraft.game import Game, PLAYING, QUIT_GAME
 
 
 def best_scale(display_w, display_h):
@@ -68,7 +68,7 @@ def main():
 
     # ── Headless ASCII export (spec 0064): no window, print and exit ──────────
     if args.dump_level is not None:
-        from leveldump import dump_level
+        from uglycraft.leveldump import dump_level
         level = max(1, min(args.dump_level, TOTAL_LEVELS))
         print(dump_level(level, difficulty=HARD if args.hard else EASY,
                          seed=args.seed), end='')

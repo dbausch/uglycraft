@@ -1,8 +1,8 @@
 """Procedural pixel-art sprite generation — no external image files."""
 import math
 import pygame
-from constants import *
-from crafting import KEY_COLORS
+from uglycraft.constants import *
+from uglycraft.crafting import KEY_COLORS
 
 
 def _surf(size=TILE, alpha=True):

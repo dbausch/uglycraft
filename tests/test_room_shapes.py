@@ -4,8 +4,8 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import (
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import (
     PlacedNode,
     _floor_connected,
     _try_l_pair,
@@ -101,7 +101,7 @@ class TestLPairHorizontal:
 
     def test_l_pair_has_connection_tile(self):
         """_find_connection_tile must find exactly one shared boundary tile."""
-        from levellayout import _find_connection_tile
+        from uglycraft.levellayout import _find_connection_tile
         placed = {}
         _try_l_pair(
             placed, 'a', 'b',
@@ -154,7 +154,7 @@ class TestLPairVertical:
                     f"A and B have adjacent tiles at ({c},{r})"
 
     def test_v_l_pair_has_connection_tile(self):
-        from levellayout import _find_connection_tile
+        from uglycraft.levellayout import _find_connection_tile
         placed = {}
         _try_l_pair_vertical(
             placed, 'a', 'b',

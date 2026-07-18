@@ -15,10 +15,10 @@ layout failure log (spec 0065 D2 / BL-48(a)).
 """
 import random
 
-from cells import _exit_tiles
-from constants import COLS, ROWS, EASY, HARD
-from entities import ForgeOgre, PatrolEnemy
-from rooms import Room
+from uglycraft.cells import _exit_tiles
+from uglycraft.constants import COLS, ROWS, EASY, HARD
+from uglycraft.entities import ForgeOgre, PatrolEnemy
+from uglycraft.rooms import Room
 
 BARRIER_CHARS = {
     'border': '#', 'stone': '#', 'placed': '#',
@@ -178,8 +178,8 @@ def dump_level(level_num, difficulty=EASY, seed=None):
     feeds the Act 1 treasure spawn) are pinned — the output is fully
     deterministic.
     """
-    import levels
-    from world import World
+    from uglycraft import levels
+    from uglycraft.world import World
     world = World(difficulty)
     # Pin AFTER constructing World: its init rolls a fresh game seed and
     # draws from the global rng (same ordering rule as tests/harness.py).

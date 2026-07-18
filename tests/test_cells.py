@@ -7,8 +7,8 @@ is covered in tests/test_world.py.
 """
 import pytest
 
-from constants import COLS, ROWS
-from cells import Barrier, Terrain, build_room_cells
+from uglycraft.constants import COLS, ROWS
+from uglycraft.cells import Barrier, Terrain, build_room_cells
 
 
 ROOM = {

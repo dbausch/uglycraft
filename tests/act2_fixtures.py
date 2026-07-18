@@ -10,7 +10,7 @@ with the passage cell(s) at column 15 carrying the mechanic under test
 (locked door, gate, water stream).  Player starts at (10, 8).
 Each function returns a FRESH dict — the World mutates room data in place.
 """
-from constants import WALL_REINFORCED, WALL_WOODEN
+from uglycraft.constants import WALL_REINFORCED, WALL_WOODEN
 
 
 def _divider(passages):

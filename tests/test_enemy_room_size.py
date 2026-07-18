@@ -17,9 +17,9 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-import levels
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict, LayoutError
+from uglycraft import levels
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import build_level_dict, LayoutError
 
 FS = levels.ACT2_FEATURE_SETS          # indices 0..9 = levels 11..20
 
@@ -230,7 +230,7 @@ def test_award_economy(fs_idx, seed):
 # ── 4: directed distributor tests (pure core, synthetic sizes) ───────────────
 
 def _dist(sizes, count, seed=0, forge=False):
-    from levellayout import _enemy_distribution
+    from uglycraft.levellayout import _enemy_distribution
     return _enemy_distribution(sizes, count, random.Random(seed), forge=forge)
 
 

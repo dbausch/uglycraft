@@ -9,7 +9,7 @@ HARD uses all of them (1 enemy for levels 1-3, 2 for 4-6, 3 for 7-9).
 Act 2 levels (11+) are generated lazily from graph-based feature sets on first
 access via get_level(); see the Act 2 section below (spec 0028 / BL-11).
 """
-from constants import COLS, ROWS, ENABLE_METAL
+from uglycraft.constants import COLS, ROWS, ENABLE_METAL
 
 
 def _hwall(x1, x2, y):
@@ -197,9 +197,9 @@ LEVELS = [
 # generation cost.
 
 import random as _rnd
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict, LayoutError
-from crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import build_level_dict, LayoutError
+from uglycraft.crafting import MAT_ROCKS, MAT_PLANKS, MAT_METAL
 
 
 # Multiplier on every feature set's material_count (spec 0073 D3). Blocks are

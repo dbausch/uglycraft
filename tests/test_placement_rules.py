@@ -14,9 +14,9 @@ import random
 
 from hypothesis import given, settings, strategies as st
 
-from constants import WALL_REINFORCED
-from levelgraph import LevelGraph, EdgeType
-from levellayout import build_level_dict, LayoutError
+from uglycraft.constants import WALL_REINFORCED
+from uglycraft.levelgraph import LevelGraph, EdgeType
+from uglycraft.levellayout import build_level_dict, LayoutError
 from tests.conftest import FS_FLAMES, FS_GATED, FS_WATER, FS_WATER_FLAMES
 
 
@@ -134,8 +134,8 @@ def test_water_planks_not_in_water_rooms(seed):
 
 # ── Spec 0049: plates never flank water (buildable-passage landings) ──────────
 
-from levelgraph import NodeSize
-from levellayout import LayoutError
+from uglycraft.levelgraph import NodeSize
+from uglycraft.levellayout import LayoutError
 
 FS_GATED_WATER = {
     'room_count':     (4, 6),

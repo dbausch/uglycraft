@@ -11,7 +11,7 @@ import sys
 
 _CHECK = """
 import sys
-import world
+from uglycraft import world
 offenders = sorted(m for m in sys.modules if m.split('.')[0] == 'pygame')
 assert not offenders, f'importing world pulled in pygame: {offenders}'
 assert hasattr(world, 'World')

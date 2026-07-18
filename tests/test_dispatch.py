@@ -13,10 +13,10 @@ import random
 
 import pytest
 
-import world as world_mod
-from world import World
-from constants import WALL_STONE, WALL_WOODEN, WALL_REINFORCED
-from entities import Block
+from uglycraft import world as world_mod
+from uglycraft.world import World
+from uglycraft.constants import WALL_STONE, WALL_WOODEN, WALL_REINFORCED
+from uglycraft.entities import Block
 from tests import act2_fixtures as fx
 
 KEY = 7
@@ -287,7 +287,7 @@ def test_keyless_door_bump_is_denied():
 def test_bump_dispatch_table_exists():
     """API pin (red until Q2): the barrier bump table, one entry per
     kind — None = inert, 'key' = door auto-open, int = hits to break."""
-    from cells import BARRIER_BUMP
+    from uglycraft.cells import BARRIER_BUMP
     assert BARRIER_BUMP == {
         'border': None, 'reinforced': None, 'gate': None,
         'door': 'key',
@@ -403,7 +403,7 @@ def test_act1_sequential_treasure_untouched():
 # ── Q3: item-layer API pins (red until spec 0050) ─────────────────────────────
 
 def test_cells_item_layer_api():
-    from cells import build_room_cells
+    from uglycraft.cells import build_room_cells
     room = fx._room({}, treasures=[(11, 8, 3)],
                     materials=[(12, 8, 'planks')],
                     keys=[(13, 8, 'red'), (13, 8, 'blue')])

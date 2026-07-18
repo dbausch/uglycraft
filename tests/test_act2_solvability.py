@@ -20,9 +20,9 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, EdgeType
-from levellayout import build_level_dict, LayoutError
-from levels import ACT2_FEATURE_SETS
+from uglycraft.levelgraph import LevelGraph, EdgeType
+from uglycraft.levellayout import build_level_dict, LayoutError
+from uglycraft.levels import ACT2_FEATURE_SETS
 from tests.conftest import FS_LOCKED, FS_GATED, FS_WATER, FS_ALL
 from tests.test_key_placement import FS_CROWDED_LOCKED
 from tests.test_water_challenge import FS_CROWDED_WATER

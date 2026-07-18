@@ -13,8 +13,8 @@ import random
 
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, EdgeType, NodeSize
-from levellayout import build_level_dict
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize
+from uglycraft.levellayout import build_level_dict
 from tests.conftest import FS_WATER
 
 

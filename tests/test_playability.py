@@ -19,11 +19,11 @@ test_sokoban, test_entrance, test_placement_rules, etc.
 import random
 from collections import deque
 
-from constants import COLS, ROWS
-from levelgraph import LevelGraph, NodeSize, EdgeType
-from levellayout import (layout_graph, build_level_dict, build_tile_owner,
+from uglycraft.constants import COLS, ROWS
+from uglycraft.levelgraph import LevelGraph, NodeSize, EdgeType
+from uglycraft.levellayout import (layout_graph, build_level_dict, build_tile_owner,
                          MIN_ENEMY_DIST)
-from crafting import MAT_ROCKS
+from uglycraft.crafting import MAT_ROCKS
 
 
 class TestPlayability:

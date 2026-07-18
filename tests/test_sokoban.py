@@ -37,12 +37,12 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levellayout import (
+from uglycraft.levellayout import (
     _sokoban_bfs, _compute_dead_squares, validate_push_puzzles,
     build_level_dict,
     _puzzle_candidates, _puzzle_solution_tiles,
 )
-from levelgraph import LevelGraph
+from uglycraft.levelgraph import LevelGraph
 from tests.conftest import FS_GATED, FS_ALL
 
 CARDINAL = [(1, 0), (-1, 0), (0, 1), (0, -1)]
@@ -378,7 +378,7 @@ class TestPuzzleSolutionTiles:
 def test_multi_puzzle_solution_tiles_do_not_overlap(seed):
     """The solution tiles of puzzle N are in excluded when puzzle N+1 is placed,
     so no later puzzle's plate or block lands on a tile required by an earlier puzzle."""
-    from levellayout import EdgeType, MIN_C, MAX_C, MIN_R, MAX_R
+    from uglycraft.levellayout import EdgeType, MIN_C, MAX_C, MIN_R, MAX_R
     # Synthetic: two 5×5 rooms side by side sharing a corridor
     passable = frozenset(
         (c, r) for c in range(1, 12) for r in range(1, 6)
@@ -468,7 +468,7 @@ def test_plate_exclusions_landing_tiles_and_water_flanks():
     """_plate_exclusions returns the landing tile of each doorway and the
     cardinal flanks of each water tile — and nothing wider (only the
     landing tile is forbidden; its neighbours stay valid plate spots)."""
-    from levellayout import _plate_exclusions, PlacedNode
+    from uglycraft.levellayout import _plate_exclusions, PlacedNode
     # Reinforced wall line row 5 (cols 10..16, as real Act 2 room
     # boundaries are) with the doorway hole at (13,5); corridor above
     # (rows 2..4), room below (rows 6..8) — the spec's P2 diagram.
@@ -487,7 +487,7 @@ def test_plate_exclusions_landing_tiles_and_water_flanks():
 
 def test_place_puzzle_honours_plate_exclusions():
     """plate_excluded removes tiles from the PLATE candidate set only."""
-    from levellayout import _place_puzzle, PlacedNode, LayoutError
+    from uglycraft.levellayout import _place_puzzle, PlacedNode, LayoutError
     room = PlacedNode('room', 10, 5, 5, 4)
     placed = {'room': room}
     floor = set(room.floor_tiles)

@@ -6,7 +6,7 @@ derived from the graph by the layout algorithm in levellayout.py.
 import math
 import random
 from enum import Enum, auto
-from crafting import KEY_COLORS
+from uglycraft.crafting import KEY_COLORS
 
 # BL-56 / spec 0075: at most this many locked doors (and thus keys) of any one
 # colour per level.  With 7 colours this hard-caps a level at 28 locked doors;

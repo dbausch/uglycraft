@@ -6,8 +6,8 @@ import random
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from levelgraph import LevelGraph, EdgeType, NodeSize, _spanning_tree
-from levellayout import _pick_strategy, build_level_dict
+from uglycraft.levelgraph import LevelGraph, EdgeType, NodeSize, _spanning_tree
+from uglycraft.levellayout import _pick_strategy, build_level_dict
 from tests.conftest import FS_ALL, ALL_FEATURE_SETS
 
 

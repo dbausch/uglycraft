@@ -11,10 +11,11 @@ import pathlib
 import tests.harness  # noqa: F401 — sets the dummy SDL drivers
 import pygame
 
-from constants import LOGICAL_W
+from uglycraft.constants import LOGICAL_W
 
 PAD = 24
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
+_PKG = _ROOT / 'uglycraft'   # source + assets moved into the package (spec 0080)
 
 # The retired forge string stays here as the canonical overlong fixture.
 OVERLONG = "THE  FORGE  IS  DEFEATED!"
@@ -23,23 +24,23 @@ OVERLONG = "THE  FORGE  IS  DEFEATED!"
 # ── Formula properties (pure, no pygame) ─────────────────────────────────────
 
 def test_formula_short_texts_keep_420():
-    from game import overlay_box_width
+    from uglycraft.game import overlay_box_width
     assert overlay_box_width(0, 0) == 420
     assert overlay_box_width(171, 180) == 420   # YOU  WON! + max score sub
 
 
 def test_formula_wide_title():
-    from game import overlay_box_width
+    from uglycraft.game import overlay_box_width
     assert overlay_box_width(475, 180) == 475 + 2 * PAD
 
 
 def test_formula_wide_sub_dominates():
-    from game import overlay_box_width
+    from uglycraft.game import overlay_box_width
     assert overlay_box_width(100, 500) == 500 + 2 * PAD
 
 
 def test_formula_clamped_to_screen():
-    from game import overlay_box_width
+    from uglycraft.game import overlay_box_width
     assert overlay_box_width(5000, 0) == LOGICAL_W - 40
     assert overlay_box_width(0, 5000) == LOGICAL_W - 40
 
@@ -47,9 +48,9 @@ def test_formula_clamped_to_screen():
 # ── Real-font fit: every call-site title + the overlong fixture ─────────────
 
 def test_real_font_titles_fit_their_box():
-    from game import overlay_box_width
+    from uglycraft.game import overlay_box_width
     pygame.font.init()
-    font = pygame.font.Font(str(_ROOT / 'fonts' / 'ShareTechMono-Regular.ttf'),
+    font = pygame.font.Font(str(_PKG / 'fonts' / 'ShareTechMono-Regular.ttf'),
                             36)
     titles = ["LEVEL  20", "PAUSED", "GAME  OVER", "YOU  WON!",
               "PLAY AGAIN?", OVERLONG]
@@ -63,7 +64,7 @@ def test_real_font_titles_fit_their_box():
 # ── The win message (spec 0059 review: one unconditional sentence) ───────────
 
 def test_win_message_is_you_won():
-    src = (_ROOT / 'game.py').read_text()
+    src = (_PKG / 'game.py').read_text()
     assert 'FORGE  IS  DEFEATED' not in src, (
         "the retired forge win message is still in game.py")
     assert '"YOU  WON!"' in src

@@ -6,9 +6,9 @@ start directly inside it, and enemies repositioned per the spec table
 """
 import pytest
 
-from constants import COLS, ROWS
-from levels import LEVELS
-from world import _as_multiroom
+from uglycraft.constants import COLS, ROWS
+from uglycraft.levels import LEVELS
+from uglycraft.world import _as_multiroom
 
 # spec 0064 table: level -> (entrance, player_start, enemy_starts in order)
 EXPECTED = {

@@ -12,9 +12,9 @@ import random
 
 import pytest
 
-import world as world_mod
-from world import World
-from constants import WALL_STONE
+from uglycraft import world as world_mod
+from uglycraft.world import World
+from uglycraft.constants import WALL_STONE
 from tests import act2_fixtures as fx
 
 DIR_DOWN = (0, 1)

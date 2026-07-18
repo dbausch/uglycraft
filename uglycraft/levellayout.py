@@ -10,11 +10,11 @@ represents the graph topology.
 import datetime
 import random
 from collections import deque
-from constants import (COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN)
-from levelgraph import (LevelGraph, NodeSize, EdgeType, SIZE_RANGES,
+from uglycraft.constants import (COLS, ROWS, WALL_STONE, WALL_REINFORCED, WALL_WOODEN)
+from uglycraft.levelgraph import (LevelGraph, NodeSize, EdgeType, SIZE_RANGES,
                         COVERS_LR as _COVERS_LR, COVERS_TB as _COVERS_TB,
                         COVERS_ALL as _COVERS_ALL, COVERS_L as _COVERS_L)
-from cells import build_room_cells
+from uglycraft.cells import build_room_cells
 
 # Interior bounds
 MIN_C, MAX_C = 1, COLS - 2   # 1-28
@@ -2690,7 +2690,7 @@ def _log_layout_error(exc):
     entry = [f"== LayoutError {stamp} ==", head, f"message: {exc}"]
     if built:
         try:
-            import leveldump
+            from uglycraft import leveldump
             failed = ((grid, str(exc))
                       if positions and grid in positions else None)
             entry += ['', leveldump.render_rooms(
@@ -3117,7 +3117,7 @@ def _build_super_grid(graph, rng, strategies, progress=None):
 
     progress: optional callable(done, total) reporting grids laid out so far.
     """
-    from levelgraph import LevelGraph, NodeSize, EdgeType
+    from uglycraft.levelgraph import LevelGraph, NodeSize, EdgeType
     from collections import deque as _deque
 
     # BFS-discover corridors in visit order (start corridor first)

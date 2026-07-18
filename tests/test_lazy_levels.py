@@ -6,7 +6,7 @@ new game reshuffles the levels without any up-front cost.
 """
 import importlib
 
-import levels
+from uglycraft import levels
 
 
 def _fresh():
