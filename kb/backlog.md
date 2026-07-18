@@ -2026,21 +2026,35 @@ UGLI_2_Core.inc(54,3) Warning: Variable "SavedTio" read but nowhere assigned
 UGLI_2_Core.inc(54,13) Warning: Variable "RawTio" read but nowhere assigned
 ```
 
-These three vars are assigned in the raw-terminal-mode init routine in
-`original/UGLI_2_Core.inc` (used around line ~1900s, `tcsetattr` calls). The
-warnings appear only in the test binary's compile (`UGLI_2_Test.pp`), not
-the main binary's (`UGLI_2.pp`) — likely because the test binary's reachable
-code never calls whatever procedure performs the assignment
-(`fpOpen('/dev/tty')`-based init), so FPC's per-routine analysis in the test
-binary sees the vars read (in `tcsetattr`/`fpIoctl`/`fpRead` calls) but
-never assigned within reachable code. Confirmed reproducible across two
-consecutive `poe test-original` runs on 2026-07-18.
+**Confirmed root cause** (2026-07-18, investigated by the coordinator with
+empirical FPC 3.2.2 tests): `TTYFd`, `SavedTio`, `RawTio` are globals
+declared in `original/UGLI_2_Core.inc:53-54`; their ONLY assignments are in
+the main program body `original/UGLI_2.pp:82-90` (raw-terminal-mode init:
+`fpOpen('/dev/tty')`, `tcgetattr`, `tcsetattr`). The include file itself
+only reads them (`UGLI_2_Core.inc:597,610` key input; `:1903,1908`
+high-score name entry toggling raw mode). `UGLI_2_Test.pp` includes the
+same core (`UGLI_2_Test.pp:64`) but its own program body deliberately
+never runs the terminal init (headless tests) — so within the test
+compilation FPC's warning 5061 ("Variable ... read but nowhere assigned",
+flagged at the declaration site) is literally TRUE, not a false positive
+and not dead-code-analysis behavior. The fourth TTY global `RawTTYFd`
+doesn't warn because it is declared WITH an initializer (`cint = -1`,
+`UGLI_2_Core.inc:55`) and the test assigns it (`UGLI_2_Test.pp:1490`).
 
-**Fix hint:** either call the init routine (or a stub) reachably in the
-test build, or explicitly initialize `TTYFd`/`SavedTio`/`RawTio` in test
-setup, or investigate whether this is a false positive from FPC's
-whole-program dead-code analysis in test mode. Low priority — cosmetic
-warning, not a correctness bug, and does not affect `poe build-original`.
+**Fix options**, empirically tested with minimal FPC programs:
+- RECOMMENDED: add three assignment lines to the test program's
+  initialization (`TTYFd := -1; FillChar(SavedTio, SizeOf(SavedTio), 0);
+  FillChar(RawTio, SizeOf(RawTio), 0);`) — verified that an assignment
+  anywhere in the program (FillChar var-param counts) silences 5061
+  completely (zero warnings); scoped to the test binary, no game-code
+  change.
+- REJECTED: empty typed-constant record initializers (`SavedTio: Termios =
+  ();`) — compiles but merely trades 5061 for warning 3177 "Some fields
+  coming after "" were not initialized".
+- Possible but dispreferred: `{$WARN 5061 OFF}` around the declarations in
+  `UGLI_2_Core.inc` — works (warning is flagged at the declaration site)
+  but suppresses project-own code, against the BL-75 scoping discipline; a
+  real assignment is cheap and better.
 
 ---
 
