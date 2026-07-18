@@ -76,7 +76,7 @@ package_uglycraft() {
 
 package_ugli() {
   pkgdesc='Terminal treasure hunting game'
-  depends=('hicolor-icon-theme')
+  depends=('bash' 'glibc' 'hicolor-icon-theme')
   optdepends=('portaudio: sound support via UOS/PortAudio'
               'kitty: terminal launcher with ANSI-87 colour theme'
               'ttf-liberation: Liberation Mono font for kitty launcher')

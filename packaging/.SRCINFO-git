@@ -38,6 +38,8 @@ pkgname = uglycraft-git
 
 pkgname = ugli-git
 	pkgdesc = Terminal treasure hunting game (git version)
+	depends = bash
+	depends = glibc
 	depends = hicolor-icon-theme
 	optdepends = portaudio: sound support via UOS/PortAudio
 	optdepends = kitty: terminal launcher with ANSI-87 colour theme
