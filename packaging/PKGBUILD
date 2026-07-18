@@ -48,7 +48,7 @@ package_uglycraft() {
   # list can never go stale again (BL-61).  Byte-compile it (BL-69).
   _site=$(python -c "import site; print(site.getsitepackages()[0])")
   install -d "$pkgdir$_site"
-  cp -r uglycraft "$pkgdir$_site/"
+  cp -r src/uglycraft "$pkgdir$_site/"
   python -m compileall -q "$pkgdir$_site/uglycraft"
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/uglycraft" <<'WRAPPER'
