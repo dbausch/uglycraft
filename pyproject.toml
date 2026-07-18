@@ -1,7 +1,7 @@
 [project]
 name        = "uglycraft"
-version     = "1.0"
-description = "A remake of UGLI (1993), a DOS maze-chase game"
+version     = "1.5"
+description = "A remake of UGLI (1996), a DOS maze-chase game"
 authors     = [{name = "Daniel Bausch", email = "db@edv-bausch.de"}]
 requires-python = ">=3.10"
 dependencies    = ["pygame>=2.0", "numpy", "pyinstaller"]
