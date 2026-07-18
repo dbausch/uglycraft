@@ -48,6 +48,12 @@ per `CLAUDE.md` step 3.
 - [ ] **D9** — Daniel confirms `poe run`, the Linux PyInstaller build, and the
   AUR package all launch and play — font renders, history text loads, no
   `ModuleNotFoundError`.
+- [ ] **D10** — (amendment, see **Amendment A**) modernize the frozen build's
+  data handling: both PyInstaller builds use `--collect-data uglycraft` in place
+  of the per-file `--add-data`, so assets land at their package-relative path
+  (`uglycraft/fonts/…`, `uglycraft/translations/…`) mirroring source; the
+  `game.py` loader drops its `sys._MEIPASS` branch for plain `__file__`-relative
+  loading. Supersedes the `--add-data`/dest and `_MEIPASS` choices in D4/D5.
 
 ## Decisions to confirm (forks in this spec)
 
@@ -74,6 +80,10 @@ option first.
   anyway; opportunistically correct its stale `version`/year, or leave BL-70
   separate. **[recommended:** fix it here — it is one line and we are already in
   the file.]**
+- **DEC-4 — frozen-build data handling (amendment 2026-07-18). → CHOSEN:
+  `--collect-data`.** Replace per-file `--add-data` with `--collect-data
+  uglycraft` and drop the `game.py` `_MEIPASS` branch. Full rationale and diff
+  in **Amendment A** below.
 
 ## Background — confirmed facts
 
@@ -266,6 +276,69 @@ there is a player-facing effect (there is not, beyond "packaged build now runs")
 6. **User acceptance (D9)** — Daniel confirms 3–5 work in-game. Ticked only after
    he says so (a clean exit code is not acceptance, `CLAUDE.md` step 5).
 
+## Amendment A (2026-07-18) — modernize the frozen build's data handling
+
+D4/D5 shipped the assets into the bundle with a **per-file** `--add-data` list
+and a `dest` (`fonts`/`translations`) that does **not** mirror the package —
+which is why `game.py`'s loader still needs a `sys._MEIPASS` special-case. Both
+are the older PyInstaller idiom and reintroduce, *for data files*, the exact
+staleness class this spec removed for modules: add a second font or translation,
+forget a `--add-data` line, and the frozen build silently ships without it — a
+BL-61 in miniature.
+
+**Why data must be declared at all.** PyInstaller's analysis follows `import`
+statements; it bundles the modules it reaches, not arbitrary sibling files on
+disk. The font and history text are opened at runtime
+(`pygame.font.Font(path)`, `open(path)`), never imported, so they are invisible
+to the analysis regardless of now living *inside* the package directory. Data
+files therefore always need an explicit declaration — but the declaration should
+be "collect this package's data", not a hand-maintained file list.
+
+**DEC-4 — CHOSEN: `--collect-data`.** Replace the per-file `--add-data` in both
+build tasks with a single `--collect-data uglycraft` (accepted alias
+`--collect-datas`; spec-file equivalent `collect_data_files('uglycraft')` from
+`PyInstaller.utils.hooks`). It sweeps every non-`.py` file under `uglycraft/` and
+places each at its **package-relative** path in the bundle
+(`_MEIPASS/uglycraft/fonts/…`, `_MEIPASS/uglycraft/translations/…`). There is no
+list to maintain and new assets ride along automatically. (`uglycraft` is
+importable at build time — the build already imports it via `run_game.py` — so
+the collector can locate the package.)
+
+**Loader simplification.** With the bundle tree now mirroring the source tree,
+the frozen `game.py`'s `__file__` is `_MEIPASS/uglycraft/game.py`, so
+`os.path.dirname(os.path.abspath(__file__))` already resolves to
+`_MEIPASS/uglycraft` — the *same* package-relative base used from source. The
+`game.py:119,1124` loader collapses to:
+
+```python
+base = os.path.dirname(os.path.abspath(__file__))
+```
+
+dropping the `getattr(sys, '_MEIPASS', …)` branch entirely. This is the modern
+`__file__`-relative idiom the PyInstaller runtime-information doc recommends for
+locating bundled resources, "replacing the older `sys._MEIPASS` pattern".
+
+**Supersedes** the D4 note "the `_MEIPASS` branch is unchanged" and the D5 "dest
+names `fonts`/`translations` unchanged". D4/D5 remain `- [x]` as the correct
+first cut — the package move itself is done — and D10 modernizes the
+frozen-build data path on top of it. `build-windows` mirrors `build-linux`: one
+`--collect-data uglycraft` replaces **both** `;`-separated `--add-data` lines
+(the collect option needs no path separator, so the Linux/Windows build tasks
+converge on this point).
+
+**Verification (D10).**
+1. `poe build-linux` succeeds (onefile, exit 0).
+2. The bundled assets sit at `uglycraft/fonts/…` and `uglycraft/translations/…`
+   *inside* the bundle — confirm via a onedir build, `pyi-archive_viewer`, or a
+   kept-tmp onefile extraction — proving `--collect-data` placed them at the
+   mirrored path the simplified loader expects.
+3. From source, the font + history still load through the `__file__`-only loader:
+   `poe test` (`test_overlay_box` loads the real font from `uglycraft/fonts`) and
+   `poe run` (renders both).
+4. **User acceptance** — font renders and the history screen loads **in the
+   frozen binary** (the font is a display resource, so this is a windowed check,
+   not a headless one). Folds into D9.
+
 ## Out of scope
 
 - The other audit items — redundant `provides` (BL-62), release checksum
@@ -301,3 +374,7 @@ there is a player-facing effect (there is not, beyond "packaged build now runs")
   — `a9892ac`
 - [ ] **D9** — Daniel confirms dev run, Linux build, and AUR package all launch
   and play with assets and no `ModuleNotFoundError`.
+- [ ] **D10** — (Amendment A) both PyInstaller builds use `--collect-data
+  uglycraft`; assets bundle at their package-relative path; `game.py` loader is
+  `__file__`-only (no `_MEIPASS` branch). Frozen-binary asset render folds into
+  D9's user acceptance.
