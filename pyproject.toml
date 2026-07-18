@@ -134,6 +134,11 @@ shell = """
   for f in uos.pas uos_flat.pas uos_portaudio.pas; do
     [ -f original/uos/$f ] || curl -fsSL "$UOS_BASE/$f" -o original/uos/$f
   done
+  UOS_WARN_BLOCK='{$WARN 4105 OFF} {$WARN 5025 OFF} {$WARN 5027 OFF} {$WARN 5089 OFF} {$WARN 5093 OFF} {$WARN 6058 OFF} { UGLYCRAFT-WARN-SUPPRESS BL-75: fetched third-party UOS unit — see spec 0091 }'
+  for f in uos.pas uos_flat.pas uos_portaudio.pas; do
+    grep -q 'UGLYCRAFT-WARN-SUPPRESS' "original/uos/$f" \
+      || sed -i "1i $UOS_WARN_BLOCK" "original/uos/$f"
+  done
   [ -f original/ANSI-87.conf ] || curl -fsSL \
     "https://raw.githubusercontent.com/kovidgoyal/kitty-themes/$THEMES_COMMIT/themes/ANSI-87.conf" \
     -o original/ANSI-87.conf

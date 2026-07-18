@@ -35,6 +35,11 @@ prepare() {
   cd "$pkgbase"
   mkdir -p original/uos
   cp "$srcdir"/{uos.pas,uos_flat.pas,uos_portaudio.pas} original/uos/
+  _uos_warn_block='{$WARN 4105 OFF} {$WARN 5025 OFF} {$WARN 5027 OFF} {$WARN 5089 OFF} {$WARN 5093 OFF} {$WARN 6058 OFF} { UGLYCRAFT-WARN-SUPPRESS BL-75: fetched third-party UOS unit — see spec 0091 }'
+  for f in uos.pas uos_flat.pas uos_portaudio.pas; do
+    grep -q 'UGLYCRAFT-WARN-SUPPRESS' "original/uos/$f" \
+      || sed -i "1i $_uos_warn_block" "original/uos/$f"
+  done
   cp "$srcdir/ANSI-87.conf" original/
   cat > original/uos/uos_define.inc <<'EOF'
 {$DEFINE portaudio}
