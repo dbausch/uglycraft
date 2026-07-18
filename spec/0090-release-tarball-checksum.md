@@ -15,23 +15,42 @@ remaining entry (index 0). Implement after 0089.
 
 ## Status checklist
 
-- [ ] **D1** — `updpkgsums packaging/PKGBUILD` run; source index 0
+- [x] **D1** — `updpkgsums packaging/PKGBUILD` run; source index 0
   (`uglycraft-1.5.tar.gz :: …/archive/v1.5.tar.gz`) carries a real sha256.
   (With spec 0089 landed this cannot disturb the other four entries — they
-  already hold real sums that updpkgsums re-verifies.)
-- [ ] **D2** — `PKGBUILD-git` and `PKGBUILD-dev` keep `SKIP` for their VCS
+  already hold real sums that updpkgsums re-verifies.) — 3712eee;
+  `6fd94d423b5daed0966c63baaab297b103cb326c657712d883d140f8d27bd200`; `git
+  diff` confirmed only the index-0 line changed, the other four sums are
+  byte-identical to before.
+- [x] **D2** — `PKGBUILD-git` and `PKGBUILD-dev` keep `SKIP` for their VCS
   clone source **only** (a git clone has no meaningful tarball checksum; this
-  is the sanctioned use of SKIP).
-- [ ] **D3** — `packaging/.SRCINFO` regenerated (spec 0084) in the same
-  commit.
-- [ ] **D4** — verified: `makepkg --verifysource -p PKGBUILD` (or a full
+  is the sanctioned use of SKIP). — verified this session: both files were
+  already in this state pre-0090 (their four external sums real from spec
+  0089) and were not touched.
+- [x] **D3** — `packaging/.SRCINFO` regenerated (spec 0084) in the same
+  commit. — 3712eee; `makepkg --printsrcinfo` diff shows only the index-0
+  `sha256sums` line changing from `SKIP` to the real sum.
+  `.SRCINFO-git` was also regenerated to confirm: byte-for-byte identical, no
+  diff.
+- [x] **D4** — verified: `makepkg --verifysource -p PKGBUILD` (or a full
   `makepkg -f` when a GitHub-reachable state permits) downloads the v1.5
   tarball and passes validation. Since the v1.5 tag is already published on
-  GitHub, `--verifysource` works today regardless of the unpushed commits.
-- [ ] **D5** — release procedure note: CLAUDE.md § *Arch packaging* already
+  GitHub, `--verifysource` works today regardless of the unpushed commits. —
+  verified this session: `makepkg --verifysource -f -p PKGBUILD` (the `-f`
+  needed only because a prior `uglycraft-1.5-1-x86_64.pkg.tar.zst` already
+  existed in `packaging/`, not because anything was rebuilt) printed
+  `uglycraft-1.5.tar.gz … Passed`, `uos.pas … Passed`, `uos_flat.pas …
+  Passed`, `uos_portaudio.pas … Passed`, `ANSI-87.conf … Passed` — all five
+  sources validated.
+- [x] **D5** — release procedure note: CLAUDE.md § *Arch packaging* already
   says "run `updpkgsums`" at release time — confirm the wording still matches
   the post-0089 reality (only index 0 changes per release; the pinned
   externals' sums change only on a deliberate pin bump) and adjust if needed.
+  — 3712eee; the old wording ("run `updpkgsums` to fill in real sha256
+  checksums") read as if multiple entries get filled in each release, which
+  no longer matches reality post-0089. Reworded to name index 0 as the only
+  `SKIP` entry and note the four externals are re-verified, not rewritten,
+  changing only on a deliberate `_uos_commit`/`_themes_commit` bump.
 
 ## Background — confirmed facts
 
@@ -49,8 +68,10 @@ remaining entry (index 0). Implement after 0089.
 
 ## Done when:
 
-- [ ] **D1** — index-0 sha256 real in `PKGBUILD`.
-- [ ] **D2** — VCS sources in `-git`/`-dev` remain SKIP, nothing else does.
-- [ ] **D3** — `.SRCINFO` regenerated in the same commit.
-- [ ] **D4** — `makepkg --verifysource` passes against the live v1.5 tarball.
-- [ ] **D5** — CLAUDE.md release-time wording checked/adjusted.
+- [x] **D1** — index-0 sha256 real in `PKGBUILD`. — 3712eee
+- [x] **D2** — VCS sources in `-git`/`-dev` remain SKIP, nothing else does.
+  — already true pre-0090; confirmed unchanged this session.
+- [x] **D3** — `.SRCINFO` regenerated in the same commit. — 3712eee
+- [x] **D4** — `makepkg --verifysource` passes against the live v1.5
+  tarball. — verified this session; all five sources `Passed`.
+- [x] **D5** — CLAUDE.md release-time wording checked/adjusted. — 3712eee
