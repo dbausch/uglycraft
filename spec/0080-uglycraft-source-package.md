@@ -22,27 +22,27 @@ per `CLAUDE.md` step 3.
 
 ## Status checklist
 
-- [ ] **D1** — the 16 game modules move from the repo root into a new
+- [x] **D1** — the 16 game modules move from the repo root into a new
   `uglycraft/` package (`uglycraft/__init__.py` added), via `git mv` to preserve
   history.
-- [ ] **D2** — intra-package imports become absolute (`from uglycraft.constants
+- [x] **D2** — intra-package imports become absolute (`from uglycraft.constants
   import …`, `from uglycraft import world`) — only the 16 local names, never
   stdlib/`pygame`/`numpy`.
-- [ ] **D3** — `uglycraft/__main__.py` added (`from uglycraft.main import main;
+- [x] **D3** — `uglycraft/__main__.py` added (`from uglycraft.main import main;
   main()`) so `python -m uglycraft` runs the game; a thin repo-root launcher
   (`run_game.py`) exists for the PyInstaller entry.
-- [ ] **D4** — `fonts/` and `translations/` move into `uglycraft/`; the
+- [x] **D4** — `fonts/` and `translations/` move into `uglycraft/`; the
   `__file__`-relative loader (`game.py:119,1124`) is unchanged and now resolves
   under the package; the `_MEIPASS` branch is unchanged.
-- [ ] **D5** — `poe run` → `python -m uglycraft`; both PyInstaller builds target
+- [x] **D5** — `poe run` → `python -m uglycraft`; both PyInstaller builds target
   `run_game.py` with `--add-data` sources repointed to `uglycraft/fonts/…` and
   `uglycraft/translations/…` (dest names `fonts`/`translations` unchanged).
-- [ ] **D6** — all `tests/` imports rewritten to the `uglycraft.` prefix; the
+- [x] **D6** — all `tests/` imports rewritten to the `uglycraft.` prefix; the
   full suite is green under `poe test`.
 - [ ] **D7** — both PKGBUILDs install the `uglycraft/` package (site-packages,
   DEC-2) and the wrapper runs `python -m uglycraft`; the packaged game ships all
   modules — **closes BL-61**.
-- [ ] **D8** — living docs updated: `CLAUDE.md` architecture table (paths gain the
+- [x] **D8** — living docs updated: `CLAUDE.md` architecture table (paths gain the
   `uglycraft/` prefix), `README.md` run instructions, `kb/arch-packaging.md`
   (package layout), root `CHANGELOG.md` if player-facing.
 - [ ] **D9** — Daniel confirms `poe run`, the Linux PyInstaller build, and the
@@ -279,16 +279,25 @@ there is a player-facing effect (there is not, beyond "packaged build now runs")
 
 ## Done when:
 
-- [ ] **D1** — the 16 modules live under `uglycraft/` with `__init__.py`
-  (history-preserving `git mv`).
-- [ ] **D2** — intra-package imports are absolute and correct (suite green).
-- [ ] **D3** — `python -m uglycraft` runs the game; `run_game.py` launcher exists.
-- [ ] **D4** — assets moved into the package; loader code unchanged.
-- [ ] **D5** — `poe run` and both PyInstaller builds target the package/launcher
-  with repointed `--add-data`.
-- [ ] **D6** — `tests/` imports use the `uglycraft.` prefix; `poe test` green.
+- [x] **D1** — the 16 modules live under `uglycraft/` with `__init__.py`
+  (history-preserving `git mv`). — `5a99c71`
+- [x] **D2** — intra-package imports are absolute and correct (suite green). —
+  `5a99c71`
+- [x] **D3** — `python -m uglycraft` runs the game; `run_game.py` launcher exists.
+  — `5a99c71` (both entry points verified headless via `--dump-level`, identical
+  output; in-game menu is part of D9)
+- [x] **D4** — assets moved into the package; loader code unchanged. — `5a99c71`
+  (font present + loadable — `test_overlay_box` passes)
+- [x] **D5** — `poe run` and both PyInstaller builds target the package/launcher
+  with repointed `--add-data`. — `5a99c71` (Linux onefile builds and runs headless;
+  Windows targets verified by inspection, Wine build is D9)
+- [x] **D6** — `tests/` imports use the `uglycraft.` prefix; `poe test` green. —
+  `5a99c71` (895 passed, 0 failed)
 - [ ] **D7** — both PKGBUILDs install the package (+ wrapper `python -m
-  uglycraft`); packaged game ships every module — BL-61 closed.
-- [ ] **D8** — `CLAUDE.md`, `README.md`, `kb/arch-packaging.md` reflect the layout.
+  uglycraft`); packaged game ships every module — BL-61 closed. *(PKGBUILD edits
+  in `8c70f7b`; install simulation ships all 18 `.py` + assets + bytecode. Awaits
+  `makepkg` + install + in-game run — folded into D9.)*
+- [x] **D8** — `CLAUDE.md`, `README.md`, `kb/arch-packaging.md` reflect the layout.
+  — `a9892ac`
 - [ ] **D9** — Daniel confirms dev run, Linux build, and AUR package all launch
   and play with assets and no `ModuleNotFoundError`.
