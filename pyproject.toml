@@ -244,8 +244,9 @@ shell = """
 """
 
 [tool.poe.tasks.package-dev]
-help  = "Build uglycraft-dev/ugli-dev from the local repo's commit history (no push needed)"
-shell = "cd packaging && makepkg -p PKGBUILD-dev -f"
+help     = "Build uglycraft-dev/ugli-dev from the local repo's commit history (no push needed)"
+shell    = "cd packaging && makepkg -p PKGBUILD-dev -f"
+executor = "simple"
 
 [tool.poe.tasks._push-linux]
 shell = "butler push dist/linux-64 dbausch/uglycraft:linux-64 --userversion $(git describe --tags --abbrev=0 | sed 's/^v//')"
