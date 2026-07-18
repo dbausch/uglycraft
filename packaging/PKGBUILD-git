@@ -47,7 +47,7 @@ build() {
   python -m build --wheel --no-isolation
   cd original
   echo "const GitVersion = '$(git rev-parse --short HEAD)';" > git_sha.inc
-  fpc -Fuuos UGLI_2.pp
+  fpc -Fuuos -k-z -krelro -k-z -know UGLI_2.pp
 }
 
 package_uglycraft-git() {
