@@ -1929,7 +1929,30 @@ Regenerate `.SRCINFO`/`.SRCINFO-git` afterwards (spec 0084 mechanism).
 
 ---
 
-## BL-74 · P3 · UGLI_2 binary lacks FULL RELRO and PIE hardening (namcap)
+## BL-74 · FIXED · UGLI_2 binary lacks FULL RELRO and PIE hardening (namcap)
+
+Fixed by spec 0095 (commit 0a88210), confirmed 2026-07-19. **RELRO half**
+implemented: `-k-z -krelro -k-z -know` added to all seven `fpc` invocations
+(three PKGBUILDs' `build()` + four `pyproject.toml` tasks — build-original,
+test-original, replay, bench) so dev, test, and packaged links are all
+hardened identically. Verified: `readelf -lW` shows `GNU_RELRO` and
+`readelf -dW` shows `BIND_NOW`/`FLAGS_1: NOW` (= FULL RELRO) on both the
+dev-built and packaged binary; `poe test-original` stayed green (159/159);
+the extracted packaged binary still runs (`--help` from an unrelated CWD);
+namcap's "lacks FULL RELRO" warning on the built `ugli-dev` package is gone.
+User accepted the hardened `ugli-dev-1.5.r738.g0a88210` package as playing
+normally (2026-07-19). **PIE half closed as a documented won't-fix**, not
+implemented: Arch FPC 3.2.2's precompiled RTL startup object (`si_c.o`) is
+not PIC-compiled, so `ld` rejects the PIE link (`relocation R_X86_64_PC32
+against symbol '__libc_start_main@@GLIBC_2.34' can not be used when making
+a PIE object`) whenever libc is linked — which `UGLI_2` always does
+(PortAudio/UOS). Rebuilding the FPC RTL with PIC codegen would be required
+and is out of proportion for a P3 polish item; non-PIE is the norm for
+FPC-built Arch packages for exactly this reason. namcap's "lacks PIE"
+warning therefore **remains and is permanently accepted** — it is now the
+only namcap finding left on the built `ugli`/`ugli-git`/`ugli-dev`
+packages. `.SRCINFO`/`.SRCINFO-git` regenerated: no diff (function-body-only
+edit). → spec/0095-full-relro-hardening.md
 
 namcap warns on the built `ugli`/`ugli-git`/`ugli-dev` packages' `UGLI_2`
 ELF binary: it lacks FULL RELRO and lacks PIE. This is a compiler/linker
