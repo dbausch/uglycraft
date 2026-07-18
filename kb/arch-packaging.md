@@ -356,9 +356,25 @@ Independent of the AUR fixes.
   package name — are fixed (Maintainer line 1 on all three PKGBUILDs; all six
   split pkgdescs reworded). `namcap` on `packaging/PKGBUILD` and
   `packaging/PKGBUILD-git` produces empty output, exit 0. BL-74's RELRO half
-  is now also fixed (spec 0095); the only namcap finding left anywhere is
-  the accepted "lacks PIE" warning on the built `UGLI_2` binary (→ see
-  spec/0095-full-relro-hardening.md for why PIE is out of reach).
+  is now also fixed (spec 0095); at that point the only namcap finding left
+  on the built `ugli`/`ugli-git`/`ugli-dev` packages was the accepted
+  "lacks PIE" warning on the `UGLI_2` binary (→ see
+  spec/0095-full-relro-hardening.md for why PIE is out of reach) — plus two
+  implicit-dependency notes (`bash`, `glibc`) this article had not yet
+  recorded, closed next.
+- **namcap end state, final (spec 0097, commit 3c6e459, 2026-07-19, no
+  backlog item — direct user request):** `package_ugli()`/
+  `package_ugli-git()`/`package_ugli-dev()` gained explicit `depends=('bash'
+  'glibc' …)` — the `ugli.sh` wrapper is a genuine bash script (uses arrays
+  for arg filtering) and the `UGLI_2` ELF binary dynamically links
+  `libc.so.6` — closing the last two namcap implicit-dependency notes.
+  Verified end state: `namcap` on all three PKGBUILDs = zero output;
+  `namcap` on the built `uglycraft-dev` package = zero output; `namcap` on
+  the built `ugli-dev` package = exactly one line, the accepted "lacks PIE"
+  warning (spec 0095 documents why PIE is unattainable with Arch's FPC).
+  This is the final, fully-accounted-for namcap status across every
+  PKGBUILD and built package. → see
+  spec/0097-declare-bash-glibc-depends.md
 
 **Two durable insights from resolving BL-72/BL-73** (kept here because they
 generalize to any future namcap-driven PKGBUILD fix, not just this pass):
