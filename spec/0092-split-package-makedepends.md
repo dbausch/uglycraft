@@ -15,16 +15,16 @@ BL-72–BL-74). → Backlog: BL-72.
 
 ## Status checklist
 
-- [ ] **D1** — `makedepends` at **pkgbase level** in `packaging/PKGBUILD` gains
+- [x] **D1** — `makedepends` at **pkgbase level** in `packaging/PKGBUILD` gains
   `python`, `python-numpy`, `python-pygame` (alongside the existing `fpc`).
-- [ ] **D2** — same three packages added to pkgbase-level `makedepends` in
+- [x] **D2** — same three packages added to pkgbase-level `makedepends` in
   `packaging/PKGBUILD-git` (alongside `fpc`, `git`).
-- [ ] **D3** — same three packages added to pkgbase-level `makedepends` in
+- [x] **D3** — same three packages added to pkgbase-level `makedepends` in
   `packaging/PKGBUILD-dev` (alongside `fpc`, `git`), for consistency — this
   file is never deployed but should not drift from the other two.
-- [ ] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084 mechanism)
+- [x] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084 mechanism)
   to reflect the new `makedepends` lines.
-- [ ] **D5** — verified: `namcap packaging/PKGBUILD` and `namcap
+- [x] **D5** — verified: `namcap packaging/PKGBUILD` and `namcap
   packaging/PKGBUILD-git` both run clean of the `missing-makedeps` /
   "Split PKGBUILD needs additional makedepends" finding after the edit; `poe
   package-dev` still builds both `uglycraft-dev` and `ugli-dev` successfully
@@ -156,12 +156,18 @@ PKGBUILD, not inside a `package_*()` function.
 
 ## Done when:
 
-- [ ] **D1–D3** — pkgbase-level `makedepends` in all three PKGBUILDs
+- [x] **D1–D3** — pkgbase-level `makedepends` in all three PKGBUILDs
   (`PKGBUILD`, `PKGBUILD-git`, `PKGBUILD-dev`) includes `python`,
   `python-numpy`, `python-pygame` in addition to the existing entries
-  (`fpc`, plus `git` in `-git`/`-dev`).
-- [ ] **D4** — `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit,
-  showing the three new `makedepends =` lines.
-- [ ] **D5** — `namcap packaging/PKGBUILD` and `namcap packaging/PKGBUILD-git`
+  (`fpc`, plus `git` in `-git`/`-dev`). Implemented in `ed3539f`.
+- [x] **D4** — `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit,
+  showing the three new `makedepends =` lines. `ed3539f`.
+- [x] **D5** — `namcap packaging/PKGBUILD` and `namcap packaging/PKGBUILD-git`
   both run clean of the split-makedeps finding; `poe package-dev` still
-  builds `uglycraft-dev`/`ugli-dev` successfully.
+  builds `uglycraft-dev`/`ugli-dev` successfully. Verified clean immediately
+  after `ed3539f`. Implementing spec 0093's D1–D3 (`c0d7973`) transiently
+  re-triggered this same rule for `hicolor-icon-theme` — see spec 0093's D6
+  (`ad56f62` spec amendment, `8f3c117` fix) for the interaction and its
+  resolution. In the final state (as of `8f3c117`), both PKGBUILDs are
+  clean of every split-makedeps finding; `poe package-dev` build confirmed
+  successful (`uglycraft-dev`/`ugli-dev` 1.5.r713.gc0d7973-1).
