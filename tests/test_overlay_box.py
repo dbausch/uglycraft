@@ -11,11 +11,11 @@ import pathlib
 import tests.harness  # noqa: F401 — sets the dummy SDL drivers
 import pygame
 
+import uglycraft
 from uglycraft.constants import LOGICAL_W
 
 PAD = 24
-_ROOT = pathlib.Path(__file__).resolve().parent.parent
-_PKG = _ROOT / 'uglycraft'   # source + assets moved into the package (spec 0080)
+_PKG = pathlib.Path(uglycraft.__file__).resolve().parent   # src/uglycraft (spec 0082)
 
 # The retired forge string stays here as the canonical overlong fixture.
 OVERLONG = "THE  FORGE  IS  DEFEATED!"
