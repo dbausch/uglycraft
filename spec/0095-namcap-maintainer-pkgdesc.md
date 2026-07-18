@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] D1 — `# Maintainer:` comment on line 1 of all three PKGBUILDs
-- [ ] D2 — `ugli` split `pkgdesc` reworded without the package name (all three PKGBUILDs)
+- [ ] D2 — both splits' `pkgdesc` reworded per Daniel's wording (all three PKGBUILDs)
 - [ ] D3 — `.SRCINFO` / `.SRCINFO-git` regenerated (pkgdesc is mirrored metadata)
 - [ ] D4 — namcap on `packaging/PKGBUILD` and `packaging/PKGBUILD-git`: zero warnings
 
@@ -43,46 +43,43 @@ Notes:
 - This deliberately publishes a name + email in a tracked file. That is the
   point of the Maintainer tag — it is the AUR-facing contact — and is treated
   as an intentional exception to the "no personal details in tracked docs"
-  rule. **The email address above is a proposal; confirm or substitute the
-  address you want public on the AUR.**
+  rule. The address is the one every commit in this repo already uses
+  (`git log` shows a single author identity, 1167 commits), so it is already
+  public in the repository history.
 
-### D2 — `ugli` pkgdesc reword
+### D2 — pkgdesc reword (both splits)
 
-Current descriptions (release / git / dev):
+Wording chosen by Daniel (2026-07-19). Base descriptions:
 
-```
-'UGLI 2 (1996) — text-mode treasure game (Linux/FPC port)'
-'UGLI 2 (1996) — text-mode treasure game (Linux/FPC port) (git version)'
-'UGLI 2 (1996) — text-mode treasure game (Linux/FPC port) (local dev build)'
-```
+- `ugli*`: `'Terminal treasure hunting game'`
+- `uglycraft*`: `'Retro style treasure hunting game with various puzzles'`
 
-New descriptions — same information, name removed:
+The existing variant suffixes are kept, giving per-PKGBUILD values:
 
 ```
-'Text-mode treasure game from 1996 (Linux/FPC port of the DOS original)'
-'Text-mode treasure game from 1996 (Linux/FPC port of the DOS original) (git version)'
-'Text-mode treasure game from 1996 (Linux/FPC port of the DOS original) (local dev build)'
+PKGBUILD      ugli:      'Terminal treasure hunting game'
+PKGBUILD-git  ugli-git:  'Terminal treasure hunting game (git version)'
+PKGBUILD-dev  ugli-dev:  'Terminal treasure hunting game (local dev build)'
+PKGBUILD      uglycraft:     'Retro style treasure hunting game with various puzzles'
+PKGBUILD-git  uglycraft-git: 'Retro style treasure hunting game with various puzzles (git version)'
+PKGBUILD-dev  uglycraft-dev: 'Retro style treasure hunting game with various puzzles (local dev build)'
 ```
 
 Notes:
 
 - The namcap rule matches the split package's own `$pkgname` in `pkgdesc`
-  (case-insensitively), so only the `ugli` split of the release PKGBUILD
-  fires today (`ugli-git`/`ugli-dev` don't literally appear in their
-  descriptions). All three are reworded anyway so the wording stays in sync
-  and cannot regress if a variant is ever renamed.
-- The `uglycraft` splits' descriptions ("… inspired by UGLI (1996)") are
-  **left unchanged**: "uglycraft" does not appear in them, so the rule does
-  not and cannot fire there; mentioning the *other* game's name is
-  informative, not redundant.
+  (case-insensitively); only the release `ugli` split fires today. All six
+  descriptions are reworded anyway so wording stays in sync across variants.
+- Neither new base description contains "ugli" or "uglycraft" as a
+  substring, so the rule cannot fire on any variant.
 
 ### D3 — `.SRCINFO` regeneration
 
 `pkgdesc` is mirrored into `.SRCINFO`, so regenerate both tracked files via
 the spec 0084 mechanism (`makepkg --printsrcinfo`, run from `packaging/`)
 in the same commit as the PKGBUILD edits. Expected diff: exactly the changed
-`pkgdesc` lines for the `ugli`/`ugli-git` splits, nothing else.
-`PKGBUILD-dev` has no `.SRCINFO` by design.
+`pkgdesc` lines for all four splits (`uglycraft`/`ugli` and their `-git`
+variants), nothing else. `PKGBUILD-dev` has no `.SRCINFO` by design.
 
 ## Verification
 
@@ -96,9 +93,9 @@ No test suite covers packaging; verification is by tool output:
 ## Done when:
 
 - [ ] D1 — all three PKGBUILDs carry the `# Maintainer:` comment on line 1,
-      with the email address Daniel confirmed for AUR publication.
-- [ ] D2 — the three `ugli*` `pkgdesc` values no longer contain the package
-      name and read as specified above.
+      with the repo's commit-author address (`db@edv-bausch.de`).
+- [ ] D2 — all six `pkgdesc` values read exactly as specified above and no
+      longer contain their own package name.
 - [ ] D3 — `.SRCINFO` and `.SRCINFO-git` regenerated in the same commit;
       diff limited to the `pkgdesc` lines.
 - [ ] D4 — `namcap` emits zero warnings on `packaging/PKGBUILD` and
