@@ -24,30 +24,37 @@ that path is a filesystem `cp -r`, not an import.
 
 ## Status checklist
 
-- [ ] **D1** — the `uglycraft/` package moves to `src/uglycraft/` via history-
+- [x] **D1** — the `uglycraft/` package moves to `src/uglycraft/` via history-
   preserving `git mv` (all 16 modules + `__init__.py` + `__main__.py` +
-  `fonts/` + `translations/`); `run_game.py` stays at the repo root.
-- [ ] **D2** — `pyproject.toml` gains a real `[build-system]` (setuptools) and
+  `fonts/` + `translations/`); `run_game.py` stays at the repo root. —
+  e3e0c6a, fab3cd5
+- [x] **D2** — `pyproject.toml` gains a real `[build-system]` (setuptools) and
   `src/` packaging config (`package-dir`, `packages.find where=["src"]`,
   package-data for `fonts`/`translations`); `[project]` deps are split into
-  runtime vs. a `dev`/build extra.
-- [ ] **D3** — `poe install` creates the venv and runs `pip install -e ".[dev]"`,
+  runtime vs. a `dev`/build extra. — 6686493
+- [x] **D3** — `poe install` creates the venv and runs `pip install -e ".[dev]"`,
   so `uglycraft` is importable in **every** interpreter (dev shell, pytest,
-  PyInstaller's build process). This is the load-bearing change.
-- [ ] **D4** — `poe run` / `poe test` / `build-linux` / `build-windows` work with
+  PyInstaller's build process). This is the load-bearing change. — 6686493
+- [x] **D4** — `poe run` / `poe test` / `build-linux` / `build-windows` work with
   **no `PYTHONPATH`** and **no source-dir path juggling**; `--collect-data
-  uglycraft` now resolves and bundles the assets (the D9/D10 fix).
-- [ ] **D5** — both PKGBUILDs change their source path `cp -r uglycraft` →
+  uglycraft` now resolves and bundles the assets (the D9/D10 fix). — verified
+  (no task references `PYTHONPATH`; `poe build-linux` runs warning-free, see D9)
+- [x] **D5** — both PKGBUILDs change their source path `cp -r uglycraft` →
   `cp -r src/uglycraft`; the installed site-packages layout, wrapper, compileall,
-  and bundled assets are **unchanged**.
-- [ ] **D6** — the `game.py` `__file__`-only asset loader is unchanged and still
+  and bundled assets are **unchanged**. — d24eb4d
+- [x] **D6** — the `game.py` `__file__`-only asset loader is unchanged and still
   resolves from `src/uglycraft/…` (source) and `_MEIPASS/uglycraft/…` (frozen).
-- [ ] **D7** — the full pytest suite is green under `poe test` after the move +
-  install (import statements stay `uglycraft.*`; `conftest.py` unchanged).
-- [ ] **D8** — living docs updated: `CLAUDE.md` architecture table (paths gain
+  — verified (no diff to `game.py`; frozen-binary asset check under D9 confirms
+  both paths resolve)
+- [x] **D7** — the full pytest suite is green under `poe test` after the move +
+  install (import statements stay `uglycraft.*`; `conftest.py` unchanged). —
+  4160602 (fixed one stale repo-root-relative path in `test_overlay_box.py`);
+  895 passed on rerun
+- [x] **D8** — living docs updated: `CLAUDE.md` architecture table (paths gain
   `src/`), `README.md` (install via `poe install` / `pip install -e .`),
   `kb/arch-packaging.md` (record the root cause + the install-based layout),
-  `kb/architecture.md` if it names the layout.
+  `kb/architecture.md` if it names the layout. — 5ea44b0 (`kb/architecture.md`
+  doesn't name the layout, so it needed no change)
 - [ ] **D9** — Daniel confirms: suite green, `poe run` renders font + history, and
   the **Linux binary** builds with **no `--collect-data` warning** and runs with
   font + story (closing 0080 D9 Linux leg + re-validating D10); `makepkg` install
@@ -309,18 +316,30 @@ unchanged).
 
 ## Done when:
 
-- [ ] **D1** — `src/uglycraft/` holds the package (history-preserving move);
-  `run_game.py` at repo root.
-- [ ] **D2** — `pyproject.toml` has `[build-system]` + `src/` packaging config +
-  split runtime/dev deps.
-- [ ] **D3** — `poe install` does `pip install -e ".[dev]"`; the package is
-  importable from any cwd in the venv.
-- [ ] **D4** — all tasks run with no `PYTHONPATH`; `--collect-data uglycraft`
-  collects the assets (warning gone).
-- [ ] **D5** — both PKGBUILDs `cp -r src/uglycraft`; installed layout unchanged.
-- [ ] **D6** — asset loader unchanged and resolving from source + frozen.
-- [ ] **D7** — `poe test` green after the move.
-- [ ] **D8** — `CLAUDE.md`, `README.md`, `kb/arch-packaging.md`
-  (+ `kb/architecture.md` if needed) reflect the `src/` install-based layout.
+- [x] **D1** — `src/uglycraft/` holds the package (history-preserving move);
+  `run_game.py` at repo root. — e3e0c6a, fab3cd5
+- [x] **D2** — `pyproject.toml` has `[build-system]` + `src/` packaging config +
+  split runtime/dev deps. — 6686493
+- [x] **D3** — `poe install` does `pip install -e ".[dev]"`; the package is
+  importable from any cwd in the venv. — 6686493 (verified: `import uglycraft`
+  from `/tmp` resolves to `.../src/uglycraft/__init__.py`)
+- [x] **D4** — all tasks run with no `PYTHONPATH`; `--collect-data uglycraft`
+  collects the assets (warning gone). — verified: `poe build-linux` prints no
+  `collect_data_files`/"not a package" warning; `pyi-archive_viewer` shows
+  `uglycraft/fonts/ShareTechMono-Regular.ttf` and
+  `uglycraft/translations/history_en.txt` in the bundle
+- [x] **D5** — both PKGBUILDs `cp -r src/uglycraft`; installed layout unchanged.
+  — d24eb4d; structurally simulated locally (cp + compileall + import from an
+  unrelated cwd all succeed) since a real `makepkg -f` needs the commits pushed
+  to the GitHub tag/repo the PKGBUILDs source from
+- [x] **D6** — asset loader unchanged and resolving from source + frozen. —
+  no diff to `game.py`; confirmed resolving in both the dev venv and the frozen
+  binary
+- [x] **D7** — `poe test` green after the move. — 4160602; 895 passed on rerun
+  (one unrelated Hypothesis deadline flake on the first run reproduced green in
+  isolation)
+- [x] **D8** — `CLAUDE.md`, `README.md`, `kb/arch-packaging.md`
+  (+ `kb/architecture.md` if needed) reflect the `src/` install-based layout. —
+  5ea44b0
 - [ ] **D9** — Daniel confirms suite + dev run + a warning-free Linux binary that
   renders font + story, and a working `makepkg` install (closes 0080 D9/D10).
