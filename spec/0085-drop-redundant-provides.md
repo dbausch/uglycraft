@@ -24,13 +24,14 @@ provided."* The release PKGBUILD violates this in both split packages; the
   committed in the same commit; the two `provides =` lines disappear from it.
   — 96a60f2; `makepkg --printsrcinfo | diff - .SRCINFO` showed exactly
   `provides = uglycraft` and `provides = ugli` removed, nothing else.
-- [ ] **D4** — verified: `namcap` on the PKGBUILD raises no provides-related
+- [x] **D4** — verified: `namcap` on the PKGBUILD raises no provides-related
   warning; a `poe package-dev`-style build is *not* needed (the release
   PKGBUILD builds from the GitHub tag — metadata-only change, verified via
-  `.SRCINFO` diff + namcap). — **namcap is not installed on this machine**
-  (`pacman -Q namcap` → not found) and was not installed per the no-system-wide-
-  install constraint, so the namcap half of D4 is unverified. The `.SRCINFO`
-  diff half is confirmed (see D3).
+  `.SRCINFO` diff + namcap). — namcap built user-locally (pip venv; pyalpm +
+  pyelftools + license-expression against system libalpm, no system-wide
+  install) and run against `packaging/PKGBUILD`: only benign
+  `Missing Maintainer tag` / description-contains-name warnings, no
+  provides-related output at all. `.SRCINFO` diff half confirmed (see D3).
 
 ## Background — confirmed facts
 
@@ -49,6 +50,7 @@ Current lines (verified 2026-07-18):
   — 96a60f2
 - [x] **D2** — `-git`/`-dev` PKGBUILDs untouched. — 96a60f2
 - [x] **D3** — `.SRCINFO` regenerated in the same commit. — 96a60f2
-- [ ] **D4** — namcap clean on this point; `.SRCINFO` diff shows exactly the
+- [x] **D4** — namcap clean on this point; `.SRCINFO` diff shows exactly the
   two `provides` lines removed. — `.SRCINFO` diff half confirmed (96a60f2);
-  namcap not installed on this machine, so the namcap half is unverified.
+  namcap (built user-locally in a venv) raised no provides-related warning on
+  `packaging/PKGBUILD`.

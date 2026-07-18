@@ -41,8 +41,15 @@ the install path lives in function bodies; regenerate-and-diff to confirm).
   German `--help` output, positively proving the `ExeDir`-relative
   translation lookup finds `usr/lib/ugli/translations/de.mo` in its new
   location (confirmed no other XDG locale path on this machine could have
-  supplied it). namcap is not installed on this machine, so that half is
-  unverified; the real terminal launch check is user acceptance.
+  supplied it). namcap half now confirmed: built user-locally in a venv (pip
+  install of pyalpm/pyelftools/license-expression + the namcap sources
+  themselves against the system's libalpm, no system-wide install) and run
+  against `ugli-dev-1.5.r696.ga9f6282-1-x86_64.pkg.tar.zst` — no
+  ELF-outside-allowed-dirs error (namcap's `elfpaths` rule allows
+  `usr/lib/` but not `usr/share/`, and `UGLI_2` is now under `usr/lib/ugli/`);
+  the only ELF-related output was pre-existing, unrelated `lacks FULL RELRO`
+  / `lacks PIE` warnings (compiler-flag hardening, out of scope for this
+  spec). The real terminal launch check is user acceptance and stays open.
 - [x] **D5** — regenerated `.SRCINFO`/`.SRCINFO-git` (spec 0084) show **no**
   diff — confirming this is a function-body-only change. — b49b587
 
@@ -77,7 +84,7 @@ the install path lives in function bodies; regenerate-and-diff to confirm).
 - [ ] **D4** — dev-package tree, mode, and wrapper-path confirmed; the
   `ExeDir`-relative translation lookup was positively verified by running the
   extracted binary from an unrelated CWD with a forced German locale and
-  seeing translated `--help` output. namcap half unverified (not installed on
-  this machine); the real terminal launch check is user acceptance and stays
-  open.
+  seeing translated `--help` output. namcap half now confirmed clean (built
+  user-locally in a venv, no ELF-in-/usr/share warning); the real terminal
+  launch check is user acceptance and stays open.
 - [x] **D5** — `.SRCINFO` regeneration shows no metadata diff. — b49b587

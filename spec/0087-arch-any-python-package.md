@@ -34,8 +34,11 @@ aarch64 etc., while the compiled-FPC `ugli` packages correctly stay `x86_64`.
   any`) and `ugli-dev-1.5.r690.gc7b4e7a-1-x86_64.pkg.tar.zst` from the same
   `makepkg -p PKGBUILD-dev -f` run; extracting the `any` package and running
   `SDL_VIDEODRIVER=dummy PYTHONPATH=<site-packages> python3 -m uglycraft
-  --dump-level 1 --seed 42` produced a correct ASCII level dump. namcap not
-  installed on this machine, so the namcap half is unverified.
+  --dump-level 1 --seed 42` produced a correct ASCII level dump. namcap (built
+  user-locally in a venv, no system-wide install) run against the current
+  build (`uglycraft-dev-1.5.r696.ga9f6282-1-any.pkg.tar.zst`) raised no
+  arch-related warning — its `anyelf` rule (which errors on ELF files inside
+  an `arch=any` package) found none, since this package is pure Python.
 
 ## Background — confirmed facts
 
@@ -57,8 +60,8 @@ aarch64 etc., while the compiled-FPC `ugli` packages correctly stay `x86_64`.
 - [x] **D1–D3** — override present in the three `package_uglycraft*()`
   functions; pkgbase arrays and `ugli*` packages untouched. — c7b4e7a
 - [x] **D4** — both `.SRCINFO` files regenerated in the same commit. — c7b4e7a
-- [ ] **D5** — one `poe package-dev` run yields an `any` uglycraft-dev package
+- [x] **D5** — one `poe package-dev` run yields an `any` uglycraft-dev package
   and an x86_64 ugli-dev package; headless run from the extracted `any`
   package passes; namcap clean on this point. — package build, arch check, and
-  headless `--dump-level` run all confirmed; namcap not installed on this
-  machine, so only the namcap half is unverified.
+  headless `--dump-level` run all confirmed; namcap (built user-locally in a
+  venv) raised no arch-related warning on the current dev build.

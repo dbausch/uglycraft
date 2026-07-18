@@ -30,8 +30,12 @@ per-split-package override.
   `uglycraft-dev` package lists both licenses (`tar -xOf … .PKGINFO | grep
   license`); namcap raises no license warning. — build produced
   `uglycraft-dev-1.5.r690.gc7b4e7a-1-any.pkg.tar.zst` whose `.PKGINFO` has
-  `license = GPL-3.0-only` and `license = OFL-1.1`; namcap not installed on
-  this machine, so the namcap half is unverified.
+  `license = GPL-3.0-only` and `license = OFL-1.1`; namcap (built user-locally
+  in a venv: pyalpm + pyelftools + license-expression against the system's
+  libalpm/SPDX data, no system-wide install) run against the current build
+  (`uglycraft-dev-1.5.r696.ga9f6282-1-any.pkg.tar.zst`) raised no license
+  warning — both `GPL-3.0-only` and `OFL-1.1` resolved as known SPDX
+  identifiers with license files present under `usr/share/licenses/`.
 
 ## Background — confirmed facts
 
@@ -54,6 +58,7 @@ per-split-package override.
 - [x] **D1–D3** — override present in the three `package_uglycraft*()`
   functions; `ugli*` untouched. — eaf3976
 - [x] **D4** — both `.SRCINFO` files regenerated in the same commit. — eaf3976
-- [ ] **D5** — built dev package's `.PKGINFO` carries both licenses; namcap
-  clean on this point. — `.PKGINFO` half confirmed (eaf3976 build); namcap not
-  installed on this machine, so the namcap half is unverified.
+- [x] **D5** — built dev package's `.PKGINFO` carries both licenses; namcap
+  clean on this point. — `.PKGINFO` half confirmed (eaf3976 build); namcap
+  (built user-locally in a venv) raised no license warning on the current dev
+  build.
