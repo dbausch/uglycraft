@@ -11,21 +11,27 @@ per-split-package override.
 
 ## Status checklist
 
-- [ ] **D1** — `license=('GPL-3.0-only' 'OFL-1.1')` added inside
+- [x] **D1** — `license=('GPL-3.0-only' 'OFL-1.1')` added inside
   `package_uglycraft()` (`packaging/PKGBUILD`), overriding the pkgbase-level
-  `license=('GPL-3.0-only')` for this split package only.
-- [ ] **D2** — same override in `package_uglycraft-git()` (`PKGBUILD-git`) and
+  `license=('GPL-3.0-only')` for this split package only. — eaf3976
+- [x] **D2** — same override in `package_uglycraft-git()` (`PKGBUILD-git`) and
   `package_uglycraft-dev()` (`PKGBUILD-dev`) — all three ship the identical
-  package tree with the font inside.
-- [ ] **D3** — the `ugli` / `ugli-git` / `ugli-dev` split packages stay
+  package tree with the font inside. — eaf3976
+- [x] **D3** — the `ugli` / `ugli-git` / `ugli-dev` split packages stay
   GPL-only (no font shipped — verified: they install the compiled binary, the
-  kitty theme, and `.mo`/history translations only).
-- [ ] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084) in the
+  kitty theme, and `.mo`/history translations only). — eaf3976; confirmed by
+  diff (only the three `package_uglycraft*()` functions touched) and by the
+  built `ugli-dev` package's `.PKGINFO` showing only `license = GPL-3.0-only`.
+- [x] **D4** — `.SRCINFO` and `.SRCINFO-git` regenerated (spec 0084) in the
   same commit; each shows the two `license =` lines under the `pkgname =
-  uglycraft`(`-git`) section.
-- [ ] **D5** — verified: `poe package-dev` builds; `.PKGINFO` of the built
+  uglycraft`(`-git`) section. — eaf3976; `makepkg --printsrcinfo` diffs for
+  both PKGBUILDs showed exactly the two added `license =` lines, nothing else.
+- [x] **D5** — verified: `poe package-dev` builds; `.PKGINFO` of the built
   `uglycraft-dev` package lists both licenses (`tar -xOf … .PKGINFO | grep
-  license`); namcap raises no license warning.
+  license`); namcap raises no license warning. — build produced
+  `uglycraft-dev-1.5.r690.gc7b4e7a-1-any.pkg.tar.zst` whose `.PKGINFO` has
+  `license = GPL-3.0-only` and `license = OFL-1.1`; namcap not installed on
+  this machine, so the namcap half is unverified.
 
 ## Background — confirmed facts
 
@@ -45,8 +51,9 @@ per-split-package override.
 
 ## Done when:
 
-- [ ] **D1–D3** — override present in the three `package_uglycraft*()`
-  functions; `ugli*` untouched.
-- [ ] **D4** — both `.SRCINFO` files regenerated in the same commit.
+- [x] **D1–D3** — override present in the three `package_uglycraft*()`
+  functions; `ugli*` untouched. — eaf3976
+- [x] **D4** — both `.SRCINFO` files regenerated in the same commit. — eaf3976
 - [ ] **D5** — built dev package's `.PKGINFO` carries both licenses; namcap
-  clean on this point.
+  clean on this point. — `.PKGINFO` half confirmed (eaf3976 build); namcap not
+  installed on this machine, so the namcap half is unverified.
