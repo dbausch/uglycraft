@@ -1,0 +1,108 @@
+# Local dev tool only (spec 0083) — builds from THIS checkout's own commit
+# history via a git+file:// source, so makepkg can be exercised against
+# local, not-yet-pushed commits without needing to push to GitHub first.
+# Never copied to an AUR sibling repo, never given a .SRCINFO, never touched
+# by any `poe deploy*` task. Build with `poe package-dev`.
+
+pkgbase=uglycraft-dev
+pkgname=('uglycraft-dev' 'ugli-dev')
+pkgver=1.5.r0.g0000000
+pkgrel=1
+arch=('x86_64')
+url='https://github.com/dbausch/uglycraft'
+license=('GPL-3.0-only')
+makedepends=('fpc' 'git')
+_repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source=("$pkgbase::git+file://$_repo_root"
+        "uos.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos.pas"
+        "uos_flat.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos_flat.pas"
+        "uos_portaudio.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos_portaudio.pas"
+        "ANSI-87.conf::https://raw.githubusercontent.com/kovidgoyal/kitty-themes/master/themes/ANSI-87.conf")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP')
+
+pkgver() {
+  cd "$pkgbase"
+  git describe --long --tags | sed 's/^v//;s/-/.r/;s/-/./'
+}
+
+prepare() {
+  cd "$pkgbase"
+  mkdir -p original/uos
+  cp "$srcdir"/{uos.pas,uos_flat.pas,uos_portaudio.pas} original/uos/
+  cp "$srcdir/ANSI-87.conf" original/
+  cat > original/uos/uos_define.inc <<'EOF'
+{$DEFINE portaudio}
+{$DEFINE synthesizer}
+EOF
+}
+
+build() {
+  cd "$pkgbase/original"
+  echo "const GitVersion = '$(git rev-parse --short HEAD)';" > git_sha.inc
+  fpc -Fuuos UGLI_2.pp
+}
+
+package_uglycraft-dev() {
+  pkgdesc='Treasure-collecting arcade game inspired by UGLI (1996) (local dev build)'
+  depends=('python' 'python-pygame' 'python-numpy')
+  provides=('uglycraft')
+  conflicts=('uglycraft' 'uglycraft-git')
+
+  cd "$pkgbase"
+
+  # Install the whole package into site-packages as one unit.  The assets
+  # ride inside it (uglycraft/fonts, uglycraft/translations), so the install
+  # list can never go stale again (BL-61).  Byte-compile it (BL-69).
+  _site=$(python -c "import site; print(site.getsitepackages()[0])")
+  install -d "$pkgdir$_site"
+  cp -r src/uglycraft "$pkgdir$_site/"
+  python -m compileall -q "$pkgdir$_site/uglycraft"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/uglycraft" <<'WRAPPER'
+#!/bin/bash
+exec python -m uglycraft "$@"
+WRAPPER
+
+  install -Dm644 packaging/uglycraft.desktop \
+    "$pkgdir/usr/share/applications/uglycraft.desktop"
+  install -Dm644 packaging/uglycraft.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/uglycraft.svg"
+
+  install -Dm644 LICENSES/GPL-3.0.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/GPL-3.0.txt"
+  install -Dm644 LICENSES/OFL-1.1-ShareTechMono.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-ShareTechMono.txt"
+}
+
+package_ugli-dev() {
+  pkgdesc='UGLI 2 (1996) — text-mode treasure game (Linux/FPC port) (local dev build)'
+  optdepends=('portaudio: sound support via UOS/PortAudio'
+              'kitty: terminal launcher with ANSI-87 colour theme'
+              'ttf-liberation: Liberation Mono font for kitty launcher')
+  provides=('ugli')
+  conflicts=('ugli' 'ugli-git')
+
+  cd "$pkgbase"
+
+  install -Dm755 original/UGLI_2 "$pkgdir/usr/share/ugli/UGLI_2"
+  install -Dm644 original/ANSI-87.conf "$pkgdir/usr/share/ugli/ANSI-87.conf"
+  install -d "$pkgdir/usr/share/ugli/translations"
+  install -m644 original/translations/*.mo \
+    "$pkgdir/usr/share/ugli/translations/"
+  install -m644 original/translations/history_*.txt \
+    "$pkgdir/usr/share/ugli/translations/"
+
+  install -Dm755 packaging/ugli.sh "$pkgdir/usr/bin/ugli"
+
+  install -Dm644 packaging/ugli.desktop \
+    "$pkgdir/usr/share/applications/ugli.desktop"
+  install -Dm644 packaging/ugli.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/ugli.svg"
+
+  install -Dm644 LICENSES/GPL-3.0.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/GPL-3.0.txt"
+}

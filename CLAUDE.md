@@ -23,6 +23,7 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 | `poe deploy-original-dos` | Push `dist/original-dos` to itch.io (manual only; see note) |
 | `poe deploy-aur` | Copy release PKGBUILD + .SRCINFO to `../uglycraft-aur`, commit and push |
 | `poe deploy-aur-git` | Copy git PKGBUILD + .SRCINFO to `../uglycraft-git-aur`, commit and push |
+| `poe package-dev` | Build `uglycraft-dev`/`ugli-dev` from the local repo's own commit history — no push needed (local dev tool only, never deployed) |
 
 Build and deploy are separate steps — deploy tasks only call butler, never build.
 Windows build requires Wine installed via the system package manager; `poe setup-windows` handles the rest.
@@ -83,6 +84,13 @@ Two AUR packages, each with its own repo:
 
 Each set `provides` and `conflicts` with the other so only one can be
 installed at a time.
+
+A third, **local-only** variant, `packaging/PKGBUILD-dev` (`uglycraft-dev` /
+`ugli-dev`), builds from this checkout's own commit history via a
+`git+file://` source instead of GitHub — so `makepkg` can be exercised
+against local, not-yet-pushed commits (spec 0083). It has no `.SRCINFO`, is
+never copied to an AUR sibling repo, and is never touched by any `poe
+deploy*` task. Build it with `poe package-dev`.
 
 ## Session discipline
 
