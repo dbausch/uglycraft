@@ -1,4 +1,4 @@
-# Spec 0095 — Silence the two remaining namcap PKGBUILD warnings (BL-77)
+# Spec 0096 — Silence the two remaining namcap PKGBUILD warnings (BL-77)
 
 ## Status
 

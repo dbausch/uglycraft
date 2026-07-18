@@ -348,7 +348,7 @@ Independent of the AUR fixes.
   (commit ed3539f, BL-72) and hicolor-icon-theme by spec 0093 (commits
   c0d7973 + 8f3c117, BL-73); see `kb/backlog.md` for the closure detail.
   Only RELRO/PIE (BL-74) remains open of the three.
-- **The PKGBUILDs themselves are now fully namcap-clean** (BL-77 / spec 0095,
+- **The PKGBUILDs themselves are now fully namcap-clean** (BL-77 / spec 0096,
   commit 325c5ad, 2026-07-19): the last two PKGBUILD-level warnings — the
   missing `# Maintainer:` tag and the `ugli` pkgdesc containing its own
   package name — are fixed (Maintainer line 1 on all three PKGBUILDs; all six
