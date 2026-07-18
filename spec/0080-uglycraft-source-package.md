@@ -46,9 +46,13 @@ per `CLAUDE.md` step 3.
 - [x] **D8** — living docs updated: `CLAUDE.md` architecture table (paths gain the
   `uglycraft/` prefix), `README.md` run instructions, `kb/arch-packaging.md`
   (package layout), root `CHANGELOG.md` if player-facing.
-- [ ] **D9** — Daniel confirms `poe run`, the Linux PyInstaller build, and the
+- [x] **D9** — Daniel confirms `poe run`, the Linux PyInstaller build, and the
   AUR package all launch and play — font renders, history text loads, no
-  `ModuleNotFoundError`.
+  `ModuleNotFoundError`. — AUR package confirmed 2026-07-18 (see D7); `poe run`
+  dev-run leg confirmed 2026-07-18; the Linux PyInstaller binary
+  (`dist/linux-64/uglycraft` via `poe build-linux`) confirmed by Daniel
+  2026-07-18 during spec 0082 (which also fixed the `--collect-data uglycraft`
+  "not a package" bug that had blocked this leg — see spec 0082 D9).
 - [x] **D10** — (amendment, see **Amendment A**) modernize the frozen build's
   data handling: both PyInstaller builds use `--collect-data uglycraft` in place
   of the per-file `--add-data`, so assets land at their package-relative path
@@ -375,10 +379,13 @@ converge on this point).
   `cp -r uglycraft` site-packages install. **BL-61 closed.**)
 - [x] **D8** — `CLAUDE.md`, `README.md`, `kb/arch-packaging.md` reflect the layout.
   — `a9892ac`
-- [ ] **D9** — Daniel confirms dev run, Linux build, and AUR package all launch
+- [x] **D9** — Daniel confirms dev run, Linux build, and AUR package all launch
   and play with assets and no `ModuleNotFoundError`. *(AUR-package leg confirmed
-  2026-07-18 — see D7; `poe run` dev-run leg confirmed 2026-07-18. Only the Linux
-  PyInstaller binary (`dist/linux-64/uglycraft` via `poe build-linux`) remains.)*
+  2026-07-18 — see D7; `poe run` dev-run leg confirmed 2026-07-18; the Linux
+  PyInstaller binary confirmed by Daniel 2026-07-18 (`poe build-linux &&
+  dist/linux-64/uglycraft`), during spec 0082 — which also fixed the
+  `--collect-data uglycraft` bug that had been blocking this leg. **D9 fully
+  closed.**)*
 - [x] **D10** — (Amendment A) both PyInstaller builds use `--collect-data
   uglycraft`; assets bundle at their package-relative path; `game.py` loader is
   `__file__`-only (no `_MEIPASS` branch). — `70fae64` (suite 895 passed; onedir
