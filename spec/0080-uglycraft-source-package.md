@@ -33,10 +33,11 @@ per `CLAUDE.md` step 3.
   (`run_game.py`) exists for the PyInstaller entry.
 - [x] **D4** — `fonts/` and `translations/` move into `uglycraft/`; the
   `__file__`-relative loader (`game.py:119,1124`) is unchanged and now resolves
-  under the package; the `_MEIPASS` branch is unchanged.
+  under the package; the `_MEIPASS` branch is unchanged **(D10 later drops it)**.
 - [x] **D5** — `poe run` → `python -m uglycraft`; both PyInstaller builds target
   `run_game.py` with `--add-data` sources repointed to `uglycraft/fonts/…` and
-  `uglycraft/translations/…` (dest names `fonts`/`translations` unchanged).
+  `uglycraft/translations/…` (dest names `fonts`/`translations` unchanged
+  **— D10 switches both builds to `--collect-data`**).
 - [x] **D6** — all `tests/` imports rewritten to the `uglycraft.` prefix; the
   full suite is green under `poe test`.
 - [ ] **D7** — both PKGBUILDs install the `uglycraft/` package (site-packages,
@@ -48,7 +49,7 @@ per `CLAUDE.md` step 3.
 - [ ] **D9** — Daniel confirms `poe run`, the Linux PyInstaller build, and the
   AUR package all launch and play — font renders, history text loads, no
   `ModuleNotFoundError`.
-- [ ] **D10** — (amendment, see **Amendment A**) modernize the frozen build's
+- [x] **D10** — (amendment, see **Amendment A**) modernize the frozen build's
   data handling: both PyInstaller builds use `--collect-data uglycraft` in place
   of the per-file `--add-data`, so assets land at their package-relative path
   (`uglycraft/fonts/…`, `uglycraft/translations/…`) mirroring source; the
@@ -374,7 +375,9 @@ converge on this point).
   — `a9892ac`
 - [ ] **D9** — Daniel confirms dev run, Linux build, and AUR package all launch
   and play with assets and no `ModuleNotFoundError`.
-- [ ] **D10** — (Amendment A) both PyInstaller builds use `--collect-data
+- [x] **D10** — (Amendment A) both PyInstaller builds use `--collect-data
   uglycraft`; assets bundle at their package-relative path; `game.py` loader is
-  `__file__`-only (no `_MEIPASS` branch). Frozen-binary asset render folds into
-  D9's user acceptance.
+  `__file__`-only (no `_MEIPASS` branch). — `70fae64` (suite 895 passed; onedir
+  probe places both assets at `uglycraft/fonts/…` + `uglycraft/translations/…`;
+  onefile build exits 0; frozen binary runs headless. In-frozen font render
+  folds into D9 user acceptance.)
