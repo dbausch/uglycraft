@@ -6,7 +6,7 @@ its Linux port have their own changelog in
 
 ---
 
-## [Unreleased]
+## [1.6] – 2026-07-19
 
 The big one. Version 1.5 was the ten-level first half of the game. Since then
 UGLYCRAFT has **doubled in size** and gained a whole second act.
