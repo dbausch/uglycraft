@@ -75,7 +75,7 @@ since the service is durable (firewall-specific — e.g. firewalld:
 Two AUR packages, each with its own repo:
 
 - **`uglycraft` / `ugli`** (release) — `packaging/PKGBUILD`, pinned to a
-  release tag (`_tag=v1.5`).  Deployed with `poe deploy-aur` to
+  release tag (`_tag=v$pkgver`, currently v1.6).  Deployed with `poe deploy-aur` to
   `../uglycraft-aur`.  At release time, update `pkgver`, `_tag`, and run
   `updpkgsums` to fill in the real sha256 for the release tarball (source
   index 0, the only entry still `SKIP`); the four pinned external sums are
@@ -303,6 +303,7 @@ Use them when working on a topic that needs deeper background.
 | `kb/architecture.md` | Level generator pipeline, data structures, layout strategies, target architecture |
 | `kb/backlog.md` | Prioritised bug and improvement backlog (IDs BL-01…) |
 | `kb/arch-packaging.md` | Arch/AUR packaging compliance audit: findings vs the guidelines, verified-correct list, first-push operational steps |
+| `kb/release-process.md` | Release order-of-operations + pitfalls (Windows exe verification, port Version constant, deploy gotchas) — from the v1.6 release |
 
 `original/kb/` covers the Pascal source — see `original/CLAUDE.md`.
 
