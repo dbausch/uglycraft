@@ -13,16 +13,18 @@ url='https://github.com/dbausch/uglycraft'
 license=('GPL-3.0-only')
 makedepends=('fpc' 'git')
 _repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+_uos_commit=ffd165382aeae1cc1bf80673d5c02497c06f4efa
+_themes_commit=e144651f75891cf4795ef1e7c24bb3e27c47aa06
 source=("$pkgbase::git+file://$_repo_root"
-        "uos.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos.pas"
-        "uos_flat.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos_flat.pas"
-        "uos_portaudio.pas::https://raw.githubusercontent.com/fredvs/uos/main/src/uos_portaudio.pas"
-        "ANSI-87.conf::https://raw.githubusercontent.com/kovidgoyal/kitty-themes/master/themes/ANSI-87.conf")
+        "uos.pas::https://raw.githubusercontent.com/fredvs/uos/$_uos_commit/src/uos.pas"
+        "uos_flat.pas::https://raw.githubusercontent.com/fredvs/uos/$_uos_commit/src/uos_flat.pas"
+        "uos_portaudio.pas::https://raw.githubusercontent.com/fredvs/uos/$_uos_commit/src/uos_portaudio.pas"
+        "ANSI-87.conf::https://raw.githubusercontent.com/kovidgoyal/kitty-themes/$_themes_commit/themes/ANSI-87.conf")
 sha256sums=('SKIP'
-            'SKIP'
-            'SKIP'
-            'SKIP'
-            'SKIP')
+            '22f3e9215611d9877d21f7c835085baf9a393eac1a9e9047f195559ca1e949e4'
+            '2ceb6afccad36f520fb57123dd7b38b59f36dedcc0bd3e099657086d7bd352b7'
+            'bea6c3c79b42fdf67f8b5d3ba7895dae341a9ed72d53d0f0526a736dda3f8489'
+            'f3de3caf475fedeb5b0498520bb82b7d511d07d1072cd604387177f238cde9b9')
 
 pkgver() {
   cd "$pkgbase"

@@ -128,12 +128,14 @@ shell = """
 [tool.poe.tasks.build-original]
 help  = "Build the original 1996 Pascal source (original/UGLI_2.pp) with FPC"
 shell = """
-  UOS_BASE="https://raw.githubusercontent.com/fredvs/uos/main/src"
+  UOS_COMMIT=ffd165382aeae1cc1bf80673d5c02497c06f4efa
+  THEMES_COMMIT=e144651f75891cf4795ef1e7c24bb3e27c47aa06
+  UOS_BASE="https://raw.githubusercontent.com/fredvs/uos/$UOS_COMMIT/src"
   for f in uos.pas uos_flat.pas uos_portaudio.pas; do
     [ -f original/uos/$f ] || curl -fsSL "$UOS_BASE/$f" -o original/uos/$f
   done
   [ -f original/ANSI-87.conf ] || curl -fsSL \
-    "https://raw.githubusercontent.com/kovidgoyal/kitty-themes/master/themes/ANSI-87.conf" \
+    "https://raw.githubusercontent.com/kovidgoyal/kitty-themes/$THEMES_COMMIT/themes/ANSI-87.conf" \
     -o original/ANSI-87.conf
   echo "const GitVersion = '$(git rev-parse --short HEAD)';" > original/git_sha.inc
   cd original && fpc -Fuuos UGLI_2.pp
