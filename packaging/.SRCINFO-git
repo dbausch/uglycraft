@@ -1,5 +1,5 @@
 pkgbase = uglycraft-git
-	pkgver = 1.4.r0.gf95b776
+	pkgver = 1.4.r20.g21ad119
 	pkgrel = 1
 	url = https://github.com/dbausch/uglycraft
 	arch = x86_64

@@ -214,6 +214,7 @@ help  = "Update and push the release AUR package (../uglycraft-aur)"
 shell = """
   AUR_DIR=../uglycraft-aur
   [ -d "$AUR_DIR/.git" ] || { echo "error: $AUR_DIR is not a git repo"; exit 1; }
+  (cd packaging && makepkg --printsrcinfo > .SRCINFO)
   cp packaging/PKGBUILD packaging/.SRCINFO "$AUR_DIR/"
   cd "$AUR_DIR"
   VER=$(grep -oP '(?<=pkgver=)\\S+' PKGBUILD)-$(grep -oP '(?<=pkgrel=)\\S+' PKGBUILD)
@@ -225,12 +226,14 @@ shell = """
     git push
   fi
 """
+executor = "simple"
 
 [tool.poe.tasks.deploy-aur-git]
 help  = "Update and push the git AUR package (../uglycraft-git-aur)"
 shell = """
   AUR_DIR=../uglycraft-git-aur
   [ -d "$AUR_DIR/.git" ] || { echo "error: $AUR_DIR is not a git repo"; exit 1; }
+  (cd packaging && makepkg --printsrcinfo -p PKGBUILD-git > .SRCINFO-git)
   cp packaging/PKGBUILD-git "$AUR_DIR/PKGBUILD"
   cp packaging/.SRCINFO-git "$AUR_DIR/.SRCINFO"
   cd "$AUR_DIR"
@@ -242,6 +245,7 @@ shell = """
     git push
   fi
 """
+executor = "simple"
 
 [tool.poe.tasks.package-dev]
 help     = "Build uglycraft-dev/ugli-dev from the local repo's commit history (no push needed)"
