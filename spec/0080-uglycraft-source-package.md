@@ -377,8 +377,8 @@ converge on this point).
   — `a9892ac`
 - [ ] **D9** — Daniel confirms dev run, Linux build, and AUR package all launch
   and play with assets and no `ModuleNotFoundError`. *(AUR-package leg confirmed
-  2026-07-18 — see D7. Still awaits `poe run` and the Linux PyInstaller binary,
-  each with font + history rendering.)*
+  2026-07-18 — see D7; `poe run` dev-run leg confirmed 2026-07-18. Only the Linux
+  PyInstaller binary (`dist/linux-64/uglycraft` via `poe build-linux`) remains.)*
 - [x] **D10** — (Amendment A) both PyInstaller builds use `--collect-data
   uglycraft`; assets bundle at their package-relative path; `game.py` loader is
   `__file__`-only (no `_MEIPASS` branch). — `70fae64` (suite 895 passed; onedir
