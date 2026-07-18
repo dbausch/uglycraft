@@ -55,12 +55,23 @@ that path is a filesystem `cp -r`, not an import.
   `kb/arch-packaging.md` (record the root cause + the install-based layout),
   `kb/architecture.md` if it names the layout. — 5ea44b0 (`kb/architecture.md`
   doesn't name the layout, so it needed no change)
-- [ ] **D9** — Daniel confirms: suite green, `poe run` renders font + history, and
+- [x] **D9** — Daniel confirms: suite green, `poe run` renders font + history, and
   the **Linux binary** builds with **no `--collect-data` warning** and runs with
   font + story (closing 0080 D9 Linux leg + re-validating D10); `makepkg` install
   still works from the `src/` source path. — **dev run and Linux binary
-  confirmed by Daniel, 2026-07-18**; `makepkg` still open (needs these commits
-  pushed first — both PKGBUILDs source from the GitHub tag/repo).
+  confirmed by Daniel, 2026-07-18**. `makepkg` resolved via `packaging/
+  PKGBUILD-dev` (spec 0083): rebuilt fresh against HEAD `9a5f8aa` (pushed to
+  gitolite same day) — `poe package-dev` succeeds, `pkgver` reports
+  `1.5.r673.g9a5f8aa` matching `git describe` exactly, the package layout
+  (`cp -r src/uglycraft` → `usr/lib/python3.14/site-packages/uglycraft/` with
+  all 16 modules + `fonts/` + `translations/`) is correct, and an
+  extracted-tree headless run confirms the font and history text both load.
+  This exercises the exact same `package_uglycraft()` logic as `PKGBUILD`/
+  `PKGBUILD-git` — the actual AUR-facing PKGBUILDs still haven't been
+  build-tested themselves, since both hardcode `url='https://github.com/
+  dbausch/uglycraft'` and a gitolite-only push doesn't change that; a real
+  check of those two needs an actual GitHub push (still on hold) or a new
+  release tag.
 
 ## Decisions (forks) — all confirmed 2026-07-18
 
@@ -353,7 +364,9 @@ unchanged).
 - [x] **D8** — `CLAUDE.md`, `README.md`, `kb/arch-packaging.md`
   (+ `kb/architecture.md` if needed) reflect the `src/` install-based layout. —
   5ea44b0
-- [ ] **D9** — Daniel confirms suite + dev run + a warning-free Linux binary that
+- [x] **D9** — Daniel confirms suite + dev run + a warning-free Linux binary that
   renders font + story, and a working `makepkg` install (closes 0080 D9/D10). —
-  dev run + Linux binary confirmed 2026-07-18; `makepkg` still open (needs a
-  push first).
+  dev run + Linux binary confirmed 2026-07-18; `makepkg` verified the same day
+  via `PKGBUILD-dev` (spec 0083) against gitolite-pushed HEAD `9a5f8aa` — same
+  install logic as the real AUR PKGBUILDs, which still need an actual GitHub
+  push/release tag for their own direct check.
