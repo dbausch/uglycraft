@@ -2015,7 +2015,15 @@ strictly to the three UOS units.
 
 ---
 
-## BL-76 · P3 · `poe test-original` emits 3 FPC warnings not seen in `poe build-original`
+## BL-76 · FIXED · `poe test-original` emits 3 FPC warnings not seen in `poe build-original`
+
+FIXED (2026-07-18): implemented per
+`original/spec/silence-test-tty-warnings.md`, commit 0914728. Three
+assignments (`TTYFd := -1;` and `FillChar` of `SavedTio`/`RawTio`) added at
+the top of `UGLI_2_Test.pp`'s main `begin` block, following the `RawTTYFd`
+initializer precedent. Verified `poe test-original` now compiles with zero
+warnings (159 tests pass, exit 0) and `poe build-original` shows no new
+messages. → spec/silence-test-tty-warnings.md
 
 `poe test-original` (building `UGLI_2_Test.pp`) emits 3 FPC warnings not
 seen when `poe build-original` builds `UGLI_2.pp`:
