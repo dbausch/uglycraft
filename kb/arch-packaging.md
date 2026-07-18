@@ -41,6 +41,14 @@ reproducibility / polish.
 
 ### P1 — the packaged game is broken (BL-61)
 
+> **RESOLVED — spec 0080 (D7), confirmed 2026-07-18.** The `uglycraft/` package
+> restructure shipped; both PKGBUILDs now `cp -r uglycraft` the whole package
+> into site-packages, so the install list can no longer go stale. Verified in
+> practice: the `uglycraft-git-1.5.r657.g6f4ae40` AUR package installs and
+> launches — correct font, history/story screen renders, no
+> `ModuleNotFoundError`. **BL-61 closed.** The audit below records the original
+> defect. (D9 user acceptance still owes the dev-run and Linux-build legs.)
+
 `packaging/PKGBUILD:47-48` and `PKGBUILD-git:51-52` install a **hardcoded list of
 8 modules**:
 
@@ -200,6 +208,7 @@ Independent of the AUR fixes.
 
 ## Priority summary
 
-- **Must fix before release:** BL-61 (broken game), BL-63 (release checksum).
+- **Must fix before release:** ~~BL-61 (broken game)~~ ✓ closed (spec 0080 D7,
+  2026-07-18), BL-63 (release checksum).
 - **Should fix before release:** BL-62 (redundant provides), BL-64 (OFL license).
 - **Reproducibility / polish, can follow:** BL-65, BL-66, BL-67, BL-68, BL-69, BL-70.

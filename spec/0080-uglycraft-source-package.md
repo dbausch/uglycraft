@@ -40,7 +40,7 @@ per `CLAUDE.md` step 3.
   **— D10 switches both builds to `--collect-data`**).
 - [x] **D6** — all `tests/` imports rewritten to the `uglycraft.` prefix; the
   full suite is green under `poe test`.
-- [ ] **D7** — both PKGBUILDs install the `uglycraft/` package (site-packages,
+- [x] **D7** — both PKGBUILDs install the `uglycraft/` package (site-packages,
   DEC-2) and the wrapper runs `python -m uglycraft`; the packaged game ships all
   modules — **closes BL-61**.
 - [x] **D8** — living docs updated: `CLAUDE.md` architecture table (paths gain the
@@ -367,14 +367,18 @@ converge on this point).
   Windows targets verified by inspection, Wine build is D9)
 - [x] **D6** — `tests/` imports use the `uglycraft.` prefix; `poe test` green. —
   `5a99c71` (895 passed, 0 failed)
-- [ ] **D7** — both PKGBUILDs install the package (+ wrapper `python -m
-  uglycraft`); packaged game ships every module — BL-61 closed. *(PKGBUILD edits
-  in `8c70f7b`; install simulation ships all 18 `.py` + assets + bytecode. Awaits
-  `makepkg` + install + in-game run — folded into D9.)*
+- [x] **D7** — both PKGBUILDs install the package (+ wrapper `python -m
+  uglycraft`); packaged game ships every module — BL-61 closed. — `8c70f7b`
+  (confirmed 2026-07-18: the `uglycraft-git-1.5.r657.g6f4ae40` AUR package — built
+  from HEAD — installs and launches: correct font, history/story screen renders,
+  no `ModuleNotFoundError`. The release `package_uglycraft` shares the identical
+  `cp -r uglycraft` site-packages install. **BL-61 closed.**)
 - [x] **D8** — `CLAUDE.md`, `README.md`, `kb/arch-packaging.md` reflect the layout.
   — `a9892ac`
 - [ ] **D9** — Daniel confirms dev run, Linux build, and AUR package all launch
-  and play with assets and no `ModuleNotFoundError`.
+  and play with assets and no `ModuleNotFoundError`. *(AUR-package leg confirmed
+  2026-07-18 — see D7. Still awaits `poe run` and the Linux PyInstaller binary,
+  each with font + history rendering.)*
 - [x] **D10** — (Amendment A) both PyInstaller builds use `--collect-data
   uglycraft`; assets bundle at their package-relative path; `game.py` loader is
   `__file__`-only (no `_MEIPASS` branch). — `70fae64` (suite 895 passed; onedir
