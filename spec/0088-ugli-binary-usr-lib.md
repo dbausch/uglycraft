@@ -28,7 +28,7 @@ the install path lives in function bodies; regenerate-and-diff to confirm).
   `/usr/share/ugli/` — it is never read by the Pascal binary, only passed by
   `packaging/ugli.sh` to kitty via `-c /usr/share/ugli/ANSI-87.conf`. —
   b49b587
-- [ ] **D4** — verified: `poe package-dev` builds; the `ugli-dev` package tree
+- [x] **D4** — verified: `poe package-dev` builds; the `ugli-dev` package tree
   has `usr/lib/ugli/UGLI_2` (mode 755), `usr/lib/ugli/translations/*.mo` and
   `usr/lib/ugli/translations/history_*.txt`, `usr/share/ugli/ANSI-87.conf`,
   and **no** ELF or other files under `usr/share/ugli/` besides
@@ -49,7 +49,9 @@ the install path lives in function bodies; regenerate-and-diff to confirm).
   `usr/lib/` but not `usr/share/`, and `UGLI_2` is now under `usr/lib/ugli/`);
   the only ELF-related output was pre-existing, unrelated `lacks FULL RELRO`
   / `lacks PIE` warnings (compiler-flag hardening, out of scope for this
-  spec). The real terminal launch check is user acceptance and stays open.
+  spec). Launch check: user installed and tested freshly built
+  `uglycraft-dev` + `ugli-dev` packages and confirmed them working
+  (2026-07-18).
 - [x] **D5** — regenerated `.SRCINFO`/`.SRCINFO-git` (spec 0084) show **no**
   diff — confirming this is a function-body-only change. — b49b587
 
@@ -81,10 +83,11 @@ the install path lives in function bodies; regenerate-and-diff to confirm).
 - [x] **D3** — data files' location settled per the translation-path check:
   `translations/` moves to `/usr/lib/ugli/translations/`, `ANSI-87.conf` stays
   in `/usr/share/ugli/`. — b49b587
-- [ ] **D4** — dev-package tree, mode, and wrapper-path confirmed; the
+- [x] **D4** — dev-package tree, mode, and wrapper-path confirmed; the
   `ExeDir`-relative translation lookup was positively verified by running the
   extracted binary from an unrelated CWD with a forced German locale and
-  seeing translated `--help` output. namcap half now confirmed clean (built
-  user-locally in a venv, no ELF-in-/usr/share warning); the real terminal
-  launch check is user acceptance and stays open.
+  seeing translated `--help` output. namcap half confirmed clean (built
+  user-locally in a venv, no ELF-in-/usr/share warning); launch check
+  accepted by the user after installing and testing freshly built
+  `uglycraft-dev`/`ugli-dev` packages (2026-07-18). — b49b587
 - [x] **D5** — `.SRCINFO` regeneration shows no metadata diff. — b49b587
