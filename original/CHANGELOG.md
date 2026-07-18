@@ -9,6 +9,13 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ### Changed
 
+- Silenced the 5 warnings + 18 notes FPC emitted against the fetched
+  third-party UOS units (`uos.pas` etc.) on every build: a sentinel-guarded,
+  idempotent `{$WARN <n> OFF}` directive block is prepended to the three
+  fetched files after download, in `poe build-original` and all three
+  PKGBUILDs' `prepare()`. Suppression is scoped strictly to the third-party
+  units — diagnostics for the project's own Pascal code are untouched
+  (spec 0091, BL-75).
 - Hardened the linked binary to FULL RELRO: `-k-z -krelro -k-z -know` added
   after `-Fuuos` on all seven `fpc` invocations (three PKGBUILDs' `build()`
   plus the four `pyproject.toml` original-build tasks), so dev, test, and
