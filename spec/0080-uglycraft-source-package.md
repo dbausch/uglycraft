@@ -25,8 +25,9 @@ per `CLAUDE.md` step 3.
 - [ ] **D1** — the 16 game modules move from the repo root into a new
   `uglycraft/` package (`uglycraft/__init__.py` added), via `git mv` to preserve
   history.
-- [ ] **D2** — intra-package imports become relative (`from .constants import …`,
-  `from . import world`) — only the 16 local names, never stdlib/`pygame`/`numpy`.
+- [ ] **D2** — intra-package imports become absolute (`from uglycraft.constants
+  import …`, `from uglycraft import world`) — only the 16 local names, never
+  stdlib/`pygame`/`numpy`.
 - [ ] **D3** — `uglycraft/__main__.py` added (`from uglycraft.main import main;
   main()`) so `python -m uglycraft` runs the game; a thin repo-root launcher
   (`run_game.py`) exists for the PyInstaller entry.
@@ -53,9 +54,14 @@ per `CLAUDE.md` step 3.
 These change the diff shape; flagged here for the confirmation gate. Recommended
 option first.
 
-- **DEC-1 — import style.** *Relative* intra-package (`from .world import …`)
-  **[recommended:** relocation-safe, smaller mental load] vs *absolute*
-  (`from uglycraft.world import …`). Tests use absolute either way.
+- **DEC-1 — import style. → CHOSEN: absolute** (`from uglycraft.world import …`).
+  *Absolute* intra-package **[chosen 2026-07-18:** gives the whole codebase **one**
+  import dialect — package, `tests/`, `__main__.py`, and `run_game.py` all read
+  `from uglycraft.x import y`; greppable; PEP 8 mildly prefers it and Google style
+  mandates it for application code] vs *relative* (`from .world import …`, the
+  spec's original recommendation for relocation-safety — a benefit an application
+  that will never be renamed does not need). Since **tests use absolute either
+  way**, absolute makes the entire tree uniform; relative would leave two dialects.
 - **DEC-2 — install layout.** Install into **site-packages**
   (`$(python -c 'import site;print(site.getsitepackages()[0])')/uglycraft/`) +
   wrapper `python -m uglycraft` + `python -m compileall` **[recommended:**
@@ -72,6 +78,33 @@ option first.
 ## Background — confirmed facts
 
 Self-contained; established by reading the code (do not re-derive):
+
+### Why a package, and why flat layout (not `src/`)
+
+Three layouts exist; two are standard and **both** put the code in a package
+directory:
+
+- **src layout** — `src/uglycraft/…`. PyPA's current default recommendation; its
+  main payoff (tests cannot accidentally import the in-repo copy instead of the
+  installed one) matters most for *libraries* tested against an install.
+- **flat layout** (PyPA's own term) — `uglycraft/…` in the repo root. Also fully
+  standard.
+- **loose top-level modules** — what UGLYCRAFT has *now*: 16 mutually-importing
+  `.py` files in the root, no package at all (setuptools calls these
+  `py_modules`). Normal for a single-file script; atypical and fragile for a
+  16-module application — and it is the direct cause of BL-61, because a per-file
+  install list goes stale.
+
+For a **distributed application** (itch.io + AUR + two PyInstaller builds) a
+package directory is the mainstream, correct layout — Django apps, the Flask
+tutorial, and anything pip/pipx-installable are all packages; loose modules in the
+root are common only for scripts that are *run in place and never installed*,
+which UGLYCRAFT stopped being the moment it started shipping. We choose the **flat
+layout** (`uglycraft/` in the root, run as `python -m uglycraft`): it is standard,
+and `src/`'s isolation benefit is mostly ceremony for a game run from source while
+`src/` would add a directory level to every asset path this spec already tracks.
+Adopting `src/` — or a full PEP 517 wheel — remains an available later step, out
+of scope here.
 
 ### Current layout is fully flat
 
@@ -138,12 +171,16 @@ is the PyInstaller entry (root is on `sys.path`, so `uglycraft` imports cleanly)
 
 `git mv` each of the 16 modules into `uglycraft/`; add an (essentially empty)
 `uglycraft/__init__.py`. Within the package, rewrite **only local** imports to
-relative form (DEC-1): `from constants import X` → `from .constants import X`;
-`import world` → `from . import world`; the lazy `from leveldump import
-dump_level` (`main.py:71`) → `from .leveldump import dump_level`. Leave every
-stdlib / `pygame` / `numpy` import untouched. The import **graph** is unchanged
-(same edges, new names) so no new cycles are introduced. Sed-assisted but
-**reviewed per file** against the 16-name allow-list.
+absolute package form (DEC-1): `from constants import X` → `from
+uglycraft.constants import X`; the two lazy bare imports `import levels`
+(`leveldump.py:181`) and `import leveldump` (`levellayout.py:2693`) → `from
+uglycraft import levels` / `from uglycraft import leveldump` (preserves the
+`levels.foo` / `leveldump.foo` call sites); the lazy `from leveldump import
+dump_level` (`main.py:71`) → `from uglycraft.leveldump import dump_level`. Leave
+every stdlib / `pygame` / `numpy` import untouched. The import **graph** is
+unchanged (same edges, new names) so no new cycles are introduced. Script-assisted
+(rewrite a line only when its imported name is in the 16-name allow-list) but
+**reviewed per file**.
 
 ## D3 — `python -m uglycraft` + PyInstaller launcher
 
@@ -154,9 +191,12 @@ from uglycraft.main import main
 main()
 ```
 
-Keep `main.py`'s own `if __name__ == '__main__'` guard (harmless; supports
-`python uglycraft/main.py` too). Add repo-root `run_game.py` (the launcher
-above) as the PyInstaller entry.
+Keep `main.py`'s own `if __name__ == '__main__'` guard — harmless, but note it no
+longer makes `python uglycraft/main.py` work: run by path, `main.py`'s top-level
+`from uglycraft.… import` fails because the repo root is not on `sys.path` (and a
+relative-style `from .` would fail even earlier with "attempted relative import
+with no known parent package"). The supported entry is `python -m uglycraft`. Add
+repo-root `run_game.py` (the launcher above) as the PyInstaller entry.
 
 ## D4 — Move the asset directories
 
@@ -241,7 +281,7 @@ there is a player-facing effect (there is not, beyond "packaged build now runs")
 
 - [ ] **D1** — the 16 modules live under `uglycraft/` with `__init__.py`
   (history-preserving `git mv`).
-- [ ] **D2** — intra-package imports are relative and correct (suite green).
+- [ ] **D2** — intra-package imports are absolute and correct (suite green).
 - [ ] **D3** — `python -m uglycraft` runs the game; `run_game.py` launcher exists.
 - [ ] **D4** — assets moved into the package; loader code unchanged.
 - [ ] **D5** — `poe run` and both PyInstaller builds target the package/launcher
