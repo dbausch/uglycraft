@@ -111,6 +111,9 @@ shell = """
   WINEDEBUG=-all wine \
     ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
     -m pip install pygame numpy pyinstaller
+  WINEDEBUG=-all wine \
+    ~/.wine/drive_c/users/$USER/AppData/Local/Programs/Python/Python313/python.exe \
+    -m pip install -e .
 """
 
 [tool.poe.tasks.build-windows]
