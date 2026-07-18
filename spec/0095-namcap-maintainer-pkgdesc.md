@@ -2,10 +2,10 @@
 
 ## Status
 
-- [ ] D1 — `# Maintainer:` comment on line 1 of all three PKGBUILDs
-- [ ] D2 — both splits' `pkgdesc` reworded per Daniel's wording (all three PKGBUILDs)
-- [ ] D3 — `.SRCINFO` / `.SRCINFO-git` regenerated (pkgdesc is mirrored metadata)
-- [ ] D4 — namcap on `packaging/PKGBUILD` and `packaging/PKGBUILD-git`: zero warnings
+- [x] D1 — `# Maintainer:` comment on line 1 of all three PKGBUILDs
+- [x] D2 — both splits' `pkgdesc` reworded per Daniel's wording (all three PKGBUILDs)
+- [x] D3 — `.SRCINFO` / `.SRCINFO-git` regenerated (pkgdesc is mirrored metadata)
+- [x] D4 — namcap on `packaging/PKGBUILD` and `packaging/PKGBUILD-git`: zero warnings
 
 ## Background
 
@@ -92,11 +92,13 @@ No test suite covers packaging; verification is by tool output:
 
 ## Done when:
 
-- [ ] D1 — all three PKGBUILDs carry the `# Maintainer:` comment on line 1,
-      with the repo's commit-author address (`db@edv-bausch.de`).
-- [ ] D2 — all six `pkgdesc` values read exactly as specified above and no
-      longer contain their own package name.
-- [ ] D3 — `.SRCINFO` and `.SRCINFO-git` regenerated in the same commit;
-      diff limited to the `pkgdesc` lines.
-- [ ] D4 — `namcap` emits zero warnings on `packaging/PKGBUILD` and
-      `packaging/PKGBUILD-git`.
+- [x] D1 — all three PKGBUILDs carry the `# Maintainer:` comment on line 1,
+      with the repo's commit-author address (`db@edv-bausch.de`). (325c5ad)
+- [x] D2 — all six `pkgdesc` values read exactly as specified above and no
+      longer contain their own package name. (325c5ad)
+- [x] D3 — `.SRCINFO` and `.SRCINFO-git` regenerated in the same commit;
+      diff limited to the four `pkgdesc` lines (verified with `git diff`).
+      (325c5ad)
+- [x] D4 — `namcap` emits zero warnings on `packaging/PKGBUILD` and
+      `packaging/PKGBUILD-git` — empty output, exit 0 on both, verified
+      independently of the implementing agent (2026-07-19). (325c5ad)

@@ -2060,6 +2060,18 @@ doesn't warn because it is declared WITH an initializer (`cint = -1`,
 
 ## BL-77 · P3 · Two remaining benign namcap warnings on the PKGBUILDs
 
+> **FIXED — spec 0095, verified 2026-07-19 (commit 325c5ad).** All three
+> PKGBUILDs got `# Maintainer: Daniel Bausch <db@edv-bausch.de>` (the repo's
+> sole commit-author identity) as line 1, and all six split `pkgdesc` values
+> were reworded to Daniel's wording (`ugli*`: "Terminal treasure hunting
+> game"; `uglycraft*`: "Retro style treasure hunting game with various
+> puzzles" + variant suffixes) — neither contains its own package name.
+> `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit; diff limited to
+> the four mirrored pkgdesc lines. `namcap` on both PKGBUILDs: empty output,
+> exit 0 — the PKGBUILDs are now fully namcap-clean. Only BL-74 (RELRO/PIE
+> on the built binary) remains of the namcap findings.
+> → see spec/0095-namcap-maintainer-pkgdesc.md
+
 After specs 0092/0093 resolved BL-72/BL-73 (split makedepends,
 hicolor-icon-theme), `namcap` still emits two benign warnings on the
 PKGBUILDs, which should be addressed before/at the first AUR push:
