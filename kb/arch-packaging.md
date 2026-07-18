@@ -343,18 +343,22 @@ Independent of the AUR fixes.
   back clean. Three more findings fell outside this audit's original
   scope and were filed as new backlog items (`kb/backlog.md` BL-72–BL-74):
   a `uglycraft-git` split-makedepends note, a missing `hicolor-icon-theme`
-  dependency, and RELRO/PIE hardening on the FPC `UGLI_2` binary. **The
-  first two are now RESOLVED** — split makedepends by spec 0092
-  (commit ed3539f, BL-72) and hicolor-icon-theme by spec 0093 (commits
-  c0d7973 + 8f3c117, BL-73); see `kb/backlog.md` for the closure detail.
-  Only RELRO/PIE (BL-74) remains open of the three.
+  dependency, and RELRO/PIE hardening on the FPC `UGLI_2` binary. **All
+  three are now RESOLVED** — split makedepends by spec 0092 (commit
+  ed3539f, BL-72), hicolor-icon-theme by spec 0093 (commits c0d7973 +
+  8f3c117, BL-73), and RELRO hardening by spec 0095 (commit 0a88210,
+  BL-74; the PIE half of BL-74 is a documented won't-fix, not a fix — see
+  spec/0095-full-relro-hardening.md); see `kb/backlog.md` for the closure
+  detail. namcap's "lacks PIE" warning is a permanent, accepted leftover.
 - **The PKGBUILDs themselves are now fully namcap-clean** (BL-77 / spec 0096,
   commit 325c5ad, 2026-07-19): the last two PKGBUILD-level warnings — the
   missing `# Maintainer:` tag and the `ugli` pkgdesc containing its own
   package name — are fixed (Maintainer line 1 on all three PKGBUILDs; all six
   split pkgdescs reworded). `namcap` on `packaging/PKGBUILD` and
-  `packaging/PKGBUILD-git` produces empty output, exit 0. The only namcap
-  finding left anywhere is BL-74 (RELRO/PIE on the built `UGLI_2` binary).
+  `packaging/PKGBUILD-git` produces empty output, exit 0. BL-74's RELRO half
+  is now also fixed (spec 0095); the only namcap finding left anywhere is
+  the accepted "lacks PIE" warning on the built `UGLI_2` binary (→ see
+  spec/0095-full-relro-hardening.md for why PIE is out of reach).
 
 **Two durable insights from resolving BL-72/BL-73** (kept here because they
 generalize to any future namcap-driven PKGBUILD fix, not just this pass):
@@ -385,10 +389,12 @@ generalize to any future namcap-driven PKGBUILD fix, not just this pass):
   (spec 0088 — D4's real-terminal-launch leg remains user-acceptance-pending),
   ~~BL-69~~ ✓ closed (spec 0080), ~~BL-70~~ ✓ closed (spec 0080).
 - **Every finding from this audit is now resolved or superseded**, leaving
-  only: spec 0088 D4's real-terminal-launch check (user acceptance); and, of
+  only spec 0088 D4's real-terminal-launch check (user acceptance) open. Of
   the three namcap-sourced follow-on items (BL-72–BL-74, `kb/backlog.md`),
-  only **BL-74** (RELRO/PIE hardening) still open — ~~BL-72~~ ✓ closed
-  (spec 0092) and ~~BL-73~~ ✓ closed (spec 0093). ~~BL-71~~ ✓ closed
+  all three are now closed — ~~BL-72~~ ✓ closed (spec 0092), ~~BL-73~~ ✓
+  closed (spec 0093), ~~BL-74~~ ✓ closed (spec 0095 — RELRO fixed and
+  verified; PIE declared a documented won't-fix, so namcap's "lacks PIE"
+  warning remains as a permanent accepted leftover). ~~BL-71~~ ✓ closed
   (spec 0094 removed the `_site` detection from all PKGBUILDs via the PEP 517
   wheel flow; `executor = "simple"` on makepkg-running poe tasks remains as
   defence-in-depth, since PKGBUILDs still invoke the `python` found on PATH).
