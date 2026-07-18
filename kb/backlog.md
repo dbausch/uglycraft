@@ -2129,3 +2129,50 @@ these two warnings are the only namcap output left on the PKGBUILDs after
 specs 0092/0093 (see `kb/arch-packaging.md` operational notes).
 
 ---
+
+## BL-78 · P3 · `deploy-aur`/`deploy-aur-git` can silently skip the push after a previous failed push
+
+`pyproject.toml`'s `deploy-aur` and `deploy-aur-git` tasks only run `git
+push` inside the `else` branch that fires when `git diff --cached` found
+something to commit:
+
+```bash
+git add PKGBUILD .SRCINFO
+if git diff --cached --quiet; then
+  echo "nothing to update — AUR repo already matches"
+else
+  git commit -m "uglycraft $VER"
+  git push
+fi
+```
+
+If a commit already exists locally but was never pushed — e.g. a previous
+deploy attempt committed fine but the push step failed — a rerun sees
+nothing new to stage (`git diff --cached` is empty against the existing
+local commit), prints "nothing to update — AUR repo already matches", and
+**skips the push entirely**, leaving the AUR repo stale even though the
+local sibling clone is ahead of `origin/master`. This is exactly what
+happened on the first v1.6 AUR push: the AUR account's email was still
+unverified, the push step failed after the commit had already succeeded,
+and a naive rerun would have reported "nothing to update" without actually
+pushing the commit that was sitting there unpushed.
+
+**Fix hint:** make the push unconditional, or push whenever the branch is
+ahead of upstream — e.g. always run `git push` after the conditional commit
+block (pushing an up-to-date branch is a harmless no-op):
+
+```bash
+git add PKGBUILD .SRCINFO
+if git diff --cached --quiet; then
+  echo "nothing to update — AUR repo already matches"
+else
+  git commit -m "uglycraft $VER"
+fi
+git push
+```
+
+Applies to both `deploy-aur` (`../uglycraft-aur`) and `deploy-aur-git`
+(`../uglycraft-git-aur`). → see `kb/arch-packaging.md` "First push — done
+(2026-07-19)" for the incident this was found from.
+
+---
