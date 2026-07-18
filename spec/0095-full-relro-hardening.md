@@ -31,9 +31,10 @@ the flags live in `build()` function bodies; regenerate-and-diff to confirm).
   (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
 - [x] **D5** — `.SRCINFO`/`.SRCINFO-git` regenerated and diffed: no change
   (function-body-only edit). (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
-- [ ] **D6** — launch check: the game starts and plays normally with the
-  hardened binary (user acceptance) — awaits user confirmation, not yet
-  requested/performed.
+- [x] **D6** — launch check: the game starts and plays normally with the
+  hardened binary (user acceptance) — user installed the hardened
+  `ugli-dev-1.5.r738.g0a88210` package and confirmed the game runs fine
+  (2026-07-19).
 
 ## Background — confirmed facts
 
@@ -142,5 +143,6 @@ Nothing else changes — no source edits, no new tasks.
   accepted. (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
 - [x] **D5** — `.SRCINFO` regeneration shows no diff.
   (`0a882109b52a1f3792aac3fbf15814c3b1b6f270`)
-- [ ] **D6** — launch check confirmed by the user. Awaits user acceptance —
-  not yet requested/performed.
+- [x] **D6** — launch check confirmed by the user: hardened
+  `ugli-dev-1.5.r738.g0a88210` package installed and tested, game runs fine
+  (2026-07-19).
