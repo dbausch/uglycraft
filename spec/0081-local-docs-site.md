@@ -63,7 +63,7 @@ recent-specs list (D3) covers the "what's new" need with none of it. See
   page lists the 5 newest specs correctly, all 80 specs + 12 kb pages render, GFM
   checklists render as checkboxes, search works, and every `kb/ → ../spec/` link
   navigates without a 404.
-- [ ] **D9** — the docs server runs on **port 4001** (not the busy 8000), and a
+- [x] **D9** — the docs server runs on **port 4001** (not the busy 8000), and a
   **user-local systemd service** manages it — a tracked unit *template*
   (`contrib/uglycraft-docs.service`): a standard `Type=simple` service
   (`WorkingDirectory` at the checkout, `--dev-addr 0.0.0.0:4001`,
@@ -257,8 +257,9 @@ spec rather than adding pytest coverage:
 - [x] **D8** verified: 81 spec + 12 kb pages render, GFM checklists render as
   checkboxes, search index built, every `kb → ../spec` link resolves, nothing
   publishes; mobile layout user-confirmed — verified 2026-07-18.
-- [ ] **D9** port 4001 + unit template `contrib/uglycraft-docs.service` tracked
-  and installed to `~/.config/systemd/user/` **done and verified** (commits
-  `e5cb787`, `a6b193a`, `63046a2`); **remaining:** service *active (running)* —
-  not self-verifiable until the branch is on the main checkout's default branch
-  and `poe docs-install` is run there.
+- [x] **D9** port 4001 + unit template `contrib/uglycraft-docs.service` tracked
+  and installed to `~/.config/systemd/user/`; squash-merged to `main` (`1075e4c`),
+  `poe docs-install` run in the main checkout, and `systemctl --user enable --now
+  uglycraft-docs.service` now runs it **active (running)** from the main checkout —
+  serving `0.0.0.0:4001` on the LAN and recovering on `systemctl --user restart` —
+  commits `e5cb787`, `a6b193a`, `63046a2` (verified 2026-07-18).
