@@ -322,21 +322,58 @@ Independent of the AUR fixes.
   `$XDG_DATA_HOME/uglycraft/uglycraft.hsc` (`constants.py:14-24`), a writable
   location, so the wrapper needs no `cd`.
 
-## Operational notes for the first push
+## First push — done (2026-07-19)
 
-- **The AUR repos don't exist yet.** `../uglycraft-aur` and `../uglycraft-git-aur`
-  are absent, so `poe deploy-aur` errors immediately. After registering the
-  package names, clone them: `git clone ssh://aur@aur.archlinux.org/uglycraft.git`
-  and `…/uglycraft-git.git` as the siblings the deploy tasks expect.
-- `updpkgsums` has already been run (BL-63/spec 0090) and the four external
-  sources are pinned (`_uos_commit`/`_themes_commit`, BL-65/spec 0089) — real
-  sha256 sums exist throughout except the two VCS-clone `SKIP`s
+Both AUR packages are now **live**: `uglycraft 1.6-1` and `uglycraft-git`,
+maintainer `dbausch`, published on aur.archlinux.org. Package names were
+registered **implicitly** by the first push — the AUR has no separate
+"register a name" step; `git push` to a not-yet-existing repo name under
+`ssh://aur@aur.archlinux.org/` creates it. The sibling clones the deploy
+tasks expect now exist and are permanent fixtures:
+
+- `../uglycraft-aur` (for `poe deploy-aur`)
+- `../uglycraft-git-aur` (for `poe deploy-aur-git`)
+
+Both sit on branch **`master`**, not `main` — the AUR rejects any other
+branch name. This bit on the first push: a fresh `git clone` defaults to the
+cloning machine's `init.defaultBranch` (`main` here), so both siblings had to
+be renamed before the first push would be accepted:
+
+```
+git branch -m master
+```
+
+Any *re-clone* of either sibling (e.g. after a disk wipe) must repeat this
+rename before pushing — it is not a one-time historical fact, it is a
+property of `git clone` that will recur every time.
+
+The **first push also failed once** for an unrelated reason: the AUR account
+email was unverified. The AUR silently refuses pushes from an account whose
+email hasn't been confirmed via the verification link — this must be done
+once, in the AUR web UI, before any `poe deploy-aur*` push, and is a
+prerequisite independent of the branch-name issue above.
+
+Pre-push checklist that was actually run before this push (kept here as the
+template for future pushes too): `updpkgsums` (BL-63/spec 0090, the four
+external sources pinned by BL-65/spec 0089) and `namcap` against both
+PKGBUILDs and the built dev packages (see the namcap end-state note above) —
+both clean going into the push.
+
+**For future pushes**, the durable operational facts:
+
+- `poe deploy-aur`/`deploy-aur-git` **regenerate** `.SRCINFO`/`.SRCINFO-git`
+  via `makepkg --printsrcinfo` immediately before copying (BL-66/spec 0084,
+  commit c31b855) instead of hand-copying a static file, so it can no longer
+  drift silently — no manual regeneration step needed.
+- `updpkgsums` and the `_uos_commit`/`_themes_commit` pins only need
+  re-running when the external sources actually move (BL-65); real sha256
+  sums otherwise persist across releases except the two VCS-clone `SKIP`s
   (`PKGBUILD-git`/`PKGBUILD-dev` index 0), which are the sanctioned use of
   `SKIP`.
-- `poe deploy-aur`/`deploy-aur-git` now **regenerate** `.SRCINFO`/
-  `.SRCINFO-git` via `makepkg --printsrcinfo` immediately before copying
-  (BL-66/spec 0084, commit c31b855) instead of hand-copying a static file, so
-  this can no longer drift silently — no further operational step needed here.
+- → see `kb/backlog.md` BL-78 for a known gap in the deploy tasks themselves:
+  a rerun after a failed push (e.g. the email-verification failure above)
+  can silently skip `git push` because it only runs inside the
+  commit-just-happened branch.
 - **namcap has now been run** (system-installed, `namcap 3.6.0-3`) against
   both PKGBUILDs and both built dev packages (`uglycraft-dev`, `ugli-dev`).
   Every finding this audit tracked (BL-62, BL-64, BL-66, BL-67, BL-68) came
