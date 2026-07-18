@@ -55,6 +55,7 @@ Uses `CThreads`, `DOS`, `BaseUnix`, `SysUtils`, `termio`, `gettext`, `getopts`, 
 | `original/kb/crt-removal.md` | Why CRT was removed, what replaced each CRT call, colour mapping |
 | `original/kb/i18n.md` | Translated strings, YesKey/NoKey system, adding a language |
 | `original/kb/sound-system.md` | UOS+PortAudio architecture, history of stderr suppression, committed vs. fetched UOS sources, `--log` behaviour |
+| `original/kb/fpc-build-environment.md` | System-side FPC quirks: stale gcclib path in `/etc/fpc.cfg` after a GCC major bump (missing `crtbeginS.o`/`crtendS.o` warning) |
 
 ## Code style
 
