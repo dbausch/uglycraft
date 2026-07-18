@@ -1,3 +1,4 @@
+# Maintainer: Daniel Bausch <db@edv-bausch.de>
 pkgbase=uglycraft-git
 pkgname=('uglycraft-git' 'ugli-git')
 pkgver=1.4.r20.g21ad119
@@ -51,7 +52,7 @@ build() {
 }
 
 package_uglycraft-git() {
-  pkgdesc='Treasure-collecting arcade game inspired by UGLI (1996) (git version)'
+  pkgdesc='Retro style treasure hunting game with various puzzles (git version)'
   arch=('any')
   license=('GPL-3.0-only' 'OFL-1.1')
   depends=('python' 'python-pygame' 'python-numpy' 'hicolor-icon-theme')
@@ -79,7 +80,7 @@ package_uglycraft-git() {
 }
 
 package_ugli-git() {
-  pkgdesc='UGLI 2 (1996) — text-mode treasure game (Linux/FPC port) (git version)'
+  pkgdesc='Terminal treasure hunting game (git version)'
   depends=('hicolor-icon-theme')
   optdepends=('portaudio: sound support via UOS/PortAudio'
               'kitty: terminal launcher with ANSI-87 colour theme'
