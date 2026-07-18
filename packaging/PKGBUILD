@@ -5,7 +5,8 @@ pkgrel=1
 arch=('x86_64')
 url='https://github.com/dbausch/uglycraft'
 license=('GPL-3.0-only')
-makedepends=('fpc' 'python' 'python-numpy' 'python-pygame' 'hicolor-icon-theme')
+makedepends=('fpc' 'python' 'python-build' 'python-installer' 'python-numpy'
+             'python-pygame' 'python-setuptools' 'hicolor-icon-theme')
 _tag=v$pkgver
 _uos_commit=ffd165382aeae1cc1bf80673d5c02497c06f4efa
 _themes_commit=e144651f75891cf4795ef1e7c24bb3e27c47aa06
@@ -37,7 +38,10 @@ EOF
 }
 
 build() {
-  cd "$pkgbase-$pkgver/original"
+  cd "$pkgbase-$pkgver"
+  rm -rf dist
+  python -m build --wheel --no-isolation
+  cd original
   echo "const GitVersion = '$pkgver';" > git_sha.inc
   fpc -Fuuos UGLI_2.pp
 }
@@ -51,18 +55,12 @@ package_uglycraft() {
 
   cd "$pkgbase-$pkgver"
 
-  # Install the whole package into site-packages as one unit.  The assets
-  # ride inside it (uglycraft/fonts, uglycraft/translations), so the install
-  # list can never go stale again (BL-61).  Byte-compile it (BL-69).
-  _site=$(python -c "import site; print(site.getsitepackages()[0])")
-  install -d "$pkgdir$_site"
-  cp -r src/uglycraft "$pkgdir$_site/"
-  python -m compileall -q -d "$_site/uglycraft" "$pkgdir$_site/uglycraft"
-
-  install -Dm755 /dev/stdin "$pkgdir/usr/bin/uglycraft" <<'WRAPPER'
-#!/bin/bash
-exec python -m uglycraft "$@"
-WRAPPER
+  # PEP 517 install (spec 0094): the wheel carries the code, the assets
+  # (uglycraft/fonts, uglycraft/translations — via [tool.setuptools.package-data],
+  # whose globs must cover any new asset type), the byte-compiled .pycs, the
+  # .dist-info metadata, and the /usr/bin/uglycraft entry point generated
+  # from [project.scripts].
+  python -m installer --destdir="$pkgdir" dist/*.whl
 
   install -Dm644 packaging/uglycraft.desktop \
     "$pkgdir/usr/share/applications/uglycraft.desktop"
