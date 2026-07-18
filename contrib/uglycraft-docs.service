@@ -1,0 +1,30 @@
+# User-local systemd service for the UGLYCRAFT docs preview (see spec 0081).
+#
+# TEMPLATE — replace /path/to/uglycraft below with the absolute path to your
+# checkout (or use the %h specifier, e.g. %h/uglycraft, if it lives under your
+# home directory). Install with:
+#
+#     mkdir -p ~/.config/systemd/user
+#     cp contrib/uglycraft-docs.service ~/.config/systemd/user/
+#     $EDITOR ~/.config/systemd/user/uglycraft-docs.service   # set your path
+#     systemctl --user daemon-reload
+#     systemctl --user enable --now uglycraft-docs.service
+#
+# Prerequisite: run `poe docs-install` in that checkout first (creates
+# .venv-docs). Point WorkingDirectory at your real, durable checkout — never a
+# temporary or throwaway copy. Serves on the LAN only; it is NEVER a published
+# site.
+
+[Unit]
+Description=MkDocs preview server for UGLYCRAFT dev docs (specs + kb, LAN-bound)
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/uglycraft
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/path/to/uglycraft/.venv-docs/bin/mkdocs serve --dev-addr 0.0.0.0:4001
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

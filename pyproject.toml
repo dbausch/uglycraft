@@ -23,6 +23,14 @@ cmd  = ".venv/bin/python -m pytest tests/ -n auto"
 help = "Run the game (e.g. poe run --level 5)"
 cmd  = ".venv/bin/python main.py"
 
+[tool.poe.tasks.docs-install]
+help  = "One-time: create .venv-docs and install MkDocs Material (local docs dev aid)"
+shell = "virtualenv .venv-docs && .venv-docs/bin/pip install -r requirements-docs.txt"
+
+[tool.poe.tasks.docs]
+help = "Serve the local docs site (specs + kb) on localhost AND LAN at http://<host>:4001. Local dev aid — never published"
+cmd  = ".venv-docs/bin/mkdocs serve"
+
 [tool.poe.tasks.run-original]
 help  = "Run the original UGLI 2 in a new terminal. Forward args with --: poe run-original -- --level 5"
 shell = """

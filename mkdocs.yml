@@ -1,0 +1,67 @@
+# Local documentation dev aid for UGLYCRAFT — see spec/0081-local-docs-site.md.
+#
+# This is NOT a published site. It is served locally with `poe docs`
+# (`mkdocs serve`). Do NOT enable GitHub Pages, do NOT add a Pages workflow, and
+# NEVER run `mkdocs gh-deploy` (the only command that would push a gh-pages
+# branch). A root `.nojekyll` guards against accidental Jekyll rendering if Pages
+# is ever switched on. `mkdocs.yml` itself is inert to GitHub.
+
+site_name: UGLYCRAFT — dev docs
+site_description: UGLYCRAFT specs and knowledge base
+
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+
+# Serve on localhost AND the LAN, so a phone / another dev machine on the home
+# network can read the docs at http://<host-LAN-IP>:4001. Still a local process.
+dev_addr: 0.0.0.0:4001
+
+theme:
+  name: material
+  features:
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+# Report broken links (e.g. the kb → ../spec references) as warnings without
+# breaking the serve.
+validation:
+  links:
+    absolute_links: warn
+    unrecognized_links: warn
+    not_found: warn
+
+# The recent-specs hook lives under docs/ but must not be copied into the build.
+exclude_docs: |
+  hooks/
+
+hooks:
+  - docs/hooks/recent_specs.py

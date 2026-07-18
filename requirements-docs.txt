@@ -1,0 +1,4 @@
+# Local docs dev aid (spec 0081) — installed into a SEPARATE .venv-docs by
+# `poe docs-install`, never into the game's .venv and never bundled by
+# PyInstaller. mkdocs-material pulls in mkdocs itself and the search plugin.
+mkdocs-material

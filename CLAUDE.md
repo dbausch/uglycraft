@@ -10,6 +10,8 @@ Tasks are managed with **poethepoet** (`pyproject.toml`). `poe` is installed glo
 |---|---|
 | `poe install` | Create venv and install all dependencies |
 | `poe run` | Run the game (e.g. `poe run --level 5`) |
+| `poe docs-install` | One-time: create `.venv-docs` and install MkDocs Material (local docs dev aid) |
+| `poe docs` | Serve the local docs site (specs + kb) on localhost **and LAN** at `http://<host>:4001`. Local dev aid — **never published** (see below) |
 | `poe build-linux` | Build `dist/linux-64/uglycraft` + license notices (~41 MB) |
 | `poe setup-windows` | One-time: install Python 3.13 + deps into Wine |
 | `poe build-windows` | Build `dist/windows-64/uglycraft.exe` + license notices (~25 MB) via Wine |
@@ -30,6 +32,42 @@ The **`original-dos` channel is frozen forever** — the original DOS executable
 can never be rebuilt, so it is deliberately left out of the `poe deploy` bundle
 and will not be redeployed. The `poe deploy-original-dos` task still exists for
 the record, but there is no reason to run it again.
+
+### Local documentation site (dev aid)
+
+`poe docs` serves the `spec/` history and `kb/` articles as a browsable,
+searchable MkDocs Material site (spec 0081). It is a **purely local development
+aid** — served with `mkdocs serve`, reachable on localhost and the LAN
+(`dev_addr: 0.0.0.0:4001`). The landing page teases the 5 most recent specs via a
+native hook (`docs/hooks/recent_specs.py`, no plugin dependency; recency comes
+from the zero-padded spec numbers, so no per-spec metadata is needed). `docs/` is
+a symlink farm (`docs/spec → ../spec`, `docs/kb → ../kb`) so `spec/`/`kb/` stay in
+place and their relative cross-links resolve. Docs deps live in a **separate**
+`.venv-docs` (`requirements-docs.txt`) and never touch the game's `.venv` or the
+PyInstaller build.
+
+**This site is never published.** It must never become a GitHub Page: do not
+enable Pages, do not add a `*pages*` workflow, do not create a `gh-pages` branch,
+and **never run `mkdocs gh-deploy`** (the only command that would). A root
+`.nojekyll` guards against accidental Jekyll rendering if Pages is ever switched
+on. LAN reach is a local `mkdocs serve` process on the home network — not
+internet publication.
+
+The server listens on **port 4001**. A user-local systemd service —
+`contrib/uglycraft-docs.service`, a `Type=simple` unit template — runs it
+persistently. After `poe docs-install`, install it, set its path, and enable it:
+
+```
+cp contrib/uglycraft-docs.service ~/.config/systemd/user/
+$EDITOR ~/.config/systemd/user/uglycraft-docs.service   # replace /path/to/uglycraft
+systemctl --user daemon-reload
+systemctl --user enable --now uglycraft-docs.service
+```
+
+Point the unit's `WorkingDirectory` at a durable checkout, never a
+transient/throwaway working copy. Open port 4001 permanently in your firewall
+since the service is durable (firewall-specific — e.g. firewalld:
+`firewall-cmd --permanent --add-port=4001/tcp && firewall-cmd --reload`).
 
 ### Arch packaging
 
@@ -86,7 +124,7 @@ When the user asks "what's next?", always spawn an agent to answer:
 
 ```python
 Agent(description="What's next?",
-      prompt="Read kb/backlog.md and summarise the open backlog items by priority. List P1 first, then P2, then P3. For each item show its ID, priority, one-line description, and the fix hint. Working directory: /home/daniel/prog/uglycraft")
+      prompt="Read kb/backlog.md and summarise the open backlog items by priority. List P1 first, then P2, then P3. For each item show its ID, priority, one-line description, and the fix hint. Working directory: the repository root")
 ```
 
 Never answer "what's next?" inline without spawning the agent.
@@ -127,6 +165,17 @@ articles for stale facts before trusting them.
 
 Every non-trivial change follows this sequence. Skipping a step requires an
 explicit justification in the commit message.
+
+### No machine-specific details in tracked docs
+
+This repo is public. **Never write system/machine-specific details into a spec,
+`kb/` article, this file, a tracked service unit, or any other committed
+document.** That includes absolute home paths (`/home/<user>/…`), usernames,
+personal host/service names (e.g. someone's private preview service), LAN IPs,
+and other local-environment specifics. Use placeholders (`/path/to/uglycraft`),
+repo-relative references ("the repository root"), or portable specifiers
+(systemd `%h`) instead. Machine-specific values belong only in untracked local
+files (e.g. an installed `~/.config/systemd/user/*.service`), never in the repo.
 
 ### 1 — Plan
 

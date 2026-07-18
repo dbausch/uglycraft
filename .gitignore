@@ -4,6 +4,10 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
+# Local docs dev aid (MkDocs, spec 0081) — never committed, never published
+.venv-docs/
+site/
+
 # Build artifacts
 dist/
 build/
