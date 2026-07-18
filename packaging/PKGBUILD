@@ -14,7 +14,7 @@ source=("$pkgbase-$pkgver.tar.gz::$url/archive/$_tag.tar.gz"
         "uos_flat.pas::https://raw.githubusercontent.com/fredvs/uos/$_uos_commit/src/uos_flat.pas"
         "uos_portaudio.pas::https://raw.githubusercontent.com/fredvs/uos/$_uos_commit/src/uos_portaudio.pas"
         "ANSI-87.conf::https://raw.githubusercontent.com/kovidgoyal/kitty-themes/$_themes_commit/themes/ANSI-87.conf")
-sha256sums=('SKIP'
+sha256sums=('6fd94d423b5daed0966c63baaab297b103cb326c657712d883d140f8d27bd200'
             '22f3e9215611d9877d21f7c835085baf9a393eac1a9e9047f195559ca1e949e4'
             '2ceb6afccad36f520fb57123dd7b38b59f36dedcc0bd3e099657086d7bd352b7'
             'bea6c3c79b42fdf67f8b5d3ba7895dae341a9ed72d53d0f0526a736dda3f8489'

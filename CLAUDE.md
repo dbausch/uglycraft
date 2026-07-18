@@ -77,7 +77,10 @@ Two AUR packages, each with its own repo:
 - **`uglycraft` / `ugli`** (release) — `packaging/PKGBUILD`, pinned to a
   release tag (`_tag=v1.5`).  Deployed with `poe deploy-aur` to
   `../uglycraft-aur`.  At release time, update `pkgver`, `_tag`, and run
-  `updpkgsums` to fill in real sha256 checksums.
+  `updpkgsums` to fill in the real sha256 for the release tarball (source
+  index 0, the only entry still `SKIP`); the four pinned external sums are
+  re-verified in place and change only on a deliberate `_uos_commit`/
+  `_themes_commit` bump.
 - **`uglycraft-git` / `ugli-git`** (VCS) — `packaging/PKGBUILD-git`, clones
   the repo and derives `pkgver` from `git describe`.  Deployed with
   `poe deploy-aur-git` to `../uglycraft-git-aur`.  No tags to manage.
