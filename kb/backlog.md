@@ -1690,8 +1690,10 @@ the resulting `uglycraft-…-any.pkg.tar.zst` still installs alongside the x86_6
 
 ## BL-68 · FIXED · Compiled UGLI_2 binary installed under /usr/share
 
-Fixed by spec 0088 (commit b49b587), confirmed 2026-07-18 — except D4's
-real-terminal-launch leg, which stays open as user acceptance. `UGLI_2` moved
+Fixed by spec 0088 (commit b49b587), confirmed 2026-07-18 — including D4's
+real-terminal-launch leg, accepted by the user 2026-07-18 (commit b598874)
+after installing and testing freshly built uglycraft-dev/ugli-dev packages.
+`UGLI_2` moved
 to `/usr/lib/ugli/UGLI_2` in all three PKGBUILDs; `packaging/ugli.sh`'s
 `UGLI=` path updated to match. **Discovered mechanism:** `UGLI_2` resolves
 `translations/*.mo` and `history_*.txt` relative to its own executable path
@@ -1705,8 +1707,8 @@ the extracted binary from an unrelated CWD with a forced German locale and
 observing translated `--help` output. namcap (system-installed): the
 `elfpaths` rule (allows `usr/lib/`, not `usr/share/`) no longer fires; only
 the unrelated RELRO/PIE hardening warning remains (filed as BL-74 below). The
-real-terminal-launch check (opening the game in an actual terminal) is still
-pending user acceptance. → spec/0088, kb/arch-packaging.md
+real-terminal-launch check (opening the game in an actual terminal) is now
+accepted by the user. → spec/0088, kb/arch-packaging.md
 
 UGLI_2 (an ELF executable) is installed to /usr/share/ugli/UGLI_2 (PKGBUILD:82,
 PKGBUILD-git:86). /usr/share is for architecture-independent data; a private,
