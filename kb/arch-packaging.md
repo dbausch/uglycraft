@@ -25,8 +25,14 @@ Two `pkgbase`, four split packages, two AUR repos:
 | `uglycraft` (release, `_tag=v$pkgver`) | `uglycraft` (Python game), `ugli` (FPC port of the 1996 original) | `packaging/PKGBUILD` | `../uglycraft-aur` via `poe deploy-aur` |
 | `uglycraft-git` (VCS) | `uglycraft-git`, `ugli-git` | `packaging/PKGBUILD-git` | `../uglycraft-git-aur` via `poe deploy-aur-git` |
 
-Deploy tasks (`pyproject.toml`) `cp` **only** `PKGBUILD` + `.SRCINFO` into the
-sibling AUR clone, commit, and push. All helper files (`*.desktop`, `*.svg`,
+Deploy tasks (`pyproject.toml`) **regenerate** `.SRCINFO`/`.SRCINFO-git` via
+`makepkg --printsrcinfo` immediately before copying (spec 0084/BL-66, commit
+c31b855 — this replaced the old hand-copied static file, which could drift
+silently), then `cp` **only** `PKGBUILD` + the freshly regenerated `.SRCINFO`
+into the sibling AUR clone, commit, and push. Both deploy tasks also carry
+`executor = "simple"` (BL-71 Part A's poe-executor rule, applied here so the
+project's own `.venv` can never leak into a `makepkg` invocation). All helper
+files (`*.desktop`, `*.svg`,
 `ugli.sh`, `LICENSES/*`, the Pascal sources) reach the build from the release
 tarball / git clone, **not** from the AUR repo — so the AUR repos stay minimal
 (PKGBUILD + .SRCINFO only). Build artifacts (`packaging/{pkg,src}/`,
@@ -106,6 +112,13 @@ spec 0080, decision 2026-07-16.)
 
 ### P2 — redundant `provides=($pkgname)` (BL-62)
 
+> **RESOLVED — spec 0085, confirmed 2026-07-18.** Commit 96a60f2 deleted both
+> redundant `provides` lines from `packaging/PKGBUILD` (`package_uglycraft`,
+> `package_ugli`); `.SRCINFO` regenerated in the same commit (spec 0084
+> mechanism) shows exactly those two lines gone, nothing else. `PKGBUILD-git`
+> / `PKGBUILD-dev` were left untouched, as intended. namcap (system-installed)
+> raises no provides-related warning. **BL-62 closed.**
+
 Guideline: *"Do not add `$pkgname` to provides, as it is always implicitly
 provided."* Violated in `package_uglycraft` (`provides=('uglycraft')`,
 `PKGBUILD:41`) and `package_ugli` (`provides=('ugli')`, `:77`). Remove both.
@@ -117,6 +130,16 @@ the non-git name (and pairs with its `conflicts`).
 
 ### P2 — `SKIP` checksum on the release tarball (BL-63)
 
+> **RESOLVED — spec 0090, confirmed 2026-07-18.** Commit 3712eee ran
+> `updpkgsums packaging/PKGBUILD`; source index 0 (the `v$pkgver.tar.gz`
+> tarball) now carries a real sha256
+> (`6fd94d423b5daed0966c63baaab297b103cb326c657712d883d140f8d27bd200`).
+> Sequenced after spec 0089 pinned the four external sources (BL-65), so
+> those four sums were only re-verified, not rewritten — `git diff` confirmed
+> only the index-0 line changed. `makepkg --verifysource -p PKGBUILD` passes
+> against the live v1.5 GitHub tag. `PKGBUILD-git`/`PKGBUILD-dev` correctly
+> keep `SKIP` for their VCS-clone source only. **BL-63 closed.**
+
 Guideline: integrity variables must contain correct values (`updpkgsums`); the
 repo's own `CLAUDE.md` says to run `updpkgsums` at release time — but
 `PKGBUILD:15-19` is still all-`SKIP`. At minimum the versioned
@@ -125,6 +148,15 @@ legitimately keeps `SKIP` (VCS clone). See also BL-65 for the branch-tip sources
 that currently *force* the other four SKIPs.
 
 ### P2 — `uglycraft` ships the OFL font but declares only GPL-3.0-only (BL-64)
+
+> **RESOLVED — spec 0086, confirmed 2026-07-18.** Commit eaf3976 added
+> `license=('GPL-3.0-only' 'OFL-1.1')` inside `package_uglycraft()` (and the
+> `-git`/`-dev` equivalents); `ugli*` stays GPL-only (ships no font).
+> `.SRCINFO`/`.SRCINFO-git` regenerated in the same commit. The built
+> `uglycraft-dev` package's `.PKGINFO` carries both `license =` lines, and
+> namcap (system-installed) raises no license warning — both SPDX ids
+> resolve, with license files present under `/usr/share/licenses/`. **BL-64
+> closed.**
 
 `license` is set once at pkgbase level (`GPL-3.0-only`) and never overridden.
 But `package_uglycraft` installs `fonts/ShareTechMono-Regular.ttf` and its
@@ -141,6 +173,18 @@ belong in this package's `license`.
 
 ### P3 — non-reproducible moving-branch sources (BL-65)
 
+> **RESOLVED — spec 0089, confirmed 2026-07-18.** Commit a9f6282 pinned all
+> four external files to fixed commit hashes —
+> `_uos_commit=ffd165382aeae1cc1bf80673d5c02497c06f4efa` and
+> `_themes_commit=e144651f75891cf4795ef1e7c24bb3e27c47aa06` (looked up via
+> `git ls-remote` at implementation time; these were the branch heads the
+> builds already used, so built content is unchanged) — in all three
+> PKGBUILDs *and* in the `poe build-original` task, and gave all four files
+> real sha256 sums. This unblocked spec 0090/BL-63: the four moving-tip
+> sources were the reason the release-tarball `SKIP` couldn't be cleanly
+> `updpkgsums`-filled before. `.SRCINFO`/`.SRCINFO-git` regenerated in the
+> same commit. **BL-65 closed.**
+
 `uos.pas`/`uos_flat.pas`/`uos_portaudio.pas` come from `…/uos/main/…` and
 `ANSI-87.conf` from `…/kitty-themes/master/…` (`PKGBUILD:11-14`). Unversioned
 branch tips: the build is non-reproducible **and** these are the reason four
@@ -148,6 +192,19 @@ branch tips: the build is non-reproducible **and** these are the reason four
 real checksum. Reproducibility is an explicit goal of the Arch guidelines.
 
 ### P3 — `.SRCINFO` is hand-copied, never regenerated (BL-66)
+
+> **RESOLVED — spec 0084, confirmed 2026-07-18.** Commit c31b855 made
+> `poe deploy-aur`/`deploy-aur-git` **regenerate** `.SRCINFO`/`.SRCINFO-git`
+> via `makepkg --printsrcinfo` immediately before the `cp` step, instead of
+> copying a hand-maintained static file — see "Operational notes" below. Both
+> tasks also gained `executor = "simple"` (applying BL-71 Part A's rule to
+> these two makepkg-invoking tasks, so the project's own `.venv` can never
+> leak `_site` detection into a real build). The already-stale
+> `.SRCINFO-git` (`1.4.r0.gf95b776` vs the PKGBUILD's `1.4.r20.g21ad119`) was
+> regenerated once in the same commit. This is the infrastructure spec every
+> other spec in this pass (0085–0090) rides on — from here on, any PKGBUILD
+> metadata edit re-flows into `.SRCINFO` automatically at deploy time.
+> **BL-66 closed.**
 
 `deploy-aur`/`deploy-aur-git` `cp` a static `.SRCINFO`/`.SRCINFO-git`
 (`pyproject.toml:187-`). It currently matches (`makepkg --printsrcinfo` diff =
@@ -159,12 +216,44 @@ copying: `cd packaging && makepkg --printsrcinfo > .SRCINFO`. Any fix to the
 
 ### P3 — `arch=('x86_64')` on the pure-Python `uglycraft` (BL-67)
 
+> **RESOLVED — spec 0087, confirmed 2026-07-18.** Commit c7b4e7a added
+> `arch=('any')` inside `package_uglycraft()` (and the `-git`/`-dev`
+> equivalents); the pkgbase-level array and `package_ugli*()` stay `x86_64`
+> unchanged. One `poe package-dev` run produces an `…-any.pkg.tar.zst`
+> alongside the x86_64 `ugli-dev` package; the extracted `any` package's
+> headless `--dump-level` run passed, and namcap's `anyelf` rule (which
+> flags ELF files inside an `arch=any` package) found none. **BL-67 closed.**
+
 `arch` is overridable per split package. `uglycraft` is architecture-independent
 (pure Python) and could set `arch=('any')` so it installs on aarch64 etc.;
 `ugli` (compiled FPC binary) correctly stays `x86_64`. The pkgbase-level array
 must still include every arch the split members need.
 
 ### P3 — compiled binary under `/usr/share` (BL-68)
+
+> **RESOLVED — spec 0088, confirmed 2026-07-18 — except the real-terminal
+> launch check, still open as user acceptance.** Commit b49b587 moved
+> `UGLI_2` to `/usr/lib/ugli/UGLI_2` in all three PKGBUILDs and updated
+> `packaging/ugli.sh`'s `UGLI=` path to match. **Discovered mechanism** (the
+> one open question this spec had to settle): `UGLI_2` resolves both
+> `translations/*.mo` and `history_*.txt` relative to its **own executable
+> path** (`ParamStr(0)`), not a compiled-in `/usr/share` constant — confirmed
+> by reading `original/UGLI_2_Core.inc`'s `LoadTranslation` (lines
+> 1978–2007) and `LoadHistoryText` (lines 1524–1568), both of which build
+> their path from `ExeDir`. So `translations/` had to **move with the
+> binary** to `/usr/lib/ugli/translations/`, while `ANSI-87.conf` — read only
+> by the wrapper script via a `-c` kitty flag, never by the Pascal binary
+> itself — correctly **stays** under `/usr/share/ugli/` as pure wrapper-only
+> data. This was positively verified (not just inferred) by running the
+> extracted binary from an unrelated CWD with a forced German locale and
+> observing translated `--help` output — no other locale path on the test
+> machine could have supplied that translation. `.SRCINFO` regeneration
+> showed no diff (function-body-only change). namcap's `elfpaths` rule
+> (allows `usr/lib/`, not `usr/share/`) no longer fires; the only remaining
+> ELF-related namcap output is the unrelated RELRO/PIE hardening warning
+> (filed as a new backlog item, see "Operational notes" below). → see
+> spec/0088. **D4's real-terminal-launch leg remains open pending user
+> acceptance; everything else about BL-68 is closed.**
 
 `UGLI_2` (an ELF executable) is installed to `/usr/share/ugli/UGLI_2`
 (`PKGBUILD:82`). `/usr/share` is for architecture-independent data; a private,
@@ -217,15 +306,37 @@ Independent of the AUR fixes.
   are absent, so `poe deploy-aur` errors immediately. After registering the
   package names, clone them: `git clone ssh://aur@aur.archlinux.org/uglycraft.git`
   and `…/uglycraft-git.git` as the siblings the deploy tasks expect.
-- Run `updpkgsums packaging/PKGBUILD` (fills BL-63) and `namcap` on both the
-  PKGBUILD and the built `.pkg.tar.zst` before pushing — namcap surfaces BL-68
-  and any dependency mistakes.
-- After editing any field, regenerate `.SRCINFO` (BL-66) — the AUR reads it for
-  all package metadata.
+- `updpkgsums` has already been run (BL-63/spec 0090) and the four external
+  sources are pinned (`_uos_commit`/`_themes_commit`, BL-65/spec 0089) — real
+  sha256 sums exist throughout except the two VCS-clone `SKIP`s
+  (`PKGBUILD-git`/`PKGBUILD-dev` index 0), which are the sanctioned use of
+  `SKIP`.
+- `poe deploy-aur`/`deploy-aur-git` now **regenerate** `.SRCINFO`/
+  `.SRCINFO-git` via `makepkg --printsrcinfo` immediately before copying
+  (BL-66/spec 0084, commit c31b855) instead of hand-copying a static file, so
+  this can no longer drift silently — no further operational step needed here.
+- **namcap has now been run** (system-installed, `namcap 3.6.0-3`) against
+  both PKGBUILDs and both built dev packages (`uglycraft-dev`, `ugli-dev`).
+  Every finding this audit tracked (BL-62, BL-64, BL-66, BL-67, BL-68) came
+  back clean. The only remaining namcap output falls outside this audit's
+  original findings — RELRO/PIE hardening on the FPC `UGLI_2` binary, a
+  `uglycraft-git` split-makedepends note, and a missing
+  `hicolor-icon-theme` dependency — and has been filed as new backlog items
+  (`kb/backlog.md` BL-72–BL-74).
 
 ## Priority summary
 
 - **Must fix before release:** ~~BL-61 (broken game)~~ ✓ closed (spec 0080 D7,
-  2026-07-18), BL-63 (release checksum).
-- **Should fix before release:** BL-62 (redundant provides), BL-64 (OFL license).
-- **Reproducibility / polish, can follow:** BL-65, BL-66, BL-67, BL-68, BL-69, BL-70.
+  2026-07-18), ~~BL-63 (release checksum)~~ ✓ closed (spec 0090, 2026-07-18).
+- **Should fix before release:** ~~BL-62 (redundant provides)~~ ✓ closed
+  (spec 0085), ~~BL-64 (OFL license)~~ ✓ closed (spec 0086).
+- **Reproducibility / polish:** ~~BL-65~~ ✓ closed (spec 0089), ~~BL-66~~ ✓
+  closed (spec 0084), ~~BL-67~~ ✓ closed (spec 0087), ~~BL-68~~ ✓ closed
+  (spec 0088 — D4's real-terminal-launch leg remains user-acceptance-pending),
+  ~~BL-69~~ ✓ closed (spec 0080), ~~BL-70~~ ✓ closed (spec 0080).
+- **Every finding from this audit is now resolved or superseded**, leaving
+  only: spec 0088 D4's real-terminal-launch check (user acceptance); BL-71
+  Part A (poe-executor fragility — applied to the two deploy-aur tasks by
+  spec 0084, but still a standing rule for any *future* poe task that shells
+  out to `makepkg`); and the three new namcap-sourced P3 items (BL-72–BL-74,
+  `kb/backlog.md`).
