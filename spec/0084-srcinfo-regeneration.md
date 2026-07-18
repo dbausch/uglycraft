@@ -11,18 +11,19 @@ rule to the deploy tasks).
 
 ## Status checklist
 
-- [ ] **D1** — `poe deploy-aur` regenerates `packaging/.SRCINFO` via
-  `makepkg --printsrcinfo` before copying it to the AUR sibling repo.
-- [ ] **D2** — `poe deploy-aur-git` likewise regenerates
-  `packaging/.SRCINFO-git` from `PKGBUILD-git`.
-- [ ] **D3** — both deploy tasks carry `executor = "simple"` (BL-71 Part A rule:
+- [x] **D1** — `poe deploy-aur` regenerates `packaging/.SRCINFO` via
+  `makepkg --printsrcinfo` before copying it to the AUR sibling repo. — c31b855
+- [x] **D2** — `poe deploy-aur-git` likewise regenerates
+  `packaging/.SRCINFO-git` from `PKGBUILD-git`. — c31b855
+- [x] **D3** — both deploy tasks carry `executor = "simple"` (BL-71 Part A rule:
   every poe task that shells out to `makepkg` pins the no-op executor so the
-  project venv can never leak into the build environment).
-- [ ] **D4** — the currently stale `packaging/.SRCINFO-git` is regenerated once
-  now and committed (drift: it says `pkgver = 1.4.r0.gf95b776`, the PKGBUILD
-  says `1.4.r20.g21ad119`).
-- [ ] **D5** — verified: `makepkg --printsrcinfo` output matches the committed
-  files byte-for-byte for both PKGBUILDs after D4.
+  project venv can never leak into the build environment). — c31b855
+- [x] **D4** — the currently stale `packaging/.SRCINFO-git` is regenerated once
+  now and committed (drift: it said `pkgver = 1.4.r0.gf95b776`, the PKGBUILD
+  says `1.4.r20.g21ad119`). — c31b855
+- [x] **D5** — verified: `makepkg --printsrcinfo` output matches the committed
+  files byte-for-byte for both PKGBUILDs after D4. — c31b855; the release
+  `.SRCINFO` already matched before this change and needed no regeneration.
 
 ## Background — confirmed facts
 
@@ -73,8 +74,11 @@ this spec changes task text and one stale metadata file only.
 
 ## Done when:
 
-- [ ] **D1** — `deploy-aur` regenerates `.SRCINFO` before copying.
-- [ ] **D2** — `deploy-aur-git` regenerates `.SRCINFO-git` before copying.
-- [ ] **D3** — both tasks pinned to `executor = "simple"`.
-- [ ] **D4** — stale `.SRCINFO-git` regenerated and committed.
-- [ ] **D5** — `makepkg --printsrcinfo` output matches both committed files.
+- [x] **D1** — `deploy-aur` regenerates `.SRCINFO` before copying. — c31b855
+- [x] **D2** — `deploy-aur-git` regenerates `.SRCINFO-git` before copying. — c31b855
+- [x] **D3** — both tasks pinned to `executor = "simple"`. — c31b855
+- [x] **D4** — stale `.SRCINFO-git` regenerated and committed. — c31b855
+- [x] **D5** — `makepkg --printsrcinfo` output matches both committed files.
+  — c31b855; verified with `cd packaging && makepkg --printsrcinfo | diff -
+  .SRCINFO` and the `-p PKGBUILD-git` equivalent against `.SRCINFO-git`, both
+  empty diffs.
