@@ -1,10 +1,29 @@
+[build-system]
+requires      = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name        = "uglycraft"
 version     = "1.5"
 description = "A remake of UGLI (1996), a DOS maze-chase game"
 authors     = [{name = "Daniel Bausch", email = "db@edv-bausch.de"}]
 requires-python = ">=3.10"
-dependencies    = ["pygame>=2.0", "numpy", "pyinstaller"]
+dependencies    = ["pygame>=2.0", "numpy"]
+
+[project.optional-dependencies]
+dev = ["pyinstaller", "pytest", "pytest-xdist", "hypothesis"]
+
+[project.scripts]
+uglycraft = "uglycraft.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+uglycraft = ["fonts/*.ttf", "translations/*.txt"]
 
 [tool.poe]
 verbosity = -1
@@ -13,7 +32,7 @@ verbosity = -1
 
 [tool.poe.tasks.install]
 help  = "Create venv and install all dependencies"
-shell = "virtualenv .venv && .venv/bin/pip install -r requirements.txt"
+shell = "virtualenv .venv && .venv/bin/pip install -e \".[dev]\""
 
 [tool.poe.tasks.test]
 help = "Run the full test suite in parallel (generator, goldens, world-model units). Serial: poe test -- -n0"
