@@ -58,7 +58,9 @@ that path is a filesystem `cp -r`, not an import.
 - [ ] **D9** — Daniel confirms: suite green, `poe run` renders font + history, and
   the **Linux binary** builds with **no `--collect-data` warning** and runs with
   font + story (closing 0080 D9 Linux leg + re-validating D10); `makepkg` install
-  still works from the `src/` source path.
+  still works from the `src/` source path. — **dev run and Linux binary
+  confirmed by Daniel, 2026-07-18**; `makepkg` still open (needs these commits
+  pushed first — both PKGBUILDs source from the GitHub tag/repo).
 
 ## Decisions (forks) — all confirmed 2026-07-18
 
@@ -281,22 +283,32 @@ unchanged).
 
 1. **Fresh install** — `poe install` (or re-`pip install -e ".[dev]"` in the
    existing venv) succeeds; `.venv/bin/python -c "import uglycraft; print('ok')"`
-   works from an arbitrary cwd.
-2. **Suite** — `poe test` green.
+   works from an arbitrary cwd. — ✓ self-verified 2026-07-18 (import from `/tmp`
+   resolved to `src/uglycraft/__init__.py`).
+2. **Suite** — `poe test` green. — ✓ self-verified 2026-07-18 (895 passed after
+   the `test_overlay_box.py` fix, 4160602).
 3. **Headless import** — `python -m uglycraft --dump-level 3 --seed 1` exits 0
-   (drives the import graph, pygame-free).
-4. **Dev run** — `poe run` renders font + history.
+   (drives the import graph, pygame-free). — ✓ self-verified 2026-07-18 (exit 0
+   from an unrelated cwd, both the dev interpreter and the frozen binary).
+4. **Dev run** — `poe run` renders font + history. — ✓ **confirmed by Daniel**,
+   2026-07-18.
 5. **Linux build** — `poe build-linux`: **no `collect_data_files` warning**; the
    onefile binary in `dist/linux-64/` launches and plays with font + story
    (this is the 0080 D9/D10 fix — verify the assets are actually in the bundle,
    e.g. a onedir probe or kept-tmp extraction shows `uglycraft/fonts/…` +
    `uglycraft/translations/…`). `build-windows` at least builds (Wine),
-   likewise warning-free.
+   likewise warning-free. — ✓ **confirmed by Daniel** (`poe build-linux && dist/
+   linux-64/uglycraft`), 2026-07-18; warning-free build and bundled-asset check
+   (`pyi-archive_viewer`) also self-verified same day. `build-windows` (Wine)
+   not yet re-checked.
 6. **Package** — `cd packaging && makepkg -f`: builds from the `src/` source,
    installs `…/site-packages/uglycraft/` with all modules + assets; the installed
-   `uglycraft` reaches the menu (BL-61 stays closed).
+   `uglycraft` reaches the menu (BL-61 stays closed). — **not yet run**: both
+   PKGBUILDs source from the pushed GitHub tag/repo, so a real `makepkg -f`
+   needs these commits pushed first. Structurally simulated locally instead
+   (see D5 note above) — still open for a real AUR-side check.
 7. **User acceptance (D9)** — Daniel confirms 4–5 in-game. Ticked only after he
-   says so.
+   says so. — ✓ **confirmed by Daniel**, 2026-07-18 (items 4 and 5 above).
 
 ## Out of scope
 
@@ -342,4 +354,6 @@ unchanged).
   (+ `kb/architecture.md` if needed) reflect the `src/` install-based layout. —
   5ea44b0
 - [ ] **D9** — Daniel confirms suite + dev run + a warning-free Linux binary that
-  renders font + story, and a working `makepkg` install (closes 0080 D9/D10).
+  renders font + story, and a working `makepkg` install (closes 0080 D9/D10). —
+  dev run + Linux binary confirmed 2026-07-18; `makepkg` still open (needs a
+  push first).
