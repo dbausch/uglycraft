@@ -1830,3 +1830,69 @@ source-path display, not functionality.
 `makepkg` with `executor = "simple"` in its `pyproject.toml` definition.
 
 ---
+
+## BL-72 · P3 · uglycraft-git split package missing makedepends for python/pygame/numpy (namcap)
+
+namcap flagged `PKGBUILD-git`: "Split PKGBUILD needs additional makedepends
+[python, python-numpy, python-pygame] to work properly" for the
+`uglycraft-git` split package. `package_uglycraft-git()` declares only
+`depends=('python' 'python-pygame' 'python-numpy')` (runtime) — namcap's
+split-package heuristic wants build-time-needed packages (here, `python`
+itself, needed to run `compileall` during `package()`) declared in
+`makedepends` too. Structurally the release `PKGBUILD` has the identical
+shape — pkgbase-level `makedepends=('fpc')` (`+git` only in `-git`),
+`package_uglycraft()`/`package_uglycraft-git()` both declare only the
+runtime `depends`, no python-related `makedepends` at all — so the same
+finding plausibly applies to the release PKGBUILD too; this namcap pass only
+observed the warning on `-git`, it was not confirmed absent on the release
+one.
+
+**Fix hint:** add `makedepends=('python')` (or namcap's full suggested
+triple) to `package_uglycraft-git()`, and run namcap against the release
+`packaging/PKGBUILD` under the same rule — if it also flags, fix both
+PKGBUILDs together (and `PKGBUILD-dev` for consistency, though it is never
+deployed). `python-pygame`/`python-numpy` are only import-time deps of the
+shipped `.py` source, not needed merely to `compileall`, so `makedepends=
+('python')` alone may already satisfy namcap — verify against its rationale
+before adding the full triple. Regenerate `.SRCINFO`/`.SRCINFO-git`
+afterwards (spec 0084 mechanism).
+
+---
+
+## BL-73 · P3 · Missing hicolor-icon-theme dependency for the split packages installing icons (namcap)
+
+namcap flagged: "Dependency hicolor-icon-theme detected and not included
+(needed for hicolor theme hierarchy)" on the `uglycraft` package. Both
+`uglycraft`/`uglycraft-git` and `ugli`/`ugli-git` install a `.svg` under
+`/usr/share/icons/hicolor/scalable/apps/` (`packaging/PKGBUILD:64-65,94-95`
+and the `-git`/`-dev` equivalents) but none of the four split packages
+depend on `hicolor-icon-theme`, which owns the hicolor directory hierarchy
+and the `gtk-update-icon-cache` trigger.
+
+**Fix hint:** add `hicolor-icon-theme` to `depends` of `package_uglycraft*()`
+and `package_ugli*()` in all three PKGBUILDs (release, `-git`, `-dev`).
+Regenerate `.SRCINFO`/`.SRCINFO-git` afterwards (spec 0084 mechanism).
+
+---
+
+## BL-74 · P3 · UGLI_2 binary lacks FULL RELRO and PIE hardening (namcap)
+
+namcap warns on the built `ugli`/`ugli-git`/`ugli-dev` packages' `UGLI_2`
+ELF binary: it lacks FULL RELRO and lacks PIE. This is a compiler/linker
+hardening gap in the FPC build (`build()` in all three PKGBUILDs runs plain
+`fpc -Fuuos UGLI_2.pp`), not a packaging-metadata issue — unlike every other
+namcap finding from this pass (BL-62/64/66/67/68, all fixed at the PKGBUILD
+level), this one needs FPC compiler/linker flags instead. Low priority
+polish; the binary already worked and shipped without hardening for the
+v1.5 release.
+
+**Fix hint:** research FPC linker/hardening flags before implementing —
+candidates are passing `-z,relro,-z,now` to the linker via FPC's `-k` option
+for RELRO/BIND_NOW, and enabling PIE codegen (FPC's PIE support varies by
+target/FPC version and may need `-Cg`-style options, or may not be available
+at all for this target — needs a research pass into FPC docs first). Apply
+in `build()` in all three PKGBUILDs (release, `-git`, `-dev`) if achievable,
+then re-run `poe test-original`/`poe build-original` to confirm `UGLI_2`
+still runs correctly with hardening enabled.
+
+---
