@@ -1943,3 +1943,32 @@ own Pascal code (`UGLI_2.pp`, `UOSSound.pp`, etc.) — scope any suppression
 strictly to the three UOS units.
 
 ---
+
+## BL-76 · P3 · `poe test-original` emits 3 FPC warnings not seen in `poe build-original`
+
+`poe test-original` (building `UGLI_2_Test.pp`) emits 3 FPC warnings not
+seen when `poe build-original` builds `UGLI_2.pp`:
+
+```
+UGLI_2_Core.inc(53,3) Warning: Variable "TTYFd" read but nowhere assigned
+UGLI_2_Core.inc(54,3) Warning: Variable "SavedTio" read but nowhere assigned
+UGLI_2_Core.inc(54,13) Warning: Variable "RawTio" read but nowhere assigned
+```
+
+These three vars are assigned in the raw-terminal-mode init routine in
+`original/UGLI_2_Core.inc` (used around line ~1900s, `tcsetattr` calls). The
+warnings appear only in the test binary's compile (`UGLI_2_Test.pp`), not
+the main binary's (`UGLI_2.pp`) — likely because the test binary's reachable
+code never calls whatever procedure performs the assignment
+(`fpOpen('/dev/tty')`-based init), so FPC's per-routine analysis in the test
+binary sees the vars read (in `tcsetattr`/`fpIoctl`/`fpRead` calls) but
+never assigned within reachable code. Confirmed reproducible across two
+consecutive `poe test-original` runs on 2026-07-18.
+
+**Fix hint:** either call the init routine (or a stub) reachably in the
+test build, or explicitly initialize `TTYFd`/`SavedTio`/`RawTio` in test
+setup, or investigate whether this is a false positive from FPC's
+whole-program dead-code analysis in test mode. Low priority — cosmetic
+warning, not a correctness bug, and does not affect `poe build-original`.
+
+---
