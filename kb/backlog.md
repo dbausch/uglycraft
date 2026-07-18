@@ -2023,7 +2023,7 @@ assignments (`TTYFd := -1;` and `FillChar` of `SavedTio`/`RawTio`) added at
 the top of `UGLI_2_Test.pp`'s main `begin` block, following the `RawTTYFd`
 initializer precedent. Verified `poe test-original` now compiles with zero
 warnings (159 tests pass, exit 0) and `poe build-original` shows no new
-messages. → spec/silence-test-tty-warnings.md
+messages. → original/spec/silence-test-tty-warnings.md
 
 `poe test-original` (building `UGLI_2_Test.pp`) emits 3 FPC warnings not
 seen when `poe build-original` builds `UGLI_2.pp`:
