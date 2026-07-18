@@ -26,6 +26,11 @@ BL-72–BL-74). → Backlog: BL-73.
 - [ ] **D5** — verified: `namcap` run against the built packages (via `poe
   package-dev`) no longer emits the `hicolor-icon-theme` finding; `poe
   package-dev` still builds successfully.
+- [ ] **D6** — `hicolor-icon-theme` also added to pkgbase-level `makedepends`
+  in all three PKGBUILDs — required by namcap's `SplitPkgMakedepsRule` (see
+  spec 0092): a subpackage `depends` entry must be covered by the pkgbase
+  `makedepends` closure; discovered during implementation when the D1–D3
+  edits re-triggered the split-makedeps error.
 
 ## Background — confirmed facts
 
@@ -87,6 +92,30 @@ BL-72–BL-74). → Backlog: BL-73.
 - `ugli` currently has no `depends` array at all (only `optdepends`), so
   adding this dependency introduces the array for that split package for the
   first time in `PKGBUILD`; `-git`/`-dev` are the same.
+- **D6 — pkgbase-makedepends interaction, found during implementation.**
+  After D1–D3 were committed (adding `hicolor-icon-theme` to each
+  `package_*()` function's `depends`), a re-run of `namcap packaging/PKGBUILD`
+  and `namcap packaging/PKGBUILD-git` produced a *new* instance of the same
+  rule spec 0092 fixed for `python`/`python-numpy`/`python-pygame`: `E: Split
+  PKGBUILD needs additional makedepends ['hicolor-icon-theme'] to work
+  properly`. This is the identical mechanism spec 0092 documented in depth
+  (`Namcap.rules.splitpkgbuild.SplitPkgMakedepsRule`,
+  `Namcap/rules/splitpkgbuild.py:29-62`): the rule requires every name a
+  subpackage lists in `depends`/`makedepends` to be reachable from the
+  pkgbase-level `makedepends` array (directly, or via the transitive
+  dependency closure `Namcap.depends.getcovered()` resolves against the local
+  pacman database). Adding `hicolor-icon-theme` to the eight `package_*()`
+  `depends` arrays satisfies the *packaging guideline* this spec exists to
+  fix, but simultaneously creates a new entry in each subpackage's
+  `local_deps` that pkgbase-level `makedepends` does not cover — so the same
+  heuristic that spec 0092 silenced for the three Python packages fires again
+  for this one. Empirically confirmed: temporarily appending
+  `'hicolor-icon-theme'` to `packaging/PKGBUILD`'s pkgbase-level `makedepends`
+  array and re-running namcap leaves only the expected benign findings
+  (`Missing Maintainer tag`, `description contains name`) — the split-makedeps
+  finding is fully silenced by the one-line addition, mirroring spec 0092's
+  own verified fix exactly. D6 applies that same addition permanently to all
+  three PKGBUILDs.
 
 ## The fix
 
@@ -117,3 +146,8 @@ overrides.
 - [ ] **D5** — a `poe package-dev` build followed by namcap against the
   built `uglycraft-dev`/`ugli-dev` packages shows no `hicolor-icon-theme`
   finding.
+- [ ] **D6** — pkgbase-level `makedepends` in all three PKGBUILDs includes
+  `hicolor-icon-theme` (alongside the entries spec 0092 added); `.SRCINFO`/
+  `.SRCINFO-git` regenerated to show the new pkgbase-level `makedepends =
+  hicolor-icon-theme` line; `namcap packaging/PKGBUILD` and `namcap
+  packaging/PKGBUILD-git` run clean of all split-makedeps findings.
