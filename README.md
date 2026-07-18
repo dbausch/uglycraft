@@ -107,11 +107,11 @@ Output: `dist/windows-64/uglycraft.exe` (~25 MB, self-contained).
 
 ### Original UGLI 2 (Linux port)
 
-Requires Free Pascal (one-time system install):
+Requires Free Pascal and curl (one-time system install):
 
 ```bash
-sudo pacman -S fpc   # Arch / Manjaro
-# sudo apt install fpc   # Debian / Ubuntu
+sudo pacman -S fpc curl   # Arch / Manjaro
+# sudo apt install fpc curl   # Debian / Ubuntu
 ```
 
 Then build:
@@ -120,7 +120,7 @@ Then build:
 poe build-original
 ```
 
-Output: `original/UGLI_2`. Requires a terminal of at least 80×25 characters. Tested in [kitty](https://sw.kovidgoyal.net/kitty/).
+The first run fetches the UOS audio sources (pinned to a fixed upstream commit) with curl. Output: `original/UGLI_2`. Requires a terminal of at least 80×25 characters; sound needs `libportaudio.so.2` at runtime (the game runs silently without it). Tested in [kitty](https://sw.kovidgoyal.net/kitty/).
 
 ---
 
@@ -194,17 +194,29 @@ Being caught without a shield costs 500 points and one life.
 ## All poe tasks
 
 ```bash
-poe install                # create venv and install dependencies
+poe install                # create venv and install dependencies (editable)
 poe run                    # run the game (e.g. poe run --level 5)
+poe test                   # run the pytest suite (parallel; serial: poe test -- -n0)
+poe docs-install           # one-time: create .venv-docs for the local docs site
+poe docs                   # serve the local spec/kb docs site (dev aid, never published)
 poe build-linux            # build dist/linux-64/uglycraft
 poe setup-windows          # one-time: install Python + deps into Wine
 poe build-windows          # build dist/windows-64/uglycraft.exe
 poe build-original         # build original/UGLI_2 with FPC
+poe test-original          # build and run the Pascal test suite (UGLI_2_Test)
+poe run-original           # build and launch the FPC port in a terminal window
+poe run-original-dos       # run the original DOS exe in DOSBox
+poe build-replay           # build the WBFlush replay debugging utility
+poe bench-original         # build and run the BufFlush benchmark
+poe make-pot               # regenerate the translation template from resourcestrings
 poe clean                  # remove all build artifacts
+poe package-dev            # build Arch dev packages from the local checkout
 poe deploy                 # push all live channels (Linux, Windows, original Linux) + AUR
 poe deploy-uglycraft       # push UGLYCRAFT Linux and Windows only
 poe deploy-original-linux  # push FPC Linux port only
 poe deploy-original-dos    # push original DOS exe (frozen — never redeployed)
+poe deploy-aur             # regenerate .SRCINFO and push the release PKGBUILD to AUR
+poe deploy-aur-git         # regenerate .SRCINFO-git and push the -git PKGBUILD to AUR
 ```
 
 ---
@@ -240,7 +252,7 @@ hiscore.py      Top-10 score persistence (uglycraft.hsc)
 
 ## Origins
 
-UGLI was first written in 1993 by Daniel Bausch using Turbo Pascal on MS-DOS, then developed further through 1996 into a second version with improved mechanics including wall placement. The 1996 source code (`UGLI_2.PAS`, `DANISOFT.PAS`, `EXTRA1.PAS`) is preserved in this repository as a historical reference. UGLYCRAFT shares the genre and core mechanics but is otherwise a fresh implementation.
+UGLI was first written in 1993 by Daniel Bausch using Turbo Pascal on MS-DOS, then developed further through 1996 into a second version with improved mechanics including wall placement. The raw 1996 source is preserved in this repository (`original/UGLI_2.ORIG`), alongside an actively maintained Free Pascal port (`original/UGLI_2.pp`) that runs in a modern Linux terminal — with English/German translations, UOS/PortAudio sound, and its own test suite (see [`original/README.md`](original/README.md)). UGLYCRAFT shares the genre and core mechanics but is otherwise a fresh implementation.
 
 ![UGLI 2 (1996) — screenshot from the FPC port running on Linux](screenshot-original-linux.png)
 
