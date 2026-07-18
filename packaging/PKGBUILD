@@ -37,6 +37,7 @@ build() {
 
 package_uglycraft() {
   pkgdesc='Treasure-collecting arcade game inspired by UGLI (1996)'
+  arch=('any')
   license=('GPL-3.0-only' 'OFL-1.1')
   depends=('python' 'python-pygame' 'python-numpy')
   conflicts=('uglycraft-git')
