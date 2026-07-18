@@ -318,11 +318,32 @@ Independent of the AUR fixes.
 - **namcap has now been run** (system-installed, `namcap 3.6.0-3`) against
   both PKGBUILDs and both built dev packages (`uglycraft-dev`, `ugli-dev`).
   Every finding this audit tracked (BL-62, BL-64, BL-66, BL-67, BL-68) came
-  back clean. The only remaining namcap output falls outside this audit's
-  original findings — RELRO/PIE hardening on the FPC `UGLI_2` binary, a
-  `uglycraft-git` split-makedepends note, and a missing
-  `hicolor-icon-theme` dependency — and has been filed as new backlog items
-  (`kb/backlog.md` BL-72–BL-74).
+  back clean. Three more findings fell outside this audit's original
+  scope and were filed as new backlog items (`kb/backlog.md` BL-72–BL-74):
+  a `uglycraft-git` split-makedepends note, a missing `hicolor-icon-theme`
+  dependency, and RELRO/PIE hardening on the FPC `UGLI_2` binary. **The
+  first two are now RESOLVED** — split makedepends by spec 0092
+  (commit ed3539f, BL-72) and hicolor-icon-theme by spec 0093 (commits
+  c0d7973 + 8f3c117, BL-73); see `kb/backlog.md` for the closure detail.
+  Only RELRO/PIE (BL-74) remains open of the three.
+
+**Two durable insights from resolving BL-72/BL-73** (kept here because they
+generalize to any future namcap-driven PKGBUILD fix, not just this pass):
+
+1. namcap's split-makedeps rule (`SplitPkgMakedepsRule`) resolves a
+   subpackage's dependency coverage against the **local pacman database**,
+   not the PKGBUILD in isolation — a clean namcap run on a machine that
+   happens to have a related package installed (e.g. `uglycraft-dev`
+   providing `uglycraft`) is **not** evidence of correctness. Always judge
+   namcap PKGBUILD findings from a clean-DB perspective; the release
+   PKGBUILD's apparently-clean run during the original audit was exactly
+   this trap. → see spec/0092-split-package-makedepends.md
+2. Any `depends` entry added to a split subpackage must also be covered by
+   pkgbase-level `makedepends`, or the same split-makedeps rule fires again
+   for that new entry — this is how adding `hicolor-icon-theme` to each
+   `package_*()`'s `depends` re-triggered the rule spec 0092 had just
+   silenced, requiring `hicolor-icon-theme` in pkgbase-level `makedepends`
+   too. → see spec/0093-hicolor-icon-theme-dependency.md (D6)
 
 ## Priority summary
 
@@ -338,5 +359,6 @@ Independent of the AUR fixes.
   only: spec 0088 D4's real-terminal-launch check (user acceptance); BL-71
   Part A (poe-executor fragility — applied to the two deploy-aur tasks by
   spec 0084, but still a standing rule for any *future* poe task that shells
-  out to `makepkg`); and the three new namcap-sourced P3 items (BL-72–BL-74,
-  `kb/backlog.md`).
+  out to `makepkg`); and, of the three namcap-sourced follow-on items
+  (BL-72–BL-74, `kb/backlog.md`), only **BL-74** (RELRO/PIE hardening) still
+  open — ~~BL-72~~ ✓ closed (spec 0092) and ~~BL-73~~ ✓ closed (spec 0093).
