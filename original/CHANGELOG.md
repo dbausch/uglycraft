@@ -7,6 +7,15 @@ game. The DOS executable (UGLI_2.EXE) remains unchanged at version 2.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Silenced the three FPC 5061 "read but nowhere assigned" warnings that
+  `poe test-original` emitted for `TTYFd`, `SavedTio`, and `RawTio` (globals
+  only assigned by the terminal-init code the headless test binary never
+  runs). Assigned at the top of `UGLI_2_Test.pp`'s main block, following the
+  existing `RawTTYFd` precedent. No behaviour change; `poe build-original`
+  output is unaffected.
+
 ---
 
 ## 2.6
