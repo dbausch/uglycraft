@@ -2,11 +2,11 @@
 
 ## Status
 
-- [ ] Three assignment lines added at the top of `UGLI_2_Test.pp`'s main
-  `begin` block (`TTYFd`, `SavedTio`, `RawTio`)
-- [ ] `poe test-original` compiles with **zero** warnings (was 3) and the
-  suite still passes (exit 0)
-- [ ] `poe build-original` output unchanged (no new messages)
+- [x] Three assignment lines added at the top of `UGLI_2_Test.pp`'s main
+  `begin` block (`TTYFd`, `SavedTio`, `RawTio`) — `0914728`
+- [x] `poe test-original` compiles with **zero** warnings (was 3) and the
+  suite still passes (exit 0) — `0914728`
+- [x] `poe build-original` output unchanged (no new messages) — `0914728`
 
 ---
 
@@ -89,7 +89,12 @@ No new test case applies — the deliverable is a compile-log property:
 
 ## Done when
 
-- [ ] The three assignments are present at the top of `UGLI_2_Test.pp`'s
-  main `begin` block.
-- [ ] `poe test-original` compiles warning-free and passes (exit 0).
-- [ ] `poe build-original` output shows no new messages.
+- [x] The three assignments are present at the top of `UGLI_2_Test.pp`'s
+  main `begin` block. — `0914728`
+- [x] `poe test-original` compiles warning-free and passes (exit 0). —
+  `0914728`; verified: 159 tests, 0 errors, 0 failures, zero warning/note
+  lines in the build log.
+- [x] `poe build-original` output shows no new messages. — `0914728`;
+  verified: build log contains zero warning/note lines (even the baseline
+  UOSSound.pp(57) note was absent this run due to an up-to-date cached
+  `.ppu`; nothing new appeared regardless).
