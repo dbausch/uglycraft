@@ -1702,13 +1702,25 @@ path (which contains the literal `$pkgdir` prefix) as each .pyc's source-file
 metadata, instead of the final runtime path. Only affects traceback
 source-path display, not functionality.
 
+> **RESOLVED — Part B, confirmed 2026-07-18.** Changed
+> `python -m compileall -q "$pkgdir$_site/uglycraft"` to
+> `python -m compileall -q -d "$_site/uglycraft" "$pkgdir$_site/uglycraft"` in
+> all three PKGBUILDs (`packaging/PKGBUILD`, `packaging/PKGBUILD-git`,
+> `packaging/PKGBUILD-dev`). `compileall`'s `-d DESTDIR` flag (verified against
+> CPython 3.14's `compileall.py`) strips the compiled directory's own prefix
+> and substitutes `DESTDIR` in each .pyc's embedded `co_filename`/traceback
+> path, rather than the literal fakeroot path. `.SRCINFO`/`.SRCINFO-git` needed
+> no changes — the fix is inside a function body, not build metadata. Verified
+> empirically: before the fix, `strings` on the installed .pyc showed the full
+> fakeroot build path; after, only the correct runtime path (e.g.
+> `/usr/lib/python3.14/site-packages/uglycraft/main.py`) is embedded, and a
+> `poe package-dev` rebuild produced zero makepkg packaging-issue warnings,
+> with the package still installing and running correctly (font + history
+> load fine from the installed tree). **BL-71 Part B closed.** Part A remains
+> open (see fix hint above) for any future `poe`-based makepkg task on the
+> release/git PKGBUILDs.
+
 **Fix hint (Part A):** always pair any future `poe` task that shells out to
 `makepkg` with `executor = "simple"` in its `pyproject.toml` definition.
-
-**Fix hint (Part B):** use compileall's `-s <strip-path> -p <prefix>` options
-(available since Python 3.9) in all three PKGBUILDs' `package_uglycraft*()`
-functions: `python -m compileall -q -s "$pkgdir$_site" -p "$_site"
-"$pkgdir$_site/uglycraft"` (or equivalent), so the embedded .pyc source paths
-match the real installed location rather than the build-time staging path.
 
 ---
