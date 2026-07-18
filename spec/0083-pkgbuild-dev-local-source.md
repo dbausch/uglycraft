@@ -11,29 +11,42 @@ dev tool only** — never copied to an AUR sibling repo, never given a
 
 ## Status checklist
 
-- [ ] **D1** — `packaging/PKGBUILD-dev` added: mirrors `PKGBUILD-git`
+- [x] **D1** — `packaging/PKGBUILD-dev` added: mirrors `PKGBUILD-git`
   (`pkgbase=uglycraft-dev`, split packages `uglycraft-dev` + `ugli-dev`), with
   one change — the game-source VCS entry points at a `git+file://` URL built
   from the PKGBUILD's own location (`${BASH_SOURCE[0]}`), not the public
   GitHub URL. No absolute path is hardcoded; it works from any clone/worktree
-  location.
-- [ ] **D2** — `pkgver()` derives from `git describe --long --tags` against
+  location. — d292c8d
+- [x] **D2** — `pkgver()` derives from `git describe --long --tags` against
   the local clone, same as `PKGBUILD-git`, so the built package version shows
   exactly which local commit it came from (e.g. `1.5.r7.g4160602` for commits
-  ahead of the `v1.5` tag).
-- [ ] **D3** — `.gitignore` gains `packaging/uglycraft-dev/` (the VCS-source
+  ahead of the `v1.5` tag). — d292c8d; verified: built as `1.5.r670.gd292c8d`,
+  matching `git describe --long --tags` run directly against this checkout
+- [x] **D3** — `.gitignore` gains `packaging/uglycraft-dev/` (the VCS-source
   bootstrap clone directory makepkg creates beside the PKGBUILD), mirroring
-  the existing `packaging/uglycraft-git/` entry.
-- [ ] **D4** — convenience `poe package-dev` task: `cd packaging && makepkg -p
-  PKGBUILD-dev -f`.
-- [ ] **D5** — `CLAUDE.md` § *Arch packaging* documents `PKGBUILD-dev`: local
+  the existing `packaging/uglycraft-git/` entry. — d292c8d
+- [x] **D4** — convenience `poe package-dev` task: `cd packaging && makepkg -p
+  PKGBUILD-dev -f`. — d292c8d, 3327c7d (needed `executor = "simple"`, see D6)
+- [x] **D5** — `CLAUDE.md` § *Arch packaging* documents `PKGBUILD-dev`: local
   only, no `.SRCINFO`, never deployed, exists to let `makepkg` be exercised
-  against local commits without pushing.
-- [ ] **D6** — verified: `poe package-dev` builds successfully from the
+  against local commits without pushing. — d292c8d
+- [x] **D6** — verified: `poe package-dev` builds successfully from the
   current local repo (including today's spec 0082 commits, not yet pushed to
   GitHub), producing installable `uglycraft-dev` + `ugli-dev` packages; the
   installed `uglycraft-dev` reaches the menu with font + story (closes the
-  `makepkg` gap left open in spec 0082 D9).
+  `makepkg` gap left open in spec 0082 D9). — 3327c7d; verified the built
+  `.pkg.tar.zst` directly (`tar -tvf`) rather than a real `pacman -U`, since
+  this machine already has a real `uglycraft`/`uglycraft-git` AUR package
+  installed and `uglycraft-dev` conflicts with both — installing it would have
+  altered live system package state, so I extracted the package tree instead
+  and ran `python -m uglycraft --dump-level` plus a direct
+  `pygame.font.Font(...)` load against the extracted
+  `usr/lib/python3.14/site-packages/uglycraft/{fonts,translations}` tree from
+  an unrelated cwd: both the font and the history text load correctly. Found
+  and fixed one real bug along the way (see D4 note): poethepoet's default
+  executor injected `.venv/bin` into the build's `PATH`, corrupting `_site`
+  detection until `executor = "simple"` was added — filed as BL-71 for the
+  shared, currently-unaffected `_site` line in `PKGBUILD`/`PKGBUILD-git` too.
 
 ## Decision — confirmed 2026-07-18
 
@@ -162,12 +175,15 @@ description:
 
 ## Done when:
 
-- [ ] **D1** — `packaging/PKGBUILD-dev` exists, mirrors `PKGBUILD-git`, sources
-  the game via a `${BASH_SOURCE[0]}`-derived `git+file://` URL.
-- [ ] **D2** — `pkgver()` reports the local commit correctly.
-- [ ] **D3** — `.gitignore` covers `packaging/uglycraft-dev/`.
-- [ ] **D4** — `poe package-dev` task added.
-- [ ] **D5** — `CLAUDE.md` documents `PKGBUILD-dev` as local-only.
-- [ ] **D6** — `poe package-dev` builds and installs successfully from local
+- [x] **D1** — `packaging/PKGBUILD-dev` exists, mirrors `PKGBUILD-git`, sources
+  the game via a `${BASH_SOURCE[0]}`-derived `git+file://` URL. — d292c8d
+- [x] **D2** — `pkgver()` reports the local commit correctly. — d292c8d
+- [x] **D3** — `.gitignore` covers `packaging/uglycraft-dev/`. — d292c8d
+- [x] **D4** — `poe package-dev` task added. — d292c8d, 3327c7d
+- [x] **D5** — `CLAUDE.md` documents `PKGBUILD-dev` as local-only. — d292c8d
+- [x] **D6** — `poe package-dev` builds and installs successfully from local
   commits, and the installed `uglycraft-dev` reaches the menu with font +
-  story.
+  story. — 3327c7d; verified via built-package inspection + an extracted-tree
+  headless run (font + history load correctly) rather than a real `pacman -U`,
+  since this machine has a live conflicting `uglycraft`/`uglycraft-git`
+  install that a real install would have disturbed
