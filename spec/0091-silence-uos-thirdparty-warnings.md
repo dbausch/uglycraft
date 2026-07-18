@@ -17,21 +17,21 @@ Pascal sources in the same log. This spec silences the third-party clutter
 
 ## Status checklist
 
-- [ ] **D1** — A fixed FPC message-directive block
+- [x] **D1** — A fixed FPC message-directive block
   (`{$WARN 4105 OFF} {$WARN 5025 OFF} {$WARN 5027 OFF} {$WARN 5089 OFF}
   {$WARN 5093 OFF} {$WARN 6058 OFF}` + a `UGLYCRAFT-WARN-SUPPRESS` sentinel
   comment) is prepended to each of the three fetched UOS units after they are
   fetched/copied, in `pyproject.toml`'s `build-original` task.
-- [ ] **D2** — The same prepend step is added to the `prepare()` (or start of
+- [x] **D2** — The same prepend step is added to the `prepare()` (or start of
   `build()`) of all three PKGBUILDs, right after the `cp …/uos*.pas
   original/uos/` step.
-- [ ] **D3** — The prepend is idempotent: guarded by the sentinel so a repeat
+- [x] **D3** — The prepend is idempotent: guarded by the sentinel so a repeat
   build over an already-patched working tree (the poe task fetches only when
   the file is absent) does not stack duplicate directive blocks.
-- [ ] **D4** — Clean build demonstrated: `poe build-original` shows **0**
+- [x] **D4** — Clean build demonstrated: `poe build-original` shows **0**
   UOS-originated warnings/notes (was 5 + 18). `poe test-original` and
   `poe package-dev` likewise show no UOS clutter.
-- [ ] **D5** — Scoping proven: a deliberately introduced warning in
+- [x] **D5** — Scoping proven: a deliberately introduced warning in
   project-own code (e.g. an unused local in `UGLI_2.pp`) still appears in the
   build log while the UOS suppression is active.
 
@@ -212,17 +212,33 @@ tolerated.
 
 ## Done when:
 
-- [ ] **D1** — `pyproject.toml` `build-original` prepends the six-number
+- [x] **D1** — `pyproject.toml` `build-original` prepends the six-number
   directive block (with sentinel) to all three fetched UOS units after fetch,
-  before the `fpc` line.
-- [ ] **D2** — All three PKGBUILDs (`PKGBUILD`, `PKGBUILD-git`,
+  before the `fpc` line. Implemented in `bbcd22e`.
+- [x] **D2** — All three PKGBUILDs (`PKGBUILD`, `PKGBUILD-git`,
   `PKGBUILD-dev`) prepend the same block in `prepare()` after the
-  `cp …/uos*.pas` step.
-- [ ] **D3** — The prepend is sentinel-guarded and idempotent (no duplicate
-  blocks across repeated builds).
-- [ ] **D4** — `poe build-original`, `poe test-original`, and
+  `cp …/uos*.pas` step. `bbcd22e`.
+- [x] **D3** — The prepend is sentinel-guarded and idempotent (no duplicate
+  blocks across repeated builds). `bbcd22e`. Verified: two consecutive
+  `poe build-original` runs left each patched `original/uos/*.pas` with
+  exactly one `UGLYCRAFT-WARN-SUPPRESS` line (`grep -c` = 1 for all three
+  files after both runs).
+- [x] **D4** — `poe build-original`, `poe test-original`, and
   `poe package-dev` all produce a build log free of UOS-originated
   warnings/notes (down from 5 warnings + 18 notes); `test-original` still
-  exits 0.
-- [ ] **D5** — A deliberately introduced warning in project-own code still
+  exits 0. Verified: `poe build-original` log contains zero
+  `uos.pas(`/`uos_flat.pas(`/`uos_portaudio.pas(` lines — only the expected
+  out-of-scope `UOSSound.pp(57,3)` note remains; `poe test-original` exits 0
+  with 159/159 tests passing and zero UOS lines (three unrelated
+  `UGLI_2_Core.inc` warnings about `TTYFd`/`SavedTio`/`RawTio` also appear —
+  pre-existing, confirmed unrelated to this change since the diff only
+  touches `original/uos/*.pas` content, filed as BL-76); `poe package-dev`
+  build() log shows the three UOS units compiling with zero warning/note
+  lines.
+- [x] **D5** — A deliberately introduced warning in project-own code still
   appears in the build log while UOS suppression is active (scoping proven).
+  Verified: adding an unused `UnusedD5Check: Integer` local next to
+  `Tio: Termios` in `UGLI_2.pp`'s main `var` block produced
+  `UGLI_2.pp(71,3) Note: Local variable "UnusedD5Check" not used` with zero
+  UOS lines in the same log; the temporary edit was reverted
+  (`git checkout -- original/UGLI_2.pp`), tree left clean.
