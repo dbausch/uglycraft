@@ -25,7 +25,7 @@ pkgbase = uglycraft-git
 	sha256sums = f3de3caf475fedeb5b0498520bb82b7d511d07d1072cd604387177f238cde9b9
 
 pkgname = uglycraft-git
-	pkgdesc = Treasure-collecting arcade game inspired by UGLI (1996) (git version)
+	pkgdesc = Retro style treasure hunting game with various puzzles (git version)
 	arch = any
 	license = GPL-3.0-only
 	license = OFL-1.1
@@ -37,7 +37,7 @@ pkgname = uglycraft-git
 	conflicts = uglycraft
 
 pkgname = ugli-git
-	pkgdesc = UGLI 2 (1996) — text-mode treasure game (Linux/FPC port) (git version)
+	pkgdesc = Terminal treasure hunting game (git version)
 	depends = hicolor-icon-theme
 	optdepends = portaudio: sound support via UOS/PortAudio
 	optdepends = kitty: terminal launcher with ANSI-87 colour theme

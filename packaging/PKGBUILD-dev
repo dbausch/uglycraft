@@ -1,3 +1,4 @@
+# Maintainer: Daniel Bausch <db@edv-bausch.de>
 # Local dev tool only (spec 0083) — builds from THIS checkout's own commit
 # history via a git+file:// source, so makepkg can be exercised against
 # local, not-yet-pushed commits without needing to push to GitHub first.
@@ -58,7 +59,7 @@ build() {
 }
 
 package_uglycraft-dev() {
-  pkgdesc='Treasure-collecting arcade game inspired by UGLI (1996) (local dev build)'
+  pkgdesc='Retro style treasure hunting game with various puzzles (local dev build)'
   arch=('any')
   license=('GPL-3.0-only' 'OFL-1.1')
   depends=('python' 'python-pygame' 'python-numpy' 'hicolor-icon-theme')
@@ -86,7 +87,7 @@ package_uglycraft-dev() {
 }
 
 package_ugli-dev() {
-  pkgdesc='UGLI 2 (1996) — text-mode treasure game (Linux/FPC port) (local dev build)'
+  pkgdesc='Terminal treasure hunting game (local dev build)'
   depends=('hicolor-icon-theme')
   optdepends=('portaudio: sound support via UOS/PortAudio'
               'kitty: terminal launcher with ANSI-87 colour theme'
