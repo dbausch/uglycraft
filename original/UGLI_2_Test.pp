@@ -2184,6 +2184,9 @@ var
 
 begin
   BufFlushEnabled := false;
+  TTYFd := -1;
+  FillChar(SavedTio, SizeOf(SavedTio), 0);
+  FillChar(RawTio, SizeOf(RawTio), 0);
   RegisterTest(TStringTests);
   RegisterTest(TBufferTests);
   RegisterTest(TLevelTests);
