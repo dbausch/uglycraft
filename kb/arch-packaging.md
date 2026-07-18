@@ -60,15 +60,24 @@ package: `hud`, `world`, `crafting`, `cells`, `rooms`, `levelgraph`,
 **Root cause:** the module list went stale after the world/hud/crafting split
 (specs 0045–0047, 0072). Only the `ugli` (Pascal) half is unaffected.
 
-**Fix:** replace the explicit list with a glob. `git ls-files '*.py' | grep -v /`
-is exactly the 16 game files (repo root has no other `.py`; `tests/` is a subdir),
-so from inside the source dir:
+**Fix (spec 0080):** the durable fix is to make the game a real **package** —
+move all 16 modules into `uglycraft/` and install the whole directory as one unit
+into site-packages, run as `python -m uglycraft`. The install list then cannot go
+stale, because there is no list:
 
 ```bash
-install -m644 *.py "$pkgdir/usr/share/uglycraft/"
+_site=$(python -c "import site; print(site.getsitepackages()[0])")
+install -d "$pkgdir$_site"
+cp -r uglycraft "$pkgdir$_site/"
+python -m compileall -q "$pkgdir$_site/uglycraft"   # folds in BL-69
 ```
 
-Future-proof — new modules ship automatically, and `leveldump` is picked up too.
+The wrapper becomes `exec python -m uglycraft "$@"`, and the bundled font +
+history text now ride **inside** the package (`uglycraft/fonts`,
+`uglycraft/translations`) instead of being installed separately. (An earlier plan
+used a flat `install -m644 *.py …` glob; the package restructure was chosen
+instead — it fixes the root cause and follows the standard Python layout. See
+spec 0080, decision 2026-07-16.)
 
 ### P2 — redundant `provides=($pkgname)` (BL-62)
 
@@ -144,7 +153,9 @@ The loose `.py` files land in root-owned `/usr/share/uglycraft`; at first run
 Python tries to write `__pycache__` there, fails silently, and recompiles every
 launch. Proper Python packaging precompiles bytecode (`python -m compileall`, or
 `--optimize=1` in the setuptools path). Minor; commonly skipped for loose-script
-games.
+games. **Folded into spec 0080:** the site-packages install byte-compiles the
+package with `python -m compileall`, and the package lives in a writable
+site-packages dir, so first-launch recompilation no longer applies.
 
 ### P3 — stale `pyproject.toml [project]` metadata (BL-70)
 

@@ -126,11 +126,11 @@ poe run
 poe run --level 5        # start at a specific level
 ```
 
-Or directly:
+Or directly (the game is a package — run it with `-m`):
 
 ```bash
-.venv/bin/python main.py --level N        # start at level N (1–20)
-.venv/bin/python main.py --easy/--hard    # set difficulty (default: easy)
+.venv/bin/python -m uglycraft --level N        # start at level N (1–20)
+.venv/bin/python -m uglycraft --easy/--hard    # set difficulty (default: easy)
 ```
 
 ---
@@ -206,7 +206,12 @@ poe deploy-original-dos    # push original DOS exe (frozen — never redeployed)
 
 ## Project structure
 
+All game modules live in the `uglycraft/` package (run it with
+`python -m uglycraft`). A thin `run_game.py` at the repo root is the
+PyInstaller entry point.
+
 ```
+uglycraft/      the game package (fonts/ and translations/ live inside it)
 main.py         Entry point, display scaling, event loop
 game.py         Menus, input, rendering, crafting UI (presentation only)
 world.py        Core gameplay rules and state (no pygame)

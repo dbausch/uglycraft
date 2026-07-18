@@ -313,27 +313,33 @@ poe install               # creates .venv and installs pygame, numpy, pyinstalle
 poe run
 ```
 
-Or directly: `.venv/bin/python main.py --level N --easy/--hard`
+Or directly: `.venv/bin/python -m uglycraft --level N --easy/--hard`
 
 In debug mode (`--level`) the high-score entry screen is suppressed.
 
-## Architecture (16 Python files)
+## Architecture (`uglycraft/` package — 16 modules)
+
+The game is a package under `uglycraft/`, run with `python -m uglycraft` (spec
+0080). The repo root holds only `run_game.py`, the PyInstaller launcher; assets
+live inside the package at `uglycraft/fonts/` and `uglycraft/translations/`.
 
 | File | Role |
 |---|---|
-| `constants.py` | Logical resolution, tile size, colours, timing, wall types |
-| `hud.py` | HUD layout primitives: `HudElement`/`LabelValue`/`IconStrip` + an `HBox` that distributes slack across the `n-1` gaps and draws subtle gap separators (spec 0072) |
-| `sprites.py` | All sprites drawn procedurally via `pygame.draw` — no image files |
-| `levels.py` | Act 1 levels (hand-authored) + Act 2 levels (graph-generated lazily per level on demand, spec 0028) |
-| `entities.py` | `Player`, `Enemy`, `PatrolEnemy`, `ForgeOgre` (breaks placed walls) — tile-grid movement, BFS pathfinding, room confinement |
-| `hiscore.py` | Top-10 score persistence to `uglycraft.hsc` |
-| `sounds.py` | `SoundManager` — 14 procedural SFX + 12 music tracks |
-| `cells.py` | Layered cell model: terrain (floor/water) + Barrier/Bridge fixtures per cell, one parser from room data (spec 0047) |
-| `world.py` | **Pygame-free** gameplay rules: all world state, movement/push/bump, rooms, hazards, pickups; passability as a query over cells; emits a typed event stream (specs 0045–0047) |
-| `game.py` | Presentation: menu state machine, input translation, rendering, inventory/crafting UI; maps world events → sounds/music/flash |
-| `main.py` | Window creation, integer scaling, top-level event loop |
-| `crafting.py` | Materials, tools, keys, recipes, `Inventory` class |
-| `rooms.py` | Live `Room` objects (persist by identity, spec 0051), exit detection |
-| `levelgraph.py` | Graph model (`Node`, `Edge`, `LevelGraph`), generation, playability validation |
-| `levellayout.py` | Layout algorithm: graph → one or more 30×16 grids, wall derivation, Sokoban solver |
-| `leveldump.py` | Pygame-free ASCII export of a loaded level (`--dump-level`) via the real `start_level` path; single- and multi-grid canvases (specs 0064/0065) |
+| `uglycraft/__main__.py` | `python -m uglycraft` entry point — imports and calls `main()` |
+| `uglycraft/constants.py` | Logical resolution, tile size, colours, timing, wall types |
+| `uglycraft/hud.py` | HUD layout primitives: `HudElement`/`LabelValue`/`IconStrip` + an `HBox` that distributes slack across the `n-1` gaps and draws subtle gap separators (spec 0072) |
+| `uglycraft/sprites.py` | All sprites drawn procedurally via `pygame.draw` — no image files |
+| `uglycraft/levels.py` | Act 1 levels (hand-authored) + Act 2 levels (graph-generated lazily per level on demand, spec 0028) |
+| `uglycraft/entities.py` | `Player`, `Enemy`, `PatrolEnemy`, `ForgeOgre` (breaks placed walls) — tile-grid movement, BFS pathfinding, room confinement |
+| `uglycraft/hiscore.py` | Top-10 score persistence to `uglycraft.hsc` |
+| `uglycraft/sounds.py` | `SoundManager` — 14 procedural SFX + 12 music tracks |
+| `uglycraft/cells.py` | Layered cell model: terrain (floor/water) + Barrier/Bridge fixtures per cell, one parser from room data (spec 0047) |
+| `uglycraft/world.py` | **Pygame-free** gameplay rules: all world state, movement/push/bump, rooms, hazards, pickups; passability as a query over cells; emits a typed event stream (specs 0045–0047) |
+| `uglycraft/game.py` | Presentation: menu state machine, input translation, rendering, inventory/crafting UI; maps world events → sounds/music/flash |
+| `uglycraft/main.py` | Window creation, integer scaling, top-level event loop |
+| `uglycraft/crafting.py` | Materials, tools, keys, recipes, `Inventory` class |
+| `uglycraft/rooms.py` | Live `Room` objects (persist by identity, spec 0051), exit detection |
+| `uglycraft/levelgraph.py` | Graph model (`Node`, `Edge`, `LevelGraph`), generation, playability validation |
+| `uglycraft/levellayout.py` | Layout algorithm: graph → one or more 30×16 grids, wall derivation, Sokoban solver |
+| `uglycraft/leveldump.py` | Pygame-free ASCII export of a loaded level (`--dump-level`) via the real `start_level` path; single- and multi-grid canvases (specs 0064/0065) |
+| `run_game.py` | Repo-root PyInstaller entry: `from uglycraft.main import main; main()` (runs as `__main__` outside package context, where `-m` isn't used) |

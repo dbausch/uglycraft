@@ -26,14 +26,15 @@ independently installable packages so users can choose either or both.
 
 ### Package `uglycraft`
 
-The Python/pygame spiritual remake. Installed as a set of Python source files
-with system package dependencies.
+The Python/pygame spiritual remake, installed as a Python **package** into
+site-packages (spec 0080) and run via `python -m uglycraft`.
 
 | Installed path | Contents |
 |---|---|
-| `/usr/share/uglycraft/*.py` | `main.py`, `game.py`, `constants.py`, `sprites.py`, `levels.py`, `entities.py`, `hiscore.py`, `sounds.py` |
-| `/usr/share/uglycraft/fonts/ShareTechMono-Regular.ttf` | Bundled font |
-| `/usr/bin/uglycraft` | Wrapper: `exec python /usr/share/uglycraft/main.py "$@"` |
+| `$(site-packages)/uglycraft/` | The whole game package — all 16 modules + `__init__`/`__main__`, byte-compiled with `compileall` |
+| `$(site-packages)/uglycraft/fonts/ShareTechMono-Regular.ttf` | Bundled font (rides inside the package) |
+| `$(site-packages)/uglycraft/translations/history_en.txt` | History-screen text (rides inside the package) |
+| `/usr/bin/uglycraft` | Wrapper: `exec python -m uglycraft "$@"` |
 | `/usr/share/licenses/uglycraft/GPL-3.0.txt` | Game license |
 | `/usr/share/licenses/uglycraft/OFL-1.1-ShareTechMono.txt` | Font license |
 | `/usr/share/icons/hicolor/scalable/apps/uglycraft.svg` | Application icon |
@@ -42,8 +43,8 @@ with system package dependencies.
 **depends**: `python`, `python-pygame`, `python-numpy`
 
 Font path resolution: `game.py` uses `os.path.dirname(os.path.abspath(__file__))`
-as base directory, so the font is found at
-`/usr/share/uglycraft/fonts/ShareTechMono-Regular.ttf` without any code changes.
+as base directory, so the font resolves at `…/uglycraft/fonts/…` inside the
+installed package without any code changes.
 
 High-score file: `constants.py` already uses `$XDG_DATA_HOME/uglycraft/uglycraft.hsc`.
 
