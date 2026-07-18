@@ -1833,7 +1833,28 @@ source-path display, not functionality.
 
 ---
 
-## BL-72 · P3 · uglycraft-git split package missing makedepends for python/pygame/numpy (namcap)
+## BL-72 · FIXED · uglycraft-git split package missing makedepends for python/pygame/numpy (namcap)
+
+Fixed by spec 0092 (commit ed3539f), confirmed 2026-07-18. Pkgbase-level
+`makedepends` in all three PKGBUILDs (release, `-git`, `-dev`) now includes
+`python`, `python-numpy`, `python-pygame` alongside the existing entries;
+`.SRCINFO`/`.SRCINFO-git` regenerated in the same commit. **Key insight from
+the spec 0092 investigation:** namcap's split-makedeps rule
+(`SplitPkgMakedepsRule`) resolves each subpackage's dependency coverage
+against the **local pacman database**, not the PKGBUILD in isolation — the
+release PKGBUILD's clean namcap run at audit time was an accident of the
+machine having `uglycraft-dev` installed (which `provides=('uglycraft')`, so
+`load_from_db('uglycraft')` resolved through it and pulled its real `depends`
+into coverage, silencing the check by chance). No installed package
+`provides` `uglycraft-git`, so the same accidental coverage never happened
+there, and the rule fired only on `-git` — a clean-DB/CI run would have
+flagged the release PKGBUILD identically. Also confirmed empirically that
+`makedepends=('python')` alone is **insufficient**: namcap still flagged the
+remaining `['python-numpy', 'python-pygame']`, since the rule does a literal
+subset check of subpackage `depends` against pkgbase `makedepends`/its
+transitive closure — the full triple was required. Final state (after spec
+0093's D6 addition, commit 8f3c117) is clean of every split-makedeps finding
+on both PKGBUILDs. → spec/0092-split-package-makedepends.md
 
 namcap flagged `PKGBUILD-git`: "Split PKGBUILD needs additional makedepends
 [python, python-numpy, python-pygame] to work properly" for the
@@ -1861,7 +1882,23 @@ afterwards (spec 0084 mechanism).
 
 ---
 
-## BL-73 · P3 · Missing hicolor-icon-theme dependency for the split packages installing icons (namcap)
+## BL-73 · FIXED · Missing hicolor-icon-theme dependency for the split packages installing icons (namcap)
+
+Fixed by spec 0093 (commits c0d7973 + 8f3c117), confirmed 2026-07-18. All
+eight `package_*()` functions across the three PKGBUILDs (release, `-git`,
+`-dev`) now declare `depends=(... 'hicolor-icon-theme')` (a new `depends`
+array for `ugli*`, which previously had none at all); `.SRCINFO`/
+`.SRCINFO-git` regenerated. **D6 interaction discovered during
+implementation:** adding `hicolor-icon-theme` to each subpackage's `depends`
+re-triggered the same `SplitPkgMakedepsRule` spec 0092 had just fixed for the
+Python triple — a subpackage's `depends` entry must also be covered by
+pkgbase-level `makedepends` for namcap's split-makedeps rule to pass, so
+`hicolor-icon-theme` was additionally added to pkgbase-level `makedepends` in
+all three PKGBUILDs (spec amendment commit ad56f62, fix commit 8f3c117).
+Verified against built `uglycraft-dev`/`ugli-dev` packages: `.PKGINFO` lists
+`depend = hicolor-icon-theme`; namcap on both built packages and both source
+PKGBUILDs is clean of the finding (only benign `Missing Maintainer tag` /
+implicitly-satisfied notes remain). → spec/0093-hicolor-icon-theme-dependency.md
 
 namcap flagged: "Dependency hicolor-icon-theme detected and not included
 (needed for hicolor theme hierarchy)" on the `uglycraft` package. Both
@@ -1899,7 +1936,26 @@ still runs correctly with hardening enabled.
 
 ---
 
-## BL-75 · P2 · Unpatched FPC warnings/notes from the fetched UOS sources clutter build output
+## BL-75 · FIXED · Unpatched FPC warnings/notes from the fetched UOS sources clutter build output
+
+Fixed by spec 0091 (commit bbcd22e), confirmed 2026-07-18. A sentinel-guarded
+FPC directive block (`{$WARN 4105 OFF} {$WARN 5025 OFF} {$WARN 5027 OFF}
+{$WARN 5089 OFF} {$WARN 5093 OFF} {$WARN 6058 OFF}` + a
+`UGLYCRAFT-WARN-SUPPRESS` comment) is idempotently prepended to each of the
+three fetched UOS units (`uos.pas`, `uos_flat.pas`, `uos_portaudio.pas`)
+right after fetch/copy, in `pyproject.toml`'s `build-original` task and in
+the `prepare()` of all three PKGBUILDs — FPC message directives are scoped
+to the compiled unit and do not cross the `uses` boundary, so suppression
+had to live inside the third-party sources themselves, not in project code.
+`poe build-original` dropped from 5 warnings + 18 notes to 0 UOS-originated
+messages; scoping was proven by confirming a deliberately introduced warning
+in `UGLI_2.pp` still surfaced. The `UOSSound.pp(57,3)` 6058 note is
+deliberately left untouched — it is project-own code (not a fetched UOS
+unit), out of this spec's scope; extending the existing `{$WARN 6058 OFF}`
+precedent to `UOSSound.pp` is a separate future change. `poe test-original`
+surfaced three pre-existing, unrelated `UGLI_2_Core.inc` warnings
+(TTYFd/SavedTio/RawTio) not caused by this change — filed separately as
+BL-76 (commit 04cde01). → spec/0091-silence-uos-thirdparty-warnings.md
 
 `poe build-original` (and, transitively, the `build()` step of all three
 PKGBUILDs) compiles the fetched `uos.pas`/`uos_flat.pas`/`uos_portaudio.pas`
