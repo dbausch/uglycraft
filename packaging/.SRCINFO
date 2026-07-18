@@ -21,7 +21,6 @@ pkgname = uglycraft
 	depends = python
 	depends = python-pygame
 	depends = python-numpy
-	provides = uglycraft
 	conflicts = uglycraft-git
 
 pkgname = ugli
@@ -29,5 +28,4 @@ pkgname = ugli
 	optdepends = portaudio: sound support via UOS/PortAudio
 	optdepends = kitty: terminal launcher with ANSI-87 colour theme
 	optdepends = ttf-liberation: Liberation Mono font for kitty launcher
-	provides = ugli
 	conflicts = ugli-git
