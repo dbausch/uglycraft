@@ -1,5 +1,5 @@
 #!/bin/bash
-UGLI=/usr/share/ugli/UGLI_2
+UGLI=/usr/lib/ugli/UGLI_2
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ugli"
 mkdir -p "$DATA_DIR"
 cd "$DATA_DIR"

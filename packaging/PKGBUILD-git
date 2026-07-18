@@ -83,13 +83,13 @@ package_ugli-git() {
 
   cd "$pkgbase"
 
-  install -Dm755 original/UGLI_2 "$pkgdir/usr/share/ugli/UGLI_2"
+  install -Dm755 original/UGLI_2 "$pkgdir/usr/lib/ugli/UGLI_2"
   install -Dm644 original/ANSI-87.conf "$pkgdir/usr/share/ugli/ANSI-87.conf"
-  install -d "$pkgdir/usr/share/ugli/translations"
+  install -d "$pkgdir/usr/lib/ugli/translations"
   install -m644 original/translations/*.mo \
-    "$pkgdir/usr/share/ugli/translations/"
+    "$pkgdir/usr/lib/ugli/translations/"
   install -m644 original/translations/history_*.txt \
-    "$pkgdir/usr/share/ugli/translations/"
+    "$pkgdir/usr/lib/ugli/translations/"
 
   install -Dm755 packaging/ugli.sh "$pkgdir/usr/bin/ugli"
 
